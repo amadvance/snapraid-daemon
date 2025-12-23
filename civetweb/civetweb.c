@@ -2897,6 +2897,7 @@ mg_set_thread_name(const char *name)
 static void
 mg_set_thread_name(const char *threadName)
 {
+	(void)threadName;
 }
 #endif
 
@@ -9370,7 +9371,7 @@ is_authorized_for_put(struct mg_connection *conn)
 }
 #endif
 
-
+#if !defined(NO_FILESYSTEMS)
 CIVETWEB_API int
 mg_modify_passwords_file_ha1(const char *fname,
                              const char *domain,
@@ -9532,8 +9533,9 @@ mg_modify_passwords_file_ha1(const char *fname,
 	mg_free(temp_file);
 	return result;
 }
+#endif
 
-
+#if !defined(NO_FILESYSTEMS)
 CIVETWEB_API int
 mg_modify_passwords_file(const char *fname,
                          const char *domain,
@@ -9551,7 +9553,7 @@ mg_modify_passwords_file(const char *fname,
 	mg_md5(ha1buf, user, ":", domain, ":", pass, NULL);
 	return mg_modify_passwords_file_ha1(fname, domain, user, ha1buf);
 }
-
+#endif
 
 static int
 is_valid_port(unsigned long port)
@@ -10377,6 +10379,7 @@ handle_directory_request(struct mg_connection *conn, const char *dir)
 #endif /* NO_FILESYSTEMS */
 
 
+#if !defined(NO_FILESYSTEMS)
 /* Send len bytes from the opened file to the client. */
 static void
 send_file_data(struct mg_connection *conn,
@@ -10493,7 +10496,7 @@ send_file_data(struct mg_connection *conn,
 		}
 	}
 }
-
+#endif
 
 static int
 parse_range_header(const char *header, int64_t *a, int64_t *b)
@@ -12629,7 +12632,6 @@ put_file(struct mg_connection *conn, const char *path)
 	/* Send all headers - there is no body */
 	mg_response_header_send(conn);
 }
-
 
 static void
 delete_file(struct mg_connection *conn, const char *path)
@@ -15104,6 +15106,10 @@ handle_request(struct mg_connection *conn)
 		return;
 	}
 
+
+#if defined(NO_FILES)
+	(void)uri_len;
+#endif
 
 	/* 1.3. decode url (if config says so) */
 	if (should_decode_url(conn)) {
