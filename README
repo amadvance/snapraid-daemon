@@ -1,0 +1,21 @@
+SnapRAID-Daemon
+===============
+
+DEVELOPMENT STATUS: EARLY ALPHA. This documentation serves as a roadmap for
+the project. While the core daemon is under active development, many features
+are not yet ready for production use.
+
+SnapRAID-Daemon is a specialized companion service for SnapRAID that provides
+a background process to automate and monitor your parity array.
+It handles the scheduling of sync and scrub operations, monitors SMART
+values, manages automatic disk spindown during inactivity, and provides a
+robust notification engine.
+
+The entire system is managed through a modern REST API interface. This API
+provides a programmatic gateway to monitor array health and trigger
+maintenance tasks, serving as a powerful foundation that can be used to build
+a WebUI or other remote integrations.
+
+By moving SnapRAID from a "manual CLI" workflow to an "always-on" service, you
+get real-time monitoring, automated scheduling, and simplified management
+without sacrificing the lightweight philosophy of the core engine.

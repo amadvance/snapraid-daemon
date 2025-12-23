@@ -9,8 +9,10 @@ snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" \
 
 snapraidd_SOURCES = \
 	daemon/daemon.c \
+	daemon/state.c \
 	daemon/runner.c \
 	daemon/support.c \
+	daemon/rest.c \
 	civetweb/civetweb.c
 
 noinst_HEADERS = \
@@ -30,7 +32,10 @@ noinst_HEADERS = \
 	civetweb/sort.inl \
 	daemon/portable.h \
 	daemon/state.h \
-	daemon/support.h
+	daemon/runner.h \
+	daemon/support.h \
+	daemon/rest.h \
+	snapraidd.yaml
 
 # Add the .version file in the distribution
 dist-hook:
