@@ -1,0 +1,57 @@
+# archives
+*.zip
+*.tar.gz
+*.tgz
+
+# backups
+*~
+
+# logs
+*.log
+
+# upload
+makepush.sh
+makemount.sh
+makeumount.sh
+
+# autotools
+Makefile
+Makefile.in
+compile
+aclocal.m4
+autom4te.cache/
+config.guess
+config.h
+config.h.in
+config.log
+config.status
+config.sub
+configure
+install-sh
+missing
+stamp-h1
+.dirstamp
+
+# objects
+snapraidd
+*.exe
+*.o
+
+# projects
+*.dst
+*.epr
+*.geany
+
+# specific
+cov/
+contrib/
+paper/
+kernel/
+obj/
+bench/
+support/
+archive/
+www/
+wiki/
+beta/
+ftp/
