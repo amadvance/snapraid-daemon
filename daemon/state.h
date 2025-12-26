@@ -135,7 +135,7 @@ struct snapraid_parity {
 };
 
 
-#define CMD_IDLE 0
+#define CMD_NONE 0
 #define CMD_PROBE 1
 #define CMD_UP 2
 #define CMD_DOWN 3
@@ -148,16 +148,44 @@ struct snapraid_parity {
 #define CMD_FIX 10
 #define CMD_CHECK 11
 
+#define PROCESS_STATE_INIT 0
+#define PROCESS_STATE_BEGIN 1
+#define PROCESS_STATE_POS 2
+#define PROCESS_STATE_SIGINT 3
+#define PROCESS_STATE_END 4
+
+struct snapraid_process {
+	int state; /**< 0 if in preparation, 1 after begin, 2 after the first pos, 3 after the end */
+	unsigned progress; /**< Completion percentage, 0 <= process <= 100 */
+	unsigned eta_seconds; /**< Estimate seconds for the end */
+	unsigned speed_mbs; /**< Processing speed in in MBytes/s */
+	unsigned cpu_usage; /**< CPU occupation in percentage, 0 <= cpu_usage <= 100. */
+	unsigned elapsed_seconds; /**< Number of seconds elapsed from the begin of the process. */
+	unsigned block_begin; /**< First block to be processed */
+	unsigned block_end; /**< Latest block +1 to be processed */
+	unsigned block_count; /**< Number of blocks to be processed, it may be less than end - begin */
+	unsigned block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
+	unsigned block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
+	uint64_t size_done; /**< Number of bytes processed until now */
+	int exit_code; /**< Exit code of SnapRAID */
+	int exit_sig; /**< Signal that termianted SnapRAID */
+};
+
+#define MESSAGE_MAX 256
+
+struct snapraid_message {
+	char str[MESSAGE_MAX];
+	tommy_node node;
+};
+
 struct snapraid_runner {
 	thread_cond_t cond;
 	thread_id_t thread_id;
 	int stderr_f;
 	int cmd; /**< The latest command run or running */
 	int running; /**< If the command is running or finished */
-	pid_t pid;
-	int percent;
-	uint64_t speed_bs;
-	int eta_seconds;
+	pid_t pid; /**< PID of the SnapRAID process. */
+	tommy_list message_list; /**< List of messages */
 };
 
 struct snapraid_global {
@@ -175,6 +203,7 @@ struct snapraid_state {
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;
+	struct snapraid_process process;
 	struct snapraid_global global;
 	tommy_list data_list;
 	tommy_list parity_list;

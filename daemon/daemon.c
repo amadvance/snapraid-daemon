@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
 }
 
 /*
+curl -X POST http://localhost:8080/api/v1/sync
 curl -X POST http://localhost:8080/api/v1/probe
 curl -X POST http://localhost:8080/api/v1/up
 curl -X POST http://localhost:8080/api/v1/down

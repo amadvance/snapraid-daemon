@@ -22,6 +22,54 @@
 #include "runner.h"
 #include "rest.h"
 
+#define ESC_MAX 256
+
+static char* escape(const char* src, char* dst)
+{
+	char* dst_begin = dst;
+	char* dst_end = dst_begin + ESC_MAX;
+
+	while (*src && dst_end - dst > 1) {
+		switch (*src) {
+		case '"':
+		case '\\':
+			if (dst_end - dst > 2) {
+				*dst++ = '\\';
+				*dst++ = *src++;
+			}
+			break;
+		case '\n':
+			if (dst_end - dst > 2) {
+				*dst++ = '\\';
+				*dst++ = 'n';
+				++src;
+			}
+			break;
+		case '\r':
+			if (dst_end - dst > 2) {
+				*dst++ = '\\';
+				*dst++ = 'r';
+				++src;
+			}
+			break;
+		case '\t':
+			if (dst_end - dst > 2) {
+				*dst++ = '\\';
+				*dst++ = 't';
+				++src;
+			}
+			break;
+		default:
+			*dst++ = *src++;
+			break;
+		}
+	}
+
+	*dst = 0;
+
+	return dst_begin;
+}
+
 static int send_json_success(struct mg_connection *conn, int status) 
 {
 	char body[256];
@@ -44,8 +92,7 @@ static int send_json_error(struct mg_connection *conn, int status, const char* m
 	char body[256];
 	
 	int body_len = snprintf(body, sizeof(body), 
-		"{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", 
-                message);
+		"{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
 
 	mg_printf(conn, "HTTP/1.1 %d %s\r\n"
 		"Content-Type: application/json\r\n"
@@ -77,7 +124,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	if (strcmp(path, "/api/v1/probe") == 0)
+	if (strcmp(path, "/api/v1/sync") == 0)
+		ret = runner(state, CMD_SYNC);
+	else if (strcmp(path, "/api/v1/probe") == 0)
 		ret = runner(state, CMD_PROBE);
 	else if (strcmp(path, "/api/v1/up") == 0)
 		ret = runner(state, CMD_UP);
@@ -100,6 +149,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 static void json_device_list(ss_t* s, int tab, tommy_list* list)
 {
 	tommy_node* i;
+	char esc_buf[ESC_MAX];
 
 	++tab;
 	for (i = tommy_list_head(list); i; i = i->next) {
@@ -107,11 +157,11 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 		ss_jsonf(s, tab, "{\n");
 		++tab;
 		if (*dev->family)
-			ss_jsonf(s, tab, "\"family\": \"%s\",\n", dev->family);
+			ss_jsonf(s, tab, "\"family\": \"%s\",\n", escape(dev->family, esc_buf));
 		if (*dev->model)
-			ss_jsonf(s, tab, "\"model\": \"%s\",\n", dev->model);
+			ss_jsonf(s, tab, "\"model\": \"%s\",\n", escape(dev->model, esc_buf));
 		if (*dev->serial)
-			ss_jsonf(s, tab, "\"serial\": \"%s\",\n", dev->serial);
+			ss_jsonf(s, tab, "\"serial\": \"%s\",\n", escape(dev->serial, esc_buf));
 		if (dev->power != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"power\": \"%s\",\n", dev->power ? "active" : "standby");
 		if (dev->health != SMART_UNASSIGNED)
@@ -142,7 +192,7 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
 		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
-		ss_jsonf(s, tab, "\"device_node\": \"%s\"\n", dev->file);
+		ss_jsonf(s, tab, "\"device_node\": \"%s\"\n", escape(dev->file, esc_buf));
 		--tab;
 		ss_jsonf(s, tab, "}%s\n", i->next ? "," : "");
 		--tab;
@@ -162,6 +212,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	tommy_node* j;
 	int tab = 0;
 	ss_t s;
+	char esc_buf[ESC_MAX];
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -177,12 +228,12 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		++tab;
 		ss_jsonf(&s, tab, "{\n");
 		++tab;
-		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", data->name);
-		ss_jsonf(&s, tab, "\"mount_dir\": \"%s\",\n", data->dir);
+		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", escape(data->name, esc_buf));
+		ss_jsonf(&s, tab, "\"mount_dir\": \"%s\",\n", escape(data->dir, esc_buf));
 		if (*data->uuid)
-			ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", data->uuid);
+			ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", escape(data->uuid, esc_buf));
 		if (*data->content_uuid)
-			ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", data->content_uuid);
+			ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", escape(data->content_uuid, esc_buf));
 		if (data->content_size != SMART_UNASSIGNED)
 			ss_jsonf(&s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", data->content_size);
 		if (data->content_free != SMART_UNASSIGNED)
@@ -207,7 +258,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		++tab;
 		ss_jsonf(&s, tab, "{\n");
 		++tab;
-		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", parity->name);
+		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", escape(parity->name, esc_buf));
 		if (parity->content_size != SMART_UNASSIGNED)
 			ss_jsonf(&s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", parity->content_size);
 		if (parity->content_free != SMART_UNASSIGNED)
@@ -225,11 +276,11 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 			++tab;
 			ss_jsonf(&s, tab, "{\n");
 			++tab;
-			ss_jsonf(&s, tab, "\"parity_path\": \"%s\",\n", split->path);
+			ss_jsonf(&s, tab, "\"parity_path\": \"%s\",\n", escape(split->path, esc_buf));
 			if (*split->uuid)
-				ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", split->uuid);
+				ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", escape(split->uuid, esc_buf));
 			if (*split->content_uuid)
-				ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", split->content_uuid);
+				ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", escape(split->content_uuid, esc_buf));
 			ss_jsonf(&s, tab, "\"devices\": [\n");
 			json_device_list(&s, tab, &split->device_list); 
 			ss_jsonf(&s, tab, "]\n");
@@ -270,6 +321,8 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int tab = 0;
 	ss_t s;
+	char esc_buf[ESC_MAX];
+	tommy_node* i;
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -278,29 +331,70 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 
 	ss_jsons(&s, tab, "{\n");
 	++tab;
-	ss_jsonf(&s, tab, "\"status\": \"%s\",\n", state->runner.running ? "running" : "done");
+	ss_jsonf(&s, tab, "\"command\": \"%s\",\n", runner_cmd(state->runner.cmd));
 	if (state->runner.running) {
-		ss_jsonf(&s, tab, "\"percent\": %d,\n", state->runner.percent);
-		ss_jsonf(&s, tab, "\"speed_bs\": %lu,\n", state->runner.speed_bs);
-		ss_jsonf(&s, tab, "\"eta_seconds\": %u,\n", state->runner.eta_seconds); 
-		ss_jsonf(&s, tab, "\"errors\": [\n");
-		for (int i = 0; i < 1; i++) { // Dummy loop for TaskError items
-			++tab;
-			ss_jsonf(&s, tab, "{\n");
-			++tab;
-			ss_jsonf(&s, tab, "\"reference_type\": \"file\",\n");
-			ss_jsonf(&s, tab, "\"message\": \"checksum error\",\n");
-			ss_jsonf(&s, tab, "\"disk_name\": \"d1\",\n");
-			ss_jsonf(&s, tab, "\"path\": \"/mnt/d1/data/file.txt\",\n");
-			ss_jsonf(&s, tab, "\"block_number\": 123456\n");
-			--tab;
-			ss_jsonf(&s, tab, "}\n");
-			--tab;
+		switch (state->process.state) {
+		case PROCESS_STATE_INIT : ss_jsonf(&s, tab, "\"status\": \"initializing\",\n"); break;
+		case PROCESS_STATE_BEGIN : ss_jsonf(&s, tab, "\"status\": \"starting\",\n"); break;
+		case PROCESS_STATE_POS : ss_jsonf(&s, tab, "\"status\": \"processing\",\n"); break;
+		case PROCESS_STATE_END : ss_jsonf(&s, tab, "\"status\": \"finishing\",\n"); break;
+		case PROCESS_STATE_SIGINT : ss_jsonf(&s, tab, "\"status\": \"interrupting\",\n"); break;
 		}
-		ss_jsonf(&s, tab, "]\n");
+	} else {
+		switch (state->process.state) {
+		case PROCESS_STATE_SIGINT : 
+			ss_jsonf(&s, tab, "\"status\": \"signaled\",\n"); 
+			ss_jsonf(&s, tab, "\"exit_sig\": %d,\n", state->process.exit_sig); 
+			break;
+		default: 
+			ss_jsonf(&s, tab, "\"status\": \"terminated\",\n"); 
+			ss_jsonf(&s, tab, "\"exit_code\": %d,\n", state->process.exit_code); 
+			break;
+		}
+	}
+	if (state->process.state >= PROCESS_STATE_BEGIN) {
+		ss_jsonf(&s, tab, "\"block_begin\": %u,\n", state->process.block_begin);
+		ss_jsonf(&s, tab, "\"block_end\": %u,\n", state->process.block_end);
+		ss_jsonf(&s, tab, "\"block_count\": %u,\n", state->process.block_count);
+	}
+	if (state->process.state >= PROCESS_STATE_POS) {
+		ss_jsonf(&s, tab, "\"progress\": %d,\n", state->process.progress);
+		ss_jsonf(&s, tab, "\"speed_mbs\": %u,\n", state->process.speed_mbs);
+		ss_jsonf(&s, tab, "\"eta_seconds\": %u,\n", state->process.eta_seconds); 
+		ss_jsonf(&s, tab, "\"cpu_usage\": %u,\n", state->process.cpu_usage); 
+		ss_jsonf(&s, tab, "\"elapsed_seconds\": %u,\n", state->process.elapsed_seconds);
+		ss_jsonf(&s, tab, "\"block_idx\": %u,\n", state->process.block_idx);
+		ss_jsonf(&s, tab, "\"block_done\": %u,\n", state->process.block_done);
+		ss_jsonf(&s, tab, "\"size_done\": %" PRIu64 ",\n", state->process.size_done);
+	}
+	ss_jsonf(&s, tab, "\"messages\": [\n");
+	for (i = tommy_list_head(&state->runner.message_list); i; i = i->next) {
+		struct snapraid_message* message = i->data;
+		++tab;
+		ss_jsonf(&s, tab, "\"%s\"%s\n", escape(message->str, esc_buf), i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(&s, tab, "\"command\": \"%s\"\n", runner_cmd(state->runner.cmd));
+
+	ss_jsonf(&s, tab, "]\n");
+
+#if 0
+	ss_jsonf(&s, tab, "\"errors\": [\n");
+	for (i = 0; i < 1; i++) { // Dummy loop for TaskError items
+		++tab;
+		ss_jsonf(&s, tab, "{\n");
+		++tab;
+		ss_jsonf(&s, tab, "\"reference_type\": \"file\",\n");
+		ss_jsonf(&s, tab, "\"message\": \"checksum error\",\n");
+		ss_jsonf(&s, tab, "\"disk_name\": \"d1\",\n");
+		ss_jsonf(&s, tab, "\"path\": \"/mnt/d1/data/file.txt\",\n");
+		ss_jsonf(&s, tab, "\"block_number\": 123456\n");
+		--tab;
+		ss_jsonf(&s, tab, "}\n");
+		--tab;
+	}
+	ss_jsonf(&s, tab, "],\n");
+#endif
+	--tab;
 	ss_jsonf(&s, tab, "}\n");
 
 	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
@@ -325,6 +419,7 @@ void rest_init(struct snapraid_state* state, const char** options)
 		exit(EXIT_FAILURE);
 	}
 
+	mg_set_request_handler(state->rest_context, "/api/v1/sync", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/probe", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/up", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/down", handler_action, state);
@@ -348,6 +443,7 @@ void rest_done(struct snapraid_state* state)
 }
 
 /*
+curl -X POST http://localhost:8080/api/v1/sync
 curl -X POST http://localhost:8080/api/v1/probe
 curl -X POST http://localhost:8080/api/v1/up
 curl -X POST http://localhost:8080/api/v1/down

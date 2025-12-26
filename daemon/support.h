@@ -61,6 +61,7 @@ void scpy(char* dst, size_t size, const char* src);
 int si64(int64_t* out, const char* src);
 int su64(uint64_t* out, const char* src);
 int si(int* out, const char* src);
+int su(unsigned* out, const char* src);
 
 /****************************************************************************/
 /* memory */

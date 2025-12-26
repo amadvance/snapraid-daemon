@@ -378,6 +378,71 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	}
 }
 
+void process_run(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 2)
+		return;
+
+	if (strcmp(map[1], "begin") == 0) {
+		if (mac < 5)
+			return;
+
+		state->process.state = PROCESS_STATE_BEGIN;
+		su(&state->process.block_begin, map[2]);
+		su(&state->process.block_end, map[3]);
+		su(&state->process.block_count, map[4]);
+	} else if (strcmp(map[1], "pos") == 0) {
+		if (mac < 10)
+			return;
+
+		state->process.state = PROCESS_STATE_POS;
+		su(&state->process.block_idx, map[2]);
+		su(&state->process.block_done, map[3]);
+		su64(&state->process.size_done, map[4]);
+		su(&state->process.progress, map[5]);
+		su(&state->process.eta_seconds, map[6]);
+		su(&state->process.speed_mbs, map[7]);
+		su(&state->process.cpu_usage, map[8]);
+		su(&state->process.elapsed_seconds, map[9]);
+	} else if (strcmp(map[1], "end") == 0) {
+		/* if interrupting, ignore the end, and it's reported anyway */
+		if (state->process.state != PROCESS_STATE_SIGINT) {
+			state->process.state = PROCESS_STATE_END;
+			state->process.progress = 100;
+			state->process.eta_seconds = 0;
+			state->process.speed_mbs = 0;
+			state->process.cpu_usage = 0;
+		}
+	}
+}
+
+void process_sigint(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 2)
+		return;
+
+	state->process.state = PROCESS_STATE_SIGINT;
+	su(&state->process.block_idx, map[1]);
+}
+
+void process_msg(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 3)
+		return;
+
+	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
+		struct snapraid_message* message = malloc_nofail(sizeof(struct snapraid_message));
+		const char* msg = map[2];
+		
+		/* skip initial spaces */
+		while (*msg != 0 && isspace(*msg))
+			++msg;
+		
+		scpy(message->str, sizeof(message->str), msg);
+		tommy_list_insert_tail(&state->runner.message_list, &message->node, message);
+	}
+}
+
 void process_conf(struct snapraid_state* state, char** map, size_t mac)
 {
 	if (mac < 3)
@@ -487,6 +552,12 @@ void process_line(struct snapraid_state* state, char** map, size_t mac)
 		//process_device(state, map, mac);
 	} else if (strcmp(cmd, "attr") == 0) {
 		process_attr(state, map, mac);
+	} else if (strcmp(cmd, "run") == 0) {
+		process_run(state, map, mac);
+	} else if (strcmp(cmd, "sigint") == 0) {
+		process_sigint(state, map, mac);
+	} else if (strcmp(cmd, "msg") == 0) {
+		process_msg(state, map, mac);
 	} else if (strcmp(cmd, "stat") == 0) {
 		process_stat(state, map, mac);
 	} else if (strcmp(cmd, "conf") == 0) {
@@ -588,7 +659,7 @@ void process_stderr(struct snapraid_state* state, int f)
 const char* runner_cmd(int cmd)
 {
 	switch (cmd) {
-	case CMD_IDLE : return "idle";
+	case CMD_NONE : return "none";
 	case CMD_PROBE : return "probe";
 	case CMD_UP : return "up";
 	case CMD_DOWN : return "down";
@@ -614,22 +685,46 @@ static void* runner_thread(void* arg)
 	while (state->daemon_running) {
 		if (state->runner.running) {
 			int f = state->runner.stderr_f;
+			pid_t pid = state->runner.pid;
+			int status;
+			pid_t ret;
 
 			state_unlock();
 
+			/* process the child output until EOF */
 			process_stderr(state, f);
 
 			close(f);
 
+			/* wait for the child process to terminate */
+			ret = waitpid(pid, &status, 0);
+
 			state_lock();
+
+			if (ret == -1) {
+				state->process.exit_code = -1;
+			} else {
+				if (WIFEXITED(status)) {
+					/* child's exit(code) or return from main */
+					state->process.exit_code = WEXITSTATUS(status);
+				} else if (WIFSIGNALED(status)) {
+					/* child died from a signal */
+					state->process.exit_sig = WTERMSIG(status);
+					state->process.state = PROCESS_STATE_SIGINT;
+				} else {
+					/* it should never happen */
+					state->process.exit_code = -1;
+				}
+			}
+
 			state->runner.running = 0;
 		}
 
 		thread_cond_wait(&state->runner.cond, &state->lock);
 	}
-	
+
 	state_unlock();
-	
+
 	return 0;
 }
 
@@ -660,13 +755,14 @@ int runner(struct snapraid_state* state, int cmd)
 {
 	pid_t pid;
 	int f;
-	const char* argv[5];
+	const char* argv[6];
 
 	argv[0] = "snapraid";
 	argv[1] = runner_cmd(cmd);
-	argv[2] = "--log";
-	argv[3] = ">&2";
-	argv[4] = 0;
+	argv[2] = "--gui";
+	argv[3] = "--log";
+	argv[4] = ">&2";
+	argv[5] = 0;
 
 	state_lock();
 
@@ -685,7 +781,12 @@ int runner(struct snapraid_state* state, int cmd)
 	state->runner.cmd = cmd;
 	state->runner.pid = pid;
 	state->runner.stderr_f = f;
-	
+
+	/* clear process data */
+	memset(&state->process, 0, sizeof(state->process));
+	tommy_list_foreach(&state->runner.message_list, free);
+	tommy_list_init(&state->runner.message_list);
+
 	printf("Run %s\n", runner_cmd(cmd));
 
 	thread_cond_signal(&state->runner.cond);

@@ -12,7 +12,7 @@ paths:
         Triggers a probe command for all data and parity disks in the array. 
         The server returns immediately with a 200 status, while the probe
         process continues in the background.
-        Updated spinning state will be available via the /array/disks endpoint
+        Updated spinning state will be available via the /v1/disks endpoint
         once the task is complete.
       responses:
         '200':
@@ -31,7 +31,7 @@ paths:
         Triggers a spin-up command for all data and parity disks in the array. 
         The server returns immediately with a 200 status, while the physical 
         spin-up process continues in the background.
-        Updated spinning state will be available via the /array/disks endpoint
+        Updated spinning state will be available via the /v1/disks endpoint
         once the task is complete.
       responses:
         '200':
@@ -49,7 +49,7 @@ paths:
       description: >
         Triggers a spin-down command for all data and parity disks in the array. 
         The server returns immediately with a 200 status.
-        Updated spinning state will be available via the /array/disks endpoint
+        Updated spinning state will be available via the /v1/disks endpoint
         once the task is complete.
       responses:
         '200':
@@ -67,11 +67,29 @@ paths:
       description: >
         Triggers a background refresh of SMART attributes for all disks.
         The server returns 200 immediately. 
-        Updated data will be available via the /array/disks endpoint once the
+        Updated data will be available via the /v1/disks endpoint once the
         task is complete.
       responses:
         '202':
           description: SMART refresh task accepted and scheduled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+        '409':
+          description: Conflict - A SnapRAID task is already running.
+
+  /api/v1/sync:
+    post:
+      summary: Start a sync of the array
+      description: >
+        Triggers a sync of the array. 
+        The server returns immediately with a 200 status, while the process
+        continues in the background.
+        Updated spinning state will be available via the /v1/progress endpoint.
+      responses:
+        '200':
+          description: Probe request accepted and scheduled
           content:
             application/json:
               schema:
@@ -158,33 +176,71 @@ components:
 
     CommandProgress:
       type: object
+      description: "Progress status of the running or latest command. Persists until a new command begins."
       required:
         - command
         - status
+        - messages
         - errors
       properties:
         command:
           type: string
-          enum: [idle, sync, scrub, fix, check, status, up, down, smart]
+          enum: [none, probe, sync, scrub, fix, check, status, up, down, smart]
           description: "The latest command run or still running."
         status:
           type: string
-          enum: [running, done]
+          enum: [initializing, starting, processing, finishing, interrupting, terminated, signaled]
           description: "If the command is running or it has finished."
-        percent:
+        exit_code:
           type: integer
-        errors:
-          type: array
-          description: "List of errors found. Persists until a new command begins."
-          items:
-            $ref: '#/components/schemas/CommandError'
-        speed_bs:
+          description: "Exit code of the SnapRAID process. Present only with status=terminated."
+        exit_sig:
           type: integer
-          format: int64
-          description: "Realtime speed in bytes/s"
+          description: "Signal code of the SnapRAID process. Present only with status=signaled."
+        progress:
+          type: integer
+          description: "Completion percentage"
         eta_seconds:
           type: integer
           description: "Estimated time remaning in seconds"
+        speed_mbs:
+          type: integer
+          description: "Realtime speed in Mbytes/s"
+        cpu_usage:
+          type: integer
+          description: "CPU usage percentage"
+        elapsed_seconds:
+          type: integer
+          description: "Elapsed time in seconds"
+        block_begin:
+          type: integer
+          description: "Starting block index"
+        block_end:
+          type: integer
+          description: "Ending block index + 1"
+        block_count:
+          type: integer
+          description: "Number of blocks to process. It may be less than block_end - block_begin + 1 if some blocks are going to be skipped"
+        block_idx:
+          type: integer
+          description: "Current block index position processed"
+        block_done:
+          type: integer
+          description: "Number of blocks processed"
+        size_done:
+          type: integer
+          format: int64
+          description: "Size of blocks processed"
+        messages:
+          type: array
+          description: "List of messages"
+          items:
+            type: string
+        errors:
+          type: array
+          description: "List of errors found."
+          items:
+            $ref: '#/components/schemas/CommandError'
 
     CommandError:
       type: object
@@ -373,32 +429,29 @@ components:
           properties:
             scheduled_run:
               type: string
+              nullable: true
               example: "daily 02:00"
               description: "The time when the automatic sync+scrub sequence begins."
-            scrub_percentage:
-              type: integer
-              description: "Amount to scrub during the scheduled run."
 
         monitoring:
           type: object
           properties:
             probe_interval_minutes:
               type: integer
-              minimum: 0
-              default: 30
+              nullable: true
             spindown_idle_minutes:
               type: integer
-              minimum: 0
-              default: 60
+              nullable: true
 
         sync_logic:
           type: object
           properties:
             report_differences:
               type: boolean
-              default: true
+              nullable: true
             suspend_on_deletes:
               type: integer
+              nullable: true
               description: "Threshold to stop sync if files are missing"
             pre_run_script:
               type: string
@@ -412,20 +465,19 @@ components:
           properties:
             scrub_percentage:
               type: integer
+              nullable: true
               minimum: 0
               maximum: 100
-              default: 12
 
         logging:
           type: object
           properties:
-            syslog_enabled:
-              type: boolean
             log_directory:
               type: string
+              nullable: true
             log_retention_days:
               type: integer
-              default: 30
+              nullable: true
 
         notifications:
           type: object
@@ -435,11 +487,11 @@ components:
               properties:
                 enabled:
                   type: boolean
-                  default: true
+                  nullable: true
                 level:
                   type: string
-                  enum: [none, error, warning, info, debug]
-                  default: "info"
+                  enum: [none, error, warning, info]
+                  nullable: true
                   description: "Sensitivity for the OS system log."
 
             heartbeat:
@@ -448,6 +500,7 @@ components:
               properties:
                 url:
                   type: string
+                  nullable: true
                   format: uri
                   example: "https://hc-ping.com/uuid"
 
@@ -457,11 +510,12 @@ components:
               properties:
                 url:
                   type: string
+                  nullable: true
                   example: "ntfy://snapraid-alerts"
                 level:
                   type: string
-                  enum: [none, error, warning, info, debug]
-                  default: "info"
+                  nullable: true
+                  enum: [none, error, warning, info]
                   description: "Sensitivity for Apprise push alerts."
 
             email:
@@ -470,10 +524,11 @@ components:
               properties:
                 recipient:
                   type: string
+                  nullable: true
                   format: email
                   example: "admin@local.host"
                 level:
                   type: string
-                  enum: [none, error, warning, info, debug]
-                  default: "info"
+                  enum: [none, error, warning, info]
+                  nullable: true
                   description: "Sensitivity for local email reports."

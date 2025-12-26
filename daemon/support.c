@@ -183,6 +183,26 @@ int si(int* out, const char* s)
 	return 0;
 }
 
+int su(unsigned* out, const char* s)
+{
+	char* e;
+	unsigned long v;
+
+	errno = 0;
+	v = strtoul(s, &e, 10);
+	if (errno != 0)
+		return -1; /* overflow or underflow */
+
+	if (e == s || *e != '\0')
+		return -1; /* not a valid number */
+
+	if (v > UINT_MAX)
+		return -1; /* outside int range */
+
+	*out = v;
+	return 0;
+}
+
 int si64(int64_t* out, const char* s)
 {
 	char* e;
