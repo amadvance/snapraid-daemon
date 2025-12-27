@@ -751,18 +751,26 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-int runner(struct snapraid_state* state, int cmd)
+int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv)
 {
 	pid_t pid;
 	int f;
-	const char* argv[6];
+	const char* argv[5 + RUNNER_ARG_MAX + 1];
+	int argc;
+	int i;
+	
+	if (cmd_argc > RUNNER_ARG_MAX)
+		return 400;
 
-	argv[0] = "snapraid";
-	argv[1] = runner_cmd(cmd);
-	argv[2] = "--gui";
-	argv[3] = "--log";
-	argv[4] = ">&2";
-	argv[5] = 0;
+	argc = 0;
+	argv[argc++] = "snapraid";
+	argv[argc++] = runner_cmd(cmd);
+	argv[argc++] = "--gui";
+	argv[argc++] = "--log";
+	argv[argc++] = ">&2";
+	for( i = 0; i < cmd_argc; ++i)
+		argv[argc++] = cmd_argv[i];;
+	argv[argc++] = 0;
 
 	state_lock();
 

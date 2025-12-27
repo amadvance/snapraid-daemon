@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	rest_init(state_ptr(), options);
 
 	/* load initial info into the state */
-	runner(state_ptr(), CMD_PROBE);
+	runner(state_ptr(), CMD_PROBE, 0, 0);
 
 	rest_run(state_ptr());
 
@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
 
 /*
 curl -X POST http://localhost:8080/api/v1/sync
+curl -X POST http://localhost:8080/api/v1/sync -d '{"args": ["--force-zero", "--force-empty"]}'
 curl -X POST http://localhost:8080/api/v1/probe
 curl -X POST http://localhost:8080/api/v1/up
 curl -X POST http://localhost:8080/api/v1/down

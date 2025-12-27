@@ -12,8 +12,8 @@ paths:
         Triggers a probe command for all data and parity disks in the array. 
         The server returns immediately with a 200 status, while the probe
         process continues in the background.
-        Updated spinning state will be available via the /v1/disks endpoint
-        once the task is complete.
+        Updated disk state will be available via the /v1/disks endpoint once
+        the task is complete.
       responses:
         '200':
           description: Probe request accepted and scheduled
@@ -31,8 +31,8 @@ paths:
         Triggers a spin-up command for all data and parity disks in the array. 
         The server returns immediately with a 200 status, while the physical 
         spin-up process continues in the background.
-        Updated spinning state will be available via the /v1/disks endpoint
-        once the task is complete.
+        Updated disk state will be available via the /v1/disks endpoint once
+        the task is complete.
       responses:
         '200':
           description: Spin-up request accepted and scheduled
@@ -48,9 +48,10 @@ paths:
       summary: Spin down all disks
       description: >
         Triggers a spin-down command for all data and parity disks in the array. 
-        The server returns immediately with a 200 status.
-        Updated spinning state will be available via the /v1/disks endpoint
-        once the task is complete.
+        The server returns immediately with a 200 status, while the physical 
+        spin-down process continues in the background.
+        Updated disk state will be available via the /v1/disks endpoint once
+        the task is complete.
       responses:
         '200':
           description: Spin-down request accepted and scheduled.
@@ -66,9 +67,10 @@ paths:
       summary: Refresh SMART data for all disks
       description: >
         Triggers a background refresh of SMART attributes for all disks.
-        The server returns 200 immediately. 
-        Updated data will be available via the /v1/disks endpoint once the
-        task is complete.
+        The server returns 200 immediately, while the smart gathering
+        process continues in the background.
+        Updated disk state will be available via the /v1/disks endpoint once
+        the task is complete.
       responses:
         '202':
           description: SMART refresh task accepted and scheduled.
@@ -86,10 +88,23 @@ paths:
         Triggers a sync of the array. 
         The server returns immediately with a 200 status, while the process
         continues in the background.
-        Updated spinning state will be available via the /v1/progress endpoint.
+        Updated progress state will be available via the /v1/progress endpoint.
+      requestBody:
+        required: false  # The JSON requestBody body is optional
+        description: Additional arguments to pass to the SnapRAID command
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                args:
+                  type: array
+                  items:
+                    type: string
+                  example: ["--force-zero", "--force-nocopy"]
       responses:
         '200':
-          description: Probe request accepted and scheduled
+          description: Sync request accepted and scheduled
           content:
             application/json:
               schema:

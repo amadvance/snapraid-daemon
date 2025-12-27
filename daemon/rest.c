@@ -22,6 +22,9 @@
 #include "runner.h"
 #include "rest.h"
 
+#define JSMN_STRICT
+#include "../jsmn/jsmn.h"
+
 #define ESC_MAX 256
 
 static char* escape(const char* src, char* dst)
@@ -112,30 +115,103 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * POST /api/v1/probe, /api/v1/up, /api/v1/down, /api/v1/smart 
+ * Max number of JSON tokens
+ */
+#define JSMN_TOKEN_MAX 64
+
+int json_pair(const char* js, jsmntok_t* jt, const char* field, unsigned type)
+{
+	int len = strlen(field);
+
+	if (jt[0].type != JSMN_STRING
+		|| len != jt[0].end - jt[0].start
+		|| strncmp(js + jt[0].start, field, len) != 0)
+		return -1;
+
+	if (jt[0].size != 1
+		|| jt[1].type != type)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * POST /api/v1/sync, /api/v1/probe, /api/v1/up, /api/v1/down, /api/v1/smart 
  */
 static int handler_action(struct mg_connection* conn, void* cbdata) 
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	const char* path = ri->local_uri;
+	ssize_t content_length = ri->content_length;
+	ssize_t jl;
 	int ret;
+	jsmntok_t jt[JSMN_TOKEN_MAX];
+	jsmn_parser jp;
+	char* js;
+	int jc;
+	char* argv[RUNNER_ARG_MAX];
+	int argc;
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+	if (content_length < 0) 
+		return send_json_error(conn, 400, "Invalid content length");
+
+	js = malloc_nofail(content_length);
+
+	jl = 0;
+	while (jl < content_length) {
+		int r = mg_read(conn, js + jl, (size_t)(content_length - jl));
+		if (r <= 0)
+			break;
+		jl += r;
+	}
+
+	argc = 0;
+	jsmn_init(&jp);
+	jc = jsmn_parse(&jp, js, jl, jt, JSMN_TOKEN_MAX);
+	if (jc < 0)
+		goto bad;
+	if (jc != 0) { /* accept an empty request */
+		int c0;
+		int j = 0;
+		if (jt[j].type != JSMN_OBJECT)
+			goto bad;
+		c0 = jt[j++].size;
+		while (c0-- > 0) {
+			if (json_pair(js, &jt[j], "args", JSMN_ARRAY) == 0) {
+				int c1 = jt[++j].size;
+				++j;
+				while (c1-- > 0) {
+					if (jt[j].type != JSMN_STRING)
+						goto bad;
+					js[jt[j].end] = 0;
+					argv[argc++] = &js[jt[j].start];
+					if (argc >= RUNNER_ARG_MAX)
+						goto bad;
+					++j;
+				}
+			} else 
+				goto bad;
+		}
+	}
+	argv[argc] = 0;
 
 	if (strcmp(path, "/api/v1/sync") == 0)
-		ret = runner(state, CMD_SYNC);
+		ret = runner(state, CMD_SYNC, argc, argv);
 	else if (strcmp(path, "/api/v1/probe") == 0)
-		ret = runner(state, CMD_PROBE);
+		ret = runner(state, CMD_PROBE, argc, argv);
 	else if (strcmp(path, "/api/v1/up") == 0)
-		ret = runner(state, CMD_UP);
+		ret = runner(state, CMD_UP, argc, argv);
 	else if (strcmp(path, "/api/v1/down") == 0)
-		ret = runner(state, CMD_DOWN);
+		ret = runner(state, CMD_DOWN, argc, argv);
 	else if (strcmp(path, "/api/v1/smart") == 0)
-		ret = runner(state, CMD_SMART);
+		ret = runner(state, CMD_SMART, argc, argv);
 	else
 		ret = 404;
+
+	free(js);
 
 	switch (ret) {
 	case 409 : return send_json_error(conn, 409, "A SnapRAID command is already running");
@@ -144,6 +220,10 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	}
 
 	return send_json_success(conn, 200);
+
+bad:
+	free(js);
+	return send_json_error(conn, 400, "Unrecognized json");
 }
 
 static void json_device_list(ss_t* s, int tab, tommy_list* list)
