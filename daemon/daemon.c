@@ -21,6 +21,7 @@
 #include "support.h"
 #include "rest.h"
 #include "runner.h"
+#include "scheduler.h"
 #include "conf.h"
 
 #define PID_FILE "/var/run/snapraidd.pid"
@@ -59,6 +60,19 @@ void signal_handler_hup(int sig)
 {
 	(void)sig;
 	state_ptr()->daemon_running = DAEMON_RELOAD;
+}
+
+void signal_set(int enable)
+{
+	sigset_t set;
+
+	sigemptyset(&set);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGQUIT);
+	sigaddset(&set, SIGHUP);
+
+	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
 }
 
 void signal_init(void)
@@ -143,8 +157,16 @@ static void run(struct snapraid_state* state)
 			state_unlock();
 		}
 
-		sleep(1);
+		scheduler(state);
+
+		/*
+		 * The sleep call is interrupted by signals even with SA_RESTART.
+		 * See "man 7 signal".
+		 */
+		sleep(10);
 	}
+
+	printf("Stopping...\n");
 }
 
 /****************************************************************************/
@@ -223,24 +245,54 @@ int main(int argc, char *argv[])
 
 	if (config_load(&state_ptr()->config) != 0) {
 		// TODO log/fail
+		exit(EXIT_FAILURE);
 	}
 
 	if (!foreground) {
-		if (daemonize() < 0)
+		if (daemonize() < 0) {
+			// TODO log/fail
 			exit(EXIT_FAILURE);
+		}
 	}
 
+	/*
+	 * Install signal handlers
+	 */
 	signal_init();
 
-	runner_init(state_ptr());
-	rest_init(state_ptr(), options);
+	/*
+	 * Block signals in the main thread
+	 */
+	signal_set(0);
 
-	/* load initial info into the state */
+	/**
+	 * Create worker threads while signals are still BLOCKED
+	 */
+	runner_init(state_ptr());
+
+	/*
+	 * Load initial info into the state
+	 */
 	runner(state_ptr(), CMD_PROBE, 0, 0);
 
+	scheduler_init(state_ptr());
+	rest_init(state_ptr(), options);
+
+	/*
+	 * Unblock signals ONLY in main thread
+	 * Worker threads keep them blocked forever.
+	 */
+	signal_set(1);
+
+	/*
+	 * Main loop
+	 *
+	 * It's stopped by signals
+	 */
 	run(state_ptr());
 
 	rest_done(state_ptr());
+	scheduler_done(state_ptr());
 	runner_done(state_ptr());
 
 	if (!foreground)

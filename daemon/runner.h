@@ -23,7 +23,7 @@
 /****************************************************************************/
 /* runner */
 
-int runner_init(struct snapraid_state* state);
+void runner_init(struct snapraid_state* state);
 void runner_done(struct snapraid_state* state);
 
 const char* runner_cmd(int cmd);

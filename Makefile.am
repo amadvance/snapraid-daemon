@@ -11,6 +11,7 @@ snapraidd_SOURCES = \
 	daemon/daemon.c \
 	daemon/state.c \
 	daemon/runner.c \
+	daemon/scheduler.c \
 	daemon/support.c \
 	daemon/rest.c \
 	daemon/conf.c \
@@ -35,6 +36,7 @@ noinst_HEADERS = \
 	daemon/portable.h \
 	daemon/state.h \
 	daemon/runner.h \
+	daemon/scheduler.h \
 	daemon/support.h \
 	daemon/rest.h \
 	daemon/conf.h \

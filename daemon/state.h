@@ -188,6 +188,11 @@ struct snapraid_runner {
 	tommy_list message_list; /**< List of messages */
 };
 
+struct snapraid_scheduler {
+	thread_cond_t cond;
+	thread_id_t thread_id;
+};
+
 struct snapraid_global {
 	char conf[PATH_MAX]; /**< Configuration file. */
 	char content[PATH_MAX]; /**< Content file. */
@@ -251,6 +256,7 @@ struct snapraid_state {
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;
+	struct snapraid_scheduler scheduler;
 	struct snapraid_process process;
 	struct snapraid_global global;
 	struct snapraid_config config;

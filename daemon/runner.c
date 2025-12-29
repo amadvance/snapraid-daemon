@@ -728,14 +728,12 @@ static void* runner_thread(void* arg)
 	return 0;
 }
 
-int runner_init(struct snapraid_state* state)
+void runner_init(struct snapraid_state* state)
 {
 	thread_cond_init(&state->runner.cond);
 
 	/* start the runner thread */
 	thread_create(&state->runner.thread_id, runner_thread, state);
-
-	return 0;
 }
 
 void runner_done(struct snapraid_state* state)
