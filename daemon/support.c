@@ -22,14 +22,20 @@
 /****************************************************************************/
 /* string stream */
 
-void ss_init(struct ss* s)
+void ss_init(struct ss* s, size_t size)
 {
-	s->ptr = 0;
-	s->size = 0;
 	s->len = 0;
+
+	if (size > 0) {
+		s->ptr = malloc_nofail(size);
+		s->size = size;
+	} else {
+		s->ptr = 0;
+		s->size = 0;
+	}
 }
 
-static void ss_reserve(struct ss* s, size_t needed) 
+void ss_reserve(struct ss* s, size_t needed) 
 {
 	size_t new_size;
 	

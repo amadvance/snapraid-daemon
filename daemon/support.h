@@ -27,7 +27,7 @@ typedef struct ss {
 	size_t len;
 } ss_t;
 
-void ss_init(struct ss* s);
+void ss_init(struct ss* s, size_t size);
 void ss_done(struct ss* s);
 void ss_write(struct ss* s, const char* arg, size_t len);
 void ss_prints(struct ss* s, const char* arg);
@@ -41,9 +41,26 @@ static inline size_t ss_len(struct ss* s)
 	return s->len;
 }
 
-static inline const char* ss_ptr(struct ss* s)
+static inline char* ss_ptr(struct ss* s)
 {
 	return s->ptr;
+}
+
+void ss_reserve(struct ss* s, size_t needed);
+
+static inline char* ss_top(struct ss* s)
+{
+	return s->ptr + s->len;
+}
+
+static inline void ss_forward(struct ss* s, size_t written)
+{
+	s->len += written; 
+}
+
+static inline ssize_t ss_avail(struct ss* s)
+{
+	return s->size - s->len;
 }
 
 /****************************************************************************/

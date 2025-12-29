@@ -26,6 +26,8 @@
 #define JSMN_STRICT
 #include "../jsmn/jsmn.h"
 
+#define JSON_INITIAL_SIZE 512 /**< Initial size for building JSON text */
+
 #define ESC_MAX 256
 
 static char* escape(const char* src, char* dst)
@@ -267,19 +269,31 @@ void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv)
 
 char* json_read(struct mg_connection* conn, ssize_t* len)
 {
+	ss_t s;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	ssize_t content_length = ri->content_length;
-	char* js = malloc_nofail(content_length);
-	ssize_t jl = 0;
-	while (jl < content_length) {
-		int r = mg_read(conn, js + jl, (size_t)(content_length - jl));
+
+	/* if there is the Content-Length header, use it for the first allocation */
+	if (content_length < 0)
+		content_length = JSON_INITIAL_SIZE;
+
+	ss_init(&s, content_length);
+
+	while (1) {
+		int r = mg_read(conn, ss_top(&s), ss_avail(&s));
 		if (r <= 0)
 			break;
-		jl += r;
+
+		ss_forward(&s, r);
+
+		/* ensure there is always some space */
+		if (ss_avail(&s) == 0)
+			ss_reserve(&s, JSON_INITIAL_SIZE);
 	}
-	
-	*len = jl;
-	return js;
+
+	*len = ss_len(&s);
+
+	return ss_ptr(&s);
 }
 
 /**
@@ -512,7 +526,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_init(&s);
+	ss_init(&s, JSON_INITIAL_SIZE);
 
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
@@ -740,7 +754,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_init(&s);
+	ss_init(&s, JSON_INITIAL_SIZE);
 
 	ss_jsonf(&s, 0, "{\n");
 	++tab;
@@ -852,7 +866,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
-	ss_init(&s);
+	ss_init(&s, JSON_INITIAL_SIZE);
 
 	ss_jsons(&s, tab, "{\n");
 	++tab;
