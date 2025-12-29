@@ -13,6 +13,7 @@ snapraidd_SOURCES = \
 	daemon/runner.c \
 	daemon/support.c \
 	daemon/rest.c \
+	daemon/conf.c \
 	civetweb/civetweb.c
 
 noinst_HEADERS = \
@@ -36,6 +37,7 @@ noinst_HEADERS = \
 	daemon/runner.h \
 	daemon/support.h \
 	daemon/rest.h \
+	daemon/conf.h \
 	snapraidd.yaml \
 	snapraidd.service \
 	snapraidd.conf

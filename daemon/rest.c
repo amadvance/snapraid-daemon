@@ -21,6 +21,7 @@
 #include "support.h"
 #include "runner.h"
 #include "rest.h"
+#include "conf.h"
 
 #define JSMN_STRICT
 #include "../jsmn/jsmn.h"
@@ -119,20 +120,455 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
  */
 #define JSMN_TOKEN_MAX 64
 
-int json_pair(const char* js, jsmntok_t* jt, const char* field, unsigned type)
-{
-	int len = strlen(field);
+#define json_const(v) v, sizeof(v) - 1
 
-	if (jt[0].type != JSMN_STRING
-		|| len != jt[0].end - jt[0].start
-		|| strncmp(js + jt[0].start, field, len) != 0)
+char* json_token(char* js, jsmntok_t* jv)
+{
+	js[jv[0].end] = 0;
+	return &js[jv[0].start];
+}
+
+int json_entry(const char* js, jsmntok_t* jv, const char* field, ssize_t field_len)
+{
+	/* check if the field is matching */
+	if (jv[0].type != JSMN_STRING
+		|| field_len != jv[0].end - jv[0].start
+		|| strncmp(js + jv[0].start, field, field_len) != 0)
 		return -1;
 
-	if (jt[0].size != 1
-		|| jt[1].type != type)
+	/* ensure that there is only one child  */
+	if (jv[0].size != 1)
+		return -1;
+
+	/* STRING and PRIMITIVE should have no childs */
+	if ((jv[1].type == JSMN_STRING || jv[1].type == JSMN_PRIMITIVE) && jv[1].size != 0)
 		return -1;
 
 	return 0;
+}
+
+int json_type(const char* js, jsmntok_t* jv, const char* field, ssize_t field_len, unsigned type)
+{
+	if (json_entry(js, jv, field, field_len) != 0)
+		return -1;
+
+	/* ensure that there is has the correct type  */
+	if (jv[1].type != type)
+		return -1;
+
+	return 0;
+}
+
+int json_null(const char* js, jsmntok_t* jv)
+{
+	if (jv[0].type != JSMN_PRIMITIVE
+		|| 4 != jv[0].end - jv[0].start
+		|| strncmp(js + jv[0].start, "null", 4) != 0)
+		return -1;
+	return 0;
+}
+
+int json_value(const char* js, jsmntok_t* jv, int low, int high, int* out)
+{
+	const int limit_div = INT_MAX / 10;
+	const int limit_rem = INT_MAX % 10;
+	int v;
+	int i;
+
+	if (jv[0].type != JSMN_PRIMITIVE)
+		return -1;
+
+	v = 0;
+	for (i = jv[0].start; i < jv[0].end; ++i) {
+		unsigned d;
+
+		if (js[i] < '0' || js[i] > '9')
+			return -1;
+
+		d = js[i] - '0';
+
+		if (v > limit_div || (v == limit_div && d > limit_rem))
+			return -1; /* overflow */
+
+		v = v * 10 + d;
+	}
+
+	if (v < low || v > high)
+		return -1;
+
+	*out = v;
+	return 0;
+}
+
+int json_boolean(const char* js, jsmntok_t* jv, int* out)
+{
+	if (jv[0].type != JSMN_PRIMITIVE)
+		return -1;
+
+	if (5 == jv[0].end - jv[0].start
+		&& strncmp(js + jv[0].start, "false", 5) == 0) {
+		*out = 0;
+		return 0;
+	}
+
+	if (4 == jv[0].end - jv[0].start
+		&& strncmp(js + jv[0].start, "true", 4) == 0) {
+		*out = 1;
+		return 0;
+	}
+
+	return -1;
+}
+
+int json_string(const char* js, jsmntok_t* jv, char* out, size_t out_size)
+{
+	size_t len = jv[0].end - jv[0].start;
+
+	if (jv[0].type != JSMN_STRING
+		|| len + 1 > out_size)
+		return -1;
+
+	memcpy(out, &js[jv[0].start], len);
+	out[len] = 0;
+
+	return 0;
+}
+
+int json_string_inplace(char* js, jsmntok_t* jv, char** out)
+{
+	if (jv[0].type != JSMN_STRING)
+		return -1;
+
+	*out = json_token(js, jv);
+
+	return 0;
+}
+
+void json_error_parse(char* str, size_t str_size, int jc)
+{
+	switch (jc) {
+	case 0 : snprintf(str, str_size, "Empty JSON"); break;
+	case JSMN_ERROR_NOMEM : snprintf(str, str_size, "JSON too long"); break;
+	case JSMN_ERROR_INVAL : snprintf(str, str_size, "Invalid character inside JSON string"); break;
+	case JSMN_ERROR_PART : snprintf(str, str_size, "Partial JSON"); break;
+	default : snprintf(str, str_size, "Unknown JSON error"); break;
+	};
+}
+
+void json_error_arg(char* str, size_t str_size, char* js, jsmntok_t* je, jsmntok_t* ja)
+{
+	snprintf(str, str_size, "Invalid JSON argument %s for %s", json_token(js, ja), json_token(js, je));
+}
+
+void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv)
+{
+	snprintf(str, str_size, "Unrecognized JSON token %s", json_token(js, jv));
+}
+
+char* json_read(struct mg_connection* conn, ssize_t* len)
+{
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	ssize_t content_length = ri->content_length;
+	char* js = malloc_nofail(content_length);
+	ssize_t jl = 0;
+	while (jl < content_length) {
+		int r = mg_read(conn, js + jl, (size_t)(content_length - jl));
+		if (r <= 0)
+			break;
+		jl += r;
+	}
+	
+	*len = jl;
+	return js;
+}
+
+/**
+ * PATCH /api/v1/config 
+ */
+static int handler_config_patch(struct mg_connection* conn, void* cbdata) 
+{
+	char msg[128];
+	struct snapraid_state* state = cbdata;
+	jsmntok_t jv[JSMN_TOKEN_MAX];
+	jsmn_parser jp;
+	ssize_t jl;
+	char* js;
+	int jc;
+
+	js = json_read(conn, &jl);
+
+	state_lock();
+
+	jsmn_init(&jp);
+	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
+	if (jc <= 0) {
+		json_error_parse(msg, sizeof(msg), jc);
+		goto bad;
+	} else {
+		int c0;
+		int j = 0;
+		if (jv[j].type != JSMN_OBJECT) {
+			snprintf(msg, sizeof(msg), "Missing root JSON object");
+			goto bad;
+		}
+		c0 = jv[j++].size;
+		while (c0-- > 0) {
+			char buf[128];
+			if (json_entry(js, &jv[j], json_const("scheduled_run")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
+					&& parse_scheduled_run(buf, &state->config) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("probe_interval_minutes")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 1440, &state->config.probe_interval_minutes) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.probe_interval_minutes);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("spindown_idle_minutes")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 1440, &state->config.spindown_idle_minutes) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.spindown_idle_minutes);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("report_differences")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.report_differences) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.report_differences);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("suspend_on_deletes")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 10000, &state->config.suspend_on_deletes) == 0) {
+				} else {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.suspend_on_deletes);
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.scrub_percentage);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("pre_run_script")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.pre_run_script, sizeof(state->config.pre_run_script)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("post_run_script")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.post_run_script, sizeof(state->config.post_run_script)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("log_directory")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.log_directory, sizeof(state->config.log_directory)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("log_retention_days")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 10000, &state->config.log_retention_days) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.log_retention_days);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_syslog_enabled")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.notify_syslog_enabled) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.notify_syslog_enabled);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_syslog_level")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
+					&& parse_level(buf, &state->config.notify_syslog_level) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_heartbeat_url")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.notify_heartbeat_url, sizeof(state->config.notify_heartbeat_url)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_apprise_url")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.notify_apprise_url, sizeof(state->config.notify_apprise_url)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_apprise_level")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
+					&& parse_level(buf, &state->config.notify_apprise_level) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_email_recipient")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], state->config.notify_email_recipient, sizeof(state->config.notify_email_recipient)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_email_level")) == 0) {
+				++j;
+				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
+					&& parse_level(buf, &state->config.notify_email_level) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else {
+				json_error_entry(msg, sizeof(msg), js, &jv[j]);
+				goto bad;
+			}
+		}
+	}
+
+	if (config_save(&state->config) != 0) {
+		// TODO log
+	}
+
+	state_unlock();
+
+	free(js);
+	return send_json_success(conn, 200);
+
+bad:
+	if (config_save(&state->config) != 0) {
+		// TODO log
+	}
+
+	state_unlock();
+
+	free(js);
+	return send_json_error(conn, 400, msg);
+}
+
+/**
+ * GET /api/v1/config
+ */
+static int handler_config_get(struct mg_connection* conn, void* cbdata) 
+{
+	struct snapraid_state* state = cbdata;
+	struct snapraid_config* config = &state->config;
+	int tab = 0;
+	ss_t s;
+	char esc_buf[ESC_MAX];
+	char schedule_buf[64];
+
+	state_lock();
+
+	ss_init(&s);
+
+	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
+
+	ss_jsonf(&s, tab, "{\n");
+	++tab;
+
+	ss_jsonf(&s, tab, "\"scheduled_run\": \"%s\",\n", escape(schedule_buf, esc_buf));
+	ss_jsonf(&s, tab, "\"scrub_percentage\": %d,\n", config->scrub_percentage);
+
+	ss_jsonf(&s, tab, "\"probe_interval_minutes\": %d,\n", config->probe_interval_minutes);
+	ss_jsonf(&s, tab, "\"spindown_idle_minutes\": %d,\n", config->spindown_idle_minutes);
+
+	ss_jsonf(&s, tab, "\"report_differences\": %s,\n", config->report_differences ? "true" : "false");
+	ss_jsonf(&s, tab, "\"suspend_on_deletes\": %d,\n", config->suspend_on_deletes);
+	ss_jsonf(&s, tab, "\"pre_run_script\": \"%s\",\n", escape(config->pre_run_script, esc_buf));
+	ss_jsonf(&s, tab, "\"post_run_script\": \"%s\",\n", escape(config->post_run_script, esc_buf));
+
+	ss_jsonf(&s, tab, "\"log_directory\": \"%s\",\n", escape(config->log_directory, esc_buf));
+	ss_jsonf(&s, tab, "\"log_retention_days\": %d,\n", config->log_retention_days);
+
+	ss_jsonf(&s, tab, "\"notify_syslog_enabled\": %s,\n", config->notify_syslog_enabled ? "true" : "false");
+	ss_jsonf(&s, tab, "\"notify_syslog_level\": \"%s\",\n", config_level_str(config->notify_syslog_level));
+
+	ss_jsonf(&s, tab, "\"notify_heartbeat_url\": \"%s\",\n", escape(config->notify_heartbeat_url, esc_buf));
+	ss_jsonf(&s, tab, "\"notify_apprise_url\": \"%s\",\n", escape(config->notify_apprise_url, esc_buf));
+	ss_jsonf(&s, tab, "\"notify_apprise_level\": \"%s\",\n", config_level_str(config->notify_apprise_level));
+	
+	ss_jsonf(&s, tab, "\"notify_email_recipient\": \"%s\",\n", escape(config->notify_email_recipient, esc_buf));
+	ss_jsonf(&s, tab, "\"notify_email_level\": \"%s\"\n", config_level_str(config->notify_email_level));
+
+	--tab;
+	ss_jsonf(&s, tab, "}\n");
+
+	state_unlock();
+
+	// Standard Response Headers
+	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
+	mg_printf(conn, "Content-Type: application/json\r\n");
+	mg_printf(conn, "Content-Length: %lu\r\n", (unsigned long)ss_len(&s));
+	mg_printf(conn, "Connection: close\r\n");
+	mg_printf(conn, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s)); 
+
+	ss_done(&s);
+	return 200;
+}
+ 
+static int handler_config(struct mg_connection* conn, void* cbdata) 
+{
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	if (strcmp(ri->request_method, "GET") == 0)
+		return handler_config_get(conn, cbdata);
+	if (strcmp(ri->request_method, "PATCH") == 0)
+		return handler_config_patch(conn, cbdata);
+	return send_json_error(conn, 405, "Only GET/PATCH is allowed for this endpoint");
 }
 
 /**
@@ -140,62 +576,67 @@ int json_pair(const char* js, jsmntok_t* jt, const char* field, unsigned type)
  */
 static int handler_action(struct mg_connection* conn, void* cbdata) 
 {
+	char msg[128];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	const char* path = ri->local_uri;
-	ssize_t content_length = ri->content_length;
-	ssize_t jl;
 	int ret;
-	jsmntok_t jt[JSMN_TOKEN_MAX];
+	jsmntok_t jv[JSMN_TOKEN_MAX];
 	jsmn_parser jp;
+	ssize_t jl;
 	char* js;
 	int jc;
 	char* argv[RUNNER_ARG_MAX];
 	int argc;
 
+	argc = 0;
+
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
-	if (content_length < 0) 
-		return send_json_error(conn, 400, "Invalid content length");
 
-	js = malloc_nofail(content_length);
+	js = json_read(conn, &jl);
 
-	jl = 0;
-	while (jl < content_length) {
-		int r = mg_read(conn, js + jl, (size_t)(content_length - jl));
-		if (r <= 0)
-			break;
-		jl += r;
-	}
-
-	argc = 0;
 	jsmn_init(&jp);
-	jc = jsmn_parse(&jp, js, jl, jt, JSMN_TOKEN_MAX);
-	if (jc < 0)
+	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
+	if (jc < 0) {
+		json_error_parse(msg, sizeof(msg), jc);
 		goto bad;
-	if (jc != 0) { /* accept an empty request */
+	} else if (jc == 0) {
+		/* accept an empty request */
+	} else {
 		int c0;
 		int j = 0;
-		if (jt[j].type != JSMN_OBJECT)
+		if (jv[j].type != JSMN_OBJECT) {
+			snprintf(msg, sizeof(msg), "Missing root JSON object");
 			goto bad;
-		c0 = jt[j++].size;
+		}
+		c0 = jv[j++].size;
 		while (c0-- > 0) {
-			if (json_pair(js, &jt[j], "args", JSMN_ARRAY) == 0) {
-				int c1 = jt[++j].size;
+			if (json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
+				int j1 = j;
+				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
-					if (jt[j].type != JSMN_STRING)
+					if (json_string_inplace(js, &jv[j], &argv[argc]) == 0) {
+						++argc;
+						if (argc >= RUNNER_ARG_MAX) {
+							snprintf(msg, sizeof(msg), "Too many arguments");
+							goto bad;
+						}
+					} else {
+						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
 						goto bad;
-					js[jt[j].end] = 0;
-					argv[argc++] = &js[jt[j].start];
-					if (argc >= RUNNER_ARG_MAX)
-						goto bad;
+					}
 					++j;
 				}
-			} else 
+			} else {
+				json_error_entry(msg, sizeof(msg), js, &jv[j]);
 				goto bad;
+			}
 		}
 	}
+
+	/* arg terminator */
 	argv[argc] = 0;
 
 	if (strcmp(path, "/api/v1/sync") == 0)
@@ -297,6 +738,8 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
+	state_lock();
+
 	ss_init(&s);
 
 	ss_jsonf(&s, 0, "{\n");
@@ -377,6 +820,8 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "]\n");
 	--tab;
 	ss_jsonf(&s, tab, "}\n");
+
+	state_unlock();
 
 	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
 	mg_printf(conn, "Content-Type: application/json\r\n");
@@ -506,6 +951,7 @@ void rest_init(struct snapraid_state* state, const char** options)
 	mg_set_request_handler(state->rest_context, "/api/v1/smart", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
 }
 
@@ -522,12 +968,3 @@ void rest_done(struct snapraid_state* state)
 	mg_stop(state->rest_context);
 }
 
-/*
-curl -X POST http://localhost:8080/api/v1/sync
-curl -X POST http://localhost:8080/api/v1/probe
-curl -X POST http://localhost:8080/api/v1/up
-curl -X POST http://localhost:8080/api/v1/down
-curl -X POST http://localhost:8080/api/v1/smart
-curl -X GET http://localhost:8080/api/v1/disks
-curl -X GET http://localhost:8080/api/v1/progress
-*/

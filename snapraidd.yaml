@@ -439,111 +439,85 @@ components:
       type: object
       description: The global configuration state for the SnapRAID daemon.
       properties:
-        scheduling:
-          type: object
-          properties:
-            scheduled_run:
-              type: string
-              nullable: true
-              example: "daily 02:00"
-              description: "The time when the automatic sync+scrub sequence begins."
-
-        monitoring:
-          type: object
-          properties:
-            probe_interval_minutes:
-              type: integer
-              nullable: true
-            spindown_idle_minutes:
-              type: integer
-              nullable: true
-
-        sync_logic:
-          type: object
-          properties:
-            report_differences:
-              type: boolean
-              nullable: true
-            suspend_on_deletes:
-              type: integer
-              nullable: true
-              description: "Threshold to stop sync if files are missing"
-            pre_run_script:
-              type: string
-              nullable: true
-            post_run_script:
-              type: string
-              nullable: true
-
-        scrub_logic:
-          type: object
-          properties:
-            scrub_percentage:
-              type: integer
-              nullable: true
-              minimum: 0
-              maximum: 100
-
-        logging:
-          type: object
-          properties:
-            log_directory:
-              type: string
-              nullable: true
-            log_retention_days:
-              type: integer
-              nullable: true
-
-        notifications:
-          type: object
-          properties:
-            syslog:
-              type: object
-              properties:
-                enabled:
-                  type: boolean
-                  nullable: true
-                level:
-                  type: string
-                  enum: [none, error, warning, info]
-                  nullable: true
-                  description: "Sensitivity for the OS system log."
-
-            heartbeat:
-              type: object
-              description: "Simple GET ping to monitor uptime (e.g. Healthchecks.io)."
-              properties:
-                url:
-                  type: string
-                  nullable: true
-                  format: uri
-                  example: "https://hc-ping.com/uuid"
-
-            apprise:
-              type: object
-              description: "Integration with Apprise CLI for push alerts (Discord/Telegram/etc)."
-              properties:
-                url:
-                  type: string
-                  nullable: true
-                  example: "ntfy://snapraid-alerts"
-                level:
-                  type: string
-                  nullable: true
-                  enum: [none, error, warning, info]
-                  description: "Sensitivity for Apprise push alerts."
-
-            email:
-              type: object
-              description: "Local system email using 'mail' or 'sendmail'."
-              properties:
-                recipient:
-                  type: string
-                  nullable: true
-                  format: email
-                  example: "admin@local.host"
-                level:
-                  type: string
-                  enum: [none, error, warning, info]
-                  nullable: true
-                  description: "Sensitivity for local email reports."
+        scheduled_run:
+          type: string
+          example: "daily 02:00"
+          description: >
+            The time when the daemon starts the maintenance sequence (Sync followed by Scrub). 
+            Format: "daily HH:MM" or "weekly <day> HH:MM". If empty, do nothing.
+        scrub_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 12
+          description: "The percentage of the array to check during the scrub portion of the scheduled run. If 0, scrub is skipped."
+        probe_interval_minutes:
+          type: integer
+          example: 30
+          description: "Check SMART attributes every N minutes (only if disks are already spinning). If 0, monitoring is disabled."
+        spindown_idle_minutes:
+          type: integer
+          example: 60
+          description: "Automatically spindown idle disks after N minutes of inactivity. If 0, automatic spindown is disabled."
+        report_differences:
+          type: boolean
+          example: true
+          description: "Report a list of differences in the log during SnapRAID activity. If false, no difference are reported."
+        suspend_on_deletes:
+          type: integer
+          example: 50
+          description: "Suspend the sync if more than N files were deleted. If 0, the sync will never suspend regardless of deletes."
+        pre_run_script:
+          type: string
+          example: "/usr/local/bin/pre-snapraid.sh"
+          description: "Path to a script to execute before SnapRAID activity begins. If empty, do nothing."
+        post_run_script:
+          type: string
+          example: "/usr/local/bin/post-snapraid.sh"
+          description: "Path to a script to execute after SnapRAID activity finishes. If empty, do nothing."
+        log_directory:
+          type: string
+          example: "/var/log/snapraid/"
+          description: "Directory to store individual command logs (e.g. 20251225-sync.log). If empty, logs are not stored."
+        log_retention_days:
+          type: integer
+          example: 30
+          description: "Number of days to retain log files before deletion. If 0, logs are kept indefinitely."
+        notify_syslog_enabled:
+          type: boolean
+          example: true
+          description: >
+            Enable logging daemon activity to the OS system log (syslog/journald). 
+            Note: Critical lifecycle events (start, stop, reload) are ALWAYS logged 
+            as long as this is true, regardless of the level set below.
+            If false, nothing is logged to syslog
+        notify_syslog_level:
+          type: string
+          enum: [none, error, warning, info]
+          example: "error"
+          description: >
+            Sensitivity level for SnapRAID task-related messages (sync, scrub, etc.). 
+            If set to 'none', only the daemon lifecycle events (start/stop/reload) 
+            will be recorded in the system log.
+        notify_heartbeat_url:
+          type: string
+          format: uri
+          example: "https://hc-ping.com/your-uuid-here"
+          description: "URL to ping (GET request) on successful task completion (e.g. Healthchecks.io). If empty, do nothing."
+        notify_apprise_url:
+          type: string
+          example: "ntfy://your-topic"
+          description: "The Apprise URL/Connection string for push notifications (Discord, Telegram, etc). If empty, do nothing."
+        notify_apprise_level:
+          type: string
+          enum: [none, error, warning, info, debug]
+          description: "Sensitivity level for Apprise push alerts. If 'none', no alerts are sent."
+        notify_email_recipient:
+          type: string
+          format: email
+          example: "admin@example.com"
+          description: "Recipient address for local system mail reports. If empty, email notification is disabled."
+        notify_email_level:
+          type: string
+          enum: [none, error, warning, info, debug]
+          description: "Sensitivity level for local email reports. If 'none', no emails are sent."

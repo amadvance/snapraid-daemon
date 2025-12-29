@@ -20,7 +20,7 @@
 #include "support.h"
 
 /****************************************************************************/
-/* string */
+/* string stream */
 
 void ss_init(struct ss* s)
 {
@@ -136,34 +136,33 @@ int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)
 	return ret;
 }
 
-void scpy(char* dst, size_t size, const char* src)
-{
-	size_t len = strlen(src);
+/****************************************************************************/
+/* string */
 
-	if (len + 1 > size) {
-		/* LCOV_EXCL_START */
-		abort();
-		/* LCOV_EXCL_STOP */
+#ifndef HAVE_STRLCPY
+size_t sncpy(char* dst, size_t dst_size, const char* src)
+{
+	const char *s = src;
+	size_t n = dst_size;
+
+	if (n != 0) {
+		while (--n != 0) {
+			if ((*dst++ = *s++) == '\0') {
+				return (size_t)(s - src - 1);
+			}
+		}
+		*dst = '\0';
 	}
 
-	memcpy(dst, src, len + 1);
-}
-
-void scat(char* dst, size_t size, const char* src)
-{
-	size_t dst_len = strlen(dst);
-	size_t src_len = strlen(src);
-
-	if (dst_len + src_len + 1 > size) {
-		/* LCOV_EXCL_START */
-		abort();
-		/* LCOV_EXCL_STOP */
+	while (*s++) {
+		;
 	}
 
-	memcpy(dst + dst_len, src, src_len + 1);
+	return (size_t)(s - src - 1);
 }
+#endif
 
-int si(int* out, const char* s)
+int strint(int* out, const char* s)
 {
 	char* e;
 	long v;
@@ -183,7 +182,7 @@ int si(int* out, const char* s)
 	return 0;
 }
 
-int su(unsigned* out, const char* s)
+int struint(unsigned* out, const char* s)
 {
 	char* e;
 	unsigned long v;
@@ -203,7 +202,7 @@ int su(unsigned* out, const char* s)
 	return 0;
 }
 
-int si64(int64_t* out, const char* s)
+int stri64(int64_t* out, const char* s)
 {
 	char* e;
 	long long v;
@@ -220,7 +219,7 @@ int si64(int64_t* out, const char* s)
 	return 0;
 }
 
-int su64(uint64_t* out, const char* s)
+int stru64(uint64_t* out, const char* s)
 {
 	char* e;
 	unsigned long long v;
@@ -236,6 +235,28 @@ int su64(uint64_t* out, const char* s)
 	*out = v;
 	return 0;
 }
+
+char* strtrim(char* str)
+{
+	char* begin;
+	char* end;
+
+	begin = str;
+	while (begin[0] && isspace((unsigned char)begin[0]))
+		++begin;
+
+	end = begin + strlen(begin);
+	while (end > begin && isspace((unsigned char)end[-1]))
+		--end;
+
+	end[0] = 0;
+
+	if (begin != end)
+		memmove(str, begin, end - begin + 1);
+
+	return str;
+}
+
 
 /****************************************************************************/
 /* memory */

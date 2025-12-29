@@ -153,6 +153,10 @@
 #include <execinfo.h>
 #endif
 
+#ifdef HAVE_STRINGS
+#include <strings.h>
+#endif
+
 /**
  * Enable thread use.
  */
@@ -187,6 +191,18 @@ typedef pthread_t thread_id_t;
 typedef pthread_mutex_t thread_mutex_t;
 typedef pthread_cond_t thread_cond_t;
 #endif
+#endif
+
+#if HAVE_GETOPT_LONG
+#define SWITCH_GETOPT_LONG(a, b) a
+#else
+#define SWITCH_GETOPT_LONG(a, b) b
+#endif
+
+#ifdef _WIN32
+#include <string.h>
+/* Map Windows name to POSIX name */
+#define strncasecmp _strnicmp
 #endif
 
 #endif

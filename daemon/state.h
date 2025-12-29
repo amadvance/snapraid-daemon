@@ -197,6 +197,50 @@ struct snapraid_global {
 	int64_t unixtime; /**< Time of the latest command */
 };
 
+#define CONFIG_MAX 128
+
+#define RUN_DISABLED 0
+#define RUN_DAILY 1
+#define RUN_WEEKLY 7
+
+#define LEVEL_NONE 0
+#define LEVEL_ERROR 1
+#define LEVEL_WARNING 2
+#define LEVEL_INFO 3
+
+#define CONFIG_LINE_MAX 1024
+
+struct snapraid_config_line {
+	char text[CONFIG_LINE_MAX];
+	tommy_node node;
+};
+
+struct snapraid_config {
+	char conf[PATH_MAX]; /**< Configuration file. */
+	tommy_list lines; /**< Lines of the config file. */
+	/* empty string or 0 value means value not set and/or disabled */
+	int schedule_run;
+	int schedule_hour;
+	int schedule_minute;
+	int schedule_day_of_week;
+	int probe_interval_minutes;
+	int spindown_idle_minutes;
+	int report_differences;
+	int suspend_on_deletes;
+	int scrub_percentage;
+	char pre_run_script[CONFIG_MAX];
+	char post_run_script[CONFIG_MAX];
+	char log_directory[CONFIG_MAX];
+	int log_retention_days;
+	int notify_syslog_enabled;
+	int notify_syslog_level;
+	char notify_heartbeat_url[CONFIG_MAX];
+	char notify_apprise_url[CONFIG_MAX];
+	int notify_apprise_level;
+	char notify_email_recipient[CONFIG_MAX];
+	int notify_email_level;
+};
+  
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	thread_mutex_t lock; /**< Main lock for accessing the state */
@@ -205,6 +249,7 @@ struct snapraid_state {
 	struct snapraid_runner runner;
 	struct snapraid_process process;
 	struct snapraid_global global;
+	struct snapraid_config config;
 	tommy_list data_list;
 	tommy_list parity_list;
 };

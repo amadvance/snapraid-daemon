@@ -18,14 +18,8 @@
 #ifndef __SUPPORT_H
 #define __SUPPORT_H
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-
 /****************************************************************************/
-/* string */
+/* string stream */
 
 typedef struct ss {
 	char* ptr;
@@ -52,16 +46,23 @@ static inline const char* ss_ptr(struct ss* s)
 	return s->ptr;
 }
 
-/**
- * Copy a string limiting the size.
- * Abort if too long.
- */
-void scpy(char* dst, size_t size, const char* src);
+/****************************************************************************/
+/* string */
 
-int si64(int64_t* out, const char* src);
-int su64(uint64_t* out, const char* src);
-int si(int* out, const char* src);
-int su(unsigned* out, const char* src);
+#ifndef HAVE_STRLCPY
+size_t sncpy(char* dst, size_t dst_size, const char* src);
+#else
+static inline size_t sncpy(char* dst, size_t dst_size, const char* src)
+{
+	return strlcpy(dst, src, dst_size);
+}
+#endif
+
+int strint(int* out, const char* src);
+int struint(unsigned* out, const char* src);
+int stri64(int64_t* out, const char* src);
+int stru64(uint64_t* out, const char* src);
+char* strtrim(char* str);
 
 /****************************************************************************/
 /* memory */

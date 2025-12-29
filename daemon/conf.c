@@ -1,0 +1,350 @@
+/*
+ * Copyright (C) 2025 Andrea Mazzoleni
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+#include "portable.h"
+
+#include "state.h"
+#include "support.h"
+#include "conf.h"
+
+int parse_int(const char* input, int low, int high, int* out)
+{
+	long v;
+	char* e;
+
+	v = strtol(input, &e, 10);
+	if (input == e || *e != 0)
+		return -1;
+
+	if (v < low || v > high)
+		return -1;
+
+	*out = (int)v;
+	return 0;
+}
+
+const char* config_level_str(int level)
+{
+	switch (level) {
+	case LEVEL_ERROR : return "error";
+	case LEVEL_WARNING : return "warning";
+	case LEVEL_INFO : return "info";
+	}
+
+	return "none";
+}
+
+void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
+{
+	const char* days[] = {"sun", "mon", "tue", "wed", "thu", "fri", "sat"};
+	if (config->schedule_run == RUN_DAILY) {
+		snprintf(buf, size, "daily %02d:%02d", config->schedule_hour, config->schedule_minute);
+	} else if (config->schedule_run == RUN_WEEKLY && config->schedule_day_of_week >= 0 && config->schedule_day_of_week < 7) {
+		snprintf(buf, size, "weekly %s %02d:%02d", days[config->schedule_day_of_week], config->schedule_hour, config->schedule_minute);
+	} else {
+		buf[0] = '\0';
+	}
+}
+
+/*
+ * Convert the day of the week to a number (0-6)
+ * Return -1 if not valid
+ */
+static int get_day_index(const char* input) 
+{
+	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
+
+	for (int i = 0; i < 7; i++) {
+		if (strncasecmp(input, days[i], 3) == 0) 
+			return i;
+	}
+
+	return -1;
+}
+
+/**
+ * Parse the scheduled_run string
+ * Format supported: "daily HH:MM" o "weekly <day> HH:MM"
+ */
+int parse_scheduled_run(const char* input, struct snapraid_config* config) 
+{
+	char day_str[10];
+	int hour, minute;
+
+	if (!input || strlen(input) == 0) {
+		config->schedule_run = RUN_DISABLED;
+		return 0;
+	}
+
+	config->schedule_hour = 0;
+	config->schedule_minute = 0;
+	config->schedule_day_of_week = -1;
+
+	if (sscanf(input, "daily %2d:%2d", &hour, &minute) == 2) {
+		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
+			return -1;
+		config->schedule_run = RUN_DAILY;
+		config->schedule_hour = hour;
+		config->schedule_minute = minute;
+		return 0;
+	}
+
+	if (sscanf(input, "weekly %9s %2d:%2d", day_str, &hour, &minute) == 3) {
+		int day_of_week = get_day_index(day_str);
+		if (day_of_week == -1) 
+			return -1;
+		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
+			return -1;
+		config->schedule_run = RUN_WEEKLY;
+		config->schedule_day_of_week = day_of_week;
+		config->schedule_hour = hour;
+		config->schedule_minute = minute;
+		return 0;
+	}
+
+	return -1;
+}
+
+int parse_level(const char* input, int* out)
+{
+	const char* levels[] = { "none", "error", "warning", "info" };
+
+	for (int i = 0; i < 7; i++) {
+		if (strcasecmp(input, levels[i]) == 0) {
+			*out = i;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+int config_load(struct snapraid_config* config)
+{
+	char buffer[CONFIG_LINE_MAX];
+
+	FILE *fp = fopen(config->conf, "rt");
+	if (!fp)
+		return -1;
+		
+	while (fgets(buffer, sizeof(buffer), fp)) {
+		char key[CONFIG_MAX], val[CONFIG_MAX];
+		char* s;
+		struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
+		sncpy(line->text, sizeof(line->text), buffer);
+		tommy_list_insert_tail(&config->lines, &line->node, line);
+
+		/* skip initial spaces */
+		s = buffer;
+		while (*s != 0 && isspace((unsigned char)*s)) 
+			++s;
+
+		/* skip empty or comment lines */
+		if (*s == 0 || *s == '#')
+			continue; 
+
+		if (sscanf(s, "%63[^=]=%127[^\n]", key, val) == 2) {
+			strtrim(key);
+			strtrim(val);
+
+			if (strcmp(key, "scheduled_run") == 0) {
+				if (parse_scheduled_run(val, config) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "probe_interval_minutes") == 0) {
+				if (parse_int(val, 0, 1440, &config->probe_interval_minutes) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "spindown_idle_minutes") == 0) {
+				if (parse_int(val, 0, 1440, &config->spindown_idle_minutes) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "report_differences") == 0) {
+				if (parse_int(val, 0, 1, &config->report_differences) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "suspend_on_deletes") == 0) {
+				if (parse_int(val, 0, 10000, &config->suspend_on_deletes) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "scrub_percentage") == 0) {
+				if (parse_int(val, 0, 100, &config->scrub_percentage) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "pre_run_script") == 0) {
+				sncpy(config->pre_run_script, sizeof(config->pre_run_script), val);
+			} else if (strcmp(key, "post_run_script") == 0) {
+				sncpy(config->post_run_script, sizeof(config->post_run_script), val);
+			} else if (strcmp(key, "log_directory") == 0) {
+				sncpy(config->log_directory, sizeof(config->log_directory), val);
+			} else if (strcmp(key, "log_retention_days") == 0) {
+				if (parse_int(val, 0, 10000, &config->log_retention_days) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
+				config->notify_syslog_enabled = atoi(val);
+				if (parse_int(val, 0, 1, &config->notify_syslog_enabled) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "notify_syslog_level") == 0) {
+				if (parse_level(val, &config->notify_syslog_level) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "notify_heartbeat_url") == 0) {
+				sncpy(config->notify_heartbeat_url, sizeof(config->notify_heartbeat_url), val);
+			} else if (strcmp(key, "notify_apprise_url") == 0) {
+				sncpy(config->notify_apprise_url, sizeof(config->notify_apprise_url), val);
+			} else if (strcmp(key, "notify_apprise_level") == 0) {
+				if (parse_level(val, &config->notify_apprise_level) == 0) {
+				} else {
+					// TODO log
+				}
+			} else if (strcmp(key, "notify_email_recipient") == 0) {
+				sncpy(config->notify_email_recipient, sizeof(config->notify_email_recipient), val);
+			} else if (strcmp(key, "notify_email_level") == 0) {
+				if (parse_level(val, &config->notify_email_level) == 0) {
+				} else {
+					// TODO log
+				}
+			} else {
+				// TODO log
+			}
+		} else {
+			// TODO log
+		}
+	}
+
+	fclose(fp);
+	return 0;
+}
+
+/**
+ * Checks if a line matches a specific configuration key.
+ * Handles: "  key =", " # key =", "key=", etc.
+ */
+static int line_matches_key(const char* line, const char* key)
+{
+	size_t key_len;
+	const char* p = line;
+
+	/* skip leading whitespace */
+	while (isspace((unsigned char)*p)) 
+		++p;
+
+	// if it's a comment, skip the '#' and any following space
+	if (*p == '#') {
+		++p;
+		while (isspace((unsigned char)*p)) 
+			++p;
+	}
+
+	/* check if the key matches */
+	key_len = strlen(key);
+	if (strncmp(p, key, key_len) == 0) {
+		p += key_len;
+
+		/* ensure the next character is '=' or whitespace followed by '=' */
+		while (isspace((unsigned char)*p)) 
+			++p;
+
+		if (*p == '=') 
+			return 1;
+	}
+
+	return 0;
+}
+
+static void config_set(struct snapraid_config* config, const char* key, const char* value)
+{
+	tommy_node* i;
+	struct snapraid_config_line* line;
+
+	line = 0;
+	i = tommy_list_head(&config->lines);
+	while (i) {
+		line = i->data;
+		if (line_matches_key(line->text, key)) {
+			/* create the new formatted line */
+			if (*value == 0)
+				snprintf(line->text, sizeof(line->text), "#%s =\n", key);
+			else
+				snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
+			return;
+		}
+		i = i->next;
+	}
+
+	/* do not clear if already missing */
+	if (*value == 0) {
+		return;
+	}
+
+	line = malloc_nofail(sizeof(struct snapraid_config_line));
+	snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
+	tommy_list_insert_tail(&config->lines, &line->node, line);
+}
+
+void config_set_string(struct snapraid_config* config, const char* key, char* value)
+{
+	strtrim(value);
+	config_set(config, key, value);
+}
+
+void config_set_int(struct snapraid_config* config, const char* key, int value)
+{
+	if (value == 0) {
+		config_set(config, key, "");
+	} else {
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%d", value);
+		config_set(config, key, buf);
+	}
+}
+
+int config_save(struct snapraid_config* config)
+{
+	tommy_node* i;
+	struct snapraid_config_line* line;
+
+	FILE *fp = fopen(config->conf, "wt");
+	if (!fp)
+		return -1;
+
+	i = tommy_list_head(&config->lines);
+	while (i) {
+		line = i->data;
+		if (fputs(line->text, fp) == EOF) {
+			fclose(fp);
+			return -1;
+		}
+		i = i->next;
+	}
+
+	if (fclose(fp) != 0)
+		return -1;
+
+	return 0;
+}

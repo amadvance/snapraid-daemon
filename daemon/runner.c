@@ -76,7 +76,7 @@ pid_t runner_spawn(const char* argv[], int* stderr_fd)
  */
 int is_parity(const char* s)
 {
-	if (isdigit(s[0]) && s[1] == '-')
+	if (isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
 	return strcmp(s, "parity") == 0;
@@ -88,7 +88,7 @@ int is_parity(const char* s)
  */
 int is_split_parity(char* s, int* index)
 {
-	if (isdigit(s[0]) && s[1] == '-')
+	if (isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
 	if (strncmp(s, "parity", 6) != 0)
@@ -103,7 +103,7 @@ int is_split_parity(char* s, int* index)
 
 	if (s[0] == '/') {
 		*s = 0;
-		if (si(index, s + 1) == 0)
+		if (strint(index, s + 1) == 0)
 			return 1;
 	}
 
@@ -126,7 +126,7 @@ struct snapraid_data* find_data(tommy_list* list, const char* name)
 	data = calloc_nofail(1, sizeof(struct snapraid_data));
 	data->content_size = SMART_UNASSIGNED;
 	data->content_free = SMART_UNASSIGNED;
-	scpy(data->name, sizeof(data->name), name);
+	sncpy(data->name, sizeof(data->name), name);
 	tommy_list_insert_tail(list, &data->node, data);
 
 	return data;
@@ -148,7 +148,7 @@ struct snapraid_parity* find_parity(tommy_list* list, const char* name)
 	parity = calloc_nofail(1, sizeof(struct snapraid_parity));
 	parity->content_size = SMART_UNASSIGNED;
 	parity->content_free = SMART_UNASSIGNED;
-	scpy(parity->name, sizeof(parity->name), name);
+	sncpy(parity->name, sizeof(parity->name), name);
 	tommy_list_insert_tail(list, &parity->node, parity);
 
 	return parity;
@@ -198,7 +198,7 @@ struct snapraid_device* find_device_from_file(tommy_list* list, const char* file
 	device->flags = SMART_UNASSIGNED;
 	device->power = SMART_UNASSIGNED;
 	device->health = SMART_UNASSIGNED;
-	scpy(device->file, sizeof(device->file), file);
+	sncpy(device->file, sizeof(device->file), file);
 	tommy_list_insert_tail(list, &device->node, device);
 
 	return device;
@@ -225,7 +225,7 @@ void process_stat(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	if (su64(&access_count, map[2]) != 0) 
+	if (stru64(&access_count, map[2]) != 0) 
 		return;
 
 	if (is_parity(map[1])) {
@@ -256,8 +256,8 @@ void process_data(struct snapraid_state* state, char** map, size_t mac)
 
 	data = find_data(&state->data_list, map[1]);
 
-	scpy(data->dir, sizeof(data->dir), map[2]);
-	scpy(data->uuid, sizeof(data->uuid), map[3]);
+	sncpy(data->dir, sizeof(data->dir), map[2]);
+	sncpy(data->uuid, sizeof(data->uuid), map[3]);
 }
 
 void process_content_data(struct snapraid_state* state, char** map, size_t mac)
@@ -269,7 +269,7 @@ void process_content_data(struct snapraid_state* state, char** map, size_t mac)
 
 	data = find_data(&state->data_list, map[1]);
 
-	scpy(data->content_uuid, sizeof(data->content_uuid), map[2]);
+	sncpy(data->content_uuid, sizeof(data->content_uuid), map[2]);
 }
 
 void process_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -286,8 +286,8 @@ void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	parity = find_parity(&state->parity_list, map[0]);
 	split = find_split(&parity->split_list, index);
 
-	scpy(split->path, sizeof(split->path), map[1]);
-	scpy(split->uuid, sizeof(split->uuid), map[2]);
+	sncpy(split->path, sizeof(split->path), map[1]);
+	sncpy(split->uuid, sizeof(split->uuid), map[2]);
 }
 
 void process_content_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -304,9 +304,9 @@ void process_content_parity(struct snapraid_state* state, char** map, size_t mac
 	parity = find_parity(&state->parity_list, map[0]);
 	split = find_split(&parity->split_list, index);
 
-	scpy(split->content_uuid, sizeof(split->content_uuid), map[1]);
-	scpy(split->content_path, sizeof(split->content_path), map[2]);
-	su64(&split->content_size, map[3]);
+	sncpy(split->content_uuid, sizeof(split->content_uuid), map[1]);
+	sncpy(split->content_path, sizeof(split->content_path), map[2]);
+	stru64(&split->content_size, map[3]);
 }
 
 void process_content_allocation(struct snapraid_state* state, char** map, size_t mac)
@@ -316,12 +316,12 @@ void process_content_allocation(struct snapraid_state* state, char** map, size_t
 
 	if (is_parity(map[0])) {
 		struct snapraid_parity* parity = find_parity(&state->parity_list, map[0]);
-		su64(&parity->content_size, map[1]);
-		su64(&parity->content_free, map[2]);
+		stru64(&parity->content_size, map[1]);
+		stru64(&parity->content_free, map[2]);
 	} else {
 		struct snapraid_data* data = find_data(&state->data_list, map[0]);
-		su64(&data->content_size, map[1]);
-		su64(&data->content_free, map[2]);
+		stru64(&data->content_size, map[1]);
+		stru64(&data->content_free, map[2]);
 	}
 }
 
@@ -342,19 +342,19 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	val = map[4];
 	
 	if (strcmp(tag, "serial") == 0)
-		scpy(device->serial, sizeof(device->serial), val);
+		sncpy(device->serial, sizeof(device->serial), val);
 	else if (strcmp(tag, "model") == 0)
-		scpy(device->model, sizeof(device->model), val);
+		sncpy(device->model, sizeof(device->model), val);
 	else if (strcmp(tag, "family") == 0)
-		scpy(device->family, sizeof(device->family), val);
+		sncpy(device->family, sizeof(device->family), val);
 	else if (strcmp(tag, "size") == 0)
-		su64(&device->size, val);
+		stru64(&device->size, val);
 	else if (strcmp(tag, "rotationrate") == 0)
-		su64(&device->rotational, val);
+		stru64(&device->rotational, val);
 //	else if (strcmp(tag, "afr") == 0)
 		//device->info[ROTATION_RATE] = si64(val);
 	else if (strcmp(tag, "error") == 0)
-		su64(&device->error, val);
+		stru64(&device->error, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = SMART_UNASSIGNED;
 		if (strcmp(tag, "standby") == 0 || strcmp(tag, "down") == 0)
@@ -363,7 +363,7 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			device->power = POWER_ACTIVE;
 	} else if (strcmp(tag, "flags") == 0) {
 		device->health = SMART_UNASSIGNED;
-		if (su64(&device->flags, val) == 0) {
+		if (stru64(&device->flags, val) == 0) {
 			if (device->flags & (SMARTCTL_FLAG_FAIL | SMARTCTL_FLAG_PREFAIL))
 				device->health = HEALTH_FAILING;
 			else
@@ -371,9 +371,9 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		}
 	} else {
 		int index;
-		if (si(&index, tag) == 0) {
+		if (strint(&index, tag) == 0) {
 			if (index >= 0 && index < 256)
-				su64(&device->smart[index], val);
+				stru64(&device->smart[index], val);
 		}
 	}
 }
@@ -388,22 +388,22 @@ void process_run(struct snapraid_state* state, char** map, size_t mac)
 			return;
 
 		state->process.state = PROCESS_STATE_BEGIN;
-		su(&state->process.block_begin, map[2]);
-		su(&state->process.block_end, map[3]);
-		su(&state->process.block_count, map[4]);
+		struint(&state->process.block_begin, map[2]);
+		struint(&state->process.block_end, map[3]);
+		struint(&state->process.block_count, map[4]);
 	} else if (strcmp(map[1], "pos") == 0) {
 		if (mac < 10)
 			return;
 
 		state->process.state = PROCESS_STATE_POS;
-		su(&state->process.block_idx, map[2]);
-		su(&state->process.block_done, map[3]);
-		su64(&state->process.size_done, map[4]);
-		su(&state->process.progress, map[5]);
-		su(&state->process.eta_seconds, map[6]);
-		su(&state->process.speed_mbs, map[7]);
-		su(&state->process.cpu_usage, map[8]);
-		su(&state->process.elapsed_seconds, map[9]);
+		struint(&state->process.block_idx, map[2]);
+		struint(&state->process.block_done, map[3]);
+		stru64(&state->process.size_done, map[4]);
+		struint(&state->process.progress, map[5]);
+		struint(&state->process.eta_seconds, map[6]);
+		struint(&state->process.speed_mbs, map[7]);
+		struint(&state->process.cpu_usage, map[8]);
+		struint(&state->process.elapsed_seconds, map[9]);
 	} else if (strcmp(map[1], "end") == 0) {
 		/* if interrupting, ignore the end, and it's reported anyway */
 		if (state->process.state != PROCESS_STATE_SIGINT) {
@@ -422,7 +422,7 @@ void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	state->process.state = PROCESS_STATE_SIGINT;
-	su(&state->process.block_idx, map[1]);
+	struint(&state->process.block_idx, map[1]);
 }
 
 void process_msg(struct snapraid_state* state, char** map, size_t mac)
@@ -433,12 +433,12 @@ void process_msg(struct snapraid_state* state, char** map, size_t mac)
 	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
 		struct snapraid_message* message = malloc_nofail(sizeof(struct snapraid_message));
 		const char* msg = map[2];
-		
+
 		/* skip initial spaces */
-		while (*msg != 0 && isspace(*msg))
+		while (*msg != 0 && isspace((unsigned char)*msg))
 			++msg;
-		
-		scpy(message->str, sizeof(message->str), msg);
+
+		sncpy(message->str, sizeof(message->str), msg);
 		tommy_list_insert_tail(&state->runner.message_list, &message->node, message);
 	}
 }
@@ -449,7 +449,7 @@ void process_conf(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	if (strcmp(map[1], "file") == 0)
-		scpy(state->global.conf, sizeof(state->global.conf), map[2]);
+		sncpy(state->global.conf, sizeof(state->global.conf), map[2]);
 }
 
 void process_content(struct snapraid_state* state, char** map, size_t mac)
@@ -457,7 +457,7 @@ void process_content(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 2)
 		return;
 
-	scpy(state->global.content, sizeof(state->global.content), map[1]);
+	sncpy(state->global.content, sizeof(state->global.content), map[1]);
 }
 
 void process_version(struct snapraid_state* state, char** map, size_t mac)
@@ -473,7 +473,7 @@ void process_version(struct snapraid_state* state, char** map, size_t mac)
 	s = map[1];
 
 	/* parse major */
-	if (!isdigit(*s))
+	if (!isdigit((unsigned char)*s))
 		return;
 
 	major = strtol(s, &e, 10);
@@ -483,7 +483,7 @@ void process_version(struct snapraid_state* state, char** map, size_t mac)
 	s = e + 1;
 
 	/* parse minor */
-	if (!isdigit(*s))
+	if (!isdigit((unsigned char)*s))
 		return;
 
 	minor = strtol(s, &e, 10);
@@ -504,7 +504,7 @@ void process_blocksize(struct snapraid_state* state, char** map, size_t mac)
 
 	s = map[1];
 
-	if (!isdigit(*s))
+	if (!isdigit((unsigned char)*s))
 		return;
 
 	blocksize = strtol(s, &e, 10);
@@ -525,7 +525,7 @@ void process_unixtime(struct snapraid_state* state, char** map, size_t mac)
 
 	s = map[1];
 
-	if (!isdigit(*s))
+	if (!isdigit((unsigned char)*s))
 		return;
 
 	unixtime = strtoll(s, &e, 10);

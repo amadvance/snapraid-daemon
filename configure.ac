@@ -27,7 +27,7 @@ dnl Checks for header files.
 AC_HEADER_ASSERT
 AC_HEADER_DIRENT
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([fcntl.h stddef.h stdint.h stdlib.h string.h limits.h time.h sys/time.h])
+AC_CHECK_HEADERS([fcntl.h stddef.h stdint.h stdlib.h string.h limits.h time.h sys/time.h strings.h])
 AC_CHECK_HEADERS([unistd.h getopt.h fnmatch.h io.h inttypes.h byteswap.h])
 AC_CHECK_HEADERS([pthread.h math.h])
 
@@ -48,7 +48,7 @@ AC_STRUCT_DIRENT_D_INO
 AC_STRUCT_DIRENT_D_TYPE
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS([memset strchr strerror strrchr mkdir gettimeofday strtoul])
+AC_CHECK_FUNCS([memset strchr strerror strrchr mkdir gettimeofday strtoul strlcpy])
 AC_CHECK_FUNCS([getopt getopt_long snprintf vsnprintf sigaction])
 AC_CHECK_CC_OPT([-pthread], CFLAGS="$CFLAGS -pthread", CFLAGS="$CFLAGS -D_REENTRANT")
 AC_CHECK_FUNCS([pthread_create])
