@@ -241,6 +241,10 @@ struct snapraid_config {
 	int notify_email_level;
 };
   
+#define DAEMON_QUIT 0
+#define DAEMON_RUNNING 1
+#define DAEMON_RELOAD 2
+  
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	thread_mutex_t lock; /**< Main lock for accessing the state */

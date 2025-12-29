@@ -955,14 +955,6 @@ void rest_init(struct snapraid_state* state, const char** options)
 	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
 }
 
-void rest_run(struct snapraid_state* state)
-{
-	printf("Running...\n");
-
-	while (state->daemon_running)
-		sleep(1);
-}
-
 void rest_done(struct snapraid_state* state)
 {
 	mg_stop(state->rest_context);

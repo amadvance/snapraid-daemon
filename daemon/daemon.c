@@ -49,10 +49,48 @@ static void usage(const char* conf)
 /****************************************************************************/
 /* daemon */
 
-static void handle_signal(int sig)
+static void signal_handler_term(int sig)
 {
 	(void)sig;
-	state_ptr()->daemon_running = 0;
+	state_ptr()->daemon_running = DAEMON_QUIT;
+}
+
+void signal_handler_hup(int sig) 
+{
+	(void)sig;
+	state_ptr()->daemon_running = DAEMON_RELOAD;
+}
+
+void signal_init(void)
+{
+#if HAVE_SIGACTION
+	struct sigaction sa;
+
+	sa.sa_handler = signal_handler_term;
+	sigemptyset(&sa.sa_mask);  
+	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
+
+	sigaction(SIGTERM, &sa, 0);
+	sigaction(SIGINT, &sa, 0);
+	sigaction(SIGQUIT, &sa, 0);
+
+	sa.sa_handler = signal_handler_hup;
+	sigemptyset(&sa.sa_mask);  
+	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
+
+	sigaction(SIGHUP, &sa, 0);
+
+	sa.sa_handler = SIG_IGN; /* ignore the signal */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGPIPE, &sa, 0);
+#else
+	signal(SIGTERM, signal_handler_term);
+	signal(SIGINT, signal_handler_term);
+	signal(SIGQUIT, signal_handler_term);
+	signal(SIGHUP, signal_handler_hup);
+	signal(SIGPIPE, SIG_IGN);
+#endif
 }
 
 static int daemonize(void)
@@ -88,6 +126,25 @@ static int daemonize(void)
 	}
 
 	return 0;
+}
+
+static void run(struct snapraid_state* state)
+{
+	printf("Running...\n");
+
+	while (state->daemon_running) {
+		if (state->daemon_running == DAEMON_RELOAD) {
+			state->daemon_running = DAEMON_RUNNING;
+
+			printf("Reload...\n");
+
+			state_lock();
+			config_load(&state->config);
+			state_unlock();
+		}
+
+		sleep(1);
+	}
 }
 
 /****************************************************************************/
@@ -173,8 +230,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
-	signal(SIGTERM, handle_signal);
-	signal(SIGINT, handle_signal);
+	signal_init();
 
 	runner_init(state_ptr());
 	rest_init(state_ptr(), options);
@@ -182,7 +238,7 @@ int main(int argc, char *argv[])
 	/* load initial info into the state */
 	runner(state_ptr(), CMD_PROBE, 0, 0);
 
-	rest_run(state_ptr());
+	run(state_ptr());
 
 	rest_done(state_ptr());
 	runner_done(state_ptr());

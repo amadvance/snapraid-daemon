@@ -24,7 +24,6 @@
 /* rest */
 
 void rest_init(struct snapraid_state* state, const char** options);
-void rest_run(struct snapraid_state* state);
 void rest_done(struct snapraid_state* state);
 
 #endif
