@@ -202,7 +202,7 @@ struct snapraid_global {
 	int64_t unixtime; /**< Time of the latest command */
 };
 
-#define CONFIG_MAX 128
+#define CONFIG_MAX 512 /**< Max lengts of a configuration option */
 
 #define RUN_DISABLED 0
 #define RUN_DAILY 1
@@ -224,6 +224,9 @@ struct snapraid_config {
 	char conf[PATH_MAX]; /**< Configuration file. */
 	tommy_list lines; /**< Lines of the config file. */
 	/* empty string or 0 value means value not set and/or disabled */
+	int net_enabled;
+	char net_port[CONFIG_MAX];
+	char net_acl[CONFIG_MAX];
 	int schedule_run;
 	int schedule_hour;
 	int schedule_minute;

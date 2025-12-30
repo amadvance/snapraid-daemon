@@ -20,6 +20,7 @@
 #include "state.h"
 #include "support.h"
 #include "log.h"
+#include "rest.h"
 #include "conf.h"
 
 int parse_int(const char* input, int low, int high, int* out)
@@ -135,11 +136,20 @@ int parse_level(const char* input, int* out)
 	return -1;
 }
 
-int config_load(struct snapraid_config* config)
+int config_load(struct snapraid_state* state)
 {
+	struct snapraid_config* config = &state->config;
 	char buffer[CONFIG_LINE_MAX];
+	int net_enabled;
+	char net_port[CONFIG_MAX];
+	char net_acl[CONFIG_MAX];
+	FILE* fp;
 
-	FILE *fp = fopen(config->conf, "rt");
+	net_enabled = config->net_enabled;
+	sncpy(net_port, sizeof(net_port), config->net_port);
+	sncpy(net_acl, sizeof(net_acl), config->net_acl);
+
+	fp = fopen(config->conf, "rt");
 	if (!fp) {
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
@@ -165,7 +175,16 @@ int config_load(struct snapraid_config* config)
 			strtrim(key);
 			strtrim(val);
 
-			if (strcmp(key, "scheduled_run") == 0) {
+			if (strcmp(key, "net_enabled") == 0) {
+				if (parse_int(val, 0, 1, &net_enabled) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "net_port") == 0) {
+				sncpy(net_port, sizeof(net_port), val);
+			} else if (strcmp(key, "net_acl") == 0) {
+				sncpy(net_acl, sizeof(net_acl), val);
+			} else if (strcmp(key, "scheduled_run") == 0) {
 				if (parse_scheduled_run(val, config) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
@@ -251,7 +270,23 @@ int config_load(struct snapraid_config* config)
 		return -1;
 	}
 
-	log_msg(LVL_INFO, "config loaded successfully");
+	log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
+
+	/* restart web server */
+	if (net_enabled != config->net_enabled
+		|| (net_enabled && (strcmp(net_acl, config->net_acl) != 0 || strcmp(net_port, config->net_port) != 0))) {
+		if (config->net_enabled) {
+			rest_done(state);
+		}
+		config->net_enabled = net_enabled;
+		sncpy(config->net_acl, sizeof(config->net_acl), net_acl);
+		sncpy(config->net_port, sizeof(config->net_port), net_port);
+		if (config->net_enabled) {
+			if (rest_init(state) != 0) {
+				log_msg(LVL_ERROR, "failed to restart web server");
+			}
+		}
+	}
 
 	return 0;
 }
@@ -375,4 +410,19 @@ int config_save(struct snapraid_config* config)
 	log_msg(LVL_INFO, "config saved successfully");
 
 	return 0;
+}
+
+void config_init(struct snapraid_config* config, const char* argv0)
+{
+	(void)argv0;
+
+	memset(config, 0, sizeof(*config));
+
+#ifdef SYSCONFDIR
+	/* if it exists, give precedence at sysconfdir, usually /usr/local/etc */
+	if (access(SYSCONFDIR "/snapraidd.conf", F_OK) == 0)
+		sncpy(config->conf, sizeof(config->conf), SYSCONFDIR "/snapraidd.conf");
+	else /* otherwise fallback to plain /etc */
+#endif
+		sncpy(config->conf, sizeof(config->conf), "/etc/snapraidd.conf");
 }

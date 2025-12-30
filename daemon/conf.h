@@ -30,7 +30,8 @@ int parse_int(const char* input, int low, int high, int* level);
 const char* config_level_str(int level);
 void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size);
 
-int config_load(struct snapraid_config* config);
+void config_init(struct snapraid_config* config, const char* argv0);
+int config_load(struct snapraid_state* state);
 int config_save(struct snapraid_config* config);
 void config_set_string(struct snapraid_config* config, const char* key, char* new_value);
 void config_set_int(struct snapraid_config* config, const char* key, int new_value);

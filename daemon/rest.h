@@ -23,7 +23,7 @@
 /****************************************************************************/
 /* rest */
 
-int rest_init(struct snapraid_state* state, const char** options);
+int rest_init(struct snapraid_state* state);
 void rest_done(struct snapraid_state* state);
 
 #endif

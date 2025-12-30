@@ -972,10 +972,32 @@ static int log_internal_callback(const struct mg_connection* conn, const char* m
 	return 1;
 }
 
-int rest_init(struct snapraid_state* state, const char** options)
+int rest_init(struct snapraid_state* state)
 {
+	const char* options[20];
+	int i;
+
+	if (!state->config.net_enabled)
+		return 0;
+
+	i = 0;
+	if (state->config.net_port[0] == 0) {
+		sncpy(state->config.net_port, sizeof(state->config.net_port), "127.0.0.1:8080");
+	}
+	options[i++] = "listening_ports";
+	options[i++] = state->config.net_port;
+	if (state->config.net_acl[0] != 0) {
+		options[i++] = "access_control_list";
+		options[i++] = state->config.net_acl;
+	}
+	options[i++] = "num_threads";
+	options[i++] = "4";
+	options[i++] = "request_timeout_ms";
+	options[i++] = "10000";
+	options[i++] = 0;
+
 	if (mg_init_library(MG_FEATURES_ALL) == 0) {
-		log_msg(LVL_ERROR, "failed to initialize civetweb, errno=%s(%d)", strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to initialize web server, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -985,7 +1007,7 @@ int rest_init(struct snapraid_state* state, const char** options)
 
 	state->rest_context = mg_start(&state->rest_callbacks, state, options);
 	if (!state->rest_context) {
-		log_msg(LVL_ERROR, "failed to start civetweb, errno=%s(%d)", strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to start web server, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -999,12 +1021,19 @@ int rest_init(struct snapraid_state* state, const char** options)
 	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
 
+	log_msg(LVL_INFO, "web server started");
+
 	return 0;
 }
 
 void rest_done(struct snapraid_state* state)
 {
+	if (!state->config.net_enabled)
+		return;
+
 	mg_stop(state->rest_context);
 
 	mg_exit_library();
+	
+	log_msg(LVL_INFO, "web server stopped");
 }

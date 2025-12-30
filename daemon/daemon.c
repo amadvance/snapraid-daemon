@@ -156,9 +156,8 @@ static void run(struct snapraid_state* state)
 
 			state_lock();
 
-			if (config_load(&state->config) == 0) {
-				
-				log_msg(LVL_ERROR, "failed to load config, path=%s, errno=%s(%d)", state->config.conf, strerror(errno), errno);
+			if (config_load(state) != 0) {
+				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
 			}
 
 			state_unlock();
@@ -179,22 +178,6 @@ static void run(struct snapraid_state* state)
 		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", log_signame(state->daemon_sig), state->daemon_sig);
 
 	log_msg(LVL_INFO, "daemon exiting cleanly");
-}
-
-/****************************************************************************/
-/* config */
-
-void config(struct snapraid_state* state, const char* argv0)
-{
-	(void)argv0;
-
-#ifdef SYSCONFDIR
-	/* if it exists, give precedence at sysconfdir, usually /usr/local/etc */
-	if (access(SYSCONFDIR "/snapraidd.conf", F_OK) == 0)
-		sncpy(state->config.conf, sizeof(state->config.conf), SYSCONFDIR "/snapraidd.conf");
-	else /* otherwise fallback to plain /etc */
-#endif
-		sncpy(state->config.conf, sizeof(state->config.conf), "/etc/snapraidd.conf");
 }
 
 /****************************************************************************/
@@ -221,15 +204,7 @@ int main(int argc, char *argv[])
 
 	state_init();
 
-	/* defaults */
-	config(state_ptr(), argv[0]);
-	
-	static const char* options[] = {
-		"listening_ports", "8080",
-		"num_threads", "50",
-		"request_timeout_ms", "10000", /* 10 seconds timeout for all I/O */
-		NULL
-	};
+	config_init(&state_ptr()->config, argv[0]);
 
 	while ((c =
 #if HAVE_GETOPT_LONG
@@ -271,12 +246,10 @@ int main(int argc, char *argv[])
 	log_msg(LVL_INFO, "version=%s", VERSION);
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
 
-	if (config_load(&state_ptr()->config) != 0) {
-		log_msg(LVL_ERROR, "failed to start for invalid configuration");
+	if (config_load(state_ptr()) != 0) {
+		log_msg(LVL_ERROR, "failed to load config from %s", state_ptr()->config.conf);
 		exit(EXIT_FAILURE);
 	}
-
-	log_msg(LVL_INFO, "config loaded path=%s", state_ptr()->config.conf);
 
 	/*
 	 * Install signal handlers
@@ -303,8 +276,8 @@ int main(int argc, char *argv[])
 
 	scheduler_init(state_ptr());
 	
-	if (rest_init(state_ptr(), options) != 0) {
-		log_msg(LVL_ERROR, "failed to initialize web interface");
+	if (rest_init(state_ptr()) != 0) {
+		log_msg(LVL_ERROR, "failed to start the web server");
 		exit(EXIT_FAILURE);
 	}
 
