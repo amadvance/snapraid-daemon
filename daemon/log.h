@@ -15,16 +15,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __REST_H
-#define __REST_H
-
-#include "state.h"
+#ifndef __LOG_H
+#define __LOG_H
 
 /****************************************************************************/
-/* rest */
+/* log */
 
-int rest_init(struct snapraid_state* state, const char** options);
-void rest_done(struct snapraid_state* state);
+int log_init(const char* ident);
+void log_done(void);
+void log_msg(int level, const char *fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
+const char* log_signame(int sig);
 
 #endif
 

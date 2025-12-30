@@ -208,10 +208,10 @@ struct snapraid_global {
 #define RUN_DAILY 1
 #define RUN_WEEKLY 7
 
-#define LEVEL_NONE 0
-#define LEVEL_ERROR 1
-#define LEVEL_WARNING 2
-#define LEVEL_INFO 3
+#define LVL_CRITICAL 0
+#define LVL_ERROR 1
+#define LVL_WARNING 2
+#define LVL_INFO 3
 
 #define CONFIG_LINE_MAX 1024
 
@@ -252,6 +252,7 @@ struct snapraid_config {
   
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
+	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
 	thread_mutex_t lock; /**< Main lock for accessing the state */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;

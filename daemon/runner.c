@@ -19,6 +19,7 @@
 
 #include "state.h"
 #include "support.h"
+#include "log.h"
 #include "runner.h"
 
 pid_t runner_spawn(const char* argv[], int* stderr_fd) 
@@ -685,6 +686,7 @@ static void* runner_thread(void* arg)
 	while (state->daemon_running) {
 		if (state->runner.running) {
 			int f = state->runner.stderr_f;
+			int cmd = state->runner.cmd;
 			pid_t pid = state->runner.pid;
 			int status;
 			pid_t ret;
@@ -698,6 +700,8 @@ static void* runner_thread(void* arg)
 
 			/* wait for the child process to terminate */
 			ret = waitpid(pid, &status, 0);
+
+			log_msg(LVL_INFO, "end %s with pid %" PRIu64, runner_cmd(cmd), (uint64_t)pid);
 
 			state_lock();
 
@@ -758,7 +762,8 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 	int i;
 	
 	if (cmd_argc > RUNNER_ARG_MAX) {
-		sncpy(msg, msg_size, "Too Many Arguments");
+		log_msg(LVL_ERROR, "failed to start runner %s for too many arguments", runner_cmd(cmd));
+		sncpy(msg, msg_size, "Too Many Arguments in the command");
 		return 400;
 	}
 
@@ -776,6 +781,7 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 
 	if (state->runner.running) {
 		state_unlock();
+		log_msg(LVL_ERROR, "failed to start runner %s for a command already running", runner_cmd(cmd));
 		sncpy(msg, msg_size, "A command is already running");
 		return 409;
 	}
@@ -783,7 +789,8 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 	pid = runner_spawn(argv, &f);
 	if (pid < 0) {
 		state_unlock();
-		sncpy(msg, msg_size, "Impossible to start a  command");
+		log_msg(LVL_ERROR, "failed to start runner %s for a failed spawn, errno=%s(%d)", runner_cmd(cmd), strerror(errno), errno);
+		sncpy(msg, msg_size, "Impossible to start a command");
 		return 503;
 	}
 
@@ -797,7 +804,7 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 	tommy_list_foreach(&state->runner.message_list, free);
 	tommy_list_init(&state->runner.message_list);
 
-	printf("Run %s\n", runner_cmd(cmd));
+	log_msg(LVL_INFO, "run %s with pid %" PRIu64, runner_cmd(cmd), (uint64_t)pid);
 
 	thread_cond_signal(&state->runner.cond);
 

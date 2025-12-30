@@ -19,6 +19,7 @@
 
 #include "state.h"
 #include "support.h"
+#include "log.h"
 #include "conf.h"
 
 int parse_int(const char* input, int low, int high, int* out)
@@ -40,12 +41,13 @@ int parse_int(const char* input, int low, int high, int* out)
 const char* config_level_str(int level)
 {
 	switch (level) {
-	case LEVEL_ERROR : return "error";
-	case LEVEL_WARNING : return "warning";
-	case LEVEL_INFO : return "info";
+	case LVL_CRITICAL : return "critical";
+	case LVL_ERROR : return "error";
+	case LVL_WARNING : return "warning";
+	case LVL_INFO : return "info";
 	}
 
-	return "none";
+	return "critical";
 }
 
 void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
@@ -121,9 +123,9 @@ int parse_scheduled_run(const char* input, struct snapraid_config* config)
 
 int parse_level(const char* input, int* out)
 {
-	const char* levels[] = { "none", "error", "warning", "info" };
+	const char* levels[] = { "critical", "error", "warning", "info" };
 
-	for (int i = 0; i < 7; i++) {
+	for (unsigned i = 0; i < sizeof(levels)/sizeof(levels[0]); i++) {
 		if (strcasecmp(input, levels[i]) == 0) {
 			*out = i;
 			return 0;
@@ -138,9 +140,11 @@ int config_load(struct snapraid_config* config)
 	char buffer[CONFIG_LINE_MAX];
 
 	FILE *fp = fopen(config->conf, "rt");
-	if (!fp)
+	if (!fp) {
+		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
-		
+	}
+
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		char key[CONFIG_MAX], val[CONFIG_MAX];
 		char* s;
@@ -164,32 +168,32 @@ int config_load(struct snapraid_config* config)
 			if (strcmp(key, "scheduled_run") == 0) {
 				if (parse_scheduled_run(val, config) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "probe_interval_minutes") == 0) {
 				if (parse_int(val, 0, 1440, &config->probe_interval_minutes) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "spindown_idle_minutes") == 0) {
 				if (parse_int(val, 0, 1440, &config->spindown_idle_minutes) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "report_differences") == 0) {
 				if (parse_int(val, 0, 1, &config->report_differences) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "suspend_on_deletes") == 0) {
 				if (parse_int(val, 0, 10000, &config->suspend_on_deletes) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
 				if (parse_int(val, 0, 100, &config->scrub_percentage) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "pre_run_script") == 0) {
 				sncpy(config->pre_run_script, sizeof(config->pre_run_script), val);
@@ -200,18 +204,18 @@ int config_load(struct snapraid_config* config)
 			} else if (strcmp(key, "log_retention_days") == 0) {
 				if (parse_int(val, 0, 10000, &config->log_retention_days) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
 				config->notify_syslog_enabled = atoi(val);
 				if (parse_int(val, 0, 1, &config->notify_syslog_enabled) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_level") == 0) {
 				if (parse_level(val, &config->notify_syslog_level) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_heartbeat_url") == 0) {
 				sncpy(config->notify_heartbeat_url, sizeof(config->notify_heartbeat_url), val);
@@ -220,24 +224,35 @@ int config_load(struct snapraid_config* config)
 			} else if (strcmp(key, "notify_apprise_level") == 0) {
 				if (parse_level(val, &config->notify_apprise_level) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_email_recipient") == 0) {
 				sncpy(config->notify_email_recipient, sizeof(config->notify_email_recipient), val);
 			} else if (strcmp(key, "notify_email_level") == 0) {
 				if (parse_level(val, &config->notify_email_level) == 0) {
 				} else {
-					// TODO log
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else {
-				// TODO log
+				log_msg(LVL_ERROR, "unknown config option %s=%s", key, val);
 			}
 		} else {
-			// TODO log
+			log_msg(LVL_ERROR, "unrecognized config line '%s'", buffer);
 		}
 	}
+	if (ferror(fp)) {
+		log_msg(LVL_ERROR, "failed to load config in read, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		fclose(fp);
+		return -1;
+	}
 
-	fclose(fp);
+	if (fclose(fp) != 0) {
+		log_msg(LVL_ERROR, "failed to load config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		return -1;
+	}
+
+	log_msg(LVL_INFO, "config loaded successfully");
+
 	return 0;
 }
 
@@ -330,21 +345,34 @@ int config_save(struct snapraid_config* config)
 	struct snapraid_config_line* line;
 
 	FILE *fp = fopen(config->conf, "wt");
-	if (!fp)
+	if (!fp) {
+		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
+	}
 
 	i = tommy_list_head(&config->lines);
 	while (i) {
 		line = i->data;
 		if (fputs(line->text, fp) == EOF) {
+			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 			fclose(fp);
 			return -1;
 		}
 		i = i->next;
 	}
 
-	if (fclose(fp) != 0)
+	if (fflush(fp) != 0) {
+		log_msg(LVL_ERROR, "failed to save config in flush, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		fclose(fp);
 		return -1;
+	}
+
+	if (fclose(fp) != 0) {
+		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		return -1;
+	}
+
+	log_msg(LVL_INFO, "config saved successfully");
 
 	return 0;
 }

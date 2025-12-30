@@ -23,6 +23,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "conf.h"
+#include "log.h"
 
 #define PID_FILE "/var/run/snapraidd.pid"
 
@@ -54,6 +55,7 @@ static void signal_handler_term(int sig)
 {
 	(void)sig;
 	state_ptr()->daemon_running = DAEMON_QUIT;
+	state_ptr()->daemon_sig = sig;
 }
 
 void signal_handler_hup(int sig) 
@@ -144,17 +146,24 @@ static int daemonize(void)
 
 static void run(struct snapraid_state* state)
 {
-	printf("Running...\n");
+	log_msg(LVL_INFO, "daemon ready");
 
 	while (state->daemon_running) {
 		if (state->daemon_running == DAEMON_RELOAD) {
 			state->daemon_running = DAEMON_RUNNING;
 
-			printf("Reload...\n");
+			log_msg(LVL_INFO, "reload requested");
 
 			state_lock();
-			config_load(&state->config);
+
+			if (config_load(&state->config) == 0) {
+				
+				log_msg(LVL_ERROR, "failed to load config, path=%s, errno=%s(%d)", state->config.conf, strerror(errno), errno);
+			}
+
 			state_unlock();
+
+			
 		}
 
 		scheduler(state);
@@ -166,7 +175,10 @@ static void run(struct snapraid_state* state)
 		sleep(10);
 	}
 
-	printf("Stopping...\n");
+	if (state->daemon_sig)
+		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", log_signame(state->daemon_sig), state->daemon_sig);
+
+	log_msg(LVL_INFO, "daemon exiting cleanly");
 }
 
 /****************************************************************************/
@@ -245,17 +257,26 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (config_load(&state_ptr()->config) != 0) {
-		// TODO log/fail
-		exit(EXIT_FAILURE);
-	}
+	log_init(PACKAGE);
+
+	log_msg(LVL_INFO, "daemon starting");
 
 	if (!foreground) {
 		if (daemonize() < 0) {
-			// TODO log/fail
+			log_msg(LVL_ERROR, "failed to daemonize");
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	log_msg(LVL_INFO, "version=%s", VERSION);
+	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
+
+	if (config_load(&state_ptr()->config) != 0) {
+		log_msg(LVL_ERROR, "failed to start for invalid configuration");
+		exit(EXIT_FAILURE);
+	}
+
+	log_msg(LVL_INFO, "config loaded path=%s", state_ptr()->config.conf);
 
 	/*
 	 * Install signal handlers
@@ -276,11 +297,16 @@ int main(int argc, char *argv[])
 	 * Load initial info into the state
 	 */
 	if (runner(state_ptr(), CMD_PROBE, 0, 0, msg, sizeof(msg)) != 200) {
-		// TODO log/fail?
+		log_msg(LVL_ERROR, "failed to run the first probe command");
+		exit(EXIT_FAILURE);
 	}
 
 	scheduler_init(state_ptr());
-	rest_init(state_ptr(), options);
+	
+	if (rest_init(state_ptr(), options) != 0) {
+		log_msg(LVL_ERROR, "failed to initialize web interface");
+		exit(EXIT_FAILURE);
+	}
 
 	/*
 	 * Unblock signals ONLY in main thread
@@ -303,6 +329,10 @@ int main(int argc, char *argv[])
 		unlink(PID_FILE);
 
 	state_done();
+
+	log_msg(LVL_INFO, "daemon stopped");
+
+	log_done();
 
 	return 0;
 }

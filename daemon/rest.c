@@ -20,8 +20,10 @@
 #include "state.h"
 #include "support.h"
 #include "runner.h"
-#include "rest.h"
 #include "conf.h"
+#include "log.h"
+#include "rest.h"
+
 
 #define JSMN_STRICT
 #include "../jsmn/jsmn.h"
@@ -503,9 +505,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	if (config_save(&state->config) != 0) {
-		// TODO log
-	}
+	(void)config_save(&state->config); /* error logged inside */
 
 	state_unlock();
 
@@ -513,9 +513,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	return send_json_success(conn, 200);
 
 bad:
-	if (config_save(&state->config) != 0) {
-		// TODO log
-	}
+	(void)config_save(&state->config); /* error logged inside */
 
 	state_unlock();
 
@@ -930,7 +928,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 
 #if 0
 	ss_jsonf(&s, tab, "\"errors\": [\n");
-	for (i = 0; i < 1; i++) { // Dummy loop for TaskError items
+	for (i = 0; i < 1; i++) { // TODO dummy loop for TaskError items
 		++tab;
 		ss_jsonf(&s, tab, "{\n");
 		++tab;
@@ -961,13 +959,34 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	return 200;
 }
 
-void rest_init(struct snapraid_state* state, const char** options)
+/**
+ * Hook for internal CivetWeb messages.
+ * \param conn    The connection associated with the message (can be NULL for global errors).
+ * \param message The actual error or warning string.
+ * \return 0 to let CivetWeb also write to its own error_log_file (if configured), 1 to tell CivetWeb the message has been handled.
+ */
+static int log_internal_callback(const struct mg_connection* conn, const char* message)
 {
+	(void)conn;
+	log_msg(LVL_WARNING, "civetweb internal: %s", message);
+	return 1;
+}
+
+int rest_init(struct snapraid_state* state, const char** options)
+{
+	if (mg_init_library(MG_FEATURES_ALL) == 0) {
+		log_msg(LVL_ERROR, "failed to initialize civetweb, errno=%s(%d)", strerror(errno), errno);
+		return -1;
+	}
+
 	memset(&state->rest_callbacks, 0, sizeof(state->rest_callbacks));
-	
+
+	state->rest_callbacks.log_message = log_internal_callback;
+
 	state->rest_context = mg_start(&state->rest_callbacks, state, options);
 	if (!state->rest_context) {
-		exit(EXIT_FAILURE);
+		log_msg(LVL_ERROR, "failed to start civetweb, errno=%s(%d)", strerror(errno), errno);
+		return -1;
 	}
 
 	mg_set_request_handler(state->rest_context, "/api/v1/sync", handler_action, state);
@@ -979,10 +998,13 @@ void rest_init(struct snapraid_state* state, const char** options)
 	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
+
+	return 0;
 }
 
 void rest_done(struct snapraid_state* state)
 {
 	mg_stop(state->rest_context);
-}
 
+	mg_exit_library();
+}

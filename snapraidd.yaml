@@ -493,12 +493,11 @@ components:
             If false, nothing is logged to syslog
         notify_syslog_level:
           type: string
-          enum: [none, error, warning, info]
+          enum: [critical, error, warning, info]
           example: "error"
           description: >
             Sensitivity level for SnapRAID task-related messages (sync, scrub, etc.). 
-            If set to 'none', only the daemon lifecycle events (start/stop/reload) 
-            will be recorded in the system log.
+            If unset, assume 'critical'.
         notify_heartbeat_url:
           type: string
           format: uri
@@ -510,8 +509,8 @@ components:
           description: "The Apprise URL/Connection string for push notifications (Discord, Telegram, etc). If empty, do nothing."
         notify_apprise_level:
           type: string
-          enum: [none, error, warning, info, debug]
-          description: "Sensitivity level for Apprise push alerts. If 'none', no alerts are sent."
+          enum: [critical, error, warning, info]
+          description: "Sensitivity level for Apprise push alerts. If unset, assume 'critical'."
         notify_email_recipient:
           type: string
           format: email
@@ -519,5 +518,5 @@ components:
           description: "Recipient address for local system mail reports. If empty, email notification is disabled."
         notify_email_level:
           type: string
-          enum: [none, error, warning, info, debug]
-          description: "Sensitivity level for local email reports. If 'none', no emails are sent."
+          enum: [critical, error, warning, info]
+          description: "Sensitivity level for local email reports. If unset, assume 'critical'."

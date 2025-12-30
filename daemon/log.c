@@ -15,16 +15,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __REST_H
-#define __REST_H
+#include "portable.h"
 
-#include "state.h"
+#include "log.h"
 
 /****************************************************************************/
-/* rest */
+/* log */
 
-int rest_init(struct snapraid_state* state, const char** options);
-void rest_done(struct snapraid_state* state);
+static int level_map[] = {
+	0,
+	LOG_ERR,
+	LOG_WARNING,
+	LOG_INFO
+};
 
-#endif
+int log_init(const char* ident)
+{
+	openlog(ident, LOG_PID | LOG_NDELAY, LOG_DAEMON);
+	return 0;
+}
 
+void log_msg(int level, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsyslog(level_map[level], fmt, ap);
+	va_end(ap);
+}
+
+void log_done(void)
+{
+	closelog();
+}
+
+const char* log_signame(int sig)
+{
+	switch (sig) {
+	case SIGTERM : return "SIGTERM";
+	case SIGINT : return "SIGINT";
+	case SIGHUP : return "SIGHUP";
+	case SIGQUIT : return "SIGQUIT";
+	case SIGSEGV : return "SIGSEGV";
+	case SIGABRT : return "SIGABRT";
+	}
+
+	return "UNKNOWN";
+}

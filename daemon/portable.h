@@ -157,6 +157,10 @@
 #include <strings.h>
 #endif
 
+#if HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+
 /**
  * Enable thread use.
  */
