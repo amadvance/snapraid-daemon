@@ -23,8 +23,8 @@
 
 typedef struct ss {
 	char* ptr;
-	size_t size;
-	size_t len;
+	ssize_t size;
+	ssize_t len;
 } ss_t;
 
 void ss_init(struct ss* s, size_t size);
@@ -36,7 +36,7 @@ int ss_printf(struct ss* s, const char* fmt, ...)  __attribute__((format(attribu
 void ss_jsons(struct ss* s, int tab, const char* arg);
 int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)  __attribute__((format(attribute_printf, 3, 4)));
 
-static inline size_t ss_len(struct ss* s)
+static inline ssize_t ss_len(struct ss* s)
 {
 	return s->len;
 }
@@ -46,7 +46,7 @@ static inline char* ss_ptr(struct ss* s)
 	return s->ptr;
 }
 
-void ss_reserve(struct ss* s, size_t needed);
+void ss_reserve(struct ss* s, ssize_t needed);
 
 static inline char* ss_top(struct ss* s)
 {

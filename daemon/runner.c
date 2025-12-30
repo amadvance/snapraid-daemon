@@ -749,7 +749,7 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv)
+int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv, char* msg, size_t msg_size)
 {
 	pid_t pid;
 	int f;
@@ -757,8 +757,10 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv)
 	int argc;
 	int i;
 	
-	if (cmd_argc > RUNNER_ARG_MAX)
+	if (cmd_argc > RUNNER_ARG_MAX) {
+		sncpy(msg, msg_size, "Too Many Arguments");
 		return 400;
+	}
 
 	argc = 0;
 	argv[argc++] = "snapraid";
@@ -774,12 +776,14 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv)
 
 	if (state->runner.running) {
 		state_unlock();
+		sncpy(msg, msg_size, "A command is already running");
 		return 409;
 	}
 
 	pid = runner_spawn(argv, &f);
 	if (pid < 0) {
 		state_unlock();
+		sncpy(msg, msg_size, "Impossible to start a  command");
 		return 503;
 	}
 
@@ -799,5 +803,5 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv)
 
 	state_unlock();
 
-	return 0;
+	return 200;
 }

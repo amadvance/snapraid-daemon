@@ -27,6 +27,7 @@
 #include "../jsmn/jsmn.h"
 
 #define JSON_INITIAL_SIZE 512 /**< Initial size for building JSON text */
+#define JSON_MAX_SIZE 16384 /**< Max size of the JSON text */
 
 #define ESC_MAX 256
 
@@ -267,33 +268,40 @@ void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv)
 	snprintf(str, str_size, "Unrecognized JSON token %s", json_token(js, jv));
 }
 
-char* json_read(struct mg_connection* conn, ssize_t* len)
+int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, size_t msg_size)
 {
 	ss_t s;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	ssize_t content_length = ri->content_length;
 
-	/* if there is the Content-Length header, use it for the first allocation */
-	if (content_length < 0)
-		content_length = JSON_INITIAL_SIZE;
+	/* If Content-Length is missing, assume no Payload */
+	if (content_length < 0) {
+		*js = 0;
+		*jl = 0;
+		return 200;
+	}
+
+	if (content_length >= JSON_MAX_SIZE) {
+		sncpy(msg, msg_size, "Payload Too Large");
+		return 413;
+	}
 
 	ss_init(&s, content_length);
 
-	while (1) {
+	while (ss_len(&s) < content_length) {
 		int r = mg_read(conn, ss_top(&s), ss_avail(&s));
-		if (r <= 0)
-			break;
+		if (r <= 0) {
+			sncpy(msg, msg_size, "Payload Too Short");
+			return 400;
+		}
 
 		ss_forward(&s, r);
-
-		/* ensure there is always some space */
-		if (ss_avail(&s) == 0)
-			ss_reserve(&s, JSON_INITIAL_SIZE);
 	}
 
-	*len = ss_len(&s);
+	*js = ss_ptr(&s);
+	*jl = ss_len(&s);
 
-	return ss_ptr(&s);
+	return 200;
 }
 
 /**
@@ -303,13 +311,16 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 {
 	char msg[128];
 	struct snapraid_state* state = cbdata;
+	int ret;	
 	jsmntok_t jv[JSMN_TOKEN_MAX];
 	jsmn_parser jp;
 	ssize_t jl;
 	char* js;
 	int jc;
 
-	js = json_read(conn, &jl);
+	ret = json_read(conn, &js, &jl, msg, sizeof(msg));
+	if (ret != 200)
+		return send_json_error(conn, ret, msg);
 
 	state_lock();
 
@@ -608,7 +619,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	js = json_read(conn, &jl);
+	ret = json_read(conn, &js, &jl, msg, sizeof(msg));
+	if (ret != 200)
+		return send_json_error(conn, ret, msg);
 
 	jsmn_init(&jp);
 	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
@@ -654,25 +667,24 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	argv[argc] = 0;
 
 	if (strcmp(path, "/api/v1/sync") == 0)
-		ret = runner(state, CMD_SYNC, argc, argv);
+		ret = runner(state, CMD_SYNC, argc, argv, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/probe") == 0)
-		ret = runner(state, CMD_PROBE, argc, argv);
+		ret = runner(state, CMD_PROBE, argc, argv, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/up") == 0)
-		ret = runner(state, CMD_UP, argc, argv);
+		ret = runner(state, CMD_UP, argc, argv, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/down") == 0)
-		ret = runner(state, CMD_DOWN, argc, argv);
+		ret = runner(state, CMD_DOWN, argc, argv, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/smart") == 0)
-		ret = runner(state, CMD_SMART, argc, argv);
-	else
+		ret = runner(state, CMD_SMART, argc, argv, msg, sizeof(msg));
+	else {
+		sncpy(msg, sizeof(msg), "Resource not found");
 		ret = 404;
+	}
 
 	free(js);
 
-	switch (ret) {
-	case 409 : return send_json_error(conn, 409, "A SnapRAID command is already running");
-	case 503 : return send_json_error(conn, 503, "Impossible to start a SnapRAID command");
-	case 404 : return send_json_error(conn, 404, "Resource not found");
-	}
+	if (ret != 200)
+		return send_json_error(conn, ret, msg);
 
 	return send_json_success(conn, 200);
 

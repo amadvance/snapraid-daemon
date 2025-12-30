@@ -35,10 +35,10 @@ void ss_init(struct ss* s, size_t size)
 	}
 }
 
-void ss_reserve(struct ss* s, size_t needed) 
+void ss_reserve(struct ss* s, ssize_t needed) 
 {
-	size_t new_size;
-	
+	ssize_t new_size;
+
 	needed += s->len;
 
 	if (s->size >= needed)

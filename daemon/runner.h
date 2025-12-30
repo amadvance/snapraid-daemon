@@ -30,7 +30,7 @@ const char* runner_cmd(int cmd);
 
 #define RUNNER_ARG_MAX 32
 
-int runner(struct snapraid_state* state, int cmd, int argc, char** argv);
+int runner(struct snapraid_state* state, int cmd, int argc, char** argv, char* msg, size_t msg_size);
 
 #endif
 

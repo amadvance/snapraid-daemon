@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
 {
 	int c;
 	int foreground = 1; // TODO
+	char msg[128];
 
 	state_init();
 
@@ -214,6 +215,7 @@ int main(int argc, char *argv[])
 	static const char* options[] = {
 		"listening_ports", "8080",
 		"num_threads", "50",
+		"request_timeout_ms", "10000", /* 10 seconds timeout for all I/O */
 		NULL
 	};
 
@@ -273,7 +275,9 @@ int main(int argc, char *argv[])
 	/*
 	 * Load initial info into the state
 	 */
-	runner(state_ptr(), CMD_PROBE, 0, 0);
+	if (runner(state_ptr(), CMD_PROBE, 0, 0, msg, sizeof(msg)) != 200) {
+		// TODO log/fail?
+	}
 
 	scheduler_init(state_ptr());
 	rest_init(state_ptr(), options);
