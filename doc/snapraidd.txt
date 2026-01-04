@@ -1,0 +1,25 @@
+                                ===============
+                                SnapRAID Daemon
+                                ===============
+
+
+1 SYNOPSIS
+==========
+
+
+
+2 DESCRIPTION
+=============
+
+
+
+3 COPYRIGHT
+===========
+
+This file is Copyright (C) 2025 Andrea Mazzoleni
+
+
+4 SEE ALSO
+==========
+
+snapraid(1)
