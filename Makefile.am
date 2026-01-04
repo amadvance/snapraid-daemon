@@ -9,8 +9,13 @@ snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" \
 
 snapraidd_SOURCES = \
 	daemon/daemon.c \
+	daemon/state.c \
 	daemon/runner.c \
+	daemon/scheduler.c \
 	daemon/support.c \
+	daemon/rest.c \
+	daemon/conf.c \
+	daemon/log.c \
 	civetweb/civetweb.c
 
 noinst_HEADERS = \
@@ -20,6 +25,7 @@ noinst_HEADERS = \
 	tommyds/tommytypes.h \
 	tommyds/tommyhash.c \
 	tommyds/tommylist.c \
+	jsmn/jsmn.h \
 	civetweb/civetweb.h \
 	civetweb/external_log_access.inl \
 	civetweb/external_mg_cry_internal_impl.inl \
@@ -30,7 +36,15 @@ noinst_HEADERS = \
 	civetweb/sort.inl \
 	daemon/portable.h \
 	daemon/state.h \
-	daemon/support.h
+	daemon/runner.h \
+	daemon/scheduler.h \
+	daemon/support.h \
+	daemon/rest.h \
+	daemon/conf.h \
+	daemon/log.h \
+	snapraidd.yaml \
+	snapraidd.service \
+	snapraidd.conf
 
 # Add the .version file in the distribution
 dist-hook:
@@ -48,12 +62,14 @@ LIST_HH = doc/snapraidd.hh $(patsubst %, doc/snapraidd-%.hh, $(LANG_CODES))
 
 EXTRA_DIST = \
 	autogen.sh autover.sh \
-	README COPYING \
+	README COPYING HISTORY \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \
 	acinclude.m4 \
-	tommyds/LICENSE
+	tommyds/LICENSE \
+	jsmn/LICENSE \
+	civetweb/LICENSE.md
 
 man1_MANS = doc/snapraidd.1
 

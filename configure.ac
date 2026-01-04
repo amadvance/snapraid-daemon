@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.65])
 dnl Get version number from git
 m4_define([git_revision], m4_esyscmd_s([./autover.sh]))
-AC_INIT([snapraid], [git_revision], [], [], [https://www.snapraid.it])
+AC_INIT([snapraidd], [git_revision], [], [], [https://www.snapraid.it])
 AM_INIT_AUTOMAKE([foreign no-dependencies subdir-objects])
 AC_CONFIG_SRCDIR([daemon/daemon.c])
 AC_CONFIG_HEADERS([config.h])
@@ -27,9 +27,29 @@ dnl Checks for header files.
 AC_HEADER_ASSERT
 AC_HEADER_DIRENT
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([fcntl.h stddef.h stdint.h stdlib.h string.h limits.h time.h sys/time.h])
+AC_CHECK_HEADERS([fcntl.h stddef.h stdint.h stdlib.h string.h limits.h time.h sys/time.h strings.h])
 AC_CHECK_HEADERS([unistd.h getopt.h fnmatch.h io.h inttypes.h byteswap.h])
-AC_CHECK_HEADERS([pthread.h math.h])
+AC_CHECK_HEADERS([pthread.h math.h syslog.h grp.h])
+
+# Check for the close_range(...,CLOSE_RANGE_CLOEXEC)
+AC_CHECK_HEADERS([linux/close_range.h])
+AC_CHECK_FUNCS([close_range])
+AC_MSG_CHECKING([for CLOSE_RANGE_CLOEXEC])
+AC_COMPILE_IFELSE([
+    AC_LANG_PROGRAM([[
+        #ifdef HAVE_LINUX_CLOSE_RANGE_H
+        #include <linux/close_range.h>
+        #endif
+        #include <unistd.h>
+    ]], [[
+        unsigned int flags = CLOSE_RANGE_CLOEXEC;
+    ]])
+], [
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([HAVE_CLOSE_RANGE_CLOEXEC], [1], [Define if CLOSE_RANGE_CLOEXEC is available])
+], [
+    AC_MSG_RESULT([no])
+])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -48,10 +68,11 @@ AC_STRUCT_DIRENT_D_INO
 AC_STRUCT_DIRENT_D_TYPE
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS([memset strchr strerror strrchr mkdir gettimeofday strtoul])
+AC_CHECK_FUNCS([memset strchr strerror strrchr mkdir gettimeofday strtoul strlcpy])
 AC_CHECK_FUNCS([getopt getopt_long snprintf vsnprintf sigaction])
 AC_CHECK_CC_OPT([-pthread], CFLAGS="$CFLAGS -pthread", CFLAGS="$CFLAGS -D_REENTRANT")
 AC_CHECK_FUNCS([pthread_create])
+AC_CHECK_FUNCS([fexecve pipe2])
 
 dnl Checks for architecture
 AC_C_BIGENDIAN

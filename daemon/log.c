@@ -1,0 +1,63 @@
+/*
+ * Copyright (C) 2025 Andrea Mazzoleni
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "portable.h"
+
+#include "log.h"
+
+/****************************************************************************/
+/* log */
+
+static int level_map[] = {
+	0,
+	LOG_ERR,
+	LOG_WARNING,
+	LOG_INFO
+};
+
+int log_init(const char* ident)
+{
+	openlog(ident, LOG_PID | LOG_NDELAY, LOG_DAEMON);
+	return 0;
+}
+
+void log_msg(int level, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsyslog(level_map[level], fmt, ap);
+	va_end(ap);
+}
+
+void log_done(void)
+{
+	closelog();
+}
+
+const char* log_signame(int sig)
+{
+	switch (sig) {
+	case SIGTERM : return "SIGTERM";
+	case SIGINT : return "SIGINT";
+	case SIGHUP : return "SIGHUP";
+	case SIGQUIT : return "SIGQUIT";
+	case SIGSEGV : return "SIGSEGV";
+	case SIGABRT : return "SIGABRT";
+	}
+
+	return "UNKNOWN";
+}
