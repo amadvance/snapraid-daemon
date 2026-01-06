@@ -231,11 +231,11 @@ struct snapraid_config {
 	int schedule_hour;
 	int schedule_minute;
 	int schedule_day_of_week;
+	int scrub_percentage;	
 	int probe_interval_minutes;
 	int spindown_idle_minutes;
 	int report_differences;
 	int suspend_on_deletes;
-	int scrub_percentage;
 	char pre_run_script[CONFIG_MAX];
 	char post_run_script[CONFIG_MAX];
 	char log_directory[CONFIG_MAX];

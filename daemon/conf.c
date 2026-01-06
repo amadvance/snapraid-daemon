@@ -427,6 +427,31 @@ void config_init(struct snapraid_config* config, const char* argv0)
 
 	memset(config, 0, sizeof(*config));
 
+	/* set default */
+	config->net_enabled = 0;
+	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:8080");
+	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
+	config->schedule_run = RUN_DISABLED;
+	config->schedule_hour = 0;
+	config->schedule_minute = 0;
+	config->schedule_day_of_week = 0;
+	config->scrub_percentage = 0;
+	config->probe_interval_minutes = 0;
+	config->spindown_idle_minutes = 0;
+	config->report_differences = 0;
+	config->suspend_on_deletes = 0;
+	config->pre_run_script[0] = 0;
+	config->post_run_script[0] = 0;
+	config->log_directory[0] = 0;
+	config->log_retention_days = 0;
+	config->notify_syslog_enabled = 0;
+	config->notify_syslog_level = LVL_CRITICAL;
+	config->notify_heartbeat_url[0] = 0;
+	config->notify_apprise_url[0] = 0;
+	config->notify_apprise_level = LVL_CRITICAL;
+	config->notify_email_recipient[0] = 0;
+	config->notify_email_level = LVL_CRITICAL;
+
 #ifdef SYSCONFDIR
 	/* if it exists, give precedence at sysconfdir, usually /usr/local/etc */
 	if (access(SYSCONFDIR "/snapraidd.conf", F_OK) == 0)
