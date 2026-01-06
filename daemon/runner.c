@@ -1040,7 +1040,7 @@ void process_line(struct snapraid_state* state, char** map, size_t mac)
 #define RUN_INPUT_MAX 4096
 #define RUN_FIELD_MAX 64
 
-void process_stderr(struct snapraid_state* state, int f)
+void process_stderr(struct snapraid_state* state, int f, const char* log_path)
 {
 	char buf[RUN_INPUT_MAX];
 	char line[RUN_INPUT_MAX];
@@ -1048,6 +1048,14 @@ void process_stderr(struct snapraid_state* state, int f)
 	size_t len = 0;
 	size_t mac = 0;
 	int escape = 0;
+	FILE* log_f = 0;
+
+	if (log_path[0] != 0) {
+		log_f = fopen(log_path, "wte");
+		if (log_f == 0) {
+			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+		}
+	}
 
 	map[mac++] = line;
 
@@ -1055,6 +1063,13 @@ void process_stderr(struct snapraid_state* state, int f)
 		ssize_t n = read(f, buf, sizeof(buf));
 		if (n > 0) {
 			ssize_t i;
+
+			if (log_f) {
+				if (fwrite(buf, n, 1, log_f) != 1) {
+					log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+				}
+			}
+
 			for (i = 0; i < n; i++) {
 				char c = buf[i];
 
@@ -1110,6 +1125,13 @@ void process_stderr(struct snapraid_state* state, int f)
 			} else {
 				break;
 			}
+		}
+	}
+	
+	
+	if (log_f) {
+		if (fclose(log_f) != 0) {
+			log_msg(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
 	}
 }
@@ -1199,10 +1221,33 @@ static void runner_go(struct snapraid_state* state)
 		ret = -1;
 		/* continue to run the post_run_script */
 	} else {
-		log_msg(LVL_INFO, "run %s (pid %" PRIu64 ")", runner_cmd(cmd), (uint64_t)pid);
+		char log_path[PATH_MAX];
 
-		/* process the child output until EOF */
-		process_stderr(state, f);
+		log_path[0] = 0;
+
+		if (state->config.log_directory[0] != 0) {
+			time_t now = time(0);
+			struct tm* local = localtime(&now);
+			if (local) {
+				snprintf(log_path, sizeof(log_path), "%s/%s-%04d%02d%02d-%02d%02d%02d.log", state->config.log_directory, runner_cmd(cmd),
+					local->tm_year + 1900,
+					local->tm_mon + 1,
+					local->tm_mday,
+					local->tm_hour,
+					local->tm_min,
+					local->tm_sec
+				);
+			} else {
+				snprintf(log_path, sizeof(log_path), "%s/%s.log", state->config.log_directory, runner_cmd(cmd));
+			}
+		}
+
+		if (log_path[0])
+			log_msg(LVL_INFO, "run %s (pid %" PRIu64 ") with log %s", runner_cmd(cmd), (uint64_t)pid, log_path);
+		else
+			log_msg(LVL_INFO, "run %s (pid %" PRIu64 ")", runner_cmd(cmd), (uint64_t)pid);
+
+		process_stderr(state, f, log_path);
 
 		/* wait for the child process to terminate */
 		ret = waitpid(pid, &status, 0);
@@ -1326,7 +1371,6 @@ const char* find_snapraid(void)
 
 	return 0;
 }
-
 
 int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv, char* msg, size_t msg_size)
 {

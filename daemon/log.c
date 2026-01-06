@@ -17,6 +17,7 @@
 
 #include "portable.h"
 
+#include "state.h"
 #include "log.h"
 
 /****************************************************************************/
@@ -37,9 +38,20 @@ int log_init(const char* ident)
 
 void log_msg(int level, const char *fmt, ...)
 {
+	int syslog;
+	struct snapraid_state* state;
+
 	va_list ap;
 	va_start(ap, fmt);
-	vsyslog(level_map[level], fmt, ap);
+
+	state_lock();
+	state = state_ptr();
+	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
+	state_unlock();
+
+	if (syslog)
+		vsyslog(level_map[level], fmt, ap);
+
 	va_end(ap);
 }
 
