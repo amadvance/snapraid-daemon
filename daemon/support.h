@@ -55,7 +55,7 @@ static inline char* ss_top(struct ss* s)
 
 static inline void ss_forward(struct ss* s, size_t written)
 {
-	s->len += written; 
+	s->len += written;
 }
 
 static inline ssize_t ss_avail(struct ss* s)
@@ -123,7 +123,7 @@ void thread_cond_destroy(thread_cond_t* cond);
 void thread_cond_signal(thread_cond_t* cond);
 void thread_cond_broadcast(thread_cond_t* cond);
 void thread_cond_wait(thread_cond_t* cond, thread_mutex_t* mutex);
-void thread_create(thread_id_t* thread, void* (* func)(void *), void *arg);
+void thread_create(thread_id_t* thread, void* (*func)(void *), void *arg);
 void thread_join(thread_id_t thread, void** retval);
 void thread_yield(void);
 

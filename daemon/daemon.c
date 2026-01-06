@@ -43,7 +43,7 @@ static void usage(const char* conf)
 	printf("\n");
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
-	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");	
+	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");
 	printf("\n");
 	printf("Configuration file: %s\n", conf);
 	printf("\n");
@@ -59,7 +59,7 @@ static void signal_handler_term(int sig)
 	state_ptr()->daemon_sig = sig;
 }
 
-static void signal_handler_hup(int sig) 
+static void signal_handler_hup(int sig)
 {
 	(void)sig;
 	state_ptr()->daemon_running = DAEMON_RELOAD;
@@ -105,7 +105,7 @@ static void signal_init(void)
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = signal_handler_term;
-	sigemptyset(&sa.sa_mask);  
+	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
 
 	sigaction(SIGTERM, &sa, 0);
@@ -113,7 +113,7 @@ static void signal_init(void)
 	sigaction(SIGQUIT, &sa, 0);
 
 	sa.sa_handler = signal_handler_hup;
-	sigemptyset(&sa.sa_mask);  
+	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
 
 	sigaction(SIGHUP, &sa, 0);
@@ -177,7 +177,7 @@ static void run(struct snapraid_state* state)
 
 			state_unlock();
 
-			
+
 		}
 
 		scheduler(state);
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 #endif
 		!= EOF) {
 		switch (c) {
-		case 'f':
+		case 'f' :
 			foreground = 1;
 			break;
 		case 'c' :
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 		case 'V' :
 			version();
 			exit(EXIT_SUCCESS);
-		default:
+		default :
 			usage(state_ptr()->config.conf);
 			exit(EXIT_FAILURE);
 		}
@@ -326,14 +326,14 @@ int main(int argc, char *argv[])
 }
 
 /*
-curl -X POST http://localhost:8080/api/v1/sync
-curl -X POST http://localhost:8080/api/v1/sync -d '{"args": ["--force-zero", "--force-empty"]}'
-curl -X POST http://localhost:8080/api/v1/probe
-curl -X POST http://localhost:8080/api/v1/up
-curl -X POST http://localhost:8080/api/v1/down
-curl -X POST http://localhost:8080/api/v1/smart
-curl -X GET http://localhost:8080/api/v1/disks
-curl -X GET http://localhost:8080/api/v1/progress
-curl -X GET http://localhost:8080/api/v1/config
-*/
+   curl -X POST http://localhost:8080/api/v1/sync
+   curl -X POST http://localhost:8080/api/v1/sync -d '{"args": ["--force-zero", "--force-empty"]}'
+   curl -X POST http://localhost:8080/api/v1/probe
+   curl -X POST http://localhost:8080/api/v1/up
+   curl -X POST http://localhost:8080/api/v1/down
+   curl -X POST http://localhost:8080/api/v1/smart
+   curl -X GET http://localhost:8080/api/v1/disks
+   curl -X GET http://localhost:8080/api/v1/progress
+   curl -X GET http://localhost:8080/api/v1/config
+ */
 

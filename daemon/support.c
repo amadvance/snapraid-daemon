@@ -35,7 +35,7 @@ void ss_init(struct ss* s, size_t size)
 	}
 }
 
-void ss_reserve(struct ss* s, ssize_t needed) 
+void ss_reserve(struct ss* s, ssize_t needed)
 {
 	ssize_t new_size;
 
@@ -46,7 +46,7 @@ void ss_reserve(struct ss* s, ssize_t needed)
 
 	new_size = s->size;
 	if (new_size < 16)
-		new_size = 16; 
+		new_size = 16;
 
 	while (new_size < needed)
 		new_size *= 2;
@@ -99,11 +99,11 @@ int ss_vprintf(struct ss* s, const char* fmt, va_list ap)
 
 	s->len += (size_t)needed;
 	va_end(ap_retry);
-	
+
 	return 0;
 }
 
-int ss_printf(struct ss* s, const char* fmt, ...) 
+int ss_printf(struct ss* s, const char* fmt, ...)
 {
 	va_list ap;
 	int ret;
@@ -429,3 +429,4 @@ void thread_yield(void)
 	sched_yield();
 #endif
 }
+

@@ -48,3 +48,4 @@ void state_unlock(void)
 {
 	thread_mutex_unlock(&STATE.lock);
 }
+

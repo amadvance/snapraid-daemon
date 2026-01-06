@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include "portable.h"
 
 #include "state.h"
@@ -69,7 +69,7 @@ static int delete_old_files(const char* dir_path, int days)
 		}
 
 		/* delete only regular files */
-		if (!S_ISREG(statbuf.st_mode)) 
+		if (!S_ISREG(statbuf.st_mode))
 			continue;
 
 		/* delete only files that are old enough */
@@ -90,7 +90,7 @@ static int delete_old_files(const char* dir_path, int days)
 	return 0;
 }
 
-void* scheduler_thread(void* arg) 
+void* scheduler_thread(void* arg)
 {
 	char msg[128];
 	struct snapraid_state* state = arg;
@@ -141,7 +141,7 @@ void* scheduler_thread(void* arg)
 
 				state_lock();
 				continue;
-			} 
+			}
 
 			/* log_retention_days */
 			if (state->config.log_retention_days > 0
@@ -160,7 +160,7 @@ void* scheduler_thread(void* arg)
 			int do_spindown = 0;
 			int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
-			if ((state->config.probe_interval_minutes > 0 
+			if ((state->config.probe_interval_minutes > 0
 				&& mono_now_secs - last_probe_ts >= state->config.probe_interval_minutes * (int64_t)60))
 				do_probe = 1;
 
@@ -221,3 +221,4 @@ void scheduler_done(struct snapraid_state* state)
 
 	thread_cond_destroy(&state->scheduler.cond);
 }
+

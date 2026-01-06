@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include "portable.h"
 
 #include "state.h"
@@ -53,7 +53,7 @@ const char* config_level_str(int level)
 
 void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
 {
-	const char* days[] = {"sun", "mon", "tue", "wed", "thu", "fri", "sat"};
+	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
 	if (config->schedule_run == RUN_DAILY) {
 		snprintf(buf, size, "daily %02d:%02d", config->schedule_hour, config->schedule_minute);
 	} else if (config->schedule_run == RUN_WEEKLY && config->schedule_day_of_week >= 0 && config->schedule_day_of_week < 7) {
@@ -67,12 +67,12 @@ void config_schedule_str(const struct snapraid_config* config, char* buf, size_t
  * Convert the day of the week to a number (0-6)
  * Return -1 if not valid
  */
-static int get_day_index(const char* input) 
+static int get_day_index(const char* input)
 {
 	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
 
 	for (int i = 0; i < 7; i++) {
-		if (strncasecmp(input, days[i], 3) == 0) 
+		if (strncasecmp(input, days[i], 3) == 0)
 			return i;
 	}
 
@@ -83,7 +83,7 @@ static int get_day_index(const char* input)
  * Parse the scheduled_run string
  * Format supported: "daily HH:MM" o "weekly <day> HH:MM"
  */
-int parse_scheduled_run(const char* input, struct snapraid_config* config) 
+int parse_scheduled_run(const char* input, struct snapraid_config* config)
 {
 	char day_str[10];
 	int hour, minute;
@@ -108,7 +108,7 @@ int parse_scheduled_run(const char* input, struct snapraid_config* config)
 
 	if (sscanf(input, "weekly %9s %2d:%2d", day_str, &hour, &minute) == 3) {
 		int day_of_week = get_day_index(day_str);
-		if (day_of_week == -1) 
+		if (day_of_week == -1)
 			return -1;
 		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
 			return -1;
@@ -126,7 +126,7 @@ int parse_level(const char* input, int* out)
 {
 	const char* levels[] = { "critical", "error", "warning", "info" };
 
-	for (unsigned i = 0; i < sizeof(levels)/sizeof(levels[0]); i++) {
+	for (unsigned i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
 		if (strcasecmp(input, levels[i]) == 0) {
 			*out = i;
 			return 0;
@@ -157,12 +157,12 @@ int config_load(struct snapraid_state* state)
 
 		/* skip initial spaces */
 		s = buffer;
-		while (*s != 0 && isspace((unsigned char)*s)) 
+		while (*s != 0 && isspace((unsigned char)*s))
 			++s;
 
 		/* skip empty or comment lines */
 		if (*s == 0 || *s == '#')
-			continue; 
+			continue;
 
 		if (sscanf(s, "%63[^=]=%127[^\n]", key, val) == 2) {
 			strtrim(key);
@@ -296,7 +296,7 @@ int config_reload(struct snapraid_state* state)
 			}
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -310,13 +310,13 @@ static int line_matches_key(const char* line, const char* key)
 	const char* p = line;
 
 	/* skip leading whitespace */
-	while (isspace((unsigned char)*p)) 
+	while (isspace((unsigned char)*p))
 		++p;
 
 	// if it's a comment, skip the '#' and any following space
 	if (*p == '#') {
 		++p;
-		while (isspace((unsigned char)*p)) 
+		while (isspace((unsigned char)*p))
 			++p;
 	}
 
@@ -326,10 +326,10 @@ static int line_matches_key(const char* line, const char* key)
 		p += key_len;
 
 		/* ensure the next character is '=' or whitespace followed by '=' */
-		while (isspace((unsigned char)*p)) 
+		while (isspace((unsigned char)*p))
 			++p;
 
-		if (*p == '=') 
+		if (*p == '=')
 			return 1;
 	}
 

@@ -38,3 +38,4 @@ void config_set_string(struct snapraid_config* config, const char* key, char* ne
 void config_set_int(struct snapraid_config* config, const char* key, int new_value);
 
 #endif
+

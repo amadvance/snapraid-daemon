@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include "portable.h"
 
 #include "state.h"
@@ -55,7 +55,7 @@ static char *const envp_scrubbed[] = {
  * Effective maximum shebang line length: ~126 characters (accounting for "#!", whitespace,
  * interpreter path, optional argument, and newline).
  */
-#define SHEBANG_MAX (128+2) /* extra space for end-of-line and final 0 */
+#define SHEBANG_MAX (128 + 2) /* extra space for end-of-line and final 0 */
 
 /**
  * Verifies that the shebang interpreter is in an allowed list of paths.
@@ -267,7 +267,7 @@ int runner_script(const char* script_path)
 		size_t dir_len = last_slash - resolved_path;
 		memcpy(dir_path, resolved_path, dir_len);
 		dir_path[dir_len] = '\0';
-	
+
 		if (stat(dir_path, &st) == 0) {
 			/* script directory must be owned by root or the daemon's real user */
 			if (st.st_uid != daemon_uid && st.st_uid != daemon_euid && st.st_uid != 0) {
@@ -402,7 +402,7 @@ int runner_script(const char* script_path)
 		/* child will receive SIGALRM in 300 seconds as a timeout */
 		alarm(300);
 
-		/* 
+		/*
 		 * Direct Execution via File Descriptor
 		 * The kernel uses the shebang in the FD to find the interpreter.
 		 */
@@ -474,7 +474,7 @@ bail:
 #endif
 }
 
-pid_t runner_spawn(char** argv, int* stderr_fd) 
+pid_t runner_spawn(char** argv, int* stderr_fd)
 {
 	int err_pipe[2];
 	int devnull;
@@ -504,9 +504,9 @@ pid_t runner_spawn(char** argv, int* stderr_fd)
 		/* stdin -> /dev/null */
 		/* stdout -> /dev/null */
 		/* stderr -> pipe */
-		if (dup2(devnull, STDIN_FILENO) < 0 ||
-		    dup2(devnull, STDOUT_FILENO) < 0 ||
-		    dup2(err_pipe[1], STDERR_FILENO) < 0)
+		if (dup2(devnull, STDIN_FILENO) < 0
+			|| dup2(devnull, STDOUT_FILENO) < 0
+			|| dup2(err_pipe[1], STDERR_FILENO) < 0)
 			_exit(127);
 
 		close(err_pipe[0]);
@@ -557,7 +557,7 @@ int is_split_parity(char* s, int* index)
 	if (s[0] == 0) {
 		*index = 0;
 		return 1;
-	} 
+	}
 
 	if (s[0] == '/') {
 		*s = 0;
@@ -576,7 +576,7 @@ struct snapraid_data* find_data(tommy_list* list, const char* name)
 	i = tommy_list_head(list);
 	while (i) {
 		data = i->data;
-		if (strcmp(name, data->name) == 0) 
+		if (strcmp(name, data->name) == 0)
 			return data;
 		i = i->next;
 	}
@@ -598,7 +598,7 @@ struct snapraid_parity* find_parity(tommy_list* list, const char* name)
 	i = tommy_list_head(list);
 	while (i) {
 		parity = i->data;
-		if (strcmp(name, parity->name) == 0) 
+		if (strcmp(name, parity->name) == 0)
 			return parity;
 		i = i->next;
 	}
@@ -647,7 +647,7 @@ struct snapraid_device* find_device_from_file(tommy_list* list, const char* file
 	}
 
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
-	for (j = 0;j < SMART_COUNT;++ j)
+	for (j = 0; j < SMART_COUNT; ++j)
 		device->smart[j] = SMART_UNASSIGNED;
 	device->error = SMART_UNASSIGNED;
 	device->size = SMART_UNASSIGNED;
@@ -683,7 +683,7 @@ void process_stat(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	if (stru64(&access_count, map[2]) != 0) 
+	if (stru64(&access_count, map[2]) != 0)
 		return;
 
 	if (is_parity(map[1])) {
@@ -738,7 +738,7 @@ void process_parity(struct snapraid_state* state, char** map, size_t mac)
 
 	if (mac < 3)
 		return;
-	if (!is_split_parity(map[0], &index)) 
+	if (!is_split_parity(map[0], &index))
 		return;
 
 	parity = find_parity(&state->parity_list, map[0]);
@@ -756,7 +756,7 @@ void process_content_parity(struct snapraid_state* state, char** map, size_t mac
 
 	if (mac < 4)
 		return;
-	if (!is_split_parity(map[0], &index)) 
+	if (!is_split_parity(map[0], &index))
 		return;
 
 	parity = find_parity(&state->parity_list, map[0]);
@@ -810,14 +810,14 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	else if (strcmp(tag, "rotationrate") == 0)
 		stru64(&device->rotational, val);
 //	else if (strcmp(tag, "afr") == 0)
-		//device->info[ROTATION_RATE] = si64(val);
+	//device->info[ROTATION_RATE] = si64(val);
 	else if (strcmp(tag, "error") == 0)
 		stru64(&device->error, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = SMART_UNASSIGNED;
 		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)
 			device->power = POWER_STANDBY;
-		else if (strcmp(val, "active") == 0  || strcmp(val, "up") == 0)
+		else if (strcmp(val, "active") == 0 || strcmp(val, "up") == 0)
 			device->power = POWER_ACTIVE;
 	} else if (strcmp(tag, "flags") == 0) {
 		device->health = SMART_UNASSIGNED;
@@ -1079,7 +1079,7 @@ void process_stderr(struct snapraid_state* state, int f, const char* log_path)
 						case '\\' : line[len++] = '\\'; break;
 						case 'n' :  line[len++] = '\n'; break;
 						case 'd' : line[len++] = ':'; break;
-						default: /* ignore if unknown */
+						default : /* ignore if unknown */
 						}
 					}
 					escape = 0;
@@ -1127,8 +1127,8 @@ void process_stderr(struct snapraid_state* state, int f, const char* log_path)
 			}
 		}
 	}
-	
-	
+
+
 	if (log_f) {
 		if (fclose(log_f) != 0) {
 			log_msg(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
@@ -1396,7 +1396,7 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 	argv[argc++] = "--gui";
 	argv[argc++] = "--log";
 	argv[argc++] = ">&2";
-	for( i = 0; i < cmd_argc; ++i)
+	for ( i = 0; i < cmd_argc; ++i)
 		argv[argc++] = cmd_argv[i];
 
 	if (argv[0] == 0) {
@@ -1486,7 +1486,7 @@ int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_min
 
 		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
 			struct snapraid_split* split = j->data;
-			
+
 			for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
 				struct snapraid_device* device = k->data;
 				if (device->power != SMART_UNASSIGNED && device->power != POWER_STANDBY)
@@ -1516,3 +1516,4 @@ int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_min
 
 	return ret;
 }
+

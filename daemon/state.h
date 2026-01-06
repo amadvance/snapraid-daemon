@@ -78,7 +78,7 @@
  */
 #define HEALTH_PASSED 0
 #define HEALTH_FAILING 1
-    
+
 /**
  * Device info entry.
  */
@@ -232,7 +232,7 @@ struct snapraid_config {
 	int schedule_hour;
 	int schedule_minute;
 	int schedule_day_of_week;
-	int scrub_percentage;	
+	int scrub_percentage;
 	int probe_interval_minutes;
 	int spindown_idle_minutes;
 	int report_differences;
@@ -249,11 +249,11 @@ struct snapraid_config {
 	char notify_email_recipient[CONFIG_MAX];
 	int notify_email_level;
 };
-  
+
 #define DAEMON_QUIT 0
 #define DAEMON_RUNNING 1
 #define DAEMON_RELOAD 2
-  
+
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
@@ -278,3 +278,4 @@ void state_lock(void);
 void state_unlock(void);
 
 #endif
+

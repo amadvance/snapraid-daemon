@@ -40,35 +40,35 @@ static char* escape(const char* src, char* dst)
 
 	while (*src && dst_end - dst > 1) {
 		switch (*src) {
-		case '"':
-		case '\\':
+		case '"' :
+		case '\\' :
 			if (dst_end - dst > 2) {
 				*dst++ = '\\';
 				*dst++ = *src++;
 			}
 			break;
-		case '\n':
+		case '\n' :
 			if (dst_end - dst > 2) {
 				*dst++ = '\\';
 				*dst++ = 'n';
 				++src;
 			}
 			break;
-		case '\r':
+		case '\r' :
 			if (dst_end - dst > 2) {
 				*dst++ = '\\';
 				*dst++ = 'r';
 				++src;
 			}
 			break;
-		case '\t':
+		case '\t' :
 			if (dst_end - dst > 2) {
 				*dst++ = '\\';
 				*dst++ = 't';
 				++src;
 			}
 			break;
-		default:
+		default :
 			*dst++ = *src++;
 			break;
 		}
@@ -79,16 +79,16 @@ static char* escape(const char* src, char* dst)
 	return dst_begin;
 }
 
-static int send_json_success(struct mg_connection *conn, int status) 
+static int send_json_success(struct mg_connection *conn, int status)
 {
 	char body[256];
-	
+
 	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": true\n}\n");
 
 	mg_printf(conn, "HTTP/1.1 %d %s\r\n"
 		"Content-Type: application/json\r\n"
 		"Content-Length: %d\r\n"
-		"Connection: close\r\n\r\n", 
+		"Connection: close\r\n\r\n",
 		status, mg_get_response_code_text(conn, status), body_len);
 
 	mg_write(conn, body, body_len);
@@ -96,17 +96,17 @@ static int send_json_success(struct mg_connection *conn, int status)
 	return status;
 }
 
-static int send_json_error(struct mg_connection *conn, int status, const char* message) 
+static int send_json_error(struct mg_connection *conn, int status, const char* message)
 {
 	char body[256];
-	
-	int body_len = snprintf(body, sizeof(body), 
-		"{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
+
+	int body_len = snprintf(body, sizeof(body),
+			"{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
 
 	mg_printf(conn, "HTTP/1.1 %d %s\r\n"
 		"Content-Type: application/json\r\n"
 		"Content-Length: %d\r\n"
-		"Connection: close\r\n\r\n", 
+		"Connection: close\r\n\r\n",
 		status, mg_get_response_code_text(conn, status), body_len);
 
 	mg_write(conn, body, body_len);
@@ -257,7 +257,8 @@ void json_error_parse(char* str, size_t str_size, int jc)
 	case JSMN_ERROR_INVAL : snprintf(str, str_size, "Invalid character inside JSON string"); break;
 	case JSMN_ERROR_PART : snprintf(str, str_size, "Partial JSON"); break;
 	default : snprintf(str, str_size, "Unknown JSON error"); break;
-	};
+	}
+	;
 }
 
 void json_error_arg(char* str, size_t str_size, char* js, jsmntok_t* je, jsmntok_t* ja)
@@ -307,13 +308,13 @@ int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, siz
 }
 
 /**
- * PATCH /api/v1/config 
+ * PATCH /api/v1/config
  */
-static int handler_config_patch(struct mg_connection* conn, void* cbdata) 
+static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 {
 	char msg[128];
 	struct snapraid_state* state = cbdata;
-	int ret;	
+	int ret;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
 	jsmn_parser jp;
 	ssize_t jl;
@@ -345,36 +346,36 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
 					&& parse_scheduled_run(buf, &state->config) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("probe_interval_minutes")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 1440, &state->config.probe_interval_minutes) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.probe_interval_minutes);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.probe_interval_minutes);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("spindown_idle_minutes")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 1440, &state->config.spindown_idle_minutes) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.spindown_idle_minutes);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.spindown_idle_minutes);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("report_differences")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &state->config.report_differences) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.report_differences);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.report_differences);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
@@ -382,62 +383,62 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 				if (json_value(js, &jv[j], 0, 10000, &state->config.suspend_on_deletes) == 0) {
 				} else {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.suspend_on_deletes);
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.suspend_on_deletes);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.scrub_percentage);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_percentage);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("pre_run_script")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.pre_run_script, sizeof(state->config.pre_run_script)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("post_run_script")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.post_run_script, sizeof(state->config.post_run_script)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("log_directory")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.log_directory, sizeof(state->config.log_directory)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("log_retention_days")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 10000, &state->config.log_retention_days) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.log_retention_days);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.log_retention_days);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_enabled")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &state->config.notify_syslog_enabled) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j-1]), state->config.notify_syslog_enabled);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_syslog_enabled);
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
@@ -445,27 +446,27 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
 					&& parse_level(buf, &state->config.notify_syslog_level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_heartbeat_url")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.notify_heartbeat_url, sizeof(state->config.notify_heartbeat_url)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_apprise_url")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.notify_apprise_url, sizeof(state->config.notify_apprise_url)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
@@ -473,18 +474,18 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
 					&& parse_level(buf, &state->config.notify_apprise_level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_email_recipient")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], state->config.notify_email_recipient, sizeof(state->config.notify_email_recipient)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
@@ -492,9 +493,9 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
 					&& parse_level(buf, &state->config.notify_email_level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j-1]), json_token(js, &jv[j]));
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j-1], &jv[j]);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
@@ -524,7 +525,7 @@ bad:
 /**
  * GET /api/v1/config
  */
-static int handler_config_get(struct mg_connection* conn, void* cbdata) 
+static int handler_config_get(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	struct snapraid_config* config = &state->config;
@@ -562,7 +563,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"notify_heartbeat_url\": \"%s\",\n", escape(config->notify_heartbeat_url, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_apprise_url\": \"%s\",\n", escape(config->notify_apprise_url, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_apprise_level\": \"%s\",\n", config_level_str(config->notify_apprise_level));
-	
+
 	ss_jsonf(&s, tab, "\"notify_email_recipient\": \"%s\",\n", escape(config->notify_email_recipient, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_email_level\": \"%s\"\n", config_level_str(config->notify_email_level));
 
@@ -578,13 +579,13 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
-	mg_write(conn, ss_ptr(&s), ss_len(&s)); 
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
 
 	ss_done(&s);
 	return 200;
 }
- 
-static int handler_config(struct mg_connection* conn, void* cbdata) 
+
+static int handler_config(struct mg_connection* conn, void* cbdata)
 {
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	if (strcmp(ri->request_method, "GET") == 0)
@@ -595,9 +596,9 @@ static int handler_config(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * POST /api/v1/sync, /api/v1/probe, /api/v1/up, /api/v1/down, /api/v1/smart 
+ * POST /api/v1/sync, /api/v1/probe, /api/v1/up, /api/v1/down, /api/v1/smart
  */
-static int handler_action(struct mg_connection* conn, void* cbdata) 
+static int handler_action(struct mg_connection* conn, void* cbdata)
 {
 	char msg[128];
 	struct snapraid_state* state = cbdata;
@@ -748,7 +749,7 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
  * GET /api/v1/disks
  * Returns detailed disk status lists
  */
-static int handler_disks(struct mg_connection* conn, void* cbdata) 
+static int handler_disks(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -788,7 +789,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 			ss_jsonf(&s, tab, "\"access_count_idle_duration\": %" PRIi64 ",\n", data->access_count_latest_time - data->access_count_initial_time);
 		}
 		ss_jsonf(&s, tab, "\"devices\": [\n");
-		json_device_list(&s, tab, &data->device_list); 
+		json_device_list(&s, tab, &data->device_list);
 		ss_jsonf(&s, tab, "]\n");
 		--tab;
 		ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
@@ -826,7 +827,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 			if (*split->content_uuid)
 				ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", escape(split->content_uuid, esc_buf));
 			ss_jsonf(&s, tab, "\"devices\": [\n");
-			json_device_list(&s, tab, &split->device_list); 
+			json_device_list(&s, tab, &split->device_list);
 			ss_jsonf(&s, tab, "]\n");
 			--tab;
 			ss_jsonf(&s, tab, "}%s\n", j->next ? "," : "");
@@ -850,7 +851,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
-	mg_write(conn, ss_ptr(&s), ss_len(&s)); 
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
 
 	ss_done(&s);
 
@@ -887,13 +888,13 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 		}
 	} else {
 		switch (state->process.state) {
-		case PROCESS_STATE_SIGINT : 
-			ss_jsonf(&s, tab, "\"status\": \"signaled\",\n"); 
-			ss_jsonf(&s, tab, "\"exit_sig\": %d,\n", state->process.exit_sig); 
+		case PROCESS_STATE_SIGINT :
+			ss_jsonf(&s, tab, "\"status\": \"signaled\",\n");
+			ss_jsonf(&s, tab, "\"exit_sig\": %d,\n", state->process.exit_sig);
 			break;
-		default: 
-			ss_jsonf(&s, tab, "\"status\": \"terminated\",\n"); 
-			ss_jsonf(&s, tab, "\"exit_code\": %d,\n", state->process.exit_code); 
+		default :
+			ss_jsonf(&s, tab, "\"status\": \"terminated\",\n");
+			ss_jsonf(&s, tab, "\"exit_code\": %d,\n", state->process.exit_code);
 			break;
 		}
 	}
@@ -905,8 +906,8 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	if (state->process.state >= PROCESS_STATE_POS) {
 		ss_jsonf(&s, tab, "\"progress\": %d,\n", state->process.progress);
 		ss_jsonf(&s, tab, "\"speed_mbs\": %u,\n", state->process.speed_mbs);
-		ss_jsonf(&s, tab, "\"eta_seconds\": %u,\n", state->process.eta_seconds); 
-		ss_jsonf(&s, tab, "\"cpu_usage\": %u,\n", state->process.cpu_usage); 
+		ss_jsonf(&s, tab, "\"eta_seconds\": %u,\n", state->process.eta_seconds);
+		ss_jsonf(&s, tab, "\"cpu_usage\": %u,\n", state->process.cpu_usage);
 		ss_jsonf(&s, tab, "\"elapsed_seconds\": %u,\n", state->process.elapsed_seconds);
 		ss_jsonf(&s, tab, "\"block_idx\": %u,\n", state->process.block_idx);
 		ss_jsonf(&s, tab, "\"block_done\": %u,\n", state->process.block_done);
@@ -948,7 +949,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
-	mg_write(conn, ss_ptr(&s), ss_len(&s)); 
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
 
 	ss_done(&s);
 
@@ -1030,6 +1031,7 @@ void rest_done(struct snapraid_state* state)
 	mg_stop(state->rest_context);
 
 	mg_exit_library();
-	
+
 	log_msg(LVL_INFO, "web server stopped");
 }
+
