@@ -179,7 +179,8 @@ struct snapraid_message {
 };
 
 struct snapraid_runner {
-	thread_cond_t cond;
+	thread_cond_t startcond;
+	thread_cond_t waitcond;
 	thread_id_t thread_id;
 	int cmd; /**< The latest command run or running */
 	int running; /**< If the command is running or finished */

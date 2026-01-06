@@ -28,9 +28,11 @@ void runner_done(struct snapraid_state* state);
 
 const char* runner_cmd(int cmd);
 
-#define RUNNER_ARG_MAX 32
+#define RUNNER_ARG_MAX 256
 
 int runner(struct snapraid_state* state, int cmd, int argc, char** argv, char* msg, size_t msg_size);
+int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_minutes, char* msg, size_t msg_size);
+void runner_wait(struct snapraid_state* state);
 
 #endif
 

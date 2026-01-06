@@ -798,7 +798,7 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 
 	tag = map[3];
 	val = map[4];
-	
+
 	if (strcmp(tag, "serial") == 0)
 		sncpy(device->serial, sizeof(device->serial), val);
 	else if (strcmp(tag, "model") == 0)
@@ -815,9 +815,9 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		stru64(&device->error, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = SMART_UNASSIGNED;
-		if (strcmp(tag, "standby") == 0 || strcmp(tag, "down") == 0)
+		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)
 			device->power = POWER_STANDBY;
-		else if (strcmp(tag, "active") == 0  || strcmp(tag, "up") == 0)
+		else if (strcmp(val, "active") == 0  || strcmp(val, "up") == 0)
 			device->power = POWER_ACTIVE;
 	} else if (strcmp(tag, "flags") == 0) {
 		device->health = SMART_UNASSIGNED;
@@ -1229,13 +1229,14 @@ static void runner_go(struct snapraid_state* state)
 			time_t now = time(0);
 			struct tm* local = localtime(&now);
 			if (local) {
-				snprintf(log_path, sizeof(log_path), "%s/%s-%04d%02d%02d-%02d%02d%02d.log", state->config.log_directory, runner_cmd(cmd),
+				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", state->config.log_directory,
 					local->tm_year + 1900,
 					local->tm_mon + 1,
 					local->tm_mday,
 					local->tm_hour,
 					local->tm_min,
-					local->tm_sec
+					local->tm_sec,
+					runner_cmd(cmd)
 				);
 			} else {
 				snprintf(log_path, sizeof(log_path), "%s/%s.log", state->config.log_directory, runner_cmd(cmd));
@@ -1313,6 +1314,9 @@ bail:
 			state->process.exit_code = -1;
 		}
 	}
+
+	/* signal the end */
+	thread_cond_signal(&state->runner.waitcond);
 }
 
 static void* runner_thread(void* arg)
@@ -1324,7 +1328,7 @@ static void* runner_thread(void* arg)
 	while (state->daemon_running) {
 		if (state->runner.running)
 			runner_go(state);
-		thread_cond_wait(&state->runner.cond, &state->lock);
+		thread_cond_wait(&state->runner.startcond, &state->lock);
 	}
 
 	state_unlock();
@@ -1334,7 +1338,8 @@ static void* runner_thread(void* arg)
 
 void runner_init(struct snapraid_state* state)
 {
-	thread_cond_init(&state->runner.cond);
+	thread_cond_init(&state->runner.startcond);
+	thread_cond_init(&state->runner.waitcond);
 
 	/* start the runner thread */
 	thread_create(&state->runner.thread_id, runner_thread, state);
@@ -1345,12 +1350,13 @@ void runner_done(struct snapraid_state* state)
 	void* retval;
 
 	/* signal the condition to allow the thread to stop */
-	thread_cond_signal(&state->runner.cond);
+	thread_cond_signal(&state->runner.startcond);
 
 	/* wait for the thread termination */
 	thread_join(state->runner.thread_id, &retval);
 
-	thread_cond_destroy(&state->runner.cond);
+	thread_cond_destroy(&state->runner.startcond);
+	thread_cond_destroy(&state->runner.waitcond);
 }
 
 static const char* snapraid_paths[] = {
@@ -1408,6 +1414,13 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 		return 409;
 	}
 
+	if (!state->daemon_running) {
+		state_unlock();
+		log_msg(LVL_ERROR, "failed to start runner %s for daemon terminating", runner_cmd(cmd));
+		sncpy(msg, msg_size, "Daemon is terminating");
+		return 409;
+	}
+
 	/* setup initial process data */
 	state->runner.argv = calloc_nofail(argc + 1, sizeof(char*));
 	for (i = 0; i < argc; ++i)
@@ -1421,9 +1434,85 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 	tommy_list_init(&state->runner.message_list);
 
 	/* signal the runner thread that there is a task to execute */
-	thread_cond_signal(&state->runner.cond);
+	thread_cond_signal(&state->runner.startcond);
 
 	state_unlock();
 
 	return 200;
+}
+
+void runner_wait(struct snapraid_state* state)
+{
+	state_lock();
+
+	while (state->runner.running) {
+		thread_cond_wait(&state->runner.waitcond, &state->lock);
+	}
+
+	state_unlock();
+}
+
+int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_minutes, char* msg, size_t msg_size)
+{
+	char* argv[RUNNER_ARG_MAX];
+	int argc;
+	int ret;
+
+	argc = 0;
+
+	state_lock();
+
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_data* data = i->data;
+		int active = 0;
+
+		for (tommy_node* k = tommy_list_head(&data->device_list); k; k = k->next) {
+			struct snapraid_device* device = k->data;
+			if (device->power != SMART_UNASSIGNED && device->power != POWER_STANDBY)
+				active = 1;
+		}
+
+		if (argc + 2 < RUNNER_ARG_MAX
+			&& active
+			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) {
+			argv[argc++] = strdup_nofail("-d");
+			argv[argc++] = strdup_nofail(data->name);
+		}
+	}
+
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_parity* parity = i->data;
+		int active = 0;
+
+		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
+			struct snapraid_split* split = j->data;
+			
+			for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
+				struct snapraid_device* device = k->data;
+				if (device->power != SMART_UNASSIGNED && device->power != POWER_STANDBY)
+					active = 1;
+			}
+		}
+
+		if (argc + 2 < RUNNER_ARG_MAX
+			&& active
+			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes) {
+			argv[argc++] = strdup_nofail("-d");
+			argv[argc++] = strdup_nofail(parity->name);
+		}
+	}
+
+	state_unlock();
+
+	if (argc == 0) {
+		sncpy(msg, msg_size, "Nothing to do");
+		ret = 409;
+	} else {
+		ret = runner(state, CMD_DOWN, argc, argv, msg, msg_size);
+	}
+
+	for (int i = 0; i < argc; ++i)
+		free(argv[i]);
+
+	return ret;
 }

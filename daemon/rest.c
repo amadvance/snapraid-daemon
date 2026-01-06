@@ -693,11 +693,10 @@ bad:
 
 static void json_device_list(ss_t* s, int tab, tommy_list* list)
 {
-	tommy_node* i;
 	char esc_buf[ESC_MAX];
 
 	++tab;
-	for (i = tommy_list_head(list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* dev = i->data;
 		ss_jsonf(s, tab, "{\n");
 		++tab;
@@ -753,8 +752,6 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	tommy_node* i;
-	tommy_node* j;
 	int tab = 0;
 	ss_t s;
 	char esc_buf[ESC_MAX];
@@ -769,7 +766,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, 0, "{\n");
 	++tab;
 	ss_jsonf(&s, 1, "\"data_disks\": [\n");
-	for (i = tommy_list_head(&state->data_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_data* data = i->data;
 
 		++tab;
@@ -799,7 +796,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	}
 	ss_jsonf(&s, tab, "],\n");
 	ss_jsonf(&s, tab, "\"parity_disks\": [\n");
-	for (i = tommy_list_head(&state->parity_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_parity* parity = i->data;
 
 		++tab;
@@ -817,7 +814,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		}
 		ss_jsonf(&s, tab, "\"splits\": [\n");
 
-		for (j = tommy_list_head(&parity->split_list); j; j = j->next) {
+		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
 			struct snapraid_split* split = j->data;
 
 			++tab;
@@ -871,7 +868,6 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 	int tab = 0;
 	ss_t s;
 	char esc_buf[ESC_MAX];
-	tommy_node* i;
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -917,7 +913,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "\"size_done\": %" PRIu64 ",\n", state->process.size_done);
 	}
 	ss_jsonf(&s, tab, "\"messages\": [\n");
-	for (i = tommy_list_head(&state->runner.message_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->runner.message_list); i; i = i->next) {
 		struct snapraid_message* message = i->data;
 		++tab;
 		ss_jsonf(&s, tab, "\"%s\"%s\n", escape(message->str, esc_buf), i->next ? "," : "");

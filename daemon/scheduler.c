@@ -28,9 +28,11 @@ void* scheduler_thread(void* arg)
 	struct snapraid_state* state = arg;
 	int last_minute;
 	int64_t last_probe_ts;
+	int64_t last_spindown_ts;
 
 	last_minute = -1;
 	last_probe_ts = 0;
+	last_spindown_ts = 0;
 
 	state_lock();
 
@@ -60,31 +62,43 @@ void* scheduler_thread(void* arg)
 			{
 				state_unlock();
 
-				runner(state, CMD_SYNC, 0, 0, msg, sizeof(msg));
-				// TODO log error
-
-				// TODO scrub
-
-				state_lock();
-			} else if (state->config.probe_interval_minutes > 0
-				&&  mono_now_secs - last_probe_ts >= state->config.probe_interval_minutes * (int64_t)60)
-			{
-				state_unlock();
-
-				last_probe_ts = mono_now_secs;
-				runner(state, CMD_PROBE, 0, 0, msg, sizeof(msg));
-				// TODO log error
+				if (runner(state, CMD_SYNC, 0, 0, msg, sizeof(msg)) == 200) {
+					/* wait for the end of the sync */
+					runner_wait(state);
+					// TODO scrub
+				}
 
 				state_lock();
-			} else if (state->config.spindown_idle_minutes > 0) 
-			{
-				state_unlock();
+			} else {
+				int do_probe = 0;
+				int do_spindown = 0;
+				int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
-				// TODO spindown on inactivity selecting which disk
-				runner(state, CMD_DOWN, 0, 0, msg, sizeof(msg));
-				// TODO log error
+				if ((state->config.probe_interval_minutes > 0 
+					&& mono_now_secs - last_probe_ts >= state->config.probe_interval_minutes * (int64_t)60))
+					do_probe = 1;
 
-				state_lock();
+				if ((state->config.spindown_idle_minutes > 0
+					&& mono_now_secs - last_spindown_ts >= state->config.spindown_idle_minutes * (int64_t)60))
+					do_spindown = 1;
+
+				if (do_probe || do_spindown) {
+					state_unlock();
+
+					last_probe_ts = mono_now_secs;
+					if (runner(state, CMD_PROBE, 0, 0, msg, sizeof(msg)) == 200) {
+						if (spindown_idle_minutes > 0) {
+							/* wait for the end of the probe */
+							runner_wait(state);
+
+							/* spindown inactive */
+							last_spindown_ts = mono_now_secs;
+							runner_spindown_inactive(state, spindown_idle_minutes, msg, sizeof(msg));
+						}
+					}
+
+					state_lock();
+				}
 			}
 		}
 
