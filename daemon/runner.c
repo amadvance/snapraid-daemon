@@ -1197,7 +1197,7 @@ void task_free(struct snapraid_task* task)
 void task_cancel(void* void_task)
 {
 	struct snapraid_task* task = void_task;
-	log_msg_lock(LVL_WARNING, "cancelling task %d %s", task->number, runner_cmd(task->cmd));
+	log_msg_lock(LVL_WARNING, "task %d cancel %s", task->number, runner_cmd(task->cmd));
 	task_free(task);
 }
 
@@ -1220,10 +1220,12 @@ static void runner_go(struct snapraid_state* state)
 	int argc;
 	tommy_node* j;
 	int i;
+	int number;
 
 	sncpy(pre_run_script, sizeof(pre_run_script), state->config.pre_run_script);
 	sncpy(post_run_script, sizeof(post_run_script), state->config.post_run_script);
 	cmd = state->runner.latest->cmd;
+	number = state->runner.latest->number;
 	argc = tommy_list_count(&state->runner.latest->arg_list);
 	argv = calloc_nofail(argc + 1, sizeof(char*));
 	for (i = 0, j = tommy_list_head(&state->runner.latest->arg_list);i < argc; ++i, j = j->next) {
@@ -1238,20 +1240,20 @@ static void runner_go(struct snapraid_state* state)
 
 	if (pre_run_script[0] != 0 && runner_need_script(cmd)) {
 		int script_ret;
-		log_msg(LVL_INFO, "run %s", pre_run_script);
+		log_msg(LVL_INFO, "task %d run %s", number, pre_run_script);
 		script_ret = runner_script(pre_run_script);
 		if (script_ret < 0) {
-			log_msg(LVL_INFO, "end %s with failed run", pre_run_script);
+			log_msg(LVL_INFO, "task %d end %s with failed run", number, pre_run_script);
 			ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
-			log_msg(LVL_INFO, "end %s", pre_run_script);
+			log_msg(LVL_INFO, "task %d end %s", number, pre_run_script);
 		} else if (script_ret < 128) {
-			log_msg(LVL_INFO, "end %s with return code %d", pre_run_script, script_ret);
+			log_msg(LVL_INFO, "task %d end %s with return code %d", number, pre_run_script, script_ret);
 			ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "end %s with signal %s(%d)", pre_run_script, log_signame(script_ret - 128), script_ret - 128);
+			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, pre_run_script, log_signame(script_ret - 128), script_ret - 128);
 			ret = -1;
 			goto bail;
 		}
@@ -1259,7 +1261,7 @@ static void runner_go(struct snapraid_state* state)
 
 	pid = runner_spawn(argv, &f);
 	if (pid < 0) {
-		log_msg(LVL_ERROR, "failed to start runner %s for a failed spawn, errno=%s(%d)", runner_cmd(cmd), strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to start task %d run %s for a failed spawn, errno=%s(%d)", number, runner_cmd(cmd), strerror(errno), errno);
 		ret = -1;
 		/* continue to run the post_run_script */
 	} else {
@@ -1286,44 +1288,44 @@ static void runner_go(struct snapraid_state* state)
 		}
 
 		if (log_path[0])
-			log_msg(LVL_INFO, "run %s (pid %" PRIu64 ") with log %s", runner_cmd(cmd), (uint64_t)pid, log_path);
+			log_msg(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, runner_cmd(cmd), (uint64_t)pid, log_path);
 		else
-			log_msg(LVL_INFO, "run %s (pid %" PRIu64 ")", runner_cmd(cmd), (uint64_t)pid);
+			log_msg(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, runner_cmd(cmd), (uint64_t)pid);
 
 		process_stderr(state, f, log_path);
 
 		/* wait for the child process to terminate */
 		ret = waitpid(pid, &status, 0);
 		if (ret < 0) {
-			log_msg(LVL_INFO, "end %s (pid %" PRIu64 ") with failed run", runner_cmd(cmd), (uint64_t)pid);
+			log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with failed run", number, runner_cmd(cmd), (uint64_t)pid);
 		} else {
 			if (WIFEXITED(status)) {
 				if (WEXITSTATUS(status) == 0)
-					log_msg(LVL_INFO, "end %s (pid %" PRIu64 ")", runner_cmd(cmd), (uint64_t)pid);
+					log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, runner_cmd(cmd), (uint64_t)pid);
 				else
-					log_msg(LVL_INFO, "end %s (pid %" PRIu64 ") with exit code %d", runner_cmd(cmd), (uint64_t)pid, WEXITSTATUS(status));
+					log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with exit code %d", number, runner_cmd(cmd), (uint64_t)pid, WEXITSTATUS(status));
 			} else if (WIFSIGNALED(status)) {
-				log_msg(LVL_INFO, "end %s (pid %" PRIu64 ") with signal %s(%d)", runner_cmd(cmd), (uint64_t)pid, log_signame(WTERMSIG(status)), WTERMSIG(status));
+				log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with signal %s(%d)", number, runner_cmd(cmd), (uint64_t)pid, log_signame(WTERMSIG(status)), WTERMSIG(status));
 			}
 		}
 	}
 
 	if (post_run_script[0] != 0 && runner_need_script(cmd)) {
 		int script_ret;
-		log_msg(LVL_INFO, "run %s", post_run_script);
+		log_msg(LVL_INFO, "task %d run %s", number, post_run_script);
 		script_ret = runner_script(post_run_script);
 		if (script_ret < 0) {
-			log_msg(LVL_INFO, "end %s with failed run", post_run_script);
+			log_msg(LVL_INFO, "task %d end %s with failed run", number, post_run_script);
 			ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
-			log_msg(LVL_INFO, "end %s", post_run_script);
+			log_msg(LVL_INFO, "task %d end %s", number, post_run_script);
 		} else if (script_ret < 128) {
-			log_msg(LVL_INFO, "end %s with exit code %d", post_run_script, script_ret);
+			log_msg(LVL_INFO, "task %d end %s with exit code %d", number, post_run_script, script_ret);
 			ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "end %s with signal %s(%d)", post_run_script, log_signame(script_ret - 128), script_ret - 128);
+			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, post_run_script, log_signame(script_ret - 128), script_ret - 128);
 			ret = -1;
 			goto bail;
 		}
@@ -1425,8 +1427,10 @@ static const char* snapraid_paths[] = {
 	/* Linux & BSD */
 	"/usr/bin/snapraid",
 	"/usr/local/bin/snapraid",
+#ifdef __APPLE__
 	/* macOS (Intel & Apple Silicon) */
 	"/opt/homebrew/bin/snapraid",
+#endif
 	0
 };
 
