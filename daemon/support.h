@@ -85,6 +85,7 @@ static inline void sl_free(tommy_list* list)
 
 void sl_insert_str(tommy_list* list, const char* add);
 void sl_insert_list(tommy_list* list, tommy_list* add);
+void sl_insert_int(tommy_list* list, int add);
 
 /****************************************************************************/
 /* string */

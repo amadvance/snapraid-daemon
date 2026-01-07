@@ -62,11 +62,35 @@ void* scheduler_thread(void* arg)
 			if (current_hour == state->config.schedule_hour
 				&& current_minute == state->config.schedule_minute
 				&& (state->config.schedule_run == RUN_DAILY || (state->config.schedule_run == RUN_WEEKLY && current_wday == state->config.schedule_day_of_week))) {
+				tommy_list sync_arg_list;
+				tommy_list scrub_arg_list;
+				int do_scrub = 0;
+
+				sl_init(&scrub_arg_list);
+				sl_init(&sync_arg_list);
+				if (state->config.sync_prehash) {
+					sl_insert_str(&sync_arg_list, "-h");
+				}
+				if (state->config.sync_force_zero) {
+					sl_insert_str(&sync_arg_list, "-Z");
+				}
+				if (state->config.scrub_percentage > 0) {
+					do_scrub = 1;
+					sl_insert_str(&scrub_arg_list, "-p");
+					sl_insert_int(&scrub_arg_list, state->config.scrub_percentage);
+					sl_insert_str(&scrub_arg_list, "-o");
+					sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
+				}
+
 				state_unlock();
 
-				if (runner(state, CMD_SYNC, 0, msg, sizeof(msg)) == 200) {
-					(void)runner(state, CMD_SCRUB, 0, msg, sizeof(msg)); /* error already logged */
+				if (runner(state, CMD_SYNC, &sync_arg_list, msg, sizeof(msg)) == 200) {
+					if (do_scrub)
+						(void)runner(state, CMD_SCRUB, &scrub_arg_list, msg, sizeof(msg)); /* error already logged */
 				}
+
+				sl_free(&sync_arg_list);
+				sl_free(&scrub_arg_list);
 
 				state_lock();
 				break;

@@ -461,12 +461,26 @@ components:
           description: >
             The time when the daemon starts the maintenance sequence (Sync followed by Scrub). 
             Format: "daily HH:MM" or "weekly <day> HH:MM". If empty, do nothing.
+        sync_prehash:
+          type: boolean
+          example: true
+          description: "In sync use the prehash option to avoid silent errors due faulty hardware on files not yet hashed."
+        sync_force_zero:
+          type: boolean
+          example: true
+          description: "In sync use the force zero option to sync even in presence of file with zero size that were not zero before."
         scrub_percentage:
           type: integer
           minimum: 0
           maximum: 100
           example: 12
           description: "The percentage of the array to check during the scrub portion of the scheduled run. If 0, scrub is skipped."
+        scrub_older_than:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          example: 10
+          description: "Do not scrub blocks newer than the specified number of days. If 0, no age selection on scrub."
         probe_interval_minutes:
           type: integer
           example: 30

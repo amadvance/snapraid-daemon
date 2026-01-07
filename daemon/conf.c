@@ -202,8 +202,23 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "sync_prehash") == 0) {
+				if (parse_int(val, 0, 1, &config->sync_prehash) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "sync_force_zero") == 0) {
+				if (parse_int(val, 0, 1, &config->sync_force_zero) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
 				if (parse_int(val, 0, 100, &config->scrub_percentage) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "scrub_older_than") == 0) {
+				if (parse_int(val, 0, 1000, &config->scrub_older_than) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -435,7 +450,10 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->schedule_hour = 0;
 	config->schedule_minute = 0;
 	config->schedule_day_of_week = 0;
+	config->sync_prehash = 0;
+	config->sync_force_zero = 0;
 	config->scrub_percentage = 0;
+	config->scrub_older_than = 0;
 	config->probe_interval_minutes = 0;
 	config->spindown_idle_minutes = 0;
 	config->report_differences = 0;

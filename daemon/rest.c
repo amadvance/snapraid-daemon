@@ -388,10 +388,37 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("sync_prehash")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.sync_prehash) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_prehash);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("sync_force_zero")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.sync_force_zero) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_force_zero);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_percentage);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("scrub_older_than")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 1000, &state->config.scrub_older_than) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_older_than);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -544,7 +571,10 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	++tab;
 
 	ss_jsonf(&s, tab, "\"scheduled_run\": \"%s\",\n", escape(schedule_buf, esc_buf));
+	ss_jsonf(&s, tab, "\"sync_prehash\": %s,\n", config->sync_prehash ? "true" : "false");
+	ss_jsonf(&s, tab, "\"sync_force_zero\": %s,\n", config->sync_force_zero ? "true" : "false");
 	ss_jsonf(&s, tab, "\"scrub_percentage\": %d,\n", config->scrub_percentage);
+	ss_jsonf(&s, tab, "\"scrub_older_than\": %d,\n", config->scrub_older_than);
 
 	ss_jsonf(&s, tab, "\"probe_interval_minutes\": %d,\n", config->probe_interval_minutes);
 	ss_jsonf(&s, tab, "\"spindown_idle_minutes\": %d,\n", config->spindown_idle_minutes);

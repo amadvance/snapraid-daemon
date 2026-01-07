@@ -228,7 +228,10 @@ struct snapraid_config {
 	int schedule_hour;
 	int schedule_minute;
 	int schedule_day_of_week;
+	int sync_prehash;
+	int sync_force_zero;
 	int scrub_percentage;
+	int scrub_older_than;
 	int probe_interval_minutes;
 	int spindown_idle_minutes;
 	int report_differences;

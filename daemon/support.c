@@ -161,6 +161,15 @@ void sl_insert_list(tommy_list* list, tommy_list* add)
 	}
 }
 
+void sl_insert_int(tommy_list* list, int add)
+{
+	char add_str[16];
+
+	snprintf(add_str, sizeof(add_str), "%d", add);
+
+	sl_insert_str(list, add_str);
+}
+
 /****************************************************************************/
 /* string */
 
