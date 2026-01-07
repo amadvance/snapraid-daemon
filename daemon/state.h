@@ -154,19 +154,10 @@ struct snapraid_parity {
 #define PROCESS_STATE_SIGINT 3
 #define PROCESS_STATE_END 4
 
-#define MESSAGE_MAX 256
-
-struct snapraid_message {
-	char str[MESSAGE_MAX];
-	tommy_node node;
-};
-
 struct snapraid_task {
 	int cmd; /**< The command running */
 	int number; /**< Number of the task. It's an increasing number. */
 	int running; /**< If the command is running or finished */
-	char** argv;
-	int argc;
 	int state; /**< 0 if in preparation, 1 after begin, 2 after the first pos, 3 after the end */
 	unsigned progress; /**< Completion percentage, 0 <= process <= 100 */
 	unsigned eta_seconds; /**< Estimate seconds for the end */
@@ -181,6 +172,7 @@ struct snapraid_task {
 	uint64_t size_done; /**< Number of bytes processed until now */
 	int exit_code; /**< Exit code of SnapRAID */
 	int exit_sig; /**< Signal that terminated SnapRAID */
+	tommy_list arg_list; /**< List of arguments */
 	tommy_list message_list; /**< List of messages */
 	tommy_node node;
 };

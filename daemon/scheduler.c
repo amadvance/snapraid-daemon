@@ -66,8 +66,8 @@ void* scheduler_thread(void* arg)
 			{
 				state_unlock();
 
-				if (runner(state, CMD_SYNC, 0, 0, msg, sizeof(msg)) == 200) {
-					(void)runner(state, CMD_SCRUB, 0, 0, msg, sizeof(msg)); /* error already logged */
+				if (runner(state, CMD_SYNC, 0, msg, sizeof(msg)) == 200) {
+					(void)runner(state, CMD_SCRUB, 0, msg, sizeof(msg)); /* error already logged */
 				}
 
 				state_lock();
@@ -108,7 +108,7 @@ void* scheduler_thread(void* arg)
 				state_unlock();
 
 				last_probe_ts = mono_now_secs;
-				if (runner(state, CMD_PROBE, 0, 0, msg, sizeof(msg)) == 200) {
+				if (runner(state, CMD_PROBE, 0, msg, sizeof(msg)) == 200) {
 					if (spindown_idle_minutes > 0) {
 						/* spindown inactive */
 						last_spindown_ts = mono_now_secs;

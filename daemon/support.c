@@ -143,6 +143,25 @@ int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)
 }
 
 /****************************************************************************/
+/* string list */
+
+void sl_insert_str(tommy_list* list, const char* add)
+{
+	ssize_t len = strlen(add);
+	sn_t* sn = malloc_nofail(sizeof(tommy_node) + len + 1);
+	memcpy(sn->str, add, len + 1);
+	tommy_list_insert_tail(list, &sn->node, sn);
+}
+
+void sl_insert_list(tommy_list* list, tommy_list* add)
+{
+	for(tommy_node* i = tommy_list_head(add); i != 0; i = i->next) {
+		sn_t* sn = i->data;
+		sl_insert_str(list, sn->str);
+	}
+}
+
+/****************************************************************************/
 /* string */
 
 #ifndef HAVE_STRLCPY

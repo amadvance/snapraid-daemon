@@ -901,15 +901,13 @@ void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
-		struct snapraid_message* message = malloc_nofail(sizeof(struct snapraid_message));
 		const char* msg = map[2];
 
 		/* skip initial spaces */
 		while (*msg != 0 && isspace((unsigned char)*msg))
 			++msg;
 
-		sncpy(message->str, sizeof(message->str), msg);
-		tommy_list_insert_tail(&task->message_list, &message->node, message);
+		sl_insert_str(&task->message_list, msg);
 	}
 }
 
@@ -1182,7 +1180,8 @@ static int runner_need_script(int cmd)
 struct snapraid_task* task_alloc(void)
 {
 	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
-	tommy_list_init(&task->message_list);
+	sl_init(&task->arg_list);
+	sl_init(&task->message_list);
 	return task;
 }
 
@@ -1190,10 +1189,8 @@ void task_free(struct snapraid_task* task)
 {
 	if (!task)
 		return;
-	for(int i = 0;i < task->argc; ++i)
-		free(task->argv[i]);
-	free(task->argv);
-	tommy_list_foreach(&task->message_list, free);
+	sl_free(&task->arg_list);
+	sl_free(&task->message_list);
 	free(task);
 }
 
@@ -1220,11 +1217,20 @@ static void runner_go(struct snapraid_state* state)
 	int status;
 	pid_t ret;
 	char** argv;
+	int argc;
+	tommy_node* j;
+	int i;
 
 	sncpy(pre_run_script, sizeof(pre_run_script), state->config.pre_run_script);
 	sncpy(post_run_script, sizeof(post_run_script), state->config.post_run_script);
 	cmd = state->runner.latest->cmd;
-	argv = state->runner.latest->argv;
+	argc = tommy_list_count(&state->runner.latest->arg_list);
+	argv = calloc_nofail(argc + 1, sizeof(char*));
+	for (i = 0, j = tommy_list_head(&state->runner.latest->arg_list);i < argc; ++i, j = j->next) {
+		sn_t* arg = j->data;
+		argv[i] = strdup_nofail(arg->str);
+	}
+	argv[argc] = 0;
 
 	state_unlock();
 
@@ -1326,6 +1332,10 @@ static void runner_go(struct snapraid_state* state)
 bail:
 	if (f != -1)
 		close(f);
+
+	for (i = 0; i < argc; ++i)
+		free(argv[i]);
+	free(argv);
 
 	state_lock();
 
@@ -1430,32 +1440,25 @@ const char* find_snapraid(void)
 	return 0;
 }
 
-int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv, char* msg, size_t msg_size)
+int runner(struct snapraid_state* state, int cmd, tommy_list* arg_list, char* msg, size_t msg_size)
 {
-	struct snapraid_task* task;
-	const char* snapraid;
-	int i;
-
-	snapraid = find_snapraid();
+	const char* snapraid = find_snapraid();
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		return 503;
 	}
 
-	task = task_alloc();
-
+	struct snapraid_task* task = task_alloc();
 	task->cmd = cmd;
-	task->argc = 0;
-	task->argv = calloc_nofail(5 + cmd_argc + 1, sizeof(char*));
-	task->argv[task->argc++] = strdup_nofail(snapraid);
-	task->argv[task->argc++] = strdup_nofail(runner_cmd(cmd));
-	task->argv[task->argc++] = strdup_nofail("--gui");
-	task->argv[task->argc++] = strdup_nofail("--log");
-	task->argv[task->argc++] = strdup_nofail(">&2");
-	for (i = 0; i < cmd_argc; ++i)
-		task->argv[task->argc++] = strdup_nofail(cmd_argv[i]);
-	task->argv[task->argc++] = 0;
+
+	sl_insert_str(&task->arg_list, snapraid);
+	sl_insert_str(&task->arg_list, runner_cmd(cmd));
+	sl_insert_str(&task->arg_list, "--gui");
+	sl_insert_str(&task->arg_list, "--log");
+	sl_insert_str(&task->arg_list, ">&2");
+	if (arg_list)
+		sl_insert_list(&task->arg_list, arg_list);
 
 	state_lock();
 
@@ -1481,11 +1484,10 @@ int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv,
 
 int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg_size)
 {
-	char* argv[RUNNER_ARG_MAX];
-	int argc;
+	tommy_list arg_list;
 	int ret;
 
-	argc = 0;
+	tommy_list_init(&arg_list);
 
 	state_lock();
 
@@ -1501,11 +1503,11 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 				active = 1;
 		}
 
-		if (argc + 2 < RUNNER_ARG_MAX
-			&& active
-			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) {
-			argv[argc++] = strdup_nofail("-d");
-			argv[argc++] = strdup_nofail(data->name);
+		if (active
+			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) 
+		{
+			sl_insert_str(&arg_list, "-d");
+			sl_insert_str(&arg_list, data->name);
 		}
 	}
 
@@ -1523,25 +1525,24 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 			}
 		}
 
-		if (argc + 2 < RUNNER_ARG_MAX
-			&& active
-			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes) {
-			argv[argc++] = strdup_nofail("-d");
-			argv[argc++] = strdup_nofail(parity->name);
+		if (active
+			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes)
+		{
+			sl_insert_str(&arg_list, "-d");
+			sl_insert_str(&arg_list, parity->name);
 		}
 	}
 
 	state_unlock();
 
-	if (argc == 0) {
+	if (tommy_list_empty(&arg_list)) {
 		sncpy(msg, msg_size, "Nothing to do");
 		ret = 200;
 	} else {
-		ret = runner(state, CMD_DOWN, argc, argv, msg, msg_size);
+		ret = runner(state, CMD_DOWN, &arg_list, msg, msg_size);
 	}
 
-	for (int i = 0; i < argc; ++i)
-		free(argv[i]);
+	sl_free(&arg_list);
 
 	return ret;
 }

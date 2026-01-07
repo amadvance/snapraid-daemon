@@ -609,10 +609,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	ssize_t jl;
 	char* js;
 	int jc;
-	char* argv[RUNNER_ARG_MAX];
-	int argc;
+	tommy_list arg_list;
 
-	argc = 0;
+	sl_init(&arg_list);
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
@@ -642,12 +641,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
-					if (json_string_inplace(js, &jv[j], &argv[argc]) == 0) {
-						++argc;
-						if (argc >= RUNNER_ARG_MAX) {
-							snprintf(msg, sizeof(msg), "Too many arguments");
-							goto bad;
-						}
+					char* arg;
+					if (json_string_inplace(js, &jv[j], &arg) == 0) {
+						sl_insert_str(&arg_list, arg);
 					} else {
 						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
 						goto bad;
@@ -661,25 +657,23 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	/* arg terminator */
-	argv[argc] = 0;
-
 	if (strcmp(path, "/api/v1/sync") == 0)
-		ret = runner(state, CMD_SYNC, argc, argv, msg, sizeof(msg));
+		ret = runner(state, CMD_SYNC, &arg_list, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/probe") == 0)
-		ret = runner(state, CMD_PROBE, argc, argv, msg, sizeof(msg));
+		ret = runner(state, CMD_PROBE, &arg_list, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/up") == 0)
-		ret = runner(state, CMD_UP, argc, argv, msg, sizeof(msg));
+		ret = runner(state, CMD_UP, &arg_list, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/down") == 0)
-		ret = runner(state, CMD_DOWN, argc, argv, msg, sizeof(msg));
+		ret = runner(state, CMD_DOWN, &arg_list, msg, sizeof(msg));
 	else if (strcmp(path, "/api/v1/smart") == 0)
-		ret = runner(state, CMD_SMART, argc, argv, msg, sizeof(msg));
+		ret = runner(state, CMD_SMART, &arg_list, msg, sizeof(msg));
 	else {
 		sncpy(msg, sizeof(msg), "Resource not found");
 		ret = 404;
 	}
 
 	free(js);
+	sl_free(&arg_list);
 
 	if (ret >= 200 && ret <= 299)
 		return send_json_success(conn, ret);
@@ -905,7 +899,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	}
 	ss_jsonf(s, tab, "\"messages\": [\n");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
-		struct snapraid_message* message = i->data;
+		sn_t* message = i->data;
 		++tab;
 		ss_jsonf(s, tab, "\"%s\"%s\n", escape(message->str, esc_buf), i->next ? "," : "");
 		--tab;

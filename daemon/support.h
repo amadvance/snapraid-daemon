@@ -18,6 +18,8 @@
 #ifndef __SUPPORT_H
 #define __SUPPORT_H
 
+#include "tommyds/tommylist.h"
+
 /****************************************************************************/
 /* string stream */
 
@@ -62,6 +64,27 @@ static inline ssize_t ss_avail(struct ss* s)
 {
 	return s->size - s->len;
 }
+
+/****************************************************************************/
+/* string list */
+
+typedef struct sn {
+	tommy_node node;
+	char str[];
+} sn_t;
+
+static inline void sl_init(tommy_list* list)
+{
+	tommy_list_init(list);
+}
+
+static inline void sl_free(tommy_list* list)
+{
+	tommy_list_foreach(list, free);
+}
+
+void sl_insert_str(tommy_list* list, const char* add);
+void sl_insert_list(tommy_list* list, tommy_list* add);
 
 /****************************************************************************/
 /* string */

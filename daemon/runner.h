@@ -23,14 +23,12 @@
 /****************************************************************************/
 /* runner */
 
-#define RUNNER_ARG_MAX 256
-
 void runner_init(struct snapraid_state* state);
 void runner_done(struct snapraid_state* state);
 
 const char* runner_cmd(int cmd);
 
-int runner(struct snapraid_state* state, int cmd, int argc, char** argv, char* msg, size_t msg_size);
+int runner(struct snapraid_state* state, int cmd, tommy_list* arg_list, char* msg, size_t msg_size);
 int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg_size);
 int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size);
 
