@@ -869,7 +869,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	} else {
 		switch (task->state) {
 		case PROCESS_STATE_INIT :
-			ss_jsonf(s, tab, "\"status\": \"queued\",\n"); 
+			ss_jsonf(s, tab, "\"status\": \"queued\",\n");
 			break;
 		case PROCESS_STATE_SIGINT :
 			ss_jsonf(s, tab, "\"status\": \"signaled\",\n");
@@ -908,7 +908,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	ss_jsonf(s, tab, "]\n");
 
 	ss_jsonf(s, tab, "\"errors\": [\n");
-#if 0 // TODO	
+#if 0 // TODO
 	for (i = 0; i < 1; i++) { // TODO dummy loop for TaskError items
 		++tab;
 		ss_jsonf(s, tab, "{\n");

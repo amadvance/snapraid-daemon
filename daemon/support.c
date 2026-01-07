@@ -155,7 +155,7 @@ void sl_insert_str(tommy_list* list, const char* add)
 
 void sl_insert_list(tommy_list* list, tommy_list* add)
 {
-	for(tommy_node* i = tommy_list_head(add); i != 0; i = i->next) {
+	for (tommy_node* i = tommy_list_head(add); i != 0; i = i->next) {
 		sn_t* sn = i->data;
 		sl_insert_str(list, sn->str);
 	}

@@ -61,9 +61,7 @@ void* scheduler_thread(void* arg)
 			/* sync and scrub */
 			if (current_hour == state->config.schedule_hour
 				&& current_minute == state->config.schedule_minute
-				&& (state->config.schedule_run == RUN_DAILY
-					|| (state->config.schedule_run == RUN_WEEKLY && current_wday == state->config.schedule_day_of_week))) 
-			{
+				&& (state->config.schedule_run == RUN_DAILY || (state->config.schedule_run == RUN_WEEKLY && current_wday == state->config.schedule_day_of_week))) {
 				state_unlock();
 
 				if (runner(state, CMD_SYNC, 0, msg, sizeof(msg)) == 200) {

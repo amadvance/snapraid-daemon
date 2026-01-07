@@ -1228,7 +1228,7 @@ static void runner_go(struct snapraid_state* state)
 	number = state->runner.latest->number;
 	argc = tommy_list_count(&state->runner.latest->arg_list);
 	argv = calloc_nofail(argc + 1, sizeof(char*));
-	for (i = 0, j = tommy_list_head(&state->runner.latest->arg_list);i < argc; ++i, j = j->next) {
+	for (i = 0, j = tommy_list_head(&state->runner.latest->arg_list); i < argc; ++i, j = j->next) {
 		sn_t* arg = j->data;
 		argv[i] = strdup_nofail(arg->str);
 	}
@@ -1379,8 +1379,7 @@ static void* runner_thread(void* arg)
 	while (1) {
 		while (state->daemon_running /* daemon is still running */
 			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
-			&& !tommy_list_empty(&state->runner.task_list)) /* there is something to run */
-		{
+			&& !tommy_list_empty(&state->runner.task_list)) { /* there is something to run */
 			/* cleanup the latest task */
 			task_free(state->runner.latest);
 
@@ -1508,8 +1507,7 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 		}
 
 		if (active
-			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) 
-		{
+			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) {
 			sl_insert_str(&arg_list, "-d");
 			sl_insert_str(&arg_list, data->name);
 		}
@@ -1530,8 +1528,7 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 		}
 
 		if (active
-			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes)
-		{
+			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes) {
 			sl_insert_str(&arg_list, "-d");
 			sl_insert_str(&arg_list, parity->name);
 		}
@@ -1627,3 +1624,4 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 
 	return 200;
 }
+
