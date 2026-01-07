@@ -55,6 +55,23 @@ void log_msg(int level, const char *fmt, ...)
 	va_end(ap);
 }
 
+void log_msg_lock(int level, const char *fmt, ...)
+{
+	int syslog;
+	struct snapraid_state* state;
+
+	va_list ap;
+	va_start(ap, fmt);
+
+	state = state_ptr();
+	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
+
+	if (syslog)
+		vsyslog(level_map[level], fmt, ap);
+
+	va_end(ap);
+}
+
 void log_done(void)
 {
 	closelog();
@@ -63,12 +80,21 @@ void log_done(void)
 const char* log_signame(int sig)
 {
 	switch (sig) {
-	case SIGTERM : return "SIGTERM";
-	case SIGINT : return "SIGINT";
 	case SIGHUP : return "SIGHUP";
+	case SIGINT : return "SIGINT";
 	case SIGQUIT : return "SIGQUIT";
-	case SIGSEGV : return "SIGSEGV";
+	case SIGILL : return "SIGILL";
+	case SIGTRAP : return "SIGTRAP";
 	case SIGABRT : return "SIGABRT";
+	case SIGBUS : return "SIGBUS";
+	case SIGFPE : return "SIGFPE";
+	case SIGKILL : return "SIGKILL";
+	case SIGUSR1 : return "SIGUSR1";
+	case SIGSEGV : return "SIGSEGV";
+	case SIGUSR2 : return "SIGUSR2";
+	case SIGPIPE : return "SIGPIPE";
+	case SIGALRM : return "SIGALRM";
+	case SIGTERM : return "SIGTERM";
 	}
 
 	return "UNKNOWN";

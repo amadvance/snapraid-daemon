@@ -572,10 +572,9 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	// Standard Response Headers
 	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
 	mg_printf(conn, "Content-Type: application/json\r\n");
-	mg_printf(conn, "Content-Length: %lu\r\n", (unsigned long)ss_len(&s));
+	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
@@ -682,10 +681,10 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	free(js);
 
-	if (ret != 200)
+	if (ret >= 200 && ret <= 299)
+		return send_json_success(conn, ret);
+	else
 		return send_json_error(conn, ret, msg);
-
-	return send_json_success(conn, 200);
 
 bad:
 	free(js);
@@ -847,7 +846,118 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 
 	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
 	mg_printf(conn, "Content-Type: application/json\r\n");
-	mg_printf(conn, "Content-Length: %lu\r\n", ss_len(&s));
+	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
+	mg_printf(conn, "Connection: close\r\n");
+	mg_printf(conn, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+
+	return 200;
+}
+
+static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* next)
+{
+	char esc_buf[ESC_MAX];
+
+	ss_jsons(s, tab, "{\n");
+	++tab;
+	ss_jsonf(s, tab, "\"command\": \"%s\",\n", runner_cmd(task->cmd));
+	if (task->running) {
+		switch (task->state) {
+		case PROCESS_STATE_INIT : ss_jsonf(s, tab, "\"status\": \"initializing\",\n"); break;
+		case PROCESS_STATE_BEGIN : ss_jsonf(s, tab, "\"status\": \"starting\",\n"); break;
+		case PROCESS_STATE_POS : ss_jsonf(s, tab, "\"status\": \"processing\",\n"); break;
+		case PROCESS_STATE_END : ss_jsonf(s, tab, "\"status\": \"finishing\",\n"); break;
+		case PROCESS_STATE_SIGINT : ss_jsonf(s, tab, "\"status\": \"interrupting\",\n"); break;
+		}
+	} else {
+		switch (task->state) {
+		case PROCESS_STATE_INIT :
+			ss_jsonf(s, tab, "\"status\": \"queued\",\n"); 
+			break;
+		case PROCESS_STATE_SIGINT :
+			ss_jsonf(s, tab, "\"status\": \"signaled\",\n");
+			ss_jsonf(s, tab, "\"exit_sig\": %d,\n", task->exit_sig);
+			break;
+		default :
+			ss_jsonf(s, tab, "\"status\": \"terminated\",\n");
+			ss_jsonf(s, tab, "\"exit_code\": %d,\n", task->exit_code);
+			break;
+		}
+	}
+	ss_jsonf(s, tab, "\"number\": \"%d\",\n", task->number);
+	if (task->state >= PROCESS_STATE_BEGIN) {
+		ss_jsonf(s, tab, "\"block_begin\": %u,\n", task->block_begin);
+		ss_jsonf(s, tab, "\"block_end\": %u,\n", task->block_end);
+		ss_jsonf(s, tab, "\"block_count\": %u,\n", task->block_count);
+	}
+	if (task->state >= PROCESS_STATE_POS) {
+		ss_jsonf(s, tab, "\"progress\": %d,\n", task->progress);
+		ss_jsonf(s, tab, "\"speed_mbs\": %u,\n", task->speed_mbs);
+		ss_jsonf(s, tab, "\"eta_seconds\": %u,\n", task->eta_seconds);
+		ss_jsonf(s, tab, "\"cpu_usage\": %u,\n", task->cpu_usage);
+		ss_jsonf(s, tab, "\"elapsed_seconds\": %u,\n", task->elapsed_seconds);
+		ss_jsonf(s, tab, "\"block_idx\": %u,\n", task->block_idx);
+		ss_jsonf(s, tab, "\"block_done\": %u,\n", task->block_done);
+		ss_jsonf(s, tab, "\"size_done\": %" PRIu64 ",\n", task->size_done);
+	}
+	ss_jsonf(s, tab, "\"messages\": [\n");
+	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
+		struct snapraid_message* message = i->data;
+		++tab;
+		ss_jsonf(s, tab, "\"%s\"%s\n", escape(message->str, esc_buf), i->next ? "," : "");
+		--tab;
+	}
+
+	ss_jsonf(s, tab, "]\n");
+
+	ss_jsonf(s, tab, "\"errors\": [\n");
+#if 0 // TODO	
+	for (i = 0; i < 1; i++) { // TODO dummy loop for TaskError items
+		++tab;
+		ss_jsonf(s, tab, "{\n");
+		++tab;
+		ss_jsonf(s, tab, "\"reference_type\": \"file\",\n");
+		ss_jsonf(s, tab, "\"message\": \"checksum error\",\n");
+		ss_jsonf(s, tab, "\"disk_name\": \"d1\",\n");
+		ss_jsonf(s, tab, "\"path\": \"/mnt/d1/data/file.txt\",\n");
+		ss_jsonf(s, tab, "\"block_number\": 123456\n");
+		--tab;
+		ss_jsonf(s, tab, "}\n");
+		--tab;
+	}
+#endif
+	ss_jsonf(s, tab, "],\n");
+	--tab;
+	ss_jsonf(s, tab, "}%s\n", next);
+}
+
+/**
+ * GET /api/v1/task/status
+ */
+static int handler_status(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int tab = 0;
+	ss_t s;
+
+	if (strcmp(ri->request_method, "GET") != 0)
+		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
+
+	struct snapraid_task* task = state->runner.latest;
+	if (!task)
+		return send_json_error(conn, 204, "No task");
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	json_task(&s, tab, task, "");
+
+	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
+	mg_printf(conn, "Content-Type: application/json\r\n");
+	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
@@ -859,93 +969,33 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * GET /api/v1/task/progress
- * Poll current task progress for front-end updates
+ * GET /api/v1/task/queue
  */
-static int handler_progress(struct mg_connection* conn, void* cbdata)
+static int handler_queue(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int tab = 0;
 	ss_t s;
-	char esc_buf[ESC_MAX];
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
-	ss_jsons(&s, tab, "{\n");
-	++tab;
-	ss_jsonf(&s, tab, "\"command\": \"%s\",\n", runner_cmd(state->runner.cmd));
-	if (state->runner.running) {
-		switch (state->process.state) {
-		case PROCESS_STATE_INIT : ss_jsonf(&s, tab, "\"status\": \"initializing\",\n"); break;
-		case PROCESS_STATE_BEGIN : ss_jsonf(&s, tab, "\"status\": \"starting\",\n"); break;
-		case PROCESS_STATE_POS : ss_jsonf(&s, tab, "\"status\": \"processing\",\n"); break;
-		case PROCESS_STATE_END : ss_jsonf(&s, tab, "\"status\": \"finishing\",\n"); break;
-		case PROCESS_STATE_SIGINT : ss_jsonf(&s, tab, "\"status\": \"interrupting\",\n"); break;
-		}
-	} else {
-		switch (state->process.state) {
-		case PROCESS_STATE_SIGINT :
-			ss_jsonf(&s, tab, "\"status\": \"signaled\",\n");
-			ss_jsonf(&s, tab, "\"exit_sig\": %d,\n", state->process.exit_sig);
-			break;
-		default :
-			ss_jsonf(&s, tab, "\"status\": \"terminated\",\n");
-			ss_jsonf(&s, tab, "\"exit_code\": %d,\n", state->process.exit_code);
-			break;
-		}
-	}
-	if (state->process.state >= PROCESS_STATE_BEGIN) {
-		ss_jsonf(&s, tab, "\"block_begin\": %u,\n", state->process.block_begin);
-		ss_jsonf(&s, tab, "\"block_end\": %u,\n", state->process.block_end);
-		ss_jsonf(&s, tab, "\"block_count\": %u,\n", state->process.block_count);
-	}
-	if (state->process.state >= PROCESS_STATE_POS) {
-		ss_jsonf(&s, tab, "\"progress\": %d,\n", state->process.progress);
-		ss_jsonf(&s, tab, "\"speed_mbs\": %u,\n", state->process.speed_mbs);
-		ss_jsonf(&s, tab, "\"eta_seconds\": %u,\n", state->process.eta_seconds);
-		ss_jsonf(&s, tab, "\"cpu_usage\": %u,\n", state->process.cpu_usage);
-		ss_jsonf(&s, tab, "\"elapsed_seconds\": %u,\n", state->process.elapsed_seconds);
-		ss_jsonf(&s, tab, "\"block_idx\": %u,\n", state->process.block_idx);
-		ss_jsonf(&s, tab, "\"block_done\": %u,\n", state->process.block_done);
-		ss_jsonf(&s, tab, "\"size_done\": %" PRIu64 ",\n", state->process.size_done);
-	}
-	ss_jsonf(&s, tab, "\"messages\": [\n");
-	for (tommy_node* i = tommy_list_head(&state->runner.message_list); i; i = i->next) {
-		struct snapraid_message* message = i->data;
+	ss_jsonf(&s, tab, "[\n");
+	for (tommy_node* i = tommy_list_head(&state->runner.task_list); i; i = i->next) {
+		struct snapraid_task* task = i->data;
 		++tab;
-		ss_jsonf(&s, tab, "\"%s\"%s\n", escape(message->str, esc_buf), i->next ? "," : "");
+		json_task(&s, tab, task, i->next ? "," : "");
 		--tab;
 	}
 
 	ss_jsonf(&s, tab, "]\n");
 
-#if 0
-	ss_jsonf(&s, tab, "\"errors\": [\n");
-	for (i = 0; i < 1; i++) { // TODO dummy loop for TaskError items
-		++tab;
-		ss_jsonf(&s, tab, "{\n");
-		++tab;
-		ss_jsonf(&s, tab, "\"reference_type\": \"file\",\n");
-		ss_jsonf(&s, tab, "\"message\": \"checksum error\",\n");
-		ss_jsonf(&s, tab, "\"disk_name\": \"d1\",\n");
-		ss_jsonf(&s, tab, "\"path\": \"/mnt/d1/data/file.txt\",\n");
-		ss_jsonf(&s, tab, "\"block_number\": 123456\n");
-		--tab;
-		ss_jsonf(&s, tab, "}\n");
-		--tab;
-	}
-	ss_jsonf(&s, tab, "],\n");
-#endif
-	--tab;
-	ss_jsonf(&s, tab, "}\n");
-
 	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
 	mg_printf(conn, "Content-Type: application/json\r\n");
-	mg_printf(conn, "Content-Length: %lu\r\n", ss_len(&s));
+	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
 	mg_printf(conn, "Connection: close\r\n");
 	mg_printf(conn, "\r\n");
 
@@ -1014,7 +1064,8 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/down", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/smart", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/status", handler_status, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/queue", handler_queue, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
 

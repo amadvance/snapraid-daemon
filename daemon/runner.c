@@ -838,6 +838,10 @@ void process_attr(struct snapraid_state* state, char** map, size_t mac)
 
 void process_run(struct snapraid_state* state, char** map, size_t mac)
 {
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
 	if (mac < 2)
 		return;
 
@@ -845,46 +849,54 @@ void process_run(struct snapraid_state* state, char** map, size_t mac)
 		if (mac < 5)
 			return;
 
-		state->process.state = PROCESS_STATE_BEGIN;
-		struint(&state->process.block_begin, map[2]);
-		struint(&state->process.block_end, map[3]);
-		struint(&state->process.block_count, map[4]);
+		task->state = PROCESS_STATE_BEGIN;
+		struint(&task->block_begin, map[2]);
+		struint(&task->block_end, map[3]);
+		struint(&task->block_count, map[4]);
 	} else if (strcmp(map[1], "pos") == 0) {
 		if (mac < 10)
 			return;
 
-		state->process.state = PROCESS_STATE_POS;
-		struint(&state->process.block_idx, map[2]);
-		struint(&state->process.block_done, map[3]);
-		stru64(&state->process.size_done, map[4]);
-		struint(&state->process.progress, map[5]);
-		struint(&state->process.eta_seconds, map[6]);
-		struint(&state->process.speed_mbs, map[7]);
-		struint(&state->process.cpu_usage, map[8]);
-		struint(&state->process.elapsed_seconds, map[9]);
+		task->state = PROCESS_STATE_POS;
+		struint(&task->block_idx, map[2]);
+		struint(&task->block_done, map[3]);
+		stru64(&task->size_done, map[4]);
+		struint(&task->progress, map[5]);
+		struint(&task->eta_seconds, map[6]);
+		struint(&task->speed_mbs, map[7]);
+		struint(&task->cpu_usage, map[8]);
+		struint(&task->elapsed_seconds, map[9]);
 	} else if (strcmp(map[1], "end") == 0) {
 		/* if interrupting, ignore the end, and it's reported anyway */
-		if (state->process.state != PROCESS_STATE_SIGINT) {
-			state->process.state = PROCESS_STATE_END;
-			state->process.progress = 100;
-			state->process.eta_seconds = 0;
-			state->process.speed_mbs = 0;
-			state->process.cpu_usage = 0;
+		if (task->state != PROCESS_STATE_SIGINT) {
+			task->state = PROCESS_STATE_END;
+			task->progress = 100;
+			task->eta_seconds = 0;
+			task->speed_mbs = 0;
+			task->cpu_usage = 0;
 		}
 	}
 }
 
 void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 {
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
 	if (mac < 2)
 		return;
 
-	state->process.state = PROCESS_STATE_SIGINT;
-	struint(&state->process.block_idx, map[1]);
+	task->state = PROCESS_STATE_SIGINT;
+	struint(&task->block_idx, map[1]);
 }
 
 void process_msg(struct snapraid_state* state, char** map, size_t mac)
 {
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
 	if (mac < 3)
 		return;
 
@@ -897,7 +909,7 @@ void process_msg(struct snapraid_state* state, char** map, size_t mac)
 			++msg;
 
 		sncpy(message->str, sizeof(message->str), msg);
-		tommy_list_insert_tail(&state->runner.message_list, &message->node, message);
+		tommy_list_insert_tail(&task->message_list, &message->node, message);
 	}
 }
 
@@ -1162,10 +1174,40 @@ static int runner_need_script(int cmd)
 	case CMD_SYNC : return 1;
 	case CMD_SCRUB : return 1;
 	case CMD_FIX : return 1;
-	case CMD_CHECK : return 1;
 	}
 
 	return 0;
+}
+
+struct snapraid_task* task_alloc(void)
+{
+	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
+	tommy_list_init(&task->message_list);
+	return task;
+}
+
+void task_free(struct snapraid_task* task)
+{
+	if (!task)
+		return;
+	for(int i = 0;i < task->argc; ++i)
+		free(task->argv[i]);
+	free(task->argv);
+	tommy_list_foreach(&task->message_list, free);
+	free(task);
+}
+
+void task_cancel(void* void_task)
+{
+	struct snapraid_task* task = void_task;
+	log_msg_lock(LVL_WARNING, "cancelling task %d %s", task->number, runner_cmd(task->cmd));
+	task_free(task);
+}
+
+void task_list_cancel(tommy_list* list)
+{
+	tommy_list_foreach(list, task_cancel);
+	tommy_list_init(list);
 }
 
 static void runner_go(struct snapraid_state* state)
@@ -1178,17 +1220,11 @@ static void runner_go(struct snapraid_state* state)
 	int status;
 	pid_t ret;
 	char** argv;
-	int argc;
-	int i;
 
 	sncpy(pre_run_script, sizeof(pre_run_script), state->config.pre_run_script);
 	sncpy(post_run_script, sizeof(post_run_script), state->config.post_run_script);
-	cmd = state->runner.cmd;
-	argv = state->runner.argv;
-	argc = state->runner.argc;
-
-	state->runner.argv = 0; /* not required, but more clear */
-	state->runner.argc = 0;
+	cmd = state->runner.latest->cmd;
+	argv = state->runner.latest->argv;
 
 	state_unlock();
 
@@ -1253,7 +1289,6 @@ static void runner_go(struct snapraid_state* state)
 		/* wait for the child process to terminate */
 		ret = waitpid(pid, &status, 0);
 		if (ret < 0) {
-			state->process.exit_code = -1;
 			log_msg(LVL_INFO, "end %s (pid %" PRIu64 ") with failed run", runner_cmd(cmd), (uint64_t)pid);
 		} else {
 			if (WIFEXITED(status)) {
@@ -1292,31 +1327,35 @@ bail:
 	if (f != -1)
 		close(f);
 
-	for (i = 0; i < argc; ++i)
-		free(argv[i]);
-	free(argv);
-
 	state_lock();
 
-	state->runner.running = 0;
+	struct snapraid_task* task = state->runner.latest;
+	task->running = 0;
 	if (ret == -1) {
-		state->process.exit_code = -1;
+		task->exit_code = -1;
 	} else {
 		if (WIFEXITED(status)) {
 			/* child's exit(code) or return from main */
-			state->process.exit_code = WEXITSTATUS(status);
+			task->exit_code = WEXITSTATUS(status);
+
+			/* cancel all queued tasks on failure */
+			if (task->exit_code != 0)
+				task_list_cancel(&state->runner.task_list);
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */
-			state->process.exit_sig = WTERMSIG(status);
-			state->process.state = PROCESS_STATE_SIGINT;
+			task->exit_sig = WTERMSIG(status);
+			task->state = PROCESS_STATE_SIGINT;
+
+			/* cancel all queued tasks */
+			task_list_cancel(&state->runner.task_list);
 		} else {
 			/* it should never happen */
-			state->process.exit_code = -1;
+			task->exit_code = -1;
+
+			/* cancel all queued tasks */
+			task_list_cancel(&state->runner.task_list);
 		}
 	}
-
-	/* signal the end */
-	thread_cond_signal(&state->runner.waitcond);
 }
 
 static void* runner_thread(void* arg)
@@ -1325,10 +1364,25 @@ static void* runner_thread(void* arg)
 
 	state_lock();
 
-	while (state->daemon_running) {
-		if (state->runner.running)
+	while (1) {
+		while (state->daemon_running /* daemon is still running */
+			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
+			&& !tommy_list_empty(&state->runner.task_list)) /* there is something to run */
+		{
+			/* cleanup the latest task */
+			task_free(state->runner.latest);
+
+			/* setup a new task to run */
+			state->runner.latest = tommy_list_remove_existing(&state->runner.task_list, tommy_list_head(&state->runner.task_list));
+			state->runner.latest->running = 1;
+
 			runner_go(state);
-		thread_cond_wait(&state->runner.startcond, &state->lock);
+		}
+
+		if (!state->daemon_running)
+			break;
+
+		thread_cond_wait(&state->runner.cond, &state->lock);
 	}
 
 	state_unlock();
@@ -1338,8 +1392,7 @@ static void* runner_thread(void* arg)
 
 void runner_init(struct snapraid_state* state)
 {
-	thread_cond_init(&state->runner.startcond);
-	thread_cond_init(&state->runner.waitcond);
+	thread_cond_init(&state->runner.cond);
 
 	/* start the runner thread */
 	thread_create(&state->runner.thread_id, runner_thread, state);
@@ -1350,13 +1403,12 @@ void runner_done(struct snapraid_state* state)
 	void* retval;
 
 	/* signal the condition to allow the thread to stop */
-	thread_cond_signal(&state->runner.startcond);
+	thread_cond_signal(&state->runner.cond);
 
 	/* wait for the thread termination */
 	thread_join(state->runner.thread_id, &retval);
 
-	thread_cond_destroy(&state->runner.startcond);
-	thread_cond_destroy(&state->runner.waitcond);
+	thread_cond_destroy(&state->runner.cond);
 }
 
 static const char* snapraid_paths[] = {
@@ -1380,79 +1432,54 @@ const char* find_snapraid(void)
 
 int runner(struct snapraid_state* state, int cmd, int cmd_argc, char** cmd_argv, char* msg, size_t msg_size)
 {
-	const char* argv[RUNNER_ARG_MAX];
-	int argc;
+	struct snapraid_task* task;
+	const char* snapraid;
 	int i;
 
-	if (5 + cmd_argc + 1 > RUNNER_ARG_MAX) {
-		log_msg(LVL_ERROR, "failed to start runner %s for too many arguments", runner_cmd(cmd));
-		sncpy(msg, msg_size, "Too Many Arguments in the command");
-		return 400;
-	}
-
-	argc = 0;
-	argv[argc++] = find_snapraid();
-	argv[argc++] = runner_cmd(cmd);
-	argv[argc++] = "--gui";
-	argv[argc++] = "--log";
-	argv[argc++] = ">&2";
-	for ( i = 0; i < cmd_argc; ++i)
-		argv[argc++] = cmd_argv[i];
-
-	if (argv[0] == 0) {
+	snapraid = find_snapraid();
+	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		return 503;
 	}
 
-	state_lock();
+	task = task_alloc();
 
-	if (state->runner.running) {
-		state_unlock();
-		log_msg(LVL_ERROR, "failed to start runner %s for a command already running", runner_cmd(cmd));
-		sncpy(msg, msg_size, "A command is already running");
-		return 409;
-	}
+	task->cmd = cmd;
+	task->argc = 0;
+	task->argv = calloc_nofail(5 + cmd_argc + 1, sizeof(char*));
+	task->argv[task->argc++] = strdup_nofail(snapraid);
+	task->argv[task->argc++] = strdup_nofail(runner_cmd(cmd));
+	task->argv[task->argc++] = strdup_nofail("--gui");
+	task->argv[task->argc++] = strdup_nofail("--log");
+	task->argv[task->argc++] = strdup_nofail(">&2");
+	for (i = 0; i < cmd_argc; ++i)
+		task->argv[task->argc++] = strdup_nofail(cmd_argv[i]);
+	task->argv[task->argc++] = 0;
+
+	state_lock();
 
 	if (!state->daemon_running) {
 		state_unlock();
+		task_free(task);
 		log_msg(LVL_ERROR, "failed to start runner %s for daemon terminating", runner_cmd(cmd));
 		sncpy(msg, msg_size, "Daemon is terminating");
 		return 409;
 	}
 
-	/* setup initial process data */
-	state->runner.argv = calloc_nofail(argc + 1, sizeof(char*));
-	for (i = 0; i < argc; ++i)
-		state->runner.argv[i] = strdup_nofail(argv[i]);
-	state->runner.argv[argc] = 0;
-	state->runner.argc = argc;
-	state->runner.running = 1;
-	state->runner.cmd = cmd;
-	memset(&state->process, 0, sizeof(state->process));
-	tommy_list_foreach(&state->runner.message_list, free);
-	tommy_list_init(&state->runner.message_list);
+	/* insert the task in the queue */
+	task->number = ++state->runner.number_allocator;
+	tommy_list_insert_tail(&state->runner.task_list, &task->node, task);
 
 	/* signal the runner thread that there is a task to execute */
-	thread_cond_signal(&state->runner.startcond);
+	thread_cond_signal(&state->runner.cond);
 
 	state_unlock();
 
-	return 200;
+	return 202;
 }
 
-void runner_wait(struct snapraid_state* state)
-{
-	state_lock();
-
-	while (state->runner.running) {
-		thread_cond_wait(&state->runner.waitcond, &state->lock);
-	}
-
-	state_unlock();
-}
-
-int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_minutes, char* msg, size_t msg_size)
+int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg_size)
 {
 	char* argv[RUNNER_ARG_MAX];
 	int argc;
@@ -1461,6 +1488,8 @@ int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_min
 	argc = 0;
 
 	state_lock();
+
+	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_data* data = i->data;
@@ -1506,7 +1535,7 @@ int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_min
 
 	if (argc == 0) {
 		sncpy(msg, msg_size, "Nothing to do");
-		ret = 409;
+		ret = 200;
 	} else {
 		ret = runner(state, CMD_DOWN, argc, argv, msg, msg_size);
 	}
@@ -1517,3 +1546,79 @@ int runner_spindown_inactive(struct snapraid_state* state, int spindown_idle_min
 	return ret;
 }
 
+/**
+ * Deletes all **regular files** in the specified directory (non-recursively)
+ * that have a modification time older than N days.
+ *
+ * Note:
+ * - This function does **not** recurse into subdirectories.
+ * - It skips "." and ".." entries.
+ * - It only deletes regular files (not directories, symlinks, etc.).
+ * - Uses modification time (st_mtime) for comparison.
+ * - Errors are printed to stderr for visibility.
+ */
+static int delete_old_files(const char* dir_path, int days)
+{
+	DIR* dir;
+	struct dirent* entry;
+	struct stat statbuf;
+	time_t now;
+	int64_t age_seconds;
+
+	dir = opendir(dir_path);
+	if (dir == NULL) {
+		log_msg(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		return -1;
+	}
+
+	time(&now);
+
+	age_seconds = days * (int64_t)24 * 60 * 60;
+
+	while ((entry = readdir(dir)) != NULL) {
+		char full_path[PATH_MAX];
+
+		/* skip . and .. */
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
+
+		/* construct full path */
+		snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+
+		if (stat(full_path, &statbuf) == -1) {
+			log_msg(LVL_ERROR, "failed to stat file %s, errno=%s(%d)", full_path, strerror(errno), errno);
+			continue; /* skip this entry on error */
+		}
+
+		/* delete only regular files */
+		if (!S_ISREG(statbuf.st_mode))
+			continue;
+
+		/* delete only files that are old enough */
+		if (now - statbuf.st_mtime < age_seconds)
+			continue;
+
+		if (unlink(full_path) == -1) {
+			log_msg(LVL_ERROR, "failed to delete file %s, errno=%s(%d)", full_path, strerror(errno), errno);
+			/* continue trying to delete others */
+		}
+	}
+
+	if (closedir(dir) == -1) {
+		log_msg(LVL_ERROR, "failed to close directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+
+int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size)
+{
+	if (delete_old_files(state->config.log_directory, state->config.log_retention_days) != 0) {
+		sncpy(msg, msg_size, "Failed deleting old log files");
+		return 503;
+	}
+
+	return 200;
+}

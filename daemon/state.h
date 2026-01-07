@@ -154,7 +154,19 @@ struct snapraid_parity {
 #define PROCESS_STATE_SIGINT 3
 #define PROCESS_STATE_END 4
 
-struct snapraid_process {
+#define MESSAGE_MAX 256
+
+struct snapraid_message {
+	char str[MESSAGE_MAX];
+	tommy_node node;
+};
+
+struct snapraid_task {
+	int cmd; /**< The command running */
+	int number; /**< Number of the task. It's an increasing number. */
+	int running; /**< If the command is running or finished */
+	char** argv;
+	int argc;
 	int state; /**< 0 if in preparation, 1 after begin, 2 after the first pos, 3 after the end */
 	unsigned progress; /**< Completion percentage, 0 <= process <= 100 */
 	unsigned eta_seconds; /**< Estimate seconds for the end */
@@ -168,25 +180,17 @@ struct snapraid_process {
 	unsigned block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
 	int exit_code; /**< Exit code of SnapRAID */
-	int exit_sig; /**< Signal that termianted SnapRAID */
-};
-
-#define MESSAGE_MAX 256
-
-struct snapraid_message {
-	char str[MESSAGE_MAX];
+	int exit_sig; /**< Signal that terminated SnapRAID */
+	tommy_list message_list; /**< List of messages */
 	tommy_node node;
 };
 
 struct snapraid_runner {
-	thread_cond_t startcond;
-	thread_cond_t waitcond;
+	thread_cond_t cond;
 	thread_id_t thread_id;
-	int cmd; /**< The latest command run or running */
-	int running; /**< If the command is running or finished */
-	char** argv;
-	int argc;
-	tommy_list message_list; /**< List of messages */
+	int number_allocator; /**< Allocator of number of tasks */
+	struct snapraid_task* latest; /**< Task running, or latest one finished */
+	tommy_list task_list; /**< List of task waiting to be executed */
 };
 
 struct snapraid_scheduler {
@@ -262,7 +266,6 @@ struct snapraid_state {
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;
 	struct snapraid_scheduler scheduler;
-	struct snapraid_process process;
 	struct snapraid_global global;
 	struct snapraid_config config;
 	tommy_list data_list;

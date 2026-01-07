@@ -10,64 +10,58 @@ paths:
       summary: Probe the spin status of all disks
       description: >
         Triggers a probe command for all data and parity disks in the array. 
-        The server returns immediately with a 200 status, while the probe
+        The server returns immediately with a 202 status, while the probe
         process continues in the background.
         Updated disk state will be available via the /v1/disks endpoint once
         the task is complete.
       responses:
-        '200':
+        '202':
           description: Probe request accepted and scheduled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResponse'
-        '409':
-          description: Conflict - A SnapRAID task is already running.
 
   /api/v1/up:
     post:
       summary: Spin up all disks
       description: >
         Triggers a spin-up command for all data and parity disks in the array. 
-        The server returns immediately with a 200 status, while the physical 
+        The server returns immediately with a 202 status, while the physical 
         spin-up process continues in the background.
         Updated disk state will be available via the /v1/disks endpoint once
         the task is complete.
       responses:
-        '200':
+        '202':
           description: Spin-up request accepted and scheduled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResponse'
-        '409':
-          description: Conflict - A SnapRAID task is already running.
 
   /api/v1/down:
     post:
       summary: Spin down all disks
       description: >
         Triggers a spin-down command for all data and parity disks in the array. 
-        The server returns immediately with a 200 status, while the physical 
+        The server returns immediately with a 202 status, while the physical 
         spin-down process continues in the background.
         Updated disk state will be available via the /v1/disks endpoint once
         the task is complete.
       responses:
-        '200':
+        '202':
           description: Spin-down request accepted and scheduled.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResponse'
-        '409':
-          description: Conflict - A SnapRAID task is already running.
 
   /api/v1/smart:
     post:
       summary: Refresh SMART data for all disks
       description: >
         Triggers a background refresh of SMART attributes for all disks.
-        The server returns 200 immediately, while the smart gathering
+        The server returns 202 immediately, while the smart gathering
         process continues in the background.
         Updated disk state will be available via the /v1/disks endpoint once
         the task is complete.
@@ -78,15 +72,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResponse'
-        '409':
-          description: Conflict - A SnapRAID task is already running.
 
   /api/v1/sync:
     post:
       summary: Start a sync of the array
       description: >
         Triggers a sync of the array. 
-        The server returns immediately with a 200 status, while the process
+        The server returns immediately with a 202 status, while the process
         continues in the background.
         Updated progress state will be available via the /v1/progress endpoint.
       requestBody:
@@ -103,14 +95,12 @@ paths:
                     type: string
                   example: ["--force-zero", "--force-nocopy"]
       responses:
-        '200':
+        '202':
           description: Sync request accepted and scheduled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResponse'
-        '409':
-          description: Conflict - A SnapRAID task is already running.
 
   /api/v1/disks:
     get:
@@ -139,17 +129,39 @@ paths:
                     items:
                       $ref: '#/components/schemas/ParityDisk'
 
-  /api/v1/progress:
+  /api/v1/status:
     get:
-      summary: Poll current task progress
-      description: Used by the frontend to update progress bars and status indicators.
+      summary: Get current or last task state
+      description: >
+        Returns the state of the currently executing SnapRAID command. 
+        If no command is running, it returns the final state of the 
+        previously completed command. Returns 204 if no history exists.
       responses:
         '200':
-          description: Progress data retrieved successfully
+          description: Task state retrieved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandProgress'
+                $ref: '#/components/schemas/Task'
+        '204':
+          description: System is idle with no previous task history.
+
+  /api/v1/queue:
+    get:
+      summary: List pending tasks
+      description: >
+        Returns a list of tasks currently queued and waiting for execution. 
+        This includes both manually triggered commands and scheduled maintenance 
+        tasks that are lined up behind a currently running process.
+      responses:
+        '200':
+          description: A list of pending tasks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
 
   /api/v1/config:
     get:
@@ -189,23 +201,27 @@ components:
           type: string
           description: "Optional detail about the status or error."
 
-    CommandProgress:
+    Task:
       type: object
       description: "Progress status of the running or latest command. Persists until a new command begins."
       required:
         - command
         - status
+        - number
         - messages
         - errors
       properties:
         command:
           type: string
-          enum: [none, probe, sync, scrub, fix, check, status, up, down, smart]
+          enum: [probe, sync, scrub, fix, check, status, up, down, smart]
           description: "The latest command run or still running."
         status:
           type: string
-          enum: [initializing, starting, processing, finishing, interrupting, terminated, signaled]
+          enum: [queued, initializing, starting, processing, finishing, interrupting, terminated, signaled]
           description: "If the command is running or it has finished."
+        number:
+          type: integer
+          description: "Incremental number of task"
         exit_code:
           type: integer
           description: "Exit code of the SnapRAID process. Present only with status=terminated."

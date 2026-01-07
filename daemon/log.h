@@ -24,6 +24,7 @@
 int log_init(const char* ident);
 void log_done(void);
 void log_msg(int level, const char *fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
+void log_msg_lock(int level, const char *fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
 const char* log_signame(int sig);
 
 #endif

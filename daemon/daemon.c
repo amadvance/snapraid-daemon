@@ -316,11 +316,10 @@ int main(int argc, char *argv[])
 	if (!foreground)
 		unlink(PID_FILE);
 
-	state_done();
-
 	log_msg(LVL_INFO, "daemon stopped");
 
 	log_done();
+	state_done();
 
 	return 0;
 }
@@ -333,7 +332,8 @@ int main(int argc, char *argv[])
    curl -X POST http://localhost:8080/api/v1/down
    curl -X POST http://localhost:8080/api/v1/smart
    curl -X GET http://localhost:8080/api/v1/disks
-   curl -X GET http://localhost:8080/api/v1/progress
+   curl -X GET http://localhost:8080/api/v1/status
+   curl -X GET http://localhost:8080/api/v1/queue
    curl -X GET http://localhost:8080/api/v1/config
  */
 
