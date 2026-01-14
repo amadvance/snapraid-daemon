@@ -149,8 +149,8 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	device->rotational = SMART_UNASSIGNED;
 	device->error = SMART_UNASSIGNED;
 	device->flags = SMART_UNASSIGNED;
-	device->power = SMART_UNASSIGNED;
-	device->health = SMART_UNASSIGNED;
+	device->power = POWER_PENDING;
+	device->health = HEALTH_PENDING;
 	sncpy(device->file, sizeof(device->file), file);
 	tommy_list_insert_tail(list, &device->node, device);
 
@@ -309,13 +309,13 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	else if (strcmp(tag, "error") == 0)
 		stru64(&device->error, val);
 	else if (strcmp(tag, "power") == 0) {
-		device->power = SMART_UNASSIGNED;
+		device->power = POWER_PENDING;
 		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)
 			device->power = POWER_STANDBY;
 		else if (strcmp(val, "active") == 0 || strcmp(val, "up") == 0)
 			device->power = POWER_ACTIVE;
 	} else if (strcmp(tag, "flags") == 0) {
-		device->health = SMART_UNASSIGNED;
+		device->health = HEALTH_PENDING;
 		if (stru64(&device->flags, val) == 0) {
 			if (device->flags & (SMARTCTL_FLAG_FAIL | SMARTCTL_FLAG_PREFAIL))
 				device->health = HEALTH_FAILING;

@@ -407,7 +407,8 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 
 		for (tommy_node* k = tommy_list_head(&data->device_list); k; k = k->next) {
 			struct snapraid_device* device = k->data;
-			if (device->power != SMART_UNASSIGNED && device->power != POWER_STANDBY)
+			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+			if (device->power == POWER_ACTIVE)
 				active = 1;
 		}
 
@@ -427,7 +428,8 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 
 			for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
 				struct snapraid_device* device = k->data;
-				if (device->power != SMART_UNASSIGNED && device->power != POWER_STANDBY)
+				/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+				if (device->power == POWER_ACTIVE)
 					active = 1;
 			}
 		}

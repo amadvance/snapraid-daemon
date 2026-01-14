@@ -479,15 +479,18 @@ components:
           description: "System device path (e.g., /dev/sdb1)"
         health:
           type: string
-          enum: [passed, failing]
+          enum: [passed, failing, pending]
           description: >
             The aggregate SMART health status of the physical device. 
-            'passed' indicates the drive is currently operating within 
-            manufacturer specifications. 'failing' indicates a 
-            predictive failure (pre-failure) condition where the 
-            internal controller has detected an imminent hardware 
-            fault. This is the primary indicator for urgent disk 
-            replacement.
+            
+            * 'passed': The drive is currently operating within manufacturer 
+              specifications.
+            * 'failing': The internal controller has detected an imminent 
+              hardware fault (predictive failure). This is the primary 
+              indicator for urgent disk replacement.
+            * 'pending': Health data is not yet available. This typically 
+              occurs if the disk is in standby mode and the daemon has 
+              refrained from spinning it up to read SMART attributes.
         family:
           type: string
           example: "Western Digital Red"
@@ -552,16 +555,19 @@ components:
           description: "Logical name (e.g., d1, d2)"
         health:
           type: string
-          enum: [passed, failing]
-        description: >
-            The aggregate operational health of the disk. This value is a 
-            composite of two factors: 
-            1. Hardware Health: The physical SMART status of the underlying devices.
-            2. Runtime Reliability: Any detected I/O failures or silent data 
-               corruption (checksum mismatches) encountered during array operations.
-            'passed' indicates a fully reliable disk. 'failing' indicates that 
-            either the hardware has reported a pre-failure condition or the 
-            system has encountered unrecoverable data errors.
+          enum: [passed, failing, pending]
+          description: >
+            The aggregate operational health of the disk. This value is 
+            dynamically derived from:
+            1. The hardware health of the underlying physical devices.
+            2. The 'error_io' counter (communication/transport failures).
+            3. The 'error_data' counter (silent corruption/checksum mismatches).
+            
+            * 'passed': The device status is 'passed' and all error counters are zero.
+            * 'failing': The device status is 'failing' OR any unrecoverable 
+              I/O or data errors have been recorded in the current session.
+            * 'pending': The underlying device health is 'pending' and no 
+              runtime errors have been recorded yet.
         mount_dir:
           type: string
           description: "Filesystem mount point path"

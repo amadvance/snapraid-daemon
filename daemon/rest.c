@@ -275,26 +275,57 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 /****************************************************************************/
 /* data */
 
+static const char* power_name(int power)
+{
+	switch (power) {
+	case POWER_STANDBY : return "standby";
+	case POWER_ACTIVE : return "active";
+	case POWER_PENDING : return "pending";
+	}
+
+	return 0;
+}
+
+static const char* health_name(int health)
+{
+	switch (health) {
+	case HEALTH_PASSED : return "passed";
+	case HEALTH_FAILING : return "failing";
+	case HEALTH_PENDING : return "pending";
+	}
+
+	return 0;
+}
+
 static int health_device_list(tommy_list* list)
 {
+	int health = HEALTH_PASSED;
+
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* device = i->data;
 		if (device->health == HEALTH_FAILING)
 			return HEALTH_FAILING;
+		if (device->health == HEALTH_PENDING)
+			health = HEALTH_PENDING;
 	}
 	
-	return HEALTH_PASSED;
+	return health;
 }
 
 static int health_split_list(tommy_list* list)
 {
+	int health = HEALTH_PASSED;
+
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_split* split = i->data;
-		if (health_device_list(&split->device_list) == HEALTH_FAILING)
+		int device_health = health_device_list(&split->device_list);
+		if (device_health == HEALTH_FAILING)
 			return HEALTH_FAILING;
+		if (device_health == HEALTH_PENDING)
+			health = HEALTH_PENDING;
 	}
 	
-	return HEALTH_PASSED;
+	return health;
 }
 
 static int health_data(struct snapraid_data* data)
@@ -784,16 +815,14 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 		struct snapraid_device* dev = i->data;
 		ss_jsonf(s, tab, "{\n");
 		++tab;
-		if (dev->health != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"health\": \"%s\",\n", dev->health ? "failing" : "passed");
+		ss_jsonf(s, tab, "\"health\": \"%s\",\n", health_name(dev->health));
 		if (*dev->family)
 			ss_jsonf(s, tab, "\"family\": \"%s\",\n", json_esc(dev->family, esc_buf));
 		if (*dev->model)
 			ss_jsonf(s, tab, "\"model\": \"%s\",\n", json_esc(dev->model, esc_buf));
 		if (*dev->serial)
 			ss_jsonf(s, tab, "\"serial\": \"%s\",\n", json_esc(dev->serial, esc_buf));
-		if (dev->power != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"power\": \"%s\",\n", dev->power ? "active" : "standby");
+		ss_jsonf(s, tab, "\"power\": \"%s\",\n", power_name(dev->power));
 		if (dev->size != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"size\": %" PRIu64 ",\n", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
@@ -857,7 +886,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "{\n");
 		++tab;
 		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(data->name, esc_buf));
-		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_data(data) ? "failing" : "passed");
+		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_data(data)));
 		ss_jsonf(&s, tab, "\"mount_dir\": \"%s\",\n", json_esc(data->dir, esc_buf));
 		if (*data->uuid)
 			ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", json_esc(data->uuid, esc_buf));
@@ -890,7 +919,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "{\n");
 		++tab;
 		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(parity->name, esc_buf));
-		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_parity(parity) ? "failing" : "passed");
+		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_parity(parity)));
 		if (parity->content_size != SMART_UNASSIGNED)
 			ss_jsonf(&s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", parity->content_size);
 		if (parity->content_free != SMART_UNASSIGNED)

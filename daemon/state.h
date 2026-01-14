@@ -73,14 +73,16 @@ typedef tommy_list sl_t;
 /**
  * Power mode
  */
-#define POWER_STANDBY 0
+#define POWER_PENDING 0
+#define POWER_STANDBY -1
 #define POWER_ACTIVE 1
 
 /**
  * Health
  */
-#define HEALTH_PASSED 0
-#define HEALTH_FAILING 1
+#define HEALTH_PENDING 0
+#define HEALTH_PASSED 1
+#define HEALTH_FAILING -1
 
 /**
  * Device info entry.
@@ -95,8 +97,8 @@ struct snapraid_device {
 	uint64_t rotational;
 	uint64_t error;
 	uint64_t flags;
-	uint64_t power; /**< POWER mode. */
-	uint64_t health; /**< HEALTH code. */
+	int power; /**< POWER mode. */
+	int health; /**< HEALTH code. */
 	tommy_node node;
 };
 
