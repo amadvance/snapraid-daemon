@@ -451,10 +451,10 @@ components:
         block_idx:
           type: integer
           description: "Current block index position processed. Only in 'processing'"
-        block_done:
+        block_done_bytes:
           type: integer
           description: "Number of blocks processed"
-        size_done:
+        size_done_bytes:
           type: integer
           format: int64
           description: "Size of blocks processed"
@@ -473,6 +473,8 @@ components:
       type: object
       required:
         - device_node
+        - health
+        - power
       properties:
         device_node:
           type: string
@@ -491,6 +493,19 @@ components:
             * 'pending': Health data is not yet available. This typically 
               occurs if the disk is in standby mode and the daemon has 
               refrained from spinning it up to read SMART attributes.
+        power:
+          type: string
+          enum: [active, standby, pending]
+          description: >
+            The current mechanical power state of the physical device.
+            
+            * 'active': The disk is spun up and the platters are rotating at 
+              full speed. The device is ready for immediate I/O.
+            * 'standby': The disk is spun down (low-power mode). The platters 
+              are stationary. Any subsequent I/O will incur a spin-up delay.
+            * 'pending': The power state has not yet been determined. This is 
+              the default state upon daemon startup until the first hardware 
+              probe is performed.
         family:
           type: string
           example: "Western Digital Red"
@@ -503,11 +518,7 @@ components:
           type: string
           example: "WD-WCC7K1XN2L3P"          
           description: "Serial of the disk"
-        power:
-          type: string
-          enum: [active, standby]
-          description: "Current power state of the physical drive"
-        size:
+        size_bytes:
           type: integer
           format: int64
           description: "Size in bytes of the raw device"
@@ -542,14 +553,13 @@ components:
         smart_temperature_celsius:
           type: integer
 
-    DataDisk:
+    BaseDisk:
       type: object
-      required:
-        - name
-        - health
-        - mount_dir
-        - devices
+      required: [name, health, power]
       properties:
+        name:
+          type: string
+          description: "Logical name (e.g., d1, d2, ..., parity, 2-parity, ...)"
         name:
           type: string
           description: "Logical name (e.g., d1, d2)"
@@ -568,15 +578,20 @@ components:
               I/O or data errors have been recorded in the current session.
             * 'pending': The underlying device health is 'pending' and no 
               runtime errors have been recorded yet.
-        mount_dir:
+        power:
           type: string
-          description: "Filesystem mount point path"
-        uuid:
-          type: string
-          description: "Actual UUID of the filesystem containing the mount dir"
-        stored_uuid:
-          type: string
-          description: "Stored UUID of the filesystem containing the mount dir"
+          enum: [active, standby, pending]
+          description: >
+            The logical power state of the disk, mirrored from the underlying 
+            physical device. 
+            
+            * 'active': The disk is spun up. Operations like 'sync' or 'scrub' 
+              on this disk will start immediately.
+            * 'standby': The disk is spun down. Any array operation will 
+              require a 10-15 second spin-up delay before data can be read.
+            * 'pending': The power state is currently unknown. The daemon 
+              is waiting for the next probe or array command to verify if 
+              the disk is spinning.
         allocated_space_bytes:
           type: integer
           format: int64
@@ -626,10 +641,26 @@ components:
             the daemon started. This tracks 'silent' errors where a read 
             was physically successful, but the data failed checksum 
             verification, across all tasks in the current session.
-        devices:
-          type: array
-          items:
-            $ref: '#/components/schemas/Device'
+
+    DataDisk:
+      allOf:
+        - $ref: '#/components/schemas/BaseDisk'
+        - type: object
+          required: [mount_dir, devices]
+          properties:
+            mount_dir:
+              type: string
+              description: "Filesystem mount point path"
+            uuid:
+              type: string
+              description: "Actual UUID of the filesystem containing the mount dir"
+            stored_uuid:
+              type: string
+              description: "Stored UUID of the filesystem containing the mount dir"
+            devices:
+              type: array
+              items:
+                $ref: '#/components/schemas/Device'
 
     ParitySplit:
       type: object
@@ -652,80 +683,15 @@ components:
             $ref: '#/components/schemas/Device'
 
     ParityDisk:
-      type: object
-      required:
-        - name
-        - health
-        - splits
-      properties:
-        name:
-          type: string
-          description: "Logical name (e.g., parity, 2-parity)"
-        health:
-          type: string
-          enum: [passed, failing]
-        description: >
-            The aggregate operational health of the disk. This value is a 
-            composite of two factors: 
-            1. Hardware Health: The physical SMART status of the underlying devices.
-            2. Runtime Reliability: Any detected I/O failures or silent data 
-               corruption (checksum mismatches) encountered during array operations.
-            'passed' indicates a fully reliable disk. 'failing' indicates that 
-            either the hardware has reported a pre-failure condition or the 
-            system has encountered unrecoverable data errors.
-        allocated_space_bytes:
-          type: integer
-          format: int64
-        free_space_bytes:
-          type: integer
-          format: int64
-        access_count:
-          type: integer
-          format: int64
-          example: 1250432
-          description: >
-            The total number of read and write operations processed by the 
-            disk since the last system boot. This value is a cumulative 
-            counter provided by the kernel.
-        access_count_initial_time:
-          type: string
-          format: date-time
-          example: "2026-01-12T08:00:00"
-          description: >
-            The timestamp when the daemon first sampled 'access_count'. 
-            This acts as the reference point for all session-based 
-            activity calculations.
-        access_count_idle_duration:
-          type: integer
-          format: int64
-          example: 3600
-          description: >
-            The number of seconds elapsed since the 'access_count' last 
-            increased. This value measures continuous inactivity and is 
-            used to determine if the disk is a candidate for spin-down 
-            to save power.
-        error_io:
-          type: integer
-          format: int64
-          example: 0
-          description: >
-            The accumulated count of physical Input/Output errors encountered
-            since the daemon started. This tracks hardware-level failures 
-            (disk, cable, or controller) recorded across all tasks executed 
-            during the current session uptime.
-        error_data:
-          type: integer
-          format: int64
-          example: 0
-          description: >
-            The accumulated count of data integrity errors encountered since 
-            the daemon started. This tracks 'silent' errors where a read 
-            was physically successful, but the data failed checksum 
-            verification, across all tasks in the current session.
-        splits:
-          type: array
-          items:
-            $ref: '#/components/schemas/ParitySplit'
+      allOf:
+        - $ref: '#/components/schemas/BaseDisk'
+        - type: object
+          required: [splits]
+          properties:
+            splits:
+              type: array
+              items:
+                $ref: '#/components/schemas/ParitySplit'
 
     Config:
       type: object
@@ -859,10 +825,10 @@ components:
           type: string
           example: "/var/snapraid/snapraid.content"
           description: "Path to the primary content file (the database of file hashes)."
-        blocksize:
+        block_size_bytes:
           type: integer
-          example: 256
-          description: "Array block size in KiB. Higher values improve performance but increase parity overhead."
+          example: 262144
+          description: "Array block size in bytes. Note that it's always a power of 2."
         last_time:
           type: string
           format: date-time

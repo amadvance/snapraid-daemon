@@ -824,7 +824,7 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"serial\": \"%s\",\n", json_esc(dev->serial, esc_buf));
 		ss_jsonf(s, tab, "\"power\": \"%s\",\n", power_name(dev->power));
 		if (dev->size != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"size\": %" PRIu64 ",\n", dev->size);
+			ss_jsonf(s, tab, "\"size_bytes\": %" PRIu64 ",\n", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"rotational\": %" PRIu64 ",\n", dev->rotational);
 		if (dev->error != SMART_UNASSIGNED)
@@ -1023,8 +1023,8 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 			ss_jsonf(s, tab, "\"cpu_usage\": %u,\n", task->cpu_usage);
 			ss_jsonf(s, tab, "\"elapsed_seconds\": %u,\n", task->elapsed_seconds);
 			ss_jsonf(s, tab, "\"block_idx\": %u,\n", task->block_idx);
-			ss_jsonf(s, tab, "\"block_done\": %u,\n", task->block_done);
-			ss_jsonf(s, tab, "\"size_done\": %" PRIu64 ",\n", task->size_done);
+			ss_jsonf(s, tab, "\"block_done_bytes\": %u,\n", task->block_done);
+			ss_jsonf(s, tab, "\"size_done_bytes\": %" PRIu64 ",\n", task->size_done);
 			break;
 		}
 	}
@@ -1176,7 +1176,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	if (*global->version) {
 		ss_jsonf(&s, tab, "\"engine_version\": \"%s\",\n", global->version);
 		ss_jsonf(&s, tab, "\"conf\": \"%s\",\n", global->conf);
-		ss_jsonf(&s, tab, "\"blocksize\": %d,\n", global->blocksize / 1024);
+		ss_jsonf(&s, tab, "\"block_size_bytes\": %d,\n", global->blocksize);
 		if (*global->content)
 			ss_jsonf(&s, tab, "\"content\": \"%s\",\n", global->content);
 		if (global->last_time)
