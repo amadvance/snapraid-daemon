@@ -190,6 +190,14 @@ void sl_insert_int(sl_t* list, int add)
 	sl_insert_str(list, add_str);
 }
 
+int sl_compare(const void* void_a, const void* void_b)
+{
+	const sn_t* a = void_a;
+	const sn_t* b = void_b;
+
+	return strcmp(a->str, b->str);
+}
+
 /****************************************************************************/
 /* string */
 

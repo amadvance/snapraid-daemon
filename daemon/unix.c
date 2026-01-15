@@ -239,6 +239,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	int fd;
 	struct stat st;
 	pid_t pid;
+	int ret;
 	char resolved_path[PATH_MAX];
 	char dir_path[PATH_MAX];
 	int status;
@@ -445,7 +446,11 @@ int os_script(const char* script_path, const char* run_as_user)
 	/* parent process */
 	close(fd);
 
-	if (waitpid(pid, &status, 0) == -1) {
+	do {
+		ret = waitpid(pid, &status, 0);
+	} while (ret == -1 && errno == EINTR);
+
+	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed waitpid for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		return -1;
 	}
@@ -478,6 +483,7 @@ int os_script(const char* script_path, const char* run_as_user)
 int os_command(const char* command, const char* target_user, const char* stdin_text)
 {
 	pid_t pid;
+	int ret;
 	int status;
 	int pipe_fds[2] = { -1, -1 };
 	struct timespec start_ts, stop_ts;
@@ -588,7 +594,11 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 		close(pipe_fds[1]);
 	}
 
-	if (waitpid(pid, &status, 0) == -1) {
+	do {
+		ret = waitpid(pid, &status, 0);
+	} while (ret == -1 && errno == EINTR);
+
+	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed waitpid for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		return -1;
 	}

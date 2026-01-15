@@ -30,8 +30,8 @@
 #define tommy_calloc calloc_nofail
 #define tommy_free free
 
-#include "cmdline/portable.h"
-#include "cmdline/support.h" /* for malloc/calloc_nofail() */
+#include "daemon/portable.h"
+#include "daemon/support.h" /* for malloc/calloc_nofail() */
 
 #include "tommyhash.c"
 #include "tommylist.c"

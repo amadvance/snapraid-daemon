@@ -17,8 +17,10 @@ snapraidd_SOURCES = \
 	daemon/rest.c \
 	daemon/conf.c \
 	daemon/log.c \
+	daemon/elem.c \
 	daemon/unix.c \
-	civetweb/civetweb.c
+	civetweb/civetweb.c \
+	tommyds/tommy.c
 
 noinst_HEADERS = \
 	tommyds/tommychain.h \
@@ -46,6 +48,7 @@ noinst_HEADERS = \
 	daemon/rest.h \
 	daemon/conf.h \
 	daemon/log.h \
+	daemon/elem.h \
 	snapraidd.yaml \
 	snapraidd.service \
 	snapraidd.conf

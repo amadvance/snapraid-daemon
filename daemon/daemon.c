@@ -24,6 +24,7 @@
 #include "scheduler.h"
 #include "conf.h"
 #include "log.h"
+#include "parser.h"
 #include "daemon.h"
 
 #define PID_FILE "/var/run/snapraidd.pid"
@@ -174,6 +175,11 @@ int main(int argc, char *argv[])
 	 * Create worker threads while signals are still BLOCKED
 	 */
 	runner_init(state_ptr());
+	
+	/**
+	 * Parse existing log files
+	 */
+	parse_past_log(state_ptr());
 
 	/*
 	 * Load initial info into the state

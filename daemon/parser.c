@@ -21,7 +21,8 @@
 #include "support.h"
 #include "log.h"
 #include "daemon.h"
-#include "runner.h"
+#include "elem.h"
+#include "parser.h"
 
 /**
  * Check if the passed name is a parity
@@ -588,44 +589,19 @@ static void process_version(struct snapraid_state* state, char** map, size_t mac
 
 static void process_blocksize(struct snapraid_state* state, char** map, size_t mac)
 {
-	const char* s;
-	char* e;
-	int blocksize;
-
 	if (mac < 2)
 		return;
 
-	s = map[1];
-
-	if (!isdigit((unsigned char)*s))
-		return;
-
-	blocksize = strtol(s, &e, 10);
-	if (e == s || *e != 0)
-		return;
-
-	state->global.blocksize = blocksize;
+	strint(&state->global.blocksize, map[1]);
 }
 
 static void process_unixtime(struct snapraid_state* state, char** map, size_t mac)
 {
-	const char* s;
-	char* e;
-	int64_t last_time;
-
 	if (mac < 2)
 		return;
 
-	s = map[1];
-
-	if (!isdigit((unsigned char)*s))
+	if (stri64(&state->global.last_time, map[1]) != 0)
 		return;
-
-	last_time = strtoll(s, &e, 10);
-	if (e == s || *e != 0)
-		return;
-
-	state->global.last_time = last_time;
 }
 
 static void process_command(struct snapraid_state* state, char** map, size_t mac)
@@ -634,6 +610,35 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 		return;
 
 	sncpy(state->global.last_cmd, sizeof(state->global.last_cmd), map[1]);
+}
+
+static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
+	if (mac < 3)
+		return;
+
+	const char* tag = map[1];
+	const char* arg = map[2];
+
+	if (strcmp(tag, "start") == 0) {
+		stri64(&task->unix_start_time, arg);
+	} else if (strcmp(tag, "end") == 0) {
+		stri64(&task->unix_end_time, arg);
+	} else if (strcmp(tag, "scheduled") == 0) {
+		stri64(&task->unix_queue_time, arg);
+	} else if (strcmp(tag, "command") == 0) {
+		task->cmd = command_parse(arg);
+	} else if (strcmp(tag, "term") == 0) {
+		task->state = PROCESS_STATE_TERM;
+		strint(&task->exit_code, arg);
+	} else if (strcmp(tag, "signal") == 0) {
+		task->state = PROCESS_STATE_SIGNAL;
+		strint(&task->exit_sig, arg);
+	}
 }
 
 static void process_hash_summary(struct snapraid_state* state, char** map, size_t mac)
@@ -800,13 +805,17 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_outofparity(state, map, mac);
 		state_unlock();
+	} else if (strcmp(cmd, "daemon") == 0) {
+		state_lock();
+		process_daemon(state, map, mac);
+		state_unlock();
 	}
 }
 
 #define RUN_INPUT_MAX 4096
 #define RUN_FIELD_MAX 64
 
-void parse_log(struct snapraid_state* state, int f, const char* cat_log_path)
+void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path)
 {
 	char buf[RUN_INPUT_MAX];
 	char line[RUN_INPUT_MAX];
@@ -814,14 +823,6 @@ void parse_log(struct snapraid_state* state, int f, const char* cat_log_path)
 	size_t len = 0;
 	size_t mac = 0;
 	int escape = 0;
-	FILE* log_f = 0;
-
-	if (cat_log_path[0] != 0) {
-		log_f = fopen(cat_log_path, "wte");
-		if (log_f == 0) {
-			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", cat_log_path, strerror(errno), errno);
-		}
-	}
 
 	map[mac++] = line;
 
@@ -832,7 +833,7 @@ void parse_log(struct snapraid_state* state, int f, const char* cat_log_path)
 
 			if (log_f) {
 				if (fwrite(buf, n, 1, log_f) != 1) {
-					log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", cat_log_path, strerror(errno), errno);
+					log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 				}
 			}
 
@@ -893,11 +894,127 @@ void parse_log(struct snapraid_state* state, int f, const char* cat_log_path)
 			}
 		}
 	}
+}
 
+int parse_timestamp(const char *name, time_t* out)
+{
+	int Y, M, D, h, m, s;
+	char dash;
 
-	if (log_f) {
-		if (fclose(log_f) != 0) {
-			log_msg(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", cat_log_path, strerror(errno), errno);
-		}
+	/* expect: YYYYMMDD-HHMMSS-* */
+	if (sscanf(name, "%4d%2d%2d-%2d%2d%2d%c", &Y, &M, &D, &h, &m, &s, &dash) != 7)
+		return -1;
+
+	if (dash != '-')
+		return -1;
+
+	/* basic range checks */
+	if (Y < 1970
+		|| M < 1 || M > 12
+		|| D < 1 || D > 31
+		|| h < 0 || h > 23
+		|| m < 0 || m > 59
+		|| s < 0 || s > 59) /* in POSIX and Windows s is never 60, even for leap seconds */
+		return -1;
+
+	struct tm tm = { 0 };
+	tm.tm_year = Y - 1900;
+	tm.tm_mon  = M - 1;
+	tm.tm_mday = D;
+	tm.tm_hour = h;
+	tm.tm_min  = m;
+	tm.tm_sec  = s;
+
+	/* force local time interpretation, let libc resolve DST */
+	tm.tm_isdst = -1;
+
+	*out = mktime(&tm);
+
+	if (*out == (time_t)-1)
+		return -1;
+
+	return 0;
+}
+
+int parse_past_log(struct snapraid_state* state)
+{
+	char* log_directory = state->config.log_directory;
+	int log_retention_days = state->config.log_retention_days;
+	sl_t log_list;
+
+	if (*log_directory == 0)
+		return 0;
+
+	DIR* dir = opendir(log_directory);
+	if (!dir) {
+		log_msg(LVL_WARNING, "failed to open log directory %s, errno=%s(%d)", log_directory, strerror(errno), errno);
+		return -1;
 	}
+
+	/* read only no more than 30 days of logs */
+	if (log_retention_days == 0)
+		log_retention_days = 30;
+	else if (log_retention_days > 30)
+		log_retention_days = 30;
+
+	time_t now = time(0);
+	time_t cutoff_seconds = now - log_retention_days * (int64_t)24 * 60 * 60;
+
+	sl_init(&log_list);
+	struct dirent *ent;
+	while ((ent = readdir(dir)) != 0) {
+		if (ent->d_name[0] == '.')
+			continue;
+		if (ent->d_type != DT_REG)
+			continue;
+
+		/* only files matching the pattern */
+		time_t ntime;
+		if (parse_timestamp(ent->d_name, &ntime) != 0)
+			continue;
+
+		/* only files that are recent enough */
+		if (ntime < cutoff_seconds)
+			continue;
+
+		sl_insert_str(&log_list, ent->d_name);
+	}
+
+	closedir(dir);
+
+	/* sort alphabetically */
+	tommy_list_sort(&log_list, sl_compare);
+
+	/* read them all */
+	for (tommy_node* i = tommy_list_head(&log_list); i; i = i->next) {
+		char path[PATH_MAX];
+		sn_t* sn = i->data;
+
+		snprintf(path, sizeof(path), "%s/%s", log_directory, sn->str);
+
+		int f = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+		if (f == -1) {
+			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", log_directory, strerror(errno), errno);
+			continue;
+		}
+
+		/* setup a task */
+		struct snapraid_task* task = task_alloc();
+		task->number = ++state->runner.number_allocator;
+		state->runner.latest = task;
+
+		parse_log(state, f, 0, 0);
+		
+		/* move it to the history */
+		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
+			task->state = PROCESS_STATE_TERM;
+		tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
+		state->runner.latest = 0;
+
+		close(f);
+	}
+
+	sl_free(&log_list);
+
+	return 0;
 }

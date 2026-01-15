@@ -142,7 +142,6 @@ struct snapraid_parity {
 	tommy_node node;
 };
 
-
 #define CMD_PROBE 1
 #define CMD_UP 2
 #define CMD_DOWN 3
@@ -150,10 +149,12 @@ struct snapraid_parity {
 #define CMD_STATUS 5
 #define CMD_LIST 6
 #define CMD_DIFF 7
-#define CMD_SYNC 8
-#define CMD_SCRUB 9
-#define CMD_FIX 10
-#define CMD_CHECK 11
+#define CMD_DUP 8
+#define CMD_DEVICES 9
+#define CMD_SYNC 10
+#define CMD_SCRUB 11
+#define CMD_FIX 12
+#define CMD_CHECK 13
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */

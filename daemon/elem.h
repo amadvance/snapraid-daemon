@@ -15,32 +15,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __PARSER_H
-#define __PARSER_H
+#ifndef __ELEM_H
+#define __ELEM_H
 
 #include "state.h"
 
 /****************************************************************************/
-/* parser */
+/* command */
 
 /**
- * Parse SnapRAID log file and update state accordingly.
- * @param state Current snapraid state
- * @param f File descriptor of log file
- * @param cat_log_path Path to concatenated log file
+ * Parse a command str
+ * @return One of CMD_* or 0 if not found
  */
-void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path);
+int command_parse(const char* str);
+
+const char* command_name(int cmd);
+
+/****************************************************************************/
+/* task */
+
+struct snapraid_task* task_alloc(void);
+
+void task_free(struct snapraid_task* task);
 
 /**
- * Parse a timestamp from a file name in the format YYMMDD-HHMMSS-*
- * @return 0 on success, -1 on error
+ * Move all the task in the history list
  */
-int parse_timestamp(const char* name, time_t* out);
-
-/**
- * Parse past log files to populate the history
- * @return 0 on success, -1 on error
- */
-int parse_past_log(struct snapraid_state* state);
+void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list);
 
 #endif
+

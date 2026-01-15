@@ -22,6 +22,7 @@
 #include "runner.h"
 #include "conf.h"
 #include "log.h"
+#include "elem.h"
 #include "rest.h"
 
 /****************************************************************************/
@@ -977,7 +978,8 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	ss_jsons(s, tab, "{\n");
 	++tab;
 	ss_jsonf(s, tab, "\"number\": %d,\n", task->number);
-	ss_jsonf(s, tab, "\"command\": \"%s\",\n", runner_cmd(task->cmd));
+	if (task->cmd)
+		ss_jsonf(s, tab, "\"command\": \"%s\",\n", command_name(task->cmd));
 	if (task->running) {
 		switch (task->state) {
 		case PROCESS_STATE_START : ss_jsonf(s, tab, "\"status\": \"starting\",\n"); break;
@@ -1003,7 +1005,8 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 			break;
 		}
 	}
-	ss_json_iso8601(s, tab, "\"scheduled_at\": \"%s\",\n", task->unix_queue_time);
+	if (task->unix_queue_time)
+		ss_json_iso8601(s, tab, "\"scheduled_at\": \"%s\",\n", task->unix_queue_time);
 	if (task->unix_start_time != 0)
 		ss_json_iso8601(s, tab, "\"started_at\": \"%s\",\n", task->unix_start_time);
 	if (task->unix_end_time != 0)

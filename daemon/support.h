@@ -174,6 +174,11 @@ void sl_insert_list(sl_t* list, sl_t* add);
  */
 void sl_insert_int(sl_t* list, int add);
 
+/**
+ * Compare alphabetically two string nodes
+ **/
+int sl_compare(const void* void_a, const void* void_b);
+
 /****************************************************************************/
 /* string */
 
