@@ -172,6 +172,23 @@ static struct snapraid_device* find_device(struct snapraid_state* state, char* n
 	}
 }
 
+/**
+ * Clear the error accumulators of all the disk.
+ */
+static void clear_disk_accumulator(struct snapraid_state* state)
+{
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_data* data = i->data;
+		data->error_io = 0;
+		data->error_data = 0;
+	}
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_parity* parity = i->data;
+		parity->error_io = 0;
+		parity->error_data = 0;
+	}
+}
+
 static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 {
 	uint64_t access_count;
@@ -279,21 +296,75 @@ static void process_content_allocation(struct snapraid_state* state, char** map,
 	}
 }
 
+static void process_content_info(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
+	if (mac < 3)
+		return;
+
+	const char* tag = map[1];
+	const char* val = map[2];
+
+	if (strcmp(tag, "file") == 0) {
+		stru64(&state->global.file_total, val);
+	} else if (strcmp(tag, "block_bad") == 0) {
+		uint64_t block_bad;
+		if (stru64(&block_bad, val) == 0) {
+			if (block_bad == 0) {
+				/* if status report no stored error, clear the disk error accumulators */
+				clear_disk_accumulator(state);
+			} else {
+				task->block_bad = block_bad;
+			}
+			state->global.block_bad = block_bad;
+		}
+	} else if (strcmp(tag, "block_rehash") == 0) {
+		stru64(&state->global.block_rehash, val);
+	} else if (strcmp(tag, "block") == 0) {
+		stru64(&state->global.block_total, val);
+
+	}
+}
+
+static void process_content_write(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
+
+	(void)map;
+	(void)mac;
+
+	if (task->cmd == CMD_SYNC) {
+		/** 
+		 * When content is written in sync, it updates the content to the present state
+		 * Note that instead a content written in scrub doesn't update its state.
+		 */
+		state->global.diff_equal = 0;
+		state->global.diff_added = 0;
+		state->global.diff_removed = 0;
+		state->global.diff_updated = 0;
+		state->global.diff_moved = 0;
+		state->global.diff_copied = 0;
+		state->global.diff_restored = 0;
+	}
+}
+
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
-	const char* tag;
-	const char* val;
-	struct snapraid_device* device;
-
 	if (mac < 5)
 		return;
 	if (map[2][0] == 0) /* ignore if no disk name is provided */
 		return;
 
-	device = find_device(state, map[2], map[1]);
+	struct snapraid_device* device = find_device(state, map[2], map[1]);
 
-	tag = map[3];
-	val = map[4];
+	const char* tag = map[3];
+	const char* val = map[4];
 
 	if (strcmp(tag, "serial") == 0)
 		sncpy(device->serial, sizeof(device->serial), val);
@@ -424,6 +495,8 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 		++msg;
 
 	sl_insert_str(&task->error_list, msg);
+
+	/* the task error_io and error_data will be gathered by the final summary tag */
 
 	if (strcmp(map[0], "error_io") == 0) {
 		struct snapraid_data* data = find_data(&state->data_list, map[2]);
@@ -592,7 +665,7 @@ static void process_blocksize(struct snapraid_state* state, char** map, size_t m
 	if (mac < 2)
 		return;
 
-	strint(&state->global.blocksize, map[1]);
+	struint(&state->global.blocksize, map[1]);
 }
 
 static void process_unixtime(struct snapraid_state* state, char** map, size_t mac)
@@ -622,22 +695,22 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	const char* tag = map[1];
-	const char* arg = map[2];
+	const char* val = map[2];
 
 	if (strcmp(tag, "start") == 0) {
-		stri64(&task->unix_start_time, arg);
+		stri64(&task->unix_start_time, val);
 	} else if (strcmp(tag, "end") == 0) {
-		stri64(&task->unix_end_time, arg);
+		stri64(&task->unix_end_time, val);
 	} else if (strcmp(tag, "scheduled") == 0) {
-		stri64(&task->unix_queue_time, arg);
+		stri64(&task->unix_queue_time, val);
 	} else if (strcmp(tag, "command") == 0) {
-		task->cmd = command_parse(arg);
+		task->cmd = command_parse(val);
 	} else if (strcmp(tag, "term") == 0) {
 		task->state = PROCESS_STATE_TERM;
-		strint(&task->exit_code, arg);
+		strint(&task->exit_code, val);
 	} else if (strcmp(tag, "signal") == 0) {
 		task->state = PROCESS_STATE_SIGNAL;
-		strint(&task->exit_sig, arg);
+		strint(&task->exit_sig, val);
 	}
 }
 
@@ -664,37 +737,52 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	if (mac < 3)
 		return;
 
-	if (strcmp(map[1], "equal") == 0)
-		stru64(&state->global.diff_equal, map[2]);
-	else if (strcmp(map[1], "added") == 0)
-		stru64(&state->global.diff_added, map[2]);
-	else if (strcmp(map[1], "removed") == 0)
-		stru64(&state->global.diff_removed, map[2]);
-	else if (strcmp(map[1], "updated") == 0)
-		stru64(&state->global.diff_updated, map[2]);
-	else if (strcmp(map[1], "moved") == 0)
-		stru64(&state->global.diff_moved, map[2]);
-	else if (strcmp(map[1], "copied") == 0)
-		stru64(&state->global.diff_copied, map[2]);
-	else if (strcmp(map[1], "restored") == 0)
-		stru64(&state->global.diff_restored, map[2]);
-	else if (strcmp(map[1], "error_file") == 0)
-		stru64(&task->error_alert, map[2]);
-	else if (strcmp(map[1], "error_io") == 0)
-		stru64(&task->error_io, map[2]);
-	else if (strcmp(map[1], "error_data") == 0)
-		stru64(&task->error_data, map[2]);
-	else if (strcmp(map[1], "exit") == 0) {
+	const char* tag = map[1];
+	const char* arg = map[2];
+
+	/* diff */
+	if (task->cmd == CMD_DIFF) {
+		if (strcmp(tag, "equal") == 0)
+			stru64(&state->global.diff_equal, arg);
+		else if (strcmp(tag, "added") == 0)
+			stru64(&state->global.diff_added, arg);
+		else if (strcmp(tag, "removed") == 0)
+			stru64(&state->global.diff_removed, arg);
+		else if (strcmp(tag, "updated") == 0)
+			stru64(&state->global.diff_updated, arg);
+		else if (strcmp(tag, "moved") == 0)
+			stru64(&state->global.diff_moved, arg);
+		else if (strcmp(tag, "copied") == 0)
+			stru64(&state->global.diff_copied, arg);
+		else if (strcmp(tag, "restored") == 0)
+			stru64(&state->global.diff_restored, arg);
+	}
+
+	if (strcmp(tag, "error_file") == 0)
+		stru64(&task->error_alert, arg);
+	else if (strcmp(tag, "error_io") == 0)
+		stru64(&task->error_io, arg);
+	else if (strcmp(tag, "error_data") == 0)
+		stru64(&task->error_data, arg);
+	else if (strcmp(tag, "exit") == 0) {
 		/* copy exit status */
 		if (mac >= 3)
-			sncpy(task->exit, sizeof(task->exit), map[2]);
+			sncpy(task->exit, sizeof(task->exit), arg);
 		/* set the time, only if we complete the command */
-		if (strcmp(state->global.last_cmd, "sync") == 0)
+		switch (task->cmd) {
+		case CMD_SYNC : 
 			state->global.sync_time = state->global.last_time;
-		if (strcmp(state->global.last_cmd, "scrub") == 0)
+			break;
+		case CMD_SCRUB : 
 			state->global.scrub_time = state->global.last_time;
-		if (strcmp(state->global.last_cmd, "diff") == 0)
+			break;
+		case CMD_DIFF :
 			state->global.diff_time = state->global.last_time;
+			break;
+		case CMD_STATUS :
+			state->global.status_time = state->global.last_time;
+			break;
+		}
 	}
 }
 
@@ -772,6 +860,14 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "content_allocation") == 0) {
 		state_lock();
 		process_content_allocation(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "content_info") == 0) {
+		state_lock();
+		process_content_info(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "content_write") == 0) {
+		state_lock();
+		process_content_write(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "hash_summary") == 0) {
 		state_lock();

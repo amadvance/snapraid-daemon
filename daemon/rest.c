@@ -284,7 +284,7 @@ static const char* power_name(int power)
 	case POWER_PENDING : return "pending";
 	}
 
-	return 0;
+	return "-";
 }
 
 static const char* health_name(int health)
@@ -295,7 +295,7 @@ static const char* health_name(int health)
 	case HEALTH_PENDING : return "pending";
 	}
 
-	return 0;
+	return "-";
 }
 
 static int health_device_list(tommy_list* list)
@@ -325,7 +325,7 @@ static int health_split_list(tommy_list* list)
 		if (device_health == HEALTH_PENDING)
 			health = HEALTH_PENDING;
 	}
-	
+
 	return health;
 }
 
@@ -341,6 +341,47 @@ static int health_parity(struct snapraid_parity* parity)
 	if (parity->error_data != 0 || parity->error_io != 0)
 		return HEALTH_FAILING;
 	return health_split_list(&parity->split_list);
+}
+
+static int health_task(struct snapraid_task* task)
+{
+	if (task->error_data != 0 || task->error_io != 0 || task->block_bad != 0)
+		return HEALTH_FAILING;
+	switch (task->state) {
+	case PROCESS_STATE_QUEUE :
+		return HEALTH_PENDING;
+	case PROCESS_STATE_TERM :
+		if (task->exit_code != 0)
+			return HEALTH_FAILING;
+		break;
+	case PROCESS_STATE_SIGNAL :
+		return HEALTH_FAILING;
+	}
+	return HEALTH_PASSED;
+}
+
+static int health_array(struct snapraid_state* state)
+{
+	int health = HEALTH_PASSED;
+	if (state->global.block_bad != 0)
+		return HEALTH_FAILING;
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_data* data = i->data;
+		int data_health = health_data(data);
+		if (data_health == HEALTH_FAILING)
+			return HEALTH_FAILING;
+		if (data_health == HEALTH_PENDING)
+			health = HEALTH_PENDING;
+	}
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_parity* parity = i->data;
+		int parity_health = health_parity(parity);
+		if (parity_health == HEALTH_FAILING)
+			return HEALTH_FAILING;
+		if (parity_health == HEALTH_PENDING)
+			parity_health = HEALTH_PENDING;
+	}
+	return health;
 }
 
 /****************************************************************************/
@@ -978,8 +1019,8 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	ss_jsons(s, tab, "{\n");
 	++tab;
 	ss_jsonf(s, tab, "\"number\": %d,\n", task->number);
-	if (task->cmd)
-		ss_jsonf(s, tab, "\"command\": \"%s\",\n", command_name(task->cmd));
+	ss_jsonf(s, tab, "\"command\": \"%s\",\n", command_name(task->cmd));
+	ss_jsonf(s, tab, "\"health\": \"%s\",\n", health_name(health_task(task)));
 	if (task->running) {
 		switch (task->state) {
 		case PROCESS_STATE_START : ss_jsonf(s, tab, "\"status\": \"starting\",\n"); break;
@@ -1038,8 +1079,18 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 		ss_jsonf(s, tab, "\"%s\"%s\n", json_esc(message->str, esc_buf), i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(s, tab, "]\n");
+	ss_jsonf(s, tab, "],\n");
 
+	switch (task->cmd) {
+	case CMD_SYNC :
+	case CMD_SCRUB :
+		ss_jsonf(s, tab, "\"error_io\": %" PRIi64 ",\n", task->error_io);
+		ss_jsonf(s, tab, "\"error_data\": %" PRIi64 ",\n", task->error_data);
+		break;
+	case CMD_STATUS :
+		ss_jsonf(s, tab, "\"block_bad\": %" PRIi64 ",\n", task->block_bad);
+		break;
+	}
 	ss_jsonf(s, tab, "\"errors\": [\n");
 	for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
 		sn_t* error = i->data;
@@ -1047,7 +1098,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 		ss_jsonf(s, tab, "\"%s\"%s\n", json_esc(error->str, esc_buf), i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(s, tab, "],\n");
+	ss_jsonf(s, tab, "]\n");
 	--tab;
 	ss_jsonf(s, tab, "}%s\n", next);
 }
@@ -1176,8 +1227,10 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	ss_jsons(&s, tab, "{\n");
 	++tab;
+	ss_jsonf(&s, tab, "\"daemon_version\": \"%s\"\n", PACKAGE_VERSION);
 	if (*global->version) {
 		ss_jsonf(&s, tab, "\"engine_version\": \"%s\",\n", global->version);
+		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_array(state)));
 		ss_jsonf(&s, tab, "\"conf\": \"%s\",\n", global->conf);
 		ss_jsonf(&s, tab, "\"block_size_bytes\": %d,\n", global->blocksize);
 		if (*global->content)
@@ -1186,24 +1239,28 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_iso8601(&s, tab, "\"last_command_at\": \"%s\",\n", global->last_time);
 		if (*global->last_cmd)
 			ss_jsonf(&s, tab, "\"last_cmd\": \"%s\",\n", global->last_cmd);
-		if (global->diff_time) {
+		if (global->diff_time)
 			ss_json_iso8601(&s, tab, "\"last_diff_at\": \"%s\",\n", global->diff_time);
-			ss_jsonf(&s, tab, "\"diff_equal\": %" PRIu64 ",\n", global->diff_equal);
-			ss_jsonf(&s, tab, "\"diff_added\": %" PRIu64 ",\n", global->diff_added);
-			ss_jsonf(&s, tab, "\"diff_removed\": %" PRIu64 ",\n", global->diff_removed);
-			ss_jsonf(&s, tab, "\"diff_updated\": %" PRIu64 ",\n", global->diff_updated);
-			ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_moved);
-			ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_copied);
-			ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_restored);
-		}
-		if (global->sync_time) {
+		if (global->status_time)
+			ss_json_iso8601(&s, tab, "\"last_status_at\": \"%s\",\n", global->status_time);
+		if (global->sync_time)
 			ss_json_iso8601(&s, tab, "\"last_sync_at\": \"%s\",\n", global->sync_time);
-		}
-		if (global->scrub_time) {
+		if (global->scrub_time)
 			ss_json_iso8601(&s, tab, "\"last_scrub_at\": \"%s\",\n", global->scrub_time);
-		}
+		ss_jsonf(&s, tab, "\"file_total\": %" PRIu64 ",\n", global->file_total);
+		ss_jsonf(&s, tab, "\"block_bad\": %" PRIu64 ",\n", global->block_bad);
+		ss_jsonf(&s, tab, "\"block_rehash\": %" PRIu64 ",\n", global->block_rehash);
+		ss_jsonf(&s, tab, "\"block_total\": %" PRIu64 ",\n", global->block_total);
+		ss_jsonf(&s, tab, "\"diff_equal\": %" PRIu64 ",\n", global->diff_equal);
+		ss_jsonf(&s, tab, "\"diff_added\": %" PRIu64 ",\n", global->diff_added);
+		ss_jsonf(&s, tab, "\"diff_removed\": %" PRIu64 ",\n", global->diff_removed);
+		ss_jsonf(&s, tab, "\"diff_updated\": %" PRIu64 ",\n", global->diff_updated);
+		ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_moved);
+		ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_copied);
+		ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_restored);
+	} else {
+		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(HEALTH_PENDING));
 	}
-	ss_jsonf(&s, tab, "\"daemon_version\": \"%s\"\n", PACKAGE_VERSION);
 	--tab;
 	ss_jsonf(&s, tab, "}\n");
 

@@ -73,7 +73,7 @@ const char* command_name(int cmd)
 	case CMD_CHECK : return "check";
 	}
 
-	return 0;
+	return "-";
 }
 
 /****************************************************************************/

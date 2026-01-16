@@ -373,16 +373,30 @@ components:
       type: object
       description: "Progress status of the running or latest command. Persists until a new command begins."
       required:
-        - command
-        - status
         - number
+        - command
+        - health
+        - status
         - messages
         - errors
       properties:
+        number:
+          type: integer
+          description: "Incremental number of task. It can be used to identify taks when moved from queue to process to history."
         command:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
           description: "The command executed."
+        health:
+          type: string
+          enum: [passed, failing, pending]
+          description: >
+            The operational health of the task. This value is dynamically
+            derived from the result of the operation done in the task.
+            
+            * 'passed': The task status is 'passed' if no hardware error was encoutered.
+            * 'failing': The task status is 'failing' if any I/O or data errors was encoutered.
+            * 'pending': The task is not yet executed.
         status:
           type: string
           enum: [queued, starting, processing, finishing, interrupting, terminated, signaled, canceled]
@@ -396,9 +410,6 @@ components:
             terminated - The process terminated, `exit_code` contains it's return code.
             signaled - The process terminated by a signal. `exit_sig` contains it's signal code.
             canceled - The process was never executed because a previous operation failed.
-        number:
-          type: integer
-          description: "Incremental number of task. It can be used to identify taks when moved from queue to process to history."
         exit_code:
           type: integer
           description: "Exit code of the SnapRAID process. Present only with status=terminated."
@@ -463,9 +474,37 @@ components:
           description: "List of messages"
           items:
             type: string
+        error_io:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of physical Input/Output errors encountered in the task.
+            This tracks hardware-level failures (disk, cable, or controller)
+            recorded across the task excecution.
+            This field is available only on the `sync` and `scrub` command.
+        error_data:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of data integrity errors encountered in the task.since 
+            This tracks 'silent' errors where a read was physically successful,
+            but the data failed checksum verification, across the task execution.
+            This field is available only on the `sync` and `scrub` command.
+        error_bad:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of blocks marked bad. 
+            This field is available only on the `status` command.
         errors:
           type: array
-          description: "List of errors"
+          description: >
+            List of all errors encoutered during the task. This includes also
+            `soft` errors not caused by hardware failures. For example if
+            during a sync a file is modified.
           items:
             type: string
 
@@ -583,7 +622,7 @@ components:
           enum: [active, standby, pending]
           description: >
             The logical power state of the disk, mirrored from the underlying 
-            physical device. 
+            physical device.
             
             * 'active': The disk is spun up. Operations like 'sync' or 'scrub' 
               on this disk will start immediately.
@@ -603,25 +642,25 @@ components:
           format: int64
           example: 1250432
           description: >
-            The total number of read and write operations processed by the 
-            disk since the last system boot. This value is a cumulative 
+            The total number of read and write operations processed by the
+            disk since the last system boot. This value is a cumulative
             counter provided by the kernel.
         access_count_initial_time:
           type: string
           format: date-time
           example: "2026-01-12T08:00:00"
           description: >
-            The timestamp when the daemon first sampled 'access_count'. 
-            This acts as the reference point for all session-based 
+            The timestamp when the daemon first sampled 'access_count'.
+            This acts as the reference point for all session-based
             activity calculations.
         access_count_idle_duration:
           type: integer
           format: int64
           example: 3600
           description: >
-            The number of seconds elapsed since the 'access_count' last 
-            increased. This value measures continuous inactivity and is 
-            used to determine if the disk is a candidate for spin-down 
+            The number of seconds elapsed since the 'access_count' last
+            increased. This value measures continuous inactivity and is
+            used to determine if the disk is a candidate for spin-down
             to save power.
         error_io:
           type: integer
@@ -629,18 +668,22 @@ components:
           example: 0
           description: >
             The accumulated count of physical Input/Output errors encountered
-            since the daemon started. This tracks hardware-level failures 
-            (disk, cable, or controller) recorded across all tasks executed 
+            since the daemon started. This tracks hardware-level failures
+            (disk, cable, or controller) recorded across all tasks executed
             during the current session uptime.
+            This accumulated counter is cleared after a `status` command
+            reports that not blocks is bad.
         error_data:
           type: integer
           format: int64
           example: 0
           description: >
-            The accumulated count of data integrity errors encountered since 
-            the daemon started. This tracks 'silent' errors where a read 
-            was physically successful, but the data failed checksum 
+            The accumulated count of data integrity errors encountered since
+            the daemon started. This tracks 'silent' errors where a read
+            was physically successful, but the data failed checksum
             verification, across all tasks in the current session.
+            This accumulated counter is cleared after a `status` command
+            reports that not blocks is bad.
 
     DataDisk:
       allOf:
@@ -808,6 +851,7 @@ components:
       description: "Comprehensive view of array configuration and session-based execution history."
       required:
         - daemon_version
+        - health
       properties:
         daemon_version:
           type: string
@@ -817,6 +861,17 @@ components:
           type: string
           example: "13.1"
           description: "The version of the underlying SnapRAID binary."
+        health:
+          type: string
+          enum: [passed, failing, pending]
+          description: >
+            The operational health of the array. This value is dynamically
+            derived from the health of all disks and the bad blocks status
+            present in the content file.
+            
+            * 'passed': The status is 'passed' if no hardware error was encoutered.
+            * 'failing': The status is 'failing' if any I/O or data errors was encoutered.
+            * 'pending': The status is not yet established.
         conf:
           type: string
           example: "/etc/snapraid.conf"
@@ -824,7 +879,7 @@ components:
         content:
           type: string
           example: "/var/snapraid/snapraid.content"
-          description: "Path to the primary content file (the database of file hashes)."
+          description: "Path to the primary content file."
         block_size_bytes:
           type: integer
           example: 262144
@@ -837,6 +892,33 @@ components:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
           description: "The name of the last command successfully completed by the daemon."
+        file_count:
+          type: integer
+          format: int64
+          description: "Count of files in the array as reported by the content file."
+        last_status_at:
+          type: string
+          format: date-time
+          description: "The last time a status command was performed."
+        block_bad:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of blocks marked bad as reported by the content file.
+        block_rehash:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of blocks that needs a rehash as reported by the content file.
+        block_count:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The total number of blocks  as reported by the content file. 
+            It can be used to compute the percentage of rehash needed.
         last_diff_at:
           type: string
           format: date-time

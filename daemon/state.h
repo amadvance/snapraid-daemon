@@ -194,6 +194,7 @@ struct snapraid_task {
 	uint64_t error_alert; /**< Total alert errors encountered. */
 	uint64_t error_io; /**< Total I/O errors encountered. */
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
+	uint64_t block_bad; /**< Total blocks marked as bad (status only). */
 	char exit[32]; /**< Exit status: ok/alert/error. */
 };
 
@@ -217,16 +218,23 @@ struct snapraid_global {
 	int version_minor;
 	char conf[PATH_MAX]; /**< Configuration file. */
 	char content[PATH_MAX]; /**< Content file. */
-	int blocksize; /**< Block size */
+	unsigned blocksize; /**< Block size */
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
 
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */
-
-	/* file stats after a diff */
 	int64_t diff_time; /**< Time of the last diff run. If 0 never run. */
-	uint64_t diff_equal;
+	int64_t status_time; /**< Time of the last status run. If 0 never run. */
+
+	/* info counters. Updated in sync/scrub */
+	uint64_t file_total; /**< Total file count in the array as stored in the content file */
+	uint64_t block_bad; /**< Total blocks marked as bad */
+	uint64_t block_rehash; /**< Total blocks marked as bad */
+	uint64_t block_total; /**< Total blocks */
+
+	/* diff counters. Updated in diff and sync */
+	uint64_t diff_equal; /**< Comparison of the content state with the real state of the arrat */
 	uint64_t diff_added;
 	uint64_t diff_removed;
 	uint64_t diff_updated;
