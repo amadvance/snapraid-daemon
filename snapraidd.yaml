@@ -938,7 +938,7 @@ components:
         diff_added:
           type: integer
           format: int64
-          description: "Count of brand new files that have no relationship to existing parity."
+          description: "Count of brand new files not present in the last sync."
         diff_removed:
           type: integer
           format: int64
@@ -950,7 +950,7 @@ components:
         diff_moved:
           type: integer
           format: int64
-          description: "Count of files relocated to a new path but retaining the same inode."
+          description: "Count of files relocated to a new path or renamed but retaining the same inode."
         diff_copied:
           type: integer
           format: int64

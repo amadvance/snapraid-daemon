@@ -47,7 +47,7 @@
 #define _WIN32_WINNT 0x600
 
 /**
- * Enable the rand_s() function.l
+ * Enable the rand_s() function.
  */
 #define _CRT_RAND_S
 

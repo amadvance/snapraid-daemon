@@ -27,7 +27,8 @@
  * Parse SnapRAID log file and update state accordingly.
  * @param state Current snapraid state
  * @param f File descriptor of log file
- * @param cat_log_path Path to concatenated log file
+ * @param log_f FILE pointer of log file
+ * @param log_path Path to log file
  */
 void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path);
 

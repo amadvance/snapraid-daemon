@@ -120,7 +120,7 @@ static int json_entry(const char* js, jsmntok_t* jv, const char* field, ssize_t 
 	if (jv[0].size != 1)
 		return -1;
 
-	/* STRING and PRIMITIVE should have no childs */
+	/* STRING and PRIMITIVE should have no children */
 	if ((jv[1].type == JSMN_STRING || jv[1].type == JSMN_PRIMITIVE) && jv[1].size != 0)
 		return -1;
 
@@ -132,7 +132,7 @@ static int json_type(const char* js, jsmntok_t* jv, const char* field, ssize_t f
 	if (json_entry(js, jv, field, field_len) != 0)
 		return -1;
 
-	/* ensure that there is has the correct type  */
+	/* ensure that it has the correct type */
 	if (jv[1].type != type)
 		return -1;
 

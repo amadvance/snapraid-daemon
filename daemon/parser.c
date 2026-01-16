@@ -173,7 +173,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, char* n
 }
 
 /**
- * Clear the error accumulators of all the disk.
+ * Clear the error accumulators of all the disks.
  */
 static void clear_disk_accumulator(struct snapraid_state* state)
 {
@@ -340,9 +340,9 @@ static void process_content_write(struct snapraid_state* state, char** map, size
 	(void)mac;
 
 	if (task->cmd == CMD_SYNC) {
-		/** 
+		/**
 		 * When content is written in sync, it updates the content to the present state
-		 * Note that instead a content written in scrub doesn't update its state.
+		 * Note that instead, a content written in scrub doesn't update its state.
 		 */
 		state->global.diff_equal = 0;
 		state->global.diff_added = 0;

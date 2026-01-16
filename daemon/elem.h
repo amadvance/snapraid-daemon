@@ -39,7 +39,7 @@ struct snapraid_task* task_alloc(void);
 void task_free(struct snapraid_task* task);
 
 /**
- * Move all the task in the history list
+ * Move all the tasks in the history list
  */
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list);
 

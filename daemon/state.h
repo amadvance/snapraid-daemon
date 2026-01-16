@@ -107,7 +107,7 @@ struct snapraid_data {
 	char dir[PATH_MAX]; /**< Mount point */
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< Lis of snapraid_devices */
+	tommy_list device_list; /**< List of snapraid_devices */
 	uint64_t content_size; /**< Size of the disk stored in the content file. */
 	uint64_t content_free; /**< Free size of the disk stored in the content file. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -124,14 +124,14 @@ struct snapraid_split {
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_path[PATH_MAX]; /**< Parity file stored in the content file. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< Lis of snapraid_devices */
+	tommy_list device_list; /**< List of snapraid_devices */
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
 	tommy_node node;
 };
 
 struct snapraid_parity {
 	char name[PATH_MAX]; /**< Name of the parity. */
-	tommy_list split_list; /**< Lis of snapraid_splits */
+	tommy_list split_list; /**< List of snapraid_splits */
 	uint64_t content_size; /**< Size of the disk stored in the content file. */
 	uint64_t content_free; /**< Free size of the disk stored in the content file. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -169,11 +169,11 @@ struct snapraid_task {
 	int running; /**< If the command is running or finished */
 	int state; /**< one of PROCESS_STATE_* */
 	int64_t unix_queue_time; /**< Unix time of when the task was queued */
-	int64_t unix_start_time; /**< Unix time of when the task was start */
+	int64_t unix_start_time; /**< Unix time of when the task was started */
 	int64_t unix_end_time; /**< Unix time of when the task terminated */
-	unsigned progress; /**< Completion percentage, 0 <= process <= 100 */
+	unsigned progress; /**< Completion percentage, 0 <= progress <= 100 */
 	unsigned eta_seconds; /**< Estimate seconds for the end */
-	unsigned speed_mbs; /**< Processing speed in in MBytes/s */
+	unsigned speed_mbs; /**< Processing speed in MBytes/s */
 	unsigned cpu_usage; /**< CPU occupation in percentage, 0 <= cpu_usage <= 100. */
 	unsigned elapsed_seconds; /**< Number of seconds elapsed from the begin of the process. */
 	unsigned block_begin; /**< First block to be processed */
@@ -234,7 +234,7 @@ struct snapraid_global {
 	uint64_t block_total; /**< Total blocks */
 
 	/* diff counters. Updated in diff and sync */
-	uint64_t diff_equal; /**< Comparison of the content state with the real state of the arrat */
+	uint64_t diff_equal; /**< Comparison of the content state with the real state of the array */
 	uint64_t diff_added;
 	uint64_t diff_removed;
 	uint64_t diff_updated;
@@ -243,7 +243,7 @@ struct snapraid_global {
 	uint64_t diff_restored;
 };
 
-#define CONFIG_MAX 512 /**< Max lengts of a configuration option */
+#define CONFIG_MAX 512 /**< Max length of a configuration option */
 
 #define RUN_DISABLED 0
 #define RUN_DAILY 1

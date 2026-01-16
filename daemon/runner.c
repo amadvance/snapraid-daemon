@@ -79,7 +79,7 @@ static void runner_go(struct snapraid_state* state)
 	int f = -1;
 	FILE* log_f = 0;
 
-	char log_path[PATH_MAX + 64]; /* avoid warnings about snprinf */
+	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
 
 	if (log_directory[0] != 0) {

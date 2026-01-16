@@ -469,7 +469,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->notify_run_as_user[0] = 0;
 
 #ifdef SYSCONFDIR
-	/* if it exists, give precedence at sysconfdir, usually /usr/local/etc */
+	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc */
 	if (access(SYSCONFDIR "/snapraidd.conf", F_OK) == 0)
 		sncpy(config->conf, sizeof(config->conf), SYSCONFDIR "/snapraidd.conf");
 	else /* otherwise fallback to plain /etc */
