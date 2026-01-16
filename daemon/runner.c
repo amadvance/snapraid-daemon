@@ -471,8 +471,6 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
  */
 static int delete_old_files(const char* dir_path, int days)
 {
-	struct stat statbuf;
-
 	DIR* dir = opendir(dir_path);
 	if (dir == NULL) {
 		log_msg(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
@@ -491,15 +489,6 @@ static int delete_old_files(const char* dir_path, int days)
 
 		/* construct full path */
 		snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, ent->d_name);
-
-		if (stat(full_path, &statbuf) == -1) {
-			log_msg(LVL_ERROR, "failed to stat file %s, errno=%s(%d)", full_path, strerror(errno), errno);
-			continue; /* skip this ent on error */
-		}
-
-		/* delete only regular files */
-		if (!S_ISREG(statbuf.st_mode))
-			continue;
 
 		/* only files matching the pattern */
 		time_t ntime;
