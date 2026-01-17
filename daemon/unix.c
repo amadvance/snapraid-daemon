@@ -136,14 +136,14 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 		return -1;
 	}
 	if (bytes_read < 4) {
-		log_msg(LVL_ERROR, "script %s too small or missing shebang", script_path);
+		log_msg(LVL_ERROR, "script %s is too small or missing a shebang", script_path);
 		return -1;
 	}
 	shebang[bytes_read] = 0;
 
 	/* check for shebang */
 	if (shebang[0] != '#' || shebang[1] != '!') {
-		log_msg(LVL_ERROR, "script %s missing shebang (#!)", script_path);
+		log_msg(LVL_ERROR, "script %s is missing shebang (#!)", script_path);
 		return -1;
 	}
 
@@ -203,13 +203,13 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 		return -1;
 	}
 
-	/* interpreter must not be world-writable */
+	/* interpreter must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
 		log_msg(LVL_ERROR, "interpreter %s is world-writable", interpreter);
 		return -1;
 	}
 
-	/* interpreter must not be group-writable (unless group is root) */
+	/* interpreter must be not group-writable (unless group is root) */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != 0) {
 		log_msg(LVL_ERROR, "interpreter %s is group-writable by non-root group", interpreter);
 		return -1;
@@ -221,7 +221,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 		return -1;
 	}
 
-	/* interpreter must not be setuid / setgid */
+	/* interpreter must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
 		log_msg(LVL_ERROR, "file %s has setuid/setgid bits set", interpreter);
 		return -1;
@@ -277,13 +277,13 @@ int os_script(const char* script_path, const char* run_as_user)
 				return -1;
 			}
 
-			/* script directory must not be group-writable unless group matches daemon */
+			/* script directory must be not group-writable unless group matches daemon */
 			if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-				log_msg(LVL_ERROR, "script directory %s must not be group-writable unless group matches daemon owner or root", dir_path);
+				log_msg(LVL_ERROR, "script directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
 				return -1;
 			}
 
-			/* script directory must not be world-writable */
+			/* script directory must be not world-writable */
 			if (st.st_mode & S_IWOTH) {
 				log_msg(LVL_ERROR, "script directory %s must be not world-writable", dir_path);
 				return -1;
@@ -333,21 +333,21 @@ int os_script(const char* script_path, const char* run_as_user)
 		return -1;
 	}
 
-	/* script must not be group-writable unless group matches daemon */
+	/* script must be not group-writable unless group matches daemon */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-		log_msg(LVL_ERROR, "script %s must not be group-writable unless group matches daemon owner or root", resolved_path);
+		log_msg(LVL_ERROR, "script %s must be not group-writable unless group matches daemon owner or root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must not be world-writable */
+	/* script must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
 		log_msg(LVL_ERROR, "script %s must be not world-writable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must not be setuid / setgid */
+	/* script must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
 		log_msg(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
 		return -1;
@@ -401,7 +401,7 @@ int os_script(const char* script_path, const char* run_as_user)
 		if (null_fd == -1)
 			_exit(126);
 
-		/* redirect stdin/out(err to /dev/null */
+		/* redirect stdin/out/err to /dev/null */
 		if (dup2(null_fd, STDIN_FILENO) == -1
 			|| dup2(null_fd, STDOUT_FILENO) == -1
 			|| dup2(null_fd, STDERR_FILENO) == -1)
@@ -451,7 +451,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_msg(LVL_ERROR, "failed waitpid for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to wait for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		return -1;
 	}
 
@@ -470,7 +470,7 @@ int os_script(const char* script_path, const char* run_as_user)
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "script %s timeout after %lld seconds", resolved_path, execution_time);
 		} else {
-			log_msg(LVL_INFO, "script %s terminated in %llds with signal %s(%d)", resolved_path, execution_time, log_signame(sig), sig);
+			log_msg(LVL_INFO, "script %s terminated in %lld seconds with signal %s(%d)", resolved_path, execution_time, log_signame(sig), sig);
 		}
 		return 128 + sig;
 	} else {
@@ -599,7 +599,7 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_msg(LVL_ERROR, "failed waitpid for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to wait for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		return -1;
 	}
 
@@ -607,7 +607,7 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 	long long execution_time = (stop_ts.tv_sec - start_ts.tv_sec);
 
 	if (execution_time > 30)
-		log_msg(LVL_WARNING, "command %s took %lld seconds", command, execution_time);
+		log_msg(LVL_WARNING, "command %s ran for %lld seconds that is unexpectedly long", command, execution_time);
 
 	if (WIFEXITED(status)) {
 		/* child's exit(code) or return from main */
@@ -619,7 +619,7 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "command %s timeout after %lld seconds", command, execution_time);
 		} else {
-			log_msg(LVL_INFO, "command %s terminated in %llds with signal %s(%d)", command, execution_time, log_signame(sig), sig);
+			log_msg(LVL_INFO, "command %s terminated in %lld seconds with signal %s(%d)", command, execution_time, log_signame(sig), sig);
 		}
 		return 128 + sig;
 	} else {

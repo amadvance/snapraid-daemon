@@ -144,7 +144,7 @@ static void runner_go(struct snapraid_state* state)
 
 	pid = os_spawn(argv, &f);
 	if (pid < 0) {
-		log_msg(LVL_ERROR, "failed to start task %d run %s for a failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to start task %d run %s due to failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		ret = -1;
 		/* continue to run the script_post_run */
 	} else {
@@ -375,7 +375,7 @@ int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, siz
 	if (!state->daemon_running) {
 		state_unlock();
 		task_free(task);
-		log_msg(LVL_ERROR, "failed to start runner %s for daemon terminating", command_name(cmd));
+		log_msg(LVL_ERROR, "failed to start runner %s because daemon is terminating", command_name(cmd));
 		sncpy(msg, msg_size, "Daemon is terminating");
 		*status = 409;
 		return -1;

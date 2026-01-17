@@ -314,7 +314,7 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 		uint64_t block_bad;
 		if (stru64(&block_bad, val) == 0) {
 			if (block_bad == 0) {
-				/* if status report no stored error, clear the disk error accumulators */
+				/* if status report has no stored error, clear the disk error accumulators */
 				clear_disk_accumulator(state);
 			} else {
 				task->block_bad = block_bad;

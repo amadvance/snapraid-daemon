@@ -382,7 +382,7 @@ components:
       properties:
         number:
           type: integer
-          description: "Incremental number of task. It can be used to identify taks when moved from queue to process to history."
+          description: "Incremental number of task. It can be used to identify tasks when moved from queue to process to history."
         command:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
@@ -394,8 +394,8 @@ components:
             The operational health of the task. This value is dynamically
             derived from the result of the operation done in the task.
             
-            * 'passed': The task status is 'passed' if no hardware error was encoutered.
-            * 'failing': The task status is 'failing' if any I/O or data errors was encoutered.
+            * 'passed': The task status is 'passed' if no hardware error was encountered.
+            * 'failing': The task status is 'failing' if any I/O or data errors were encountered.
             * 'pending': The task is not yet executed.
         status:
           type: string
@@ -440,7 +440,7 @@ components:
           description: "Completion percentage. Only in 'processing'"
         eta_seconds:
           type: integer
-          description: "Estimated time remaning in seconds. Only in 'processing'"
+          description: "Estimated time remaining in seconds. Only in 'processing'"
         speed_mbs:
           type: integer
           description: "Realtime speed in Mbytes/s. Only in 'processing'"
@@ -481,14 +481,14 @@ components:
           description: >
             The count of physical Input/Output errors encountered in the task.
             This tracks hardware-level failures (disk, cable, or controller)
-            recorded across the task excecution.
+            recorded across the task execution.
             This field is available only on the `sync` and `scrub` command.
         error_data:
           type: integer
           format: int64
           example: 0
           description: >
-            The count of data integrity errors encountered in the task.since 
+            The count of data integrity errors encountered in the task. 
             This tracks 'silent' errors where a read was physically successful,
             but the data failed checksum verification, across the task execution.
             This field is available only on the `sync` and `scrub` command.
@@ -502,7 +502,7 @@ components:
         errors:
           type: array
           description: >
-            List of all errors encoutered during the task. This includes also
+            List of all errors encountered during the task. This includes also
             `soft` errors not caused by hardware failures. For example if
             during a sync a file is modified.
           items:
@@ -672,7 +672,7 @@ components:
             (disk, cable, or controller) recorded across all tasks executed
             during the current session uptime.
             This accumulated counter is cleared after a `status` command
-            reports that not blocks is bad.
+            reports that no blocks are bad.
         error_data:
           type: integer
           format: int64
@@ -683,7 +683,7 @@ components:
             was physically successful, but the data failed checksum
             verification, across all tasks in the current session.
             This accumulated counter is cleared after a `status` command
-            reports that not blocks is bad.
+            reports that no blocks are bad.
 
     DataDisk:
       allOf:
@@ -869,8 +869,8 @@ components:
             derived from the health of all disks and the bad blocks status
             present in the content file.
             
-            * 'passed': The status is 'passed' if no hardware error was encoutered.
-            * 'failing': The status is 'failing' if any I/O or data errors was encoutered.
+            * 'passed': The status is 'passed' if no hardware error was encountered.
+            * 'failing': The status is 'failing' if any I/O or data errors were encountered.
             * 'pending': The status is not yet established.
         conf:
           type: string
@@ -911,7 +911,7 @@ components:
           format: int64
           example: 0
           description: >
-            The count of blocks that needs a rehash as reported by the content file.
+            The count of blocks that need a rehash as reported by the content file.
         block_count:
           type: integer
           format: int64
