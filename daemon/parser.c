@@ -325,7 +325,6 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 		stru64(&state->global.block_rehash, val);
 	} else if (strcmp(tag, "block") == 0) {
 		stru64(&state->global.block_total, val);
-
 	}
 }
 

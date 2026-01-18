@@ -754,7 +754,7 @@ static int handler_config(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * POST /api/v1/sync, /api/v1/probe, /api/v1/up, /api/v1/down, /api/v1/smart
+ * POST /api/v1/COMMAND
  */
 static int handler_action(struct mg_connection* conn, void* cbdata)
 {
@@ -818,6 +818,8 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	if (strcmp(path, "/api/v1/sync") == 0)
 		runner(state, CMD_SYNC, &arg_list, msg, sizeof(msg), &status);
+	else if (strcmp(path, "/api/v1/scrub") == 0)
+		runner(state, CMD_SCRUB, &arg_list, msg, sizeof(msg), &status);		
 	else if (strcmp(path, "/api/v1/probe") == 0)
 		runner(state, CMD_PROBE, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/up") == 0)
@@ -1071,7 +1073,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 			ss_jsonf(s, tab, "\"cpu_usage\": %u,\n", task->cpu_usage);
 			ss_jsonf(s, tab, "\"elapsed_seconds\": %u,\n", task->elapsed_seconds);
 			ss_jsonf(s, tab, "\"block_idx\": %u,\n", task->block_idx);
-			ss_jsonf(s, tab, "\"block_done_bytes\": %u,\n", task->block_done);
+			ss_jsonf(s, tab, "\"block_done\": %u,\n", task->block_done);
 			ss_jsonf(s, tab, "\"size_done_bytes\": %" PRIu64 ",\n", task->size_done);
 			break;
 		}
@@ -1334,6 +1336,7 @@ int rest_init(struct snapraid_state* state)
 	}
 
 	mg_set_request_handler(state->rest_context, "/api/v1/sync", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/scrub", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/probe", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/up", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/down", handler_action, state);

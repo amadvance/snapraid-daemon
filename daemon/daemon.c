@@ -223,21 +223,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
-/*
-   curl -X POST http://localhost:8080/api/v1/sync
-   curl -X POST http://localhost:8080/api/v1/sync -d '{"args": ["--force-zero", "--force-empty"]}'
-   curl -X POST http://localhost:8080/api/v1/probe
-   curl -X POST http://localhost:8080/api/v1/up
-   curl -X POST http://localhost:8080/api/v1/down
-   curl -X POST http://localhost:8080/api/v1/smart
-   curl -X POST http://localhost:8080/api/v1/diff
-   curl -X POST http://localhost:8080/api/v1/status
-   curl -X GET http://localhost:8080/api/v1/disks
-   curl -X GET http://localhost:8080/api/v1/progress
-   curl -X GET http://localhost:8080/api/v1/queue
-   curl -X GET http://localhost:8080/api/v1/history
-   curl -X GET http://localhost:8080/api/v1/config
-   curl -X GET http://localhost:8080/api/v1/array
- */
-

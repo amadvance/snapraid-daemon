@@ -21,13 +21,11 @@ paths:
         This is an asynchronous operation. The updated metrics will be
         reflected in the '/api/v1/disks' endpoint upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
+      requestBody:
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Probe request accepted and scheduled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/smart:
     post:
@@ -43,13 +41,11 @@ paths:
         This is an asynchronous operation. The updated metrics will be 
         reflected in the '/api/v1/disks' endpoint upon completion. 
         Returns 202 Accepted to acknowledge the task has been queued.
+      requestBody:
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: SMART refresh task accepted and scheduled.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/up:
     post:
@@ -64,13 +60,11 @@ paths:
         This is an asynchronous operation. Final power states will be 
         reflected in '/api/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
+      requestBody:
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Spin-up request accepted and scheduled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/down:
     post:
@@ -87,13 +81,11 @@ paths:
         This is an asynchronous operation. Final power states will be 
         reflected in '/api/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
+      requestBody:
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Spin-down request accepted and scheduled.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/diff:
     post:
@@ -111,24 +103,28 @@ paths:
         the parity disks. Real-time progress is available via the 
         '/api/v1/progress' endpoint.
       requestBody:
-        required: false
-        description: Optional arguments to pass to the SnapRAID diff command.
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                args:
-                  type: array
-                  items:
-                    type: string
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Diff task accepted and scheduled.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
+
+  /api/v1/status:
+    post:
+      summary: Audit array metadata and health
+      description: >
+        Triggers an asynchronous analysis of the array.
+        
+        While basic block counters are updated by most commands, this 
+        endpoint provides a detailed analysis of disk fragmentation, 
+        data distribution across drives, and the specific age of 
+        scrubbed blocks.
+        
+        Returns 202 Accepted to acknowledge the task has been queued.
+      requestBody:
+        $ref: '#/components/requestBodies/AsyncRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/sync:
     post:
@@ -143,29 +139,10 @@ paths:
         remaining, is available via the '/api/v1/progress' endpoint.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        required: false
-        description: Advanced CLI arguments for the SnapRAID engine.
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                args:
-                  type: array
-                  description: >
-                    A list of command-line flags passed directly to the 
-                    sync process. Use with caution as this can override 
-                    standard safety thresholds.
-                  items:
-                    type: string
-                  example: ["--force-zero", "--force-nocopy"]
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Sync request accepted and scheduled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/scrub:
     post:
@@ -182,29 +159,10 @@ paths:
         
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        required: false
-        description: Advanced CLI arguments for the SnapRAID engine.
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                args:
-                  type: array
-                  description: >
-                    A list of command-line flags passed directly to the 
-                    sync process. Use with caution as this can override 
-                    standard safety thresholds.
-                  items:
-                    type: string
-                  example: ["--force-zero", "--force-nocopy"]
+        $ref: '#/components/requestBodies/AsyncRequest'
       responses:
         '202':
-          description: Scrub task accepted and scheduled.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommandResponse'
+          $ref: '#/components/responses/AsyncAccepted'
 
   /api/v1/disks:
     get:
@@ -356,19 +314,45 @@ paths:
                 $ref: '#/components/schemas/Array'
 
 components:
-  schemas:
-    CommandResponse:
-      type: object
-      required:
-        - success
-      properties:
-        success:
-          type: boolean
-          description: "True if the request was scheduled, false if an error occurred."
-        message:
-          type: string
-          description: "Optional detail about the status or error."
+  requestBodies:
+    AsyncRequest:
+      description: >
+        A list of raw string arguments passed directly to the 
+        SnapRAID process. These must follow SnapRAID CLI syntax.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              args:
+                type: array
+                items:
+                  type: string
 
+  responses:
+    AsyncAccepted:
+      description: >
+        The request was successfully validated and added to the execution queue.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - success
+            properties:
+              success:
+                type: boolean
+                example: true
+                description: >
+                  Indicates if the task was successfully added to the daemon's 
+                  internal worker queue.
+              message:
+                type: string
+                example: "Task queued successfully."
+                description: >
+                  A human-readable status message or error detail.
+
+  schemas:
     Task:
       type: object
       description: "Progress status of the running or latest command. Persists until a new command begins."
@@ -452,18 +436,25 @@ components:
           description: "Elapsed time in seconds. Only in 'processing'"
         block_begin:
           type: integer
+          format: int64
           description: "Starting block index"
         block_end:
           type: integer
+          format: int64
           description: "Ending block index + 1"
         block_count:
           type: integer
-          description: "Number of blocks to process. It may be less than block_end - block_begin + 1 if some blocks are going to be skipped"
+          format: int64
+          description: >
+            Number of blocks to process.
+            It may be less than block_end - block_begin + 1 if some blocks are going to be skipped
         block_idx:
           type: integer
+          format: int64
           description: "Current block index position processed. Only in 'processing'"
-        block_done_bytes:
+        block_done:
           type: integer
+          format: int64
           description: "Number of blocks processed"
         size_done_bytes:
           type: integer
@@ -610,9 +601,6 @@ components:
         name:
           type: string
           description: "Logical name (e.g., d1, d2, ..., parity, 2-parity, ...)"
-        name:
-          type: string
-          description: "Logical name (e.g., d1, d2)"
         health:
           type: string
           enum: [passed, failing, pending]
@@ -682,7 +670,7 @@ components:
             since the daemon started. This tracks hardware-level failures
             (disk, cable, or controller) recorded across all tasks executed
             during the current session uptime.
-            This accumulated counter is cleared after a `status` command
+            This accumulated counter is cleared after a `scrub` command
             reports that no blocks are bad.
         error_data:
           type: integer
@@ -693,7 +681,7 @@ components:
             the daemon started. This tracks 'silent' errors where a read
             was physically successful, but the data failed checksum
             verification, across all tasks in the current session.
-            This accumulated counter is cleared after a `status` command
+            This accumulated counter is cleared after a `scrub` command
             reports that no blocks are bad.
 
     DataDisk:
@@ -760,55 +748,67 @@ components:
         sync_suspend_on_deletes:
           type: integer
           example: 50
-          description: "Suspend the sync if more than N files were deleted. If 0, the sync will never suspend regardless of deletes."
+          description: >
+            Suspend the sync if more than N files were deleted. If 0, the sync will never suspend regardless of deletes.
         sync_prehash:
           type: boolean
           example: true
-          description: "In sync use the prehash option to avoid silent errors due faulty hardware on files not yet hashed."
+          description: >
+            In sync use the prehash option to avoid silent errors due faulty hardware on files not yet hashed.
         sync_force_zero:
           type: boolean
           example: true
-          description: "In sync use the force zero option to sync even in presence of file with zero size that were not zero before."
+          description: >
+            In sync use the force zero option to sync even in presence of file with zero size that were not zero before.
         sync_report_differences:
           type: boolean
           example: true
-          description: "Report a list of differences in the log during SnapRAID activity. If false, no difference are reported."
+          description: >
+            Report a list of differences in the log during SnapRAID activity. If false, no difference are reported.
         scrub_percentage:
           type: integer
           minimum: 0
           maximum: 100
           example: 12
-          description: "The percentage of the array to check during the scrub portion of the scheduled run. If 0, scrub is skipped."
+          description: >
+            The percentage of the array to check during the scrub portion of the scheduled run. If 0, scrub is skipped.
         scrub_older_than:
           type: integer
           minimum: 0
           maximum: 1000
           example: 10
-          description: "Do not scrub blocks newer than the specified number of days. If 0, no age selection on scrub."
+          description: >
+            Do not scrub blocks newer than the specified number of days. If 0, no age selection on scrub.
         probe_interval_minutes:
           type: integer
           example: 30
-          description: "Check SMART attributes every N minutes (only if disks are already spinning). If 0, monitoring is disabled."
+          description: >
+            Check SMART attributes every N minutes (only if disks are already spinning). If 0, monitoring is disabled.
         spindown_idle_minutes:
           type: integer
           example: 60
-          description: "Automatically spindown idle disks after N minutes of inactivity. If 0, automatic spindown is disabled."
+          description: >
+            Automatically spindown idle disks after N minutes of inactivity. If 0, automatic spindown is disabled.
         pre_run_script:
           type: string
           example: "/usr/local/bin/pre-snapraid.sh"
-          description: "Path to a script to execute before SnapRAID activity begins. If empty, do nothing."
+          description: >
+            Path to a script to execute before SnapRAID activity begins. If empty, do nothing.
         post_run_script:
           type: string
           example: "/usr/local/bin/post-snapraid.sh"
-          description: "Path to a script to execute after SnapRAID activity finishes. If empty, do nothing."
+          description: >
+            Path to a script to execute after SnapRAID activity finishes. If empty, do nothing.
         log_directory:
           type: string
           example: "/var/log/snapraid/"
-          description: "Directory to store individual command logs (e.g. 20251225-sync.log). If empty, logs are not stored."
+          description: >
+            Directory to store individual command logs (e.g. 20251225-sync.log). If empty, logs are not stored.
         log_retention_days:
           type: integer
           example: 30
-          description: "Number of days to retain log files before deletion. If 0, logs are kept indefinitely."
+          description: >
+            Number of days to retain log files before deletion. If 0, logs are kept indefinitely.
         notify_syslog_enabled:
           type: boolean
           example: true
@@ -827,14 +827,14 @@ components:
         notify_heartbeat:
           type: string
           example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/550e8400-e29b-41d4"
-        description: >
+          description: >
             Command executed only upon successful completion of a task (exit code 0). 
             Commonly used to ping 'Dead Man's Switch' services like Healthchecks.io 
             to verify the daemon is alive and tasks are succeeding.
         notify_result:
           type: string
           example: 'curl -fsS --max-time 30 --retry 3 -H "Content-Type: text/plain" -H "Title: SnapRAID Task Report" --data-binary @- https://ntfy.sh/your_private_topic'
-        description: >
+          description: >
             Command executed after a task finishes, provided the result matches the 
             'notify_result_level'. The daemon pipes a detailed, structured plain-text 
             report into this command's standard input (stdin). Use '@-' in curl to 
@@ -842,7 +842,7 @@ components:
         notify_result_level:
           type: string
           enum: [critical, error, warning, info]
-        description: >
+          description: >
             Sets the minimum severity threshold for triggering 'notify_result'. 
             Tasks with a severity lower than this level will not trigger a notification.
             For example, setting this to 'error' will send reports for errors and 
@@ -851,11 +851,13 @@ components:
           type: string
           format: email
           example: "admin@example.com"
-          description: "Recipient address for local system mail reports. If empty, email notification is disabled."
+          description: >
+            Recipient address for local system mail reports. If empty, email notification is disabled.
         notify_email_level:
           type: string
           enum: [critical, error, warning, info]
-          description: "Sensitivity level for local email reports. If unset, assume 'critical'."
+          description: >
+            Sensitivity level for local email reports. If unset, assume 'critical'.
 
     Array:
       type: object
