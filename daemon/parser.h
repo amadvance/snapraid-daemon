@@ -45,3 +45,4 @@ int parse_timestamp(const char* name, time_t* out);
 int parse_past_log(struct snapraid_state* state);
 
 #endif
+

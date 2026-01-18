@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 	 * Create worker threads while signals are still BLOCKED
 	 */
 	runner_init(state_ptr());
-	
+
 	/**
 	 * Parse existing log files
 	 */

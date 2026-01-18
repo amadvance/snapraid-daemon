@@ -770,10 +770,10 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			sncpy(task->exit, sizeof(task->exit), arg);
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
-		case CMD_SYNC : 
+		case CMD_SYNC :
 			state->global.sync_time = state->global.last_time;
 			break;
-		case CMD_SCRUB : 
+		case CMD_SCRUB :
 			state->global.scrub_time = state->global.last_time;
 			break;
 		case CMD_DIFF :
@@ -1015,11 +1015,11 @@ int parse_timestamp(const char *name, time_t* out)
 
 	struct tm tm = { 0 };
 	tm.tm_year = Y - 1900;
-	tm.tm_mon  = M - 1;
+	tm.tm_mon = M - 1;
 	tm.tm_mday = D;
 	tm.tm_hour = h;
-	tm.tm_min  = m;
-	tm.tm_sec  = s;
+	tm.tm_min = m;
+	tm.tm_sec = s;
 
 	/* force local time interpretation, let libc resolve DST */
 	tm.tm_isdst = -1;
@@ -1100,7 +1100,7 @@ int parse_past_log(struct snapraid_state* state)
 		state->runner.latest = task;
 
 		parse_log(state, f, 0, 0);
-		
+
 		/* move it to the history */
 		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
 			task->state = PROCESS_STATE_TERM;
@@ -1114,3 +1114,4 @@ int parse_past_log(struct snapraid_state* state)
 
 	return 0;
 }
+

@@ -53,7 +53,7 @@ int command_parse(const char* str)
 		if (strcmp(str, COMMANDS[i].str) == 0)
 			return COMMANDS[i].cmd;
 	}
-	
+
 	return 0;
 }
 
@@ -107,3 +107,4 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list)
 	}
 	tommy_list_init(waiting_list);
 }
+

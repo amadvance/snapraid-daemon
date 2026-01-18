@@ -36,7 +36,7 @@
  */
 #define JSMN_TOKEN_MAX 128
 
-/** 
+/**
  * Initial size for building JSON text
  */
 #define JSON_INITIAL_SIZE 512
@@ -309,7 +309,7 @@ static int health_device_list(tommy_list* list)
 		if (device->health == HEALTH_PENDING)
 			health = HEALTH_PENDING;
 	}
-	
+
 	return health;
 }
 

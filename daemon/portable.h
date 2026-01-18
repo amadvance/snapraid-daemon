@@ -305,3 +305,4 @@ int os_daemonize(void);
 void os_signal_restore_after_fork(void);
 
 #endif
+
