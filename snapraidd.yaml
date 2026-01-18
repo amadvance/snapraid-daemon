@@ -360,7 +360,8 @@ components:
   schemas:
     Task:
       type: object
-      description: "Progress status of the running or latest command. Persists until a new command begins."
+      description: >
+        Progress status of the running or latest command. Persists until a new command begins.
       required:
         - number
         - command
@@ -371,11 +372,13 @@ components:
       properties:
         number:
           type: integer
-          description: "Incremental number of task. It can be used to identify tasks when moved from queue to process to history."
+          description: >
+            Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
         command:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
-          description: "The command executed."
+          description: >
+            The command executed.
         health:
           type: string
           enum: [passed, failing, pending]
@@ -401,52 +404,61 @@ components:
             canceled - The process was never executed because a previous operation failed.
         exit_code:
           type: integer
-          description: "Exit code of the SnapRAID process. Present only with status=terminated."
+          description: >
+            Exit code of the SnapRAID process. Present only with status=terminated.
         exit_sig:
           type: integer
-          description: "Signal code of the SnapRAID process. Present only with status=signaled."
+          description: >
+            Signal code of the SnapRAID process. Present only with status=signaled.
         scheduled_at:
           type: string
-          example: "2026-01-12T10:24:48"
+          example: "2026-01-12T08:00:00"
           description: >
-            The local server time when the task was added to the queue. 
-            This field is always present for any task in the activity or history.
+            The time when the task was added to the queue. 
+            This timestamp is in local time.
         started_at:
           type: string
-          example: "2026-01-12T10:25:02"
+          example: "2026-01-12T08:00:00"
           description: >
-            The local server time when the task moved from 'queued' to 'starting'. 
-            This field is present only if the task has effectively started execution.
+            The server time when the task moved from 'queued' to 'starting'. 
+            This timestamp is in local time.
         finished_at:
           type: string
-          example: "2026-01-12T11:45:12"
+          example: "2026-01-12T08:00:00"
           description: >
-            The local server time when the task reached a terminal state 
-            (terminated, signaled, or canceled). This field is present 
-            only once the task is no longer running.
+            The server time when the task reached a terminal state 
+            (terminated, signaled, or canceled).
+            This timestamp is in local time.
         progress:
           type: integer
-          description: "Completion percentage. Only in 'processing'"
+          description: >
+            Completion percentage. Only in 'processing'.
         eta_seconds:
           type: integer
-          description: "Estimated time remaining in seconds. Only in 'processing'"
+          description: >
+            Estimated time remaining in seconds. Only in 'processing'.
         speed_mbs:
           type: integer
-          description: "Realtime speed in Mbytes/s. Only in 'processing'"
+          description: >
+            Realtime speed in Mbytes/s. Only in 'processing'.
         cpu_usage:
           type: integer
-          description: "CPU usage percentage. Only in 'processing'"
+          description: >
+            CPU usage percentage. Only in 'processing'.
         elapsed_seconds:
           type: integer
-          description: "Elapsed time in seconds. Only in 'processing'"
+          description: >
+            Elapsed time in seconds. Only in 'processing'.
         block_begin:
           type: integer
           format: int64
-          description: "Starting block index"
+          description: >
+            Starting block index.
         block_end:
           type: integer
           format: int64
-          description: "Ending block index + 1"
+          description: >
+            Ending block index + 1.
         block_count:
           type: integer
           format: int64
@@ -456,18 +468,22 @@ components:
         block_idx:
           type: integer
           format: int64
-          description: "Current block index position processed. Only in 'processing'"
+          description: >
+            Current block index position processed. Only in 'processing'.
         block_done:
           type: integer
           format: int64
-          description: "Number of blocks processed"
+          description: >
+            Number of blocks processed.
         size_done_bytes:
           type: integer
           format: int64
-          description: "Size of blocks processed"
+          description: >
+            Size of blocks processed.
         messages:
           type: array
-          description: "List of messages"
+          description: >
+            List of messages.
           items:
             type: string
         error_io:
@@ -513,7 +529,8 @@ components:
       properties:
         device_node:
           type: string
-          description: "System device path (e.g., /dev/sdb1)"
+          description: >
+            System device path (e.g., /dev/sdb1).
         health:
           type: string
           enum: [passed, failing, pending]
@@ -544,19 +561,23 @@ components:
         family:
           type: string
           example: "Western Digital Red"
-          description: "Vendor and Model Family"
+          description: >
+            Vendor and Model Family.
         model:
           type: string
           example: "WDC WD40EFRX-68N32N0"
-          description: "Model of the disk"
+          description: >
+            Model of the disk.
         serial:
           type: string
           example: "WD-WCC7K1XN2L3P"          
-          description: "Serial of the disk"
+          description: >
+            Serial of the disk.
         size_bytes:
           type: integer
           format: int64
-          description: "Size in bytes of the raw device"
+          description: >
+            Size in bytes of the raw device.
         rotational:
           type: integer
           example: 7200
@@ -568,7 +589,8 @@ components:
             * >1: The actual detected rotational speed (e.g., 5400, 7200, 10000).
         error:
           type: integer
-          description: "Number of SMART errors"
+          description: >
+            Number of SMART errors.
         smart_reallocated_sector_count:
           type: integer
         smart_uncorrectable_error_cnt:
@@ -605,7 +627,8 @@ components:
       properties:
         name:
           type: string
-          description: "Logical name (e.g., d1, d2, ..., parity, 2-parity, ...)"
+          description: >
+            Logical name (e.g., d1, d2, ..., parity, 2-parity, ...).
         health:
           type: string
           enum: [passed, failing, pending]
@@ -651,12 +674,10 @@ components:
             counter provided by the kernel.
         access_count_initial_time:
           type: string
-          format: date-time
-          example: "2026-01-12T08:00:00Z"
+          example: "2026-01-12T08:00:00"
           description: >
             The timestamp when the daemon first sampled 'access_count'.
-            This acts as the reference point for all session-based
-            activity calculations.
+            This timestamp is in local time.
         access_count_idle_duration:
           type: integer
           format: int64
@@ -697,13 +718,16 @@ components:
           properties:
             mount_dir:
               type: string
-              description: "Filesystem mount point path"
+              description: >
+                Filesystem mount point path.
             uuid:
               type: string
-              description: "Actual UUID of the filesystem containing the mount dir"
+              description: >
+                Actual UUID of the filesystem containing the mount dir.
             stored_uuid:
               type: string
-              description: "Stored UUID of the filesystem containing the mount dir"
+              description: >
+                Stored UUID of the filesystem containing the mount dir.
             devices:
               type: array
               items:
@@ -717,13 +741,16 @@ components:
       properties:
         parity_path:
           type: string
-          description: "Path of the file of the parity"
+          description: >
+            Path to the parity file.
         uuid:
           type: string
-          description: "Actual UUID of the filesystem containing the parity file"
+          description: >
+            Actual UUID of the filesystem containing the parity file.
         stored_uuid:
           type: string
-          description: "Stored UUID of the filesystem containing the parity file"
+          description: >
+            Stored UUID of the filesystem containing the parity file.
         devices:
           type: array
           items:
@@ -742,7 +769,8 @@ components:
 
     Config:
       type: object
-      description: The global configuration state for the SnapRAID daemon.
+      description: >
+        The global configuration state for the SnapRAID daemon.
       properties:
         scheduled_run:
           type: string
@@ -866,7 +894,8 @@ components:
 
     Array:
       type: object
-      description: "Comprehensive view of array configuration and session-based execution history."
+      description: >
+        Comprehensive view of array configuration and session-based execution history.
       required:
         - daemon_version
         - health
@@ -874,11 +903,13 @@ components:
         daemon_version:
           type: string
           example: "13.1"
-          description: "The version of the snapraidd C daemon currently running."
+          description: >
+            The version of the snapraidd C daemon currently running.
         engine_version:
           type: string
           example: "13.1"
-          description: "The version of the underlying SnapRAID binary."
+          description: >
+            The version of the underlying SnapRAID binary.
         health:
           type: string
           enum: [passed, failing, pending]
@@ -893,23 +924,29 @@ components:
         conf:
           type: string
           example: "/etc/snapraid.conf"
-          description: "Path to the primary SnapRAID configuration file."
+          description: >
+            Path to the primary SnapRAID configuration file.
         content:
           type: string
           example: "/var/snapraid/snapraid.content"
-          description: "Path to the primary content file."
+          description: >
+            Path to the primary content file.
         block_size_bytes:
           type: integer
           example: 262144
-          description: "Array block size in bytes. Note that it's always a power of 2."
+          description: >
+            Array block size in bytes. Note that it's always a power of 2.
         last_time:
           type: string
-          format: date-time
-          description: "Timestamp of the most recently finished task execution."
+          example: "2026-01-12T08:00:00"
+          description: >
+            Timestamp of the most recently finished task execution.
+            This timestamp is in local time.
         last_cmd:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
-          description: "The name of the last command successfully completed by the daemon."
+          description: >
+            The name of the last command successfully completed by the daemon.
         annual_failure_rate:
           type: number
           format: double
@@ -924,11 +961,14 @@ components:
         file_count:
           type: integer
           format: int64
-          description: "Count of files in the array as reported by the content file."
+          description: >
+            The count of files in the array as reported by the content file.
         last_status_at:
           type: string
-          format: date-time
-          description: "The last time a status command was performed."
+          example: "2026-01-12T08:00:00"
+          description: >
+            The last time a status command was performed.
+            This timestamp is in local time.
         block_bad:
           type: integer
           format: int64
@@ -946,45 +986,58 @@ components:
           format: int64
           example: 0
           description: >
-            The total number of blocks  as reported by the content file. 
+            The total number of blocks as reported by the content file. 
             It can be used to compute the percentage of rehash needed.
         last_diff_at:
           type: string
-          format: date-time
-          description: "The last time the daemon analyzed the array for file changes."
+          example: "2026-01-12T08:00:00"
+          description: >
+            The last time the daemon analyzed the array for file changes.
+            This timestamp is in local time.
         last_sync_at:
           type: string
-          format: date-time
-          description: "The last time parity was synchronized with the data disks."
+          example: "2026-01-12T08:00:00"
+          description: >
+            The last time parity was synchronized with the data disks.
+            This timestamp is in local time.
         last_scrub_at:
           type: string
-          format: date-time
-          description: "The last time a data integrity check was performed."
+          example: "2026-01-12T08:00:00"
+          description: >
+            The last time a data integrity check was performed.
+            This timestamp is in local time.
         diff_equal:
           type: integer
           format: int64
-          description: "Count of files whose metadata and data match the current parity."
+          description: >
+            The count of files whose metadata and data match the current parity.
         diff_added:
           type: integer
           format: int64
-          description: "Count of brand new files not present in the last sync."
+          description: >
+            The count of brand new files not present in the last sync.
         diff_removed:
           type: integer
           format: int64
-          description: "Count of files that existed in the last sync but are now missing."
+          description: >
+            The count of files that existed in the last sync but are now missing.
         diff_updated:
           type: integer
           format: int64
-          description: "Count of existing files where the timestamp or size has changed."
+          description: >
+            The count of existing files where the timestamp or size has changed.
         diff_moved:
           type: integer
           format: int64
-          description: "Count of files relocated to a new path or renamed but retaining the same inode."
+          description: >
+            The count of files relocated to a new path or renamed but retaining the same inode.
         diff_copied:
           type: integer
           format: int64
-          description: "Count of new files created by copying an existing protected file to a new path."
+          description: >
+            The count of new files created by copying an existing protected file to a new path.
         diff_restored:
           type: integer
           format: int64
-          description: "Count of new files matching a parity entry by name/time/size but with a new inode (e.g., replaced from backup)."
+          description: >
+            The count of new files matching a parity entry by name/time/size but with a new inode (e.g., replaced from backup).
