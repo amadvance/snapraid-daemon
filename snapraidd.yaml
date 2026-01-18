@@ -2,7 +2,12 @@ openapi: 3.0.0
 info:
   title: SnapRAID API
   description: Backend API for SnapRAID monitoring and control.
+  license:
+    name: BSD-2-Clause
+    url: https://opensource.org/licenses/BSD-2-Clause
   version: 1.0.0
+servers:
+  - url: /
 
 paths:
   /api/v1/probe:
@@ -647,7 +652,7 @@ components:
         access_count_initial_time:
           type: string
           format: date-time
-          example: "2026-01-12T08:00:00"
+          example: "2026-01-12T08:00:00Z"
           description: >
             The timestamp when the daemon first sampled 'access_count'.
             This acts as the reference point for all session-based

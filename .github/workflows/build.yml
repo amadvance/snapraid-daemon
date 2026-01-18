@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Validate OpenAPI definition
+      run: npx -y @redocly/cli lint --config=.redocly.yaml snapraidd.yaml
     - run: autoreconf -i
     - run: ./configure
     - run: make distcheck
