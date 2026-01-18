@@ -97,6 +97,8 @@ struct snapraid_device {
 	uint64_t rotational;
 	uint64_t error;
 	uint64_t flags;
+	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
+	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
 	tommy_node node;
@@ -221,6 +223,9 @@ struct snapraid_global {
 	unsigned blocksize; /**< Block size */
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
+
+	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
+	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */

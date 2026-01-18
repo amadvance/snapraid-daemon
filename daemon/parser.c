@@ -376,9 +376,11 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		stru64(&device->size, val);
 	else if (strcmp(tag, "rotationrate") == 0)
 		stru64(&device->rotational, val);
-//	else if (strcmp(tag, "afr") == 0) // TODO
-	//device->info[ROTATION_RATE] = si64(val);
-	else if (strcmp(tag, "error") == 0)
+	else if (strcmp(tag, "afr") == 0) {
+		strdouble(&device->afr, val);
+		if (mac >= 6)
+			strdouble(&device->prob, map[5]);
+	} else if (strcmp(tag, "error") == 0)
 		stru64(&device->error, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = POWER_PENDING;
@@ -738,36 +740,36 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		return;
 
 	const char* tag = map[1];
-	const char* arg = map[2];
+	const char* val = map[2];
 
 	/* diff */
 	if (task->cmd == CMD_DIFF) {
 		if (strcmp(tag, "equal") == 0)
-			stru64(&state->global.diff_equal, arg);
+			stru64(&state->global.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
-			stru64(&state->global.diff_added, arg);
+			stru64(&state->global.diff_added, val);
 		else if (strcmp(tag, "removed") == 0)
-			stru64(&state->global.diff_removed, arg);
+			stru64(&state->global.diff_removed, val);
 		else if (strcmp(tag, "updated") == 0)
-			stru64(&state->global.diff_updated, arg);
+			stru64(&state->global.diff_updated, val);
 		else if (strcmp(tag, "moved") == 0)
-			stru64(&state->global.diff_moved, arg);
+			stru64(&state->global.diff_moved, val);
 		else if (strcmp(tag, "copied") == 0)
-			stru64(&state->global.diff_copied, arg);
+			stru64(&state->global.diff_copied, val);
 		else if (strcmp(tag, "restored") == 0)
-			stru64(&state->global.diff_restored, arg);
+			stru64(&state->global.diff_restored, val);
 	}
 
 	if (strcmp(tag, "error_file") == 0)
-		stru64(&task->error_alert, arg);
+		stru64(&task->error_alert, val);
 	else if (strcmp(tag, "error_io") == 0)
-		stru64(&task->error_io, arg);
+		stru64(&task->error_io, val);
 	else if (strcmp(tag, "error_data") == 0)
-		stru64(&task->error_data, arg);
+		stru64(&task->error_data, val);
 	else if (strcmp(tag, "exit") == 0) {
 		/* copy exit status */
 		if (mac >= 3)
-			sncpy(task->exit, sizeof(task->exit), arg);
+			sncpy(task->exit, sizeof(task->exit), val);
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
@@ -783,6 +785,10 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			state->global.status_time = state->global.last_time;
 			break;
 		}
+	} else if (strcmp(tag, "array_failure") == 0) {
+		strdouble(&state->global.afr, val);
+		if (mac >= 4)
+			strdouble(&state->global.prob, map[3]);
 	}
 }
 

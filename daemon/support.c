@@ -298,6 +298,26 @@ int stru64(uint64_t* out, const char* s)
 	return 0;
 }
 
+int strdouble(double* out, const char* s)
+{
+	char* e;
+	double v;
+
+	errno = 0;
+	v = strtod(s, &e);
+	if (errno != 0)
+		return -1; /* overflow or underflow */
+
+	if (e == s || *e != '\0')
+		return -1; /* not a valid number */
+
+	if (!isfinite(v)) 
+		return -1; /* exclude nan and inf */
+
+	*out = v;
+	return 0;
+}
+
 char* strtrim(char* str)
 {
 	char* begin;

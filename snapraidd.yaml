@@ -591,6 +591,17 @@ components:
           type: integer
         smart_temperature_celsius:
           type: integer
+        annual_failure_rate:
+          type: number
+          format: double
+          description: >
+            The Annual Failure Rate (the average number	of failures you expect
+            in a year) computed from the SMART attributes 5, 187, 188, 197, 198.
+        failure_probability:
+          type: number
+          format: double
+          description: >
+            The probability of at least one failure in the next year.
 
     BaseDisk:
       type: object
@@ -892,6 +903,17 @@ components:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
           description: "The name of the last command successfully completed by the daemon."
+        annual_failure_rate:
+          type: number
+          format: double
+          description: >
+            The sum of the Annual Failure Rate of all disks in the array (the
+            average number of failures you expect in a year).
+        failure_probability:
+          type: number
+          format: double
+          description: >
+            The probability of at least one failure in the next year.
         file_count:
           type: integer
           format: int64

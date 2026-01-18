@@ -891,6 +891,10 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
 		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+		if (dev->afr != 0)
+			ss_jsonf(s, tab, "\"annual_failure_rate\": %g,\n", dev->afr);
+		if (dev->prob != 0)
+			ss_jsonf(s, tab, "\"failure_probability\": %g,\n", dev->prob);
 		ss_jsonf(s, tab, "\"device_node\": \"%s\"\n", json_esc(dev->file, esc_buf));
 		--tab;
 		ss_jsonf(s, tab, "}%s\n", i->next ? "," : "");
@@ -1247,6 +1251,10 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_iso8601(&s, tab, "\"last_sync_at\": \"%s\",\n", global->sync_time);
 		if (global->scrub_time)
 			ss_json_iso8601(&s, tab, "\"last_scrub_at\": \"%s\",\n", global->scrub_time);
+		if (global->afr != 0)
+			ss_jsonf(&s, tab, "\"annual_failure_rate\": %g,\n", global->afr);
+		if (global->prob != 0)
+			ss_jsonf(&s, tab, "\"failure_probability\": %g,\n", global->prob);
 		ss_jsonf(&s, tab, "\"file_total\": %" PRIu64 ",\n", global->file_total);
 		ss_jsonf(&s, tab, "\"block_bad\": %" PRIu64 ",\n", global->block_bad);
 		ss_jsonf(&s, tab, "\"block_rehash\": %" PRIu64 ",\n", global->block_rehash);
