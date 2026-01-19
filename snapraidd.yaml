@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: SnapRAID API
   description: Backend API for SnapRAID monitoring and control.
@@ -147,6 +147,7 @@ paths:
         '202':
           $ref: '#/components/responses/CommandStopped'
         '409':
+          description: No task is currently running.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/sync:
