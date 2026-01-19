@@ -859,14 +859,39 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
+	pid_t pid = 0;
+	int number = 0;
+	int tab = 0;
+	ss_t s;
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	if (runner_stop(state, msg, sizeof(msg), &status) != 0)
+	if (runner_stop(state, msg, sizeof(msg), &status, &pid, &number) != 0)
 		return send_json_error(conn, status, msg);
 
-	return send_json_success(conn, status);
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	ss_jsonf(&s, tab, "{\n");
+	++tab;
+	ss_jsonf(&s, tab, "\"success\": true,\n");
+	ss_jsonf(&s, tab, "\"message\": \"Signal sent\",\n");
+	ss_jsonf(&s, tab, "\"number\": %d,\n", number);
+	ss_jsonf(&s, tab, "\"pid\": %" PRIu64 "\n", (uint64_t)pid);
+	--tab;
+	ss_jsonf(&s, tab, "}\n");
+
+	mg_printf(conn, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
+	mg_printf(conn, "Content-Type: application/json\r\n");
+	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
+	mg_printf(conn, "Connection: close\r\n");
+	mg_printf(conn, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+
+	return status;
 }
 
 static void json_device_list(ss_t* s, int tab, tommy_list* list)

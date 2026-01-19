@@ -27,10 +27,10 @@ paths:
         reflected in the '/api/v1/disks' endpoint upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/smart:
     post:
@@ -47,10 +47,10 @@ paths:
         reflected in the '/api/v1/disks' endpoint upon completion. 
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/up:
     post:
@@ -66,10 +66,10 @@ paths:
         reflected in '/api/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/down:
     post:
@@ -87,10 +87,10 @@ paths:
         reflected in '/api/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/diff:
     post:
@@ -108,10 +108,10 @@ paths:
         the parity disks. Real-time progress is available via the 
         '/api/v1/progress' endpoint.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/status:
     post:
@@ -126,10 +126,10 @@ paths:
         
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/stop:
     post:
@@ -141,11 +141,13 @@ paths:
         This command is synchronous in the sense that it returns only after 
         the signal has been successfully sent. However, the actual termination 
         of the SnapRAID process may take a few seconds to complete gracefully.
+
+        Note that the pre_run_script and post_run_script are never terminated.
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandStopped'
         '409':
-          description: No task is currently running.
+          $ref: '#/components/responses/CommandFailed'
 
   /api/v1/sync:
     post:
@@ -160,10 +162,10 @@ paths:
         remaining, is available via the '/api/v1/progress' endpoint.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/scrub:
     post:
@@ -180,10 +182,10 @@ paths:
         
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
-        $ref: '#/components/requestBodies/AsyncRequest'
+        $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/AsyncAccepted'
+          $ref: '#/components/responses/CommandAccepted'
 
   /api/v1/disks:
     get:
@@ -336,7 +338,7 @@ paths:
 
 components:
   requestBodies:
-    AsyncRequest:
+    CommandRequest:
       description: >
         A list of raw string arguments passed directly to the 
         SnapRAID process. These must follow SnapRAID CLI syntax.
@@ -351,7 +353,7 @@ components:
                   type: string
 
   responses:
-    AsyncAccepted:
+    CommandAccepted:
       description: >
         The request was successfully validated and added to the execution queue.
       content:
@@ -372,6 +374,61 @@ components:
                 example: "Task queued successfully."
                 description: >
                   A human-readable status message or error detail.
+
+    CommandStopped:
+      description: >
+        The stop command was successfully executed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - success
+              - number
+              - pid
+            properties:
+              success:
+                type: boolean
+                example: true
+                description: >
+                  Indicates if the operation was successful.
+              message:
+                type: string
+                example: "Signal sent."
+                description: >
+                  A human-readable status message.
+              number:
+                type: integer
+                example: 1
+                description: >
+                  Number of the task stopped.
+              pid:
+                type: integer
+                example: 12345
+                description: >
+                  Process ID of the task stopped.
+
+    CommandFailed:
+      description: >
+        The command failed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - success
+              - message
+            properties:
+              success:
+                type: boolean
+                example: false
+                description: >
+                  Indicates if the operation was successful.
+              message:
+                type: string
+                example: "No task is currently running."
+                description: >
+                  A human-readable error detail.
 
   schemas:
     Task:

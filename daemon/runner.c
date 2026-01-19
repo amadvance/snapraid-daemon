@@ -530,15 +530,15 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 	return 0;
 }
 
-int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, pid_t* stop_pid, int* stop_number)
 {
 	pid_t pid;
+	int number;
 
-	/* signal the runner thread that there is a task to execute (or check?) */
 	state_lock();
 
 	struct snapraid_task* task = state->runner.latest;
-	if (!task || !task->running) {
+	if (!task || !task->running || task->pid <= 0) {
 		sncpy(msg, msg_size, "No task running");
 		*status = 409;
 		state_unlock();
@@ -546,8 +546,12 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	}
 
 	pid = task->pid;
+	number = task->number;
 
 	state_unlock();
+
+	*stop_pid = pid;
+	*stop_number = number;
 
 	if (pid > 0) {
 		/*
@@ -556,17 +560,16 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 		 * terminated together, preventing orphaned worker processes.
 		 */
 		if (kill(-pid, SIGTERM) != 0) {
-			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", task->number, (uint64_t)task->pid, strerror(errno), errno);
+			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
 			sncpy(msg, msg_size, "Failed to stop task");
 			*status = 500;
 			return -1;
 		}
 
-		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", task->number, (uint64_t)task->pid);
+		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
 	}
 
 	sncpy(msg, msg_size, "Signal sent");
 	*status = 202;
 	return 0;
 }
-

@@ -80,9 +80,11 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
  * @param status Pointer to store HTTP status code
+ * @param pid Pointer to store the stopped PID
+ * @param number Pointer to store the stopped task number
  * @return Exit status of operation
  */
-int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, pid_t* pid, int* number);
 
 #endif
 
