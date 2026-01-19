@@ -773,7 +773,9 @@ components:
           type: number
           format: double
           description: >
-            The probability of at least one failure in the next year.
+            Statistical probability of at least one disk failure within a 
+            one-year period, calculated using a Poisson distribution model 
+            based on the aggregate Annual Failure Rate.
 
     BaseDisk:
       type: object
@@ -923,133 +925,150 @@ components:
 
     Config:
       type: object
-      description: >
-        The global configuration state for the SnapRAID daemon.
+      description: Global configuration state for the SnapRAID daemon.
       properties:
         scheduled_run:
           type: string
           example: "daily 02:00"
           description: >
-            The time when the daemon starts the maintenance sequence (Sync followed by Scrub). 
-            Format: "daily HH:MM" or "weekly <day> HH:MM". If empty, do nothing.
+            Execution schedule for the automated 'sync' and 'scrub' sequence. 
+            Accepted formats: "daily HH:MM" or "weekly <day> HH:MM". If empty, 
+            background maintenance is disabled.
         sync_suspend_on_deletes:
           type: integer
           example: 50
           description: >
-            Suspend the sync if more than N files were deleted. If 0, the sync will never suspend regardless of deletes.
+            Safety threshold for automated tasks. Aborts 'sync' if deletions 
+            exceed N files. Set to 0 to disable. Does not apply to explicit 
+            API-triggered commands.
         sync_prehash:
           type: boolean
           example: true
           description: >
-            In sync use the prehash option to avoid silent errors due faulty hardware on files not yet hashed.
+            Calculates hashes for new or modified files before updating 
+            parity. Protects against integrating data corrupted by 
+            faulty RAM or cables.
         sync_force_zero:
           type: boolean
-          example: true
+          example: false
           description: >
-            In sync use the force zero option to sync even in presence of file with zero size that were not zero before.
-        sync_report_differences:
-          type: boolean
-          example: true
-          description: >
-            Report a list of differences in the log during SnapRAID activity. If false, no difference are reported.
+            Permits parity synchronization even if existing files have 
+            unexpectedly shrunk to zero bytes.
         scrub_percentage:
           type: integer
           minimum: 0
           maximum: 100
           example: 12
           description: >
-            The percentage of the array to check during the scrub portion of the scheduled run. If 0, scrub is skipped.
+            The percentage of the array verified during the scrub phase of 
+            scheduled maintenance. Set to 0 to skip the scrub phase.
         scrub_older_than:
           type: integer
           minimum: 0
           maximum: 1000
           example: 10
           description: >
-            Do not scrub blocks newer than the specified number of days. If 0, no age selection on scrub.
+            Restricts scrubbing to data blocks not verified within the last 
+            N days. Set to 0 to ignore block age.
         probe_interval_minutes:
+          type: integer
+          example: 15
+          description: >
+            Interval for background health monitoring. The daemon probes 
+            disk power state; SMART attributes are only queried if the 
+            disk is already in an active/idle state to prevent spin-up. 
+            Set to 0 to disable monitoring.
+        spindown_idle_minutes:
           type: integer
           example: 30
           description: >
-            Check SMART attributes every N minutes (only if disks are already spinning). If 0, monitoring is disabled.
-        spindown_idle_minutes:
-          type: integer
-          example: 60
-          description: >
-            Automatically spindown idle disks after N minutes of inactivity. If 0, automatic spindown is disabled.
+            Inactivity threshold for disk spindown. Activity defined as
+            physical read/write I/O. Power-state probes do not reset
+            this timer but allow more frequent I/O detection.
+            Set to 0 to disable.
         pre_run_script:
           type: string
           example: "/usr/local/bin/pre-snapraid.sh"
           description: >
-            Path to a script to execute before SnapRAID activity begins. If empty, do nothing.
+            Absolute path to an executable shell script invoked prior to 
+            SnapRAID tasks. Must contain a valid shebang. Compiled binaries 
+            are not supported.
         post_run_script:
           type: string
           example: "/usr/local/bin/post-snapraid.sh"
           description: >
-            Path to a script to execute after SnapRAID activity finishes. If empty, do nothing.
+            Absolute path to an executable shell script invoked after 
+            SnapRAID tasks (on success or failure). Must contain a valid 
+            shebang. Compiled binaries are not supported.
         log_directory:
           type: string
           example: "/var/log/snapraid/"
           description: >
-            Directory to store individual command logs (e.g. 20251225-sync.log). If empty, logs are not stored.
+            Persistence directory for execution logs (YYYYMMDD-command.log). 
+            Logs are used as the primary data source to rehydrate task 
+            history in-memory upon daemon restart.
         log_retention_days:
           type: integer
           example: 30
           description: >
-            Number of days to retain log files before deletion. If 0, logs are kept indefinitely.
+            Retention window for log files. Deleting logs via this cleanup 
+            policy removes the corresponding entries from the API history. 
+            Set to 0 for indefinite retention.
         notify_syslog_enabled:
           type: boolean
           example: true
           description: >
-            Enable logging daemon activity to the OS system log (syslog/journald). 
-            Note: Critical lifecycle events (start, stop, reload) are ALWAYS logged 
-            as long as this is true, regardless of the level set below.
-            If false, nothing is logged to syslog
+            Enables logging to syslog/journald. Lifecycle events (start, 
+            stop, reload) are logged regardless of severity level if this 
+            is true.
         notify_syslog_level:
           type: string
           enum: [critical, error, warning, info]
-          example: "error"
           description: >
-            Sensitivity level for SnapRAID task-related messages (sync, scrub, etc.). 
-            If unset, assume 'critical'.
+            Minimum severity filter for task-related syslog entries. 
+            Defaults to 'critical' if unset.
         notify_heartbeat:
           type: string
-          example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/550e8400-e29b-41d4"
+          example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/..."
           description: >
-            Command executed only upon successful completion of a task (exit code 0). 
-            Commonly used to ping 'Dead Man's Switch' services like Healthchecks.io 
-            to verify the daemon is alive and tasks are succeeding.
+            Shell command executed only upon task success (exit code 0). 
+            Used for external 'dead man's switch' telemetry.
+            Disabled if empty.
         notify_result:
           type: string
-          example: 'curl -fsS --max-time 30 --retry 3 -H "Content-Type: text/plain" -H "Title: SnapRAID Task Report" --data-binary @- https://ntfy.sh/your_private_topic'
+          example: "curl -fsS --data-binary @- https://ntfy.sh/topic"
           description: >
-            Command executed after a task finishes, provided the result matches the 
-            'notify_result_level'. The daemon pipes a detailed, structured plain-text 
-            report into this command's standard input (stdin). Use '@-' in curl to 
-            read the report body from stdin.
+            Shell command executed after task completion. The daemon pipes 
+            the task report (plain-text) into the command's stdin.
+            Disabled if empty.
         notify_result_level:
           type: string
           enum: [critical, error, warning, info]
           description: >
-            Sets the minimum severity threshold for triggering 'notify_result'. 
-            Tasks with a severity lower than this level will not trigger a notification.
-            For example, setting this to 'error' will send reports for errors and 
-            critical failures, but will remain silent for successful 'info' runs.
+            Minimum severity threshold required to trigger the 'notify_result' 
+            command.
         notify_email_recipient:
           type: string
           format: email
-          example: "admin@example.com"
           description: >
-            Recipient address for local system mail reports. If empty, email notification is disabled.
+            Destination address for health reports sent via local system 
+            mail (sendmail/postfix). Disabled if empty.
         notify_email_level:
           type: string
           enum: [critical, error, warning, info]
           description: >
-            Sensitivity level for local email reports. If unset, assume 'critical'.
+            Minimum severity threshold for dispatching local email reports.
+        notify_differences:
+          type: boolean
+          example: true
+          description: >
+            Includes a detailed list of added/removed/modified files in 
+            the 'notify_result' and 'notify_email' report bodies.
 
     Array:
       type: object
       description: >
-        Comprehensive view of array configuration and session-based execution history.
+        Comprehensive state of array configuration, health metrics, and execution metadata.
       required:
         - daemon_version
         - health
@@ -1079,62 +1098,63 @@ components:
           type: string
           example: "/etc/snapraid.conf"
           description: >
-            Path to the primary SnapRAID configuration file.
+            Absolute path to the SnapRAID configuration file.
         content:
           type: string
           example: "/var/snapraid/snapraid.content"
           description: >
-            Path to the primary content file.
+            Absolute path to the primary SnapRAID content file.
         block_size_bytes:
           type: integer
           example: 262144
           description: >
-            Array block size in bytes. Note that it's always a power of 2.
+            Array block size in bytes (always power of 2).
         last_time:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
-            Timestamp of the most recently finished task execution.
-            This timestamp is in local time.
+            Local timestamp of the most recently concluded task.
         last_cmd:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
           description: >
-            The name of the last command successfully completed by the daemon.
+            Identifier of the last successfully completed command.
         annual_failure_rate:
           type: number
           format: double
           description: >
-            The sum of the Annual Failure Rate of all disks in the array (the
-            average number of failures you expect in a year).
+            The arithmetic sum of the Annual Failure Rates (AFR) for all disks 
+            in the array, representing the expected number of device 
+            failures per year.
         failure_probability:
           type: number
           format: double
           description: >
-            The probability of at least one failure in the next year.
+            Statistical probability of at least one disk failure within a 
+            one-year period, calculated using a Poisson distribution model 
+            based on the aggregate Annual Failure Rate.
         file_count:
           type: integer
           format: int64
           description: >
-            The count of files in the array as reported by the content file.
+            Total number of files tracked in the content file.
         last_status_at:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
-            The last time a status command was performed.
-            This timestamp is in local time.
+            Local timestamp of the last 'status' command execution.
         block_bad:
           type: integer
           format: int64
           example: 0
           description: >
-            The count of blocks marked bad as reported by the content file.
+            Count of blocks flagged as 'bad' in the content file.
         block_rehash:
           type: integer
           format: int64
           example: 0
           description: >
-            The count of blocks that need a rehash as reported by the content file.
+            Count of blocks requiring a rehash for parity consistency.
         block_count:
           type: integer
           format: int64
@@ -1146,20 +1166,17 @@ components:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
-            The last time the daemon analyzed the array for file changes.
-            This timestamp is in local time.
+            Local timestamp of the last array change analysis ('diff').
         last_sync_at:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
-            The last time parity was synchronized with the data disks.
-            This timestamp is in local time.
+            Local timestamp of the last parity synchronization ('sync').
         last_scrub_at:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
-            The last time a data integrity check was performed.
-            This timestamp is in local time.
+            Local timestamp of the last data integrity verification ('scrub').
         diff_equal:
           type: integer
           format: int64

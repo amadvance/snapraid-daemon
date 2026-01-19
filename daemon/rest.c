@@ -531,10 +531,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("sync_report_differences")) == 0) {
+			} else if (json_entry(js, &jv[j], json_const("notify_differences")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.sync_report_differences) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_report_differences);
+				if (json_boolean(js, &jv[j], &state->config.notify_differences) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_differences);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -708,7 +708,6 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"sync_suspend_on_deletes\": %d,\n", config->sync_suspend_on_deletes);
 	ss_jsonf(&s, tab, "\"sync_prehash\": %s,\n", config->sync_prehash ? "true" : "false");
 	ss_jsonf(&s, tab, "\"sync_force_zero\": %s,\n", config->sync_force_zero ? "true" : "false");
-	ss_jsonf(&s, tab, "\"sync_report_differences\": %s,\n", config->sync_report_differences ? "true" : "false");
 	ss_jsonf(&s, tab, "\"scrub_percentage\": %d,\n", config->scrub_percentage);
 	ss_jsonf(&s, tab, "\"scrub_older_than\": %d,\n", config->scrub_older_than);
 
@@ -730,6 +729,8 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	ss_jsonf(&s, tab, "\"notify_email_recipient\": \"%s\",\n", json_esc(config->notify_email_recipient, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_email_level\": \"%s\"\n", config_level_str(config->notify_email_level));
+
+	ss_jsonf(&s, tab, "\"notify_differences\": %s,\n", config->notify_differences ? "true" : "false");
 
 	--tab;
 	ss_jsonf(&s, tab, "}\n");

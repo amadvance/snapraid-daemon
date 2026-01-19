@@ -287,7 +287,6 @@ struct snapraid_config {
 	int sync_suspend_on_deletes;
 	int sync_prehash;
 	int sync_force_zero;
-	int sync_report_differences;
 	int scrub_percentage;
 	int scrub_older_than;
 	int probe_interval_minutes;
@@ -305,6 +304,7 @@ struct snapraid_config {
 	char notify_email_recipient[CONFIG_MAX];
 	int notify_email_level;
 	char notify_run_as_user[CONFIG_MAX];
+	int notify_differences;
 };
 
 #define DAEMON_QUIT 0

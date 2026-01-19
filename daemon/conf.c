@@ -203,8 +203,8 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
-			} else if (strcmp(key, "sync_report_differences") == 0) {
-				if (parse_int(val, 0, 1, &config->sync_report_differences) == 0) {
+			} else if (strcmp(key, "notify_differences") == 0) {
+				if (parse_int(val, 0, 1, &config->notify_differences) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -449,7 +449,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->sync_suspend_on_deletes = 0;
 	config->sync_prehash = 0;
 	config->sync_force_zero = 0;
-	config->sync_report_differences = 0;
+	config->notify_differences = 0;
 	config->scrub_percentage = 0;
 	config->scrub_older_than = 0;
 	config->probe_interval_minutes = 0;

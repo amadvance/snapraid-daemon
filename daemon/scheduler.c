@@ -80,7 +80,7 @@ void* scheduler_thread(void* arg)
 				if (state->config.sync_force_zero) {
 					sl_insert_str(&sync_arg_list, "-Z");
 				}
-				if (state->config.sync_report_differences) {
+				if (state->config.notify_differences) {
 					do_diff = 1;
 				}
 				if (state->config.scrub_percentage > 0) {
