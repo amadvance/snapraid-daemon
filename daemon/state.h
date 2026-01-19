@@ -166,6 +166,9 @@ struct snapraid_parity {
 #define PROCESS_STATE_TERM 4 /**< The task set a "end" log (running!=0) or it's terminated (running==0) and exit_code has the status code */
 #define PROCESS_STATE_CANCEL 5 /**< The task is canceled */
 
+#define HISTORY_PAST_DAYS 30 /**< Number of days the history is kept */
+#define SECONDS_IN_A_DAY (24 * 3600)
+
 struct snapraid_task {
 	char log_file[PATH_MAX]; /**< Log file of the task. */
 	int cmd; /**< The command running */

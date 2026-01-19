@@ -80,7 +80,7 @@ static void runner_go(struct snapraid_state* state)
 	log_path[0] = 0;
 
 	if (log_directory[0] != 0) {
-		time_t now = time(0);
+		time_t now = unix_start_time;
 		struct tm* local = localtime(&now);
 		if (local) {
 			snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", log_directory,
@@ -356,6 +356,8 @@ const char* find_snapraid(void)
 
 int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
+	sncpy(msg, msg_size, "");
+
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
@@ -387,8 +389,9 @@ int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, siz
 		return -1;
 	}
 
-	/* insert the task in the queue */
 	task->number = ++state->runner.number_allocator;
+
+	/* insert the task in the queue */
 	tommy_list_insert_tail(&state->runner.waiting_list, &task->node, task);
 
 	/* signal the runner thread that there is a task to execute */
@@ -405,6 +408,7 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 	int ret;
 	sl_t arg_list;
 
+	sncpy(msg, msg_size, "");
 	sl_init(&arg_list);
 
 	state_lock();
@@ -488,7 +492,7 @@ static int delete_old_files(const char* dir_path, int days)
 
 	struct dirent* ent;
 	while ((ent = readdir(dir)) != 0) {
-		char full_path[PATH_MAX];
+		char full_path[PATH_MAX + 256]; /* avoid warnings about snprintf() */
 
 		if (ent->d_name[0] == '.')
 			continue;
@@ -521,7 +525,17 @@ static int delete_old_files(const char* dir_path, int days)
 
 int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
-	if (delete_old_files(state->config.log_directory, state->config.log_retention_days) != 0) {
+	char log_directory[PATH_MAX];
+	int log_retention_days;
+
+	sncpy(msg, msg_size, "");
+
+	state_lock();
+	sncpy(log_directory, sizeof(log_directory), state->config.log_directory);
+	log_retention_days = state->config.log_retention_days;
+	state_unlock();
+
+	if (delete_old_files(log_directory, log_retention_days) != 0) {
 		sncpy(msg, msg_size, "Failed deleting old log files");
 		*status = 500;
 		return 0;
@@ -531,10 +545,39 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 	return 0;
 }
 
+int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+	time_t cutoff_seconds = now - HISTORY_PAST_DAYS * SECONDS_IN_A_DAY;
+
+	sncpy(msg, msg_size, "");
+
+	state_lock();
+
+	tommy_node* i = tommy_list_head(&state->runner.history_list);
+	while (i) {
+		struct snapraid_task* task = i->data;
+
+		i = i->next; /* go to next before removal */
+
+		if (task->unix_start_time < cutoff_seconds) {
+			/* remove and free */
+			task_free(tommy_list_remove_existing(&state->runner.history_list, i));
+		}
+	}
+
+	state_unlock();
+
+	*status = 200;
+	return 0;
+}
+
 int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, pid_t* stop_pid, int* stop_number)
 {
 	pid_t pid;
 	int number;
+
+	sncpy(msg, msg_size, "");
 
 	state_lock();
 

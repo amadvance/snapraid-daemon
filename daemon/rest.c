@@ -1245,6 +1245,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "[\n");
 	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
+
 		++tab;
 		json_task(&s, tab, task, i->next ? "," : "");
 		--tab;

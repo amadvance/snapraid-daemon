@@ -1042,7 +1042,7 @@ int parse_timestamp(const char *name, time_t* out)
 int parse_past_log(struct snapraid_state* state)
 {
 	char* log_directory = state->config.log_directory;
-	int log_retention_days = state->config.log_retention_days;
+	int64_t log_retention_days = state->config.log_retention_days;
 	sl_t log_list;
 
 	if (*log_directory == 0)
@@ -1056,12 +1056,12 @@ int parse_past_log(struct snapraid_state* state)
 
 	/* read only no more than 30 days of logs */
 	if (log_retention_days == 0)
-		log_retention_days = 30;
-	else if (log_retention_days > 30)
-		log_retention_days = 30;
+		log_retention_days = HISTORY_PAST_DAYS;
+	else if (log_retention_days > HISTORY_PAST_DAYS)
+		log_retention_days = HISTORY_PAST_DAYS;
 
 	time_t now = time(0);
-	time_t cutoff_seconds = now - log_retention_days * (int64_t)24 * 60 * 60;
+	time_t cutoff_seconds = now - log_retention_days * SECONDS_IN_A_DAY;
 
 	sl_init(&log_list);
 	struct dirent *ent;
@@ -1108,9 +1108,10 @@ int parse_past_log(struct snapraid_state* state)
 
 		parse_log(state, f, 0, 0);
 
-		/* move it to the history */
 		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
 			task->state = PROCESS_STATE_TERM;
+
+		/* move it to the history */
 		tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 		state->runner.latest = 0;
 

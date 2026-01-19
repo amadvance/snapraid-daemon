@@ -32,11 +32,13 @@ void* scheduler_thread(void* arg)
 	int64_t last_probe_ts;
 	int64_t last_spindown_ts;
 	int64_t last_delete_ts;
+	int64_t last_history_ts;
 
 	last_minute = -1;
 	last_probe_ts = 0;
 	last_spindown_ts = 0;
 	last_delete_ts = 0;
+	last_history_ts = 0;
 
 	state_lock();
 
@@ -113,11 +115,7 @@ void* scheduler_thread(void* arg)
 				break;
 			}
 
-			/* skip following actions if something other is running */
-			if (state->runner.latest && state->runner.latest->running)
-				break;
-
-			/* delete old log */
+			/* delete old log every hour */
 			if (state->config.log_retention_days > 0
 				&& state->config.log_directory[0] != 0
 				&& mono_now_secs - last_delete_ts >= 3600) {
@@ -127,8 +125,23 @@ void* scheduler_thread(void* arg)
 				(void)runner_delete_old_log(state, msg, sizeof(msg), &status); /* error already logged */
 
 				state_lock();
-				break;
+				/* continue with other tasks */
 			}
+			
+			/* clean history every 10 minutes */
+			if (mono_now_secs - last_history_ts >= 10 * 60) {
+				state_unlock();
+
+				last_history_ts = mono_now_secs;
+				(void)runner_delete_old_history(state, msg, sizeof(msg), &status); /* error already logged */
+
+				state_lock();
+				/* continue with other tasks */
+			}
+
+			/* skip following actions if something other is running */
+			if (state->runner.latest && state->runner.latest->running)
+				break;
 
 			/* probe and spindown */
 			int do_probe = 0;

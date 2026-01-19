@@ -75,6 +75,16 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
+ * Delete old history entries.
+ * @param state Current snapraid state
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
+ * @return Exit status of operation
+ */
+int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+
+/**
  * Stop the current running task.
  * @param state Current snapraid state
  * @param msg Buffer for error message
