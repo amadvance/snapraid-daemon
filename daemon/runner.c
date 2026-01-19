@@ -359,7 +359,7 @@ int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, siz
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
-		*status = 503;
+		*status = 500;
 		return -1;
 	}
 
@@ -382,7 +382,7 @@ int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, siz
 		task_free(task);
 		log_msg(LVL_ERROR, "failed to start runner %s because daemon is terminating", command_name(cmd));
 		sncpy(msg, msg_size, "Daemon is terminating");
-		*status = 409;
+		*status = 503;
 		return -1;
 	}
 
@@ -522,7 +522,7 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 {
 	if (delete_old_files(state->config.log_directory, state->config.log_retention_days) != 0) {
 		sncpy(msg, msg_size, "Failed deleting old log files");
-		*status = 503;
+		*status = 500;
 		return 0;
 	}
 

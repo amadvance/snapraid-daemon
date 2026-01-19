@@ -31,6 +31,9 @@ paths:
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/smart:
     post:
@@ -51,6 +54,9 @@ paths:
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/up:
     post:
@@ -69,6 +75,9 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/down:
@@ -91,6 +100,9 @@ paths:
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/diff:
     post:
@@ -112,6 +124,9 @@ paths:
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/status:
     post:
@@ -130,24 +145,8 @@ paths:
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
-
-  /api/v1/stop:
-    post:
-      summary: Stop active task
-      description: >
-        Terminates the currently running SnapRAID task (scrub, sync, etc.) by 
-        sending a SIGTERM signal to the process.
-        
-        This command is synchronous in the sense that it returns only after 
-        the signal has been successfully sent. However, the actual termination 
-        of the SnapRAID process may take a few seconds to complete gracefully.
-        
-        Note that the pre_run_script and post_run_script are never terminated.
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandStopped'
-        '409':
-          description: No task is currently running.
+        '500':
+          description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/sync:
@@ -166,6 +165,9 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/scrub:
@@ -186,6 +188,31 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
+  /api/v1/stop:
+    post:
+      summary: Stop active task
+      description: >
+        Terminates the currently running SnapRAID task (scrub, sync, etc.) by 
+        sending a SIGTERM signal to the process.
+        
+        This command is synchronous in the sense that it returns only after 
+        the signal has been successfully sent. However, the actual termination 
+        of the SnapRAID process may take a few seconds to complete gracefully.
+        
+        Note that the pre_run_script and post_run_script are never terminated.
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandStopped'
+        '409':
+          description: No task is currently running.
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/disks:
@@ -313,10 +340,12 @@ paths:
       responses:
         '200':
           description: Configuration updated and persisted to disk.
+          $ref: '#/components/responses/CommandResult'
         '400':
           description: >
             Invalid configuration. One or more values failed validation (e.g., 
             unsupported log level or out-of-range scrub frequency).
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/array:
     get:
