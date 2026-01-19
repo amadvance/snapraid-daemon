@@ -30,7 +30,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/smart:
     post:
@@ -50,7 +50,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/up:
     post:
@@ -69,7 +69,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/down:
     post:
@@ -90,7 +90,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/diff:
     post:
@@ -111,7 +111,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/status:
     post:
@@ -129,7 +129,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/stop:
     post:
@@ -137,17 +137,17 @@ paths:
       description: >
         Terminates the currently running SnapRAID task (scrub, sync, etc.) by 
         sending a SIGTERM signal to the process.
-
+        
         This command is synchronous in the sense that it returns only after 
         the signal has been successfully sent. However, the actual termination 
         of the SnapRAID process may take a few seconds to complete gracefully.
-
+        
         Note that the pre_run_script and post_run_script are never terminated.
       responses:
         '202':
           $ref: '#/components/responses/CommandStopped'
         '409':
-          $ref: '#/components/responses/CommandFailed'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/sync:
     post:
@@ -165,7 +165,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/scrub:
     post:
@@ -185,7 +185,7 @@ paths:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
         '202':
-          $ref: '#/components/responses/CommandAccepted'
+          $ref: '#/components/responses/CommandResult'
 
   /api/v1/disks:
     get:
@@ -353,9 +353,9 @@ components:
                   type: string
 
   responses:
-    CommandAccepted:
+    CommandResult:
       description: >
-        The request was successfully validated and added to the execution queue.
+        The request was successfully validated and added to the execution queue or failed.
       content:
         application/json:
           schema:
@@ -367,11 +367,11 @@ components:
                 type: boolean
                 example: true
                 description: >
-                  Indicates if the task was successfully added to the daemon's 
-                  internal worker queue.
+                  Indicates if the operation was successfully added to the daemon's
+                  internal worker queue
               message:
                 type: string
-                example: "Task queued successfully."
+                example: "Operation completed successfully."
                 description: >
                   A human-readable status message or error detail.
 
@@ -407,28 +407,6 @@ components:
                 example: 12345
                 description: >
                   Process ID of the task stopped.
-
-    CommandFailed:
-      description: >
-        The command failed.
-      content:
-        application/json:
-          schema:
-            type: object
-            required:
-              - success
-              - message
-            properties:
-              success:
-                type: boolean
-                example: false
-                description: >
-                  Indicates if the operation was successful.
-              message:
-                type: string
-                example: "No task is currently running."
-                description: >
-                  A human-readable error detail.
 
   schemas:
     Task:
