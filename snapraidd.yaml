@@ -293,12 +293,19 @@ paths:
     get:
       summary: List recent task history
       description: >
-        Returns a list of the most recently completed or failed tasks in 
-        the current session. 
+        Returns a list of the most recently completed, failed, or canceled 
+        tasks in the current session.
         
-        This history is volatile and is cleared upon daemon restart.
-        The list is capped to a fixed number of recent entries.
-        Canceled tasks are not included in this history.
+        Tasks that successfully executed (terminated or signaled) are
+        persistent across daemon restarts because the daemon re-processes 
+        their individual log files from the 'log_directory' at startup.
+        
+        Instead, canceled tasks do not generate a log file. Consequently, 
+        they are volatile, held only in memory, and are not persistent
+        after a daemon restart.
+        
+        The history list is capped to include only entries from the last 30
+        days, regardless of the 'log_retention_days' configuration option.
       responses:
         '200':
           description: A list of completed tasks retrieved successfully.
@@ -479,10 +486,10 @@ components:
             starting - The task started and it's executing it's initialization phase, like loading the content file.
             processing - The task is executing and you'll get progress information like `percentage`.
             finishing - The task finished and it's doing the final phase, like saving the content file.
-            interrupting - The process received a signal, and it's doing the final phase.
-            terminated - The process terminated, `exit_code` contains it's return code.
-            signaled - The process terminated by a signal. `exit_sig` contains it's signal code.
-            canceled - The process was never executed because a previous operation failed.
+            interrupting - The task received a signal, and it's doing the final phase.
+            terminated - The task terminated, `exit_code` contains it's return code.
+            signaled - The task terminated by a signal. `exit_sig` contains it's signal code.
+            canceled - The task was never executed because a previous operation failed. For example, a canceled scrub because the previous sync failed.
         exit_code:
           type: integer
           description: >

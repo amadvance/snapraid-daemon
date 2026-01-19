@@ -102,9 +102,9 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list)
 	for (tommy_node* i = tommy_list_head(waiting_list); i != 0; i = i->next) {
 		struct snapraid_task* task = i->data;
 		task->state = PROCESS_STATE_CANCEL;
+		task->unix_end_time = time(0);
 		log_msg_lock(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
 		tommy_list_insert_tail(history_list, &task->node, task);
 	}
 	tommy_list_init(waiting_list);
 }
-
