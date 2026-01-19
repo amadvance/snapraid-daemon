@@ -550,7 +550,12 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	state_unlock();
 
 	if (pid > 0) {
-		if (kill(pid, SIGTERM) != 0) {
+		/*
+		 * Send signal to the negative PID to target the entire Process Group.
+		 * This ensures that SnapRAID and any programs it may have spawned are
+		 * terminated together, preventing orphaned worker processes.
+		 */
+		if (kill(-pid, SIGTERM) != 0) {
 			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", task->number, (uint64_t)task->pid, strerror(errno), errno);
 			sncpy(msg, msg_size, "Failed to stop task");
 			*status = 500;

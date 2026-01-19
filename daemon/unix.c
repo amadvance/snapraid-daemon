@@ -377,6 +377,14 @@ int os_script(const char* script_path, const char* run_as_user)
 	if (pid == 0) {
 		/* child process */
 
+		/*
+		 * Create a new process group for the child.
+		 * This isolates the child from signals sent to the daemon's process group
+		 * and allows the daemon to kill this process and all its future children
+		 * (the entire group) using kill(-pid, SIGTERM).
+		 */
+		setpgid(0, 0);
+
 		/* drop privileges first (if configured) */
 		if (run_as_user && run_as_user[0] != '\0') {
 			errno = 0;
@@ -510,6 +518,14 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 
 	if (pid == 0) {
 		/* child process */
+
+		/*
+		 * Create a new process group for the child.
+		 * This isolates the child from signals sent to the daemon's process group
+		 * and allows the daemon to kill this process and all its future children
+		 * (the entire group) using kill(-pid, SIGTERM).
+		 */
+		setpgid(0, 0);
 
 		if (pipe_fds[1] != -1)
 			close(pipe_fds[1]); /* Close unused write end */
@@ -671,7 +687,15 @@ pid_t os_spawn(char** argv, int* stderr_fd)
 	}
 
 	if (pid == 0) {
-		/* child */
+		/* child process */
+
+		/*
+		 * Create a new process group for the child.
+		 * This isolates the child from signals sent to the daemon's process group
+		 * and allows the daemon to kill this process and all its future children
+		 * (the entire group) using kill(-pid, SIGTERM).
+		 */
+		setpgid(0, 0);
 
 		/* io sandboxing */
 		int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
@@ -788,24 +812,35 @@ void os_signal_init(void)
  */
 int os_daemonize(void)
 {
+	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
 	if (pid < 0)
 		return -1;
 	if (pid > 0)
 		exit(EXIT_SUCCESS);
 
+	/* create a new session and become the session leader */
 	if (setsid() < 0)
 		return -1;
 
+	/* ensures the child doesn't die when the session leader exits */
+	signal(SIGHUP, SIG_IGN);
+
+	/* ensures the daemon is not a session leader and cannot acquire a controlling terminal again */
 	pid = fork();
 	if (pid < 0)
 		return -1;
 	if (pid > 0)
 		exit(EXIT_SUCCESS);
 
+	/* allow daemon total control over its files */
 	umask(0);
-	(void)chdir("/");
 
+	/* ensure the daemon doesn't block any filesystem unmounting */
+	if (chdir("/") != 0)
+		return -1;
+
+	/* redirect Standard I/O to /dev/null */
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
@@ -815,7 +850,8 @@ int os_daemonize(void)
 		dup2(fd, STDIN_FILENO);
 		dup2(fd, STDOUT_FILENO);
 		dup2(fd, STDERR_FILENO);
-		close(fd);
+		if (fd > STDERR_FILENO)
+			close(fd);
 	}
 
 	return 0;
