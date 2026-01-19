@@ -145,10 +145,10 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
 	for (j = 0; j < SMART_COUNT; ++j)
 		device->smart[j] = SMART_UNASSIGNED;
-	device->error = SMART_UNASSIGNED;
+	device->error_protocol = SMART_UNASSIGNED;
+	device->error_medium = SMART_UNASSIGNED;
 	device->size = SMART_UNASSIGNED;
 	device->rotational = SMART_UNASSIGNED;
-	device->error = SMART_UNASSIGNED;
 	device->flags = SMART_UNASSIGNED;
 	device->power = POWER_PENDING;
 	device->health = HEALTH_PENDING;
@@ -379,8 +379,10 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		strdouble(&device->afr, val);
 		if (mac >= 6)
 			strdouble(&device->prob, map[5]);
-	} else if (strcmp(tag, "error") == 0)
-		stru64(&device->error, val);
+	} else if (strcmp(tag, "error_protocol") == 0)
+		stru64(&device->error_protocol, val);
+	else if (strcmp(tag, "error_medium") == 0)
+		stru64(&device->error_medium, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = POWER_PENDING;
 		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)

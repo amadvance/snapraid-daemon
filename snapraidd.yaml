@@ -674,28 +674,77 @@ components:
             * 0: Non-rotational device (e.g., SSD, NVMe).
             * 1: Rotational device with an unknown or undetected speed.
             * >1: The actual detected rotational speed (e.g., 5400, 7200, 10000).
-        error:
+        error_protocol:
           type: integer
           description: >
-            Number of SMART errors.
-        smart_reallocated_sector_count:
+            Counts command, transport, or controller-level errors reported
+            by the device. These reflect failed I/O operations not directly
+            caused by media defects (for example interface, firmware, or
+            power-related errors).
+            This counter is cumulative and never resets to zero, even if
+            the underlying error condition is resolved.
+        error_medium:
           type: integer
-        smart_uncorrectable_error_cnt:
+          description: >
+            Counts media-level errors where data could not be reliably
+            read or written. These indicate actual storage surface or
+            flash failures and may imply data loss.
+            This counter is cumulative and never resets to zero, even if
+            the underlying error condition is resolved.
+        reallocated_sector_count:
           type: integer
-        smart_command_timeout:
+          description: >
+            The count of reallocated sectors (SMART ID 5). When the hard drive 
+            finds a read/write/verification error, it marks this sector as 
+            "reallocated" and transfers data to a special reserved area.
+        uncorrectable_error_cnt:
           type: integer
-        smart_current_pending_sector:
+          description: >
+            The total count of uncorrectable errors when reading/writing a sector 
+            (SMART ID 187). A rise in this value indicates hardware defects 
+            that the drive's internal error correction (ECC) could not recover.
+        command_timeout:
           type: integer
-        smart_offline_uncorrectable:
+          description: >
+            The count of aborted operations due to HDD timeout (SMART ID 188). 
+            This can be caused by power supply issues, cable oxidation, 
+            or internal drive failures.
+        current_pending_sector:
           type: integer
-        smart_start_stop_count:
+          description: >
+            The number of unstable sectors waiting to be remapped (SMART ID 197). 
+            If a sector is subsequently read successfully, the count decreases; 
+            if it fails again, it becomes a reallocated sector.
+        offline_uncorrectable:
           type: integer
-        smart_power_on_hours:
+          description: >
+            The total number of uncorrectable errors during offline scan 
+            (SMART ID 198). This represents failures discovered during 
+            the drive's internal self-tests rather than during host I/O.
+        start_stop_count:
           type: integer
-        smart_load_cycle_count:
+          description: >
+            The cumulative count of spindle start/stop cycles (SMART ID 4). 
+            In the context of snapraidd, this helps monitor the mechanical 
+            wear caused by aggressive spindown power management policies.
+        power_on_hours:
           type: integer
-        smart_temperature_celsius:
+          description: >
+            The total number of hours the drive has been powered on (SMART ID 9). 
+            Used as a primary metric for determining the age and remaining 
+            service life of the physical disk.
+        load_cycle_count:
           type: integer
+          description: >
+            The number of times the heads have been parked in the landing zone 
+            (SMART ID 193). High values are common in green/energy-efficient 
+            drives but may indicate excessive head parking.
+        temperature_celsius:
+          type: integer
+          description: >
+            The current internal temperature of the drive in degrees Celsius 
+            (SMART ID 194 or 190). Maintaining consistent temperatures 
+            below 45°C is critical for long-term platter and motor reliability.
         annual_failure_rate:
           type: number
           format: double

@@ -915,28 +915,30 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"size_bytes\": %" PRIu64 ",\n", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"rotational\": %" PRIu64 ",\n", dev->rotational);
-		if (dev->error != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"error\": %" PRIu64 ",\n", dev->error);
+		if (dev->error_protocol != SMART_UNASSIGNED)
+			ss_jsonf(s, tab, "\"error_protocol\": %" PRIu64 ",\n", dev->error_protocol);
+		if (dev->error_medium != SMART_UNASSIGNED)
+			ss_jsonf(s, tab, "\"error_medium\": %" PRIu64 ",\n", dev->error_medium);
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_reallocated_sector_count\": %" PRIu64 ",\n", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"reallocated_sector_count\": %" PRIu64 ",\n", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_uncorrectable_error_cnt\": %" PRIu64 ",\n", dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] & 0xFFFF);
+			ss_jsonf(s, tab, "\"uncorrectable_error_cnt\": %" PRIu64 ",\n", dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] & 0xFFFF);
 		if (dev->smart[SMART_COMMAND_TIMEOUT] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_command_timeout\": %" PRIu64 ",\n", dev->smart[SMART_COMMAND_TIMEOUT] & 0xFFFF);
+			ss_jsonf(s, tab, "\"command_timeout\": %" PRIu64 ",\n", dev->smart[SMART_COMMAND_TIMEOUT] & 0xFFFF);
 		if (dev->smart[SMART_CURRENT_PENDING_SECTOR] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_current_pending_sector\": %" PRIu64 ",\n", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"current_pending_sector\": %" PRIu64 ",\n", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
 		if (dev->smart[SMART_OFFLINE_UNCORRECTABLE] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_offline_uncorrectable\": %" PRIu64 ",\n", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"offline_uncorrectable\": %" PRIu64 ",\n", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
 		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_start_stop_count\": %" PRIu64 ",\n", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"start_stop_count\": %" PRIu64 ",\n", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_LOAD_CYCLE_COUNT] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_power_on_hours\": %" PRIu64 ",\n", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"power_on_hours\": %" PRIu64 ",\n", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_load_cycle_count\": %" PRIu64 ",\n", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"load_cycle_count\": %" PRIu64 ",\n", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
 		if (dev->smart[SMART_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
 		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_jsonf(s, tab, "\"smart_temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+			ss_jsonf(s, tab, "\"temperature_celsius\": %" PRIu64 ",\n", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
 		if (dev->afr != 0)
 			ss_jsonf(s, tab, "\"annual_failure_rate\": %g,\n", dev->afr);
 		if (dev->prob != 0)
