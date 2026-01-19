@@ -919,6 +919,8 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"error_protocol\": %" PRIu64 ",\n", dev->error_protocol);
 		if (dev->error_medium != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"error_medium\": %" PRIu64 ",\n", dev->error_medium);
+		if (dev->wear_level != SMART_UNASSIGNED)
+			ss_jsonf(s, tab, "\"wear_level\": %" PRIu64 ",\n", dev->wear_level);
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
 			ss_jsonf(s, tab, "\"reallocated_sector_count\": %" PRIu64 ",\n", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
@@ -1078,7 +1080,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 		case PROCESS_STATE_START : ss_jsonf(s, tab, "\"status\": \"starting\",\n"); break;
 		case PROCESS_STATE_RUN : ss_jsonf(s, tab, "\"status\": \"processing\",\n"); break;
 		case PROCESS_STATE_TERM : ss_jsonf(s, tab, "\"status\": \"finishing\",\n"); break;
-		case PROCESS_STATE_SIGNAL : ss_jsonf(s, tab, "\"status\": \"interrupting\",\n"); break;
+		case PROCESS_STATE_SIGNAL : ss_jsonf(s, tab, "\"status\": \"stopping\",\n"); break;
 		}
 	} else {
 		switch (task->state) {

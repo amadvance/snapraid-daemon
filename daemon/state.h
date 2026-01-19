@@ -97,7 +97,8 @@ struct snapraid_device {
 	uint64_t rotational;
 	uint64_t error_protocol;
 	uint64_t error_medium;
-	uint64_t flags;
+	uint64_t wear_level;
+	uint64_t flags; /**< Smartctl flags */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */

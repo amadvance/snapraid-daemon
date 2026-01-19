@@ -147,6 +147,7 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 		device->smart[j] = SMART_UNASSIGNED;
 	device->error_protocol = SMART_UNASSIGNED;
 	device->error_medium = SMART_UNASSIGNED;
+	device->wear_level = SMART_UNASSIGNED;
 	device->size = SMART_UNASSIGNED;
 	device->rotational = SMART_UNASSIGNED;
 	device->flags = SMART_UNASSIGNED;
@@ -383,6 +384,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		stru64(&device->error_protocol, val);
 	else if (strcmp(tag, "error_medium") == 0)
 		stru64(&device->error_medium, val);
+	else if (strcmp(tag, "wear_level") == 0)
+		stru64(&device->wear_level, val);
 	else if (strcmp(tag, "power") == 0) {
 		device->power = POWER_PENDING;
 		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)
@@ -437,7 +440,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		struint(&task->cpu_usage, map[8]);
 		struint(&task->elapsed_seconds, map[9]);
 	} else if (strcmp(map[1], "end") == 0) {
-		/* if interrupting, ignore the end, and it's reported anyway */
+		/* if stopping, ignore the end, and it's reported anyway */
 		if (task->state != PROCESS_STATE_SIGNAL) {
 			task->state = PROCESS_STATE_TERM;
 			task->progress = 100;

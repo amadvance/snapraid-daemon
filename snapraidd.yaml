@@ -479,14 +479,14 @@ components:
             * 'pending': The task is not yet executed.
         status:
           type: string
-          enum: [queued, starting, processing, finishing, interrupting, terminated, signaled, canceled]
+          enum: [queued, starting, processing, finishing, stopping, terminated, signaled, canceled]
           description: >
             The current status of the task:
             queued - Waiting to be executed.
             starting - The task started and it's executing it's initialization phase, like loading the content file.
             processing - The task is executing and you'll get progress information like `percentage`.
             finishing - The task finished and it's doing the final phase, like saving the content file.
-            interrupting - The task received a signal, and it's doing the final phase.
+            stopping - The task received a signal, and it's doing the final phase.
             terminated - The task terminated, `exit_code` contains it's return code.
             signaled - The task terminated by a signal. `exit_sig` contains it's signal code.
             canceled - The task was never executed because a previous operation failed. For example, a canceled scrub because the previous sync failed.
@@ -698,6 +698,17 @@ components:
             flash failures and may imply data loss.
             This counter is cumulative and never resets to zero, even if
             the underlying error condition is resolved.
+        wear_level:
+          type: integer
+          description: >
+            The wear level of the SSD/NVME expressed as a percentage, where a
+            value of 0 represents a brand new drive with zero wear and
+            a value of 100 indicates the drive has reached or exceeded its
+            manufacturer-rated design life. This metric is provided as a
+            normalized unsigned integer, offering a consistent health
+            indicator across various SSD/NVME vendors and interface types
+            by mapping diverse hardware counters into a single
+            standardized scale.
         reallocated_sector_count:
           type: integer
           description: >
