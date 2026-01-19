@@ -850,6 +850,25 @@ bad:
 	return send_json_error(conn, 400, "Unrecognized json");
 }
 
+/**
+ * POST /api/v1/stop
+ */
+static int handler_stop(struct mg_connection* conn, void* cbdata)
+{
+	char msg[128];
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int status;
+
+	if (strcmp(ri->request_method, "POST") != 0)
+		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	if (runner_stop(state, msg, sizeof(msg), &status) != 0)
+		return send_json_error(conn, status, msg);
+
+	return send_json_success(conn, status);
+}
+
 static void json_device_list(ss_t* s, int tab, tommy_list* list)
 {
 	char esc_buf[JSON_ESC_MAX];
@@ -1343,6 +1362,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/smart", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/diff", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/status", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/queue", handler_queue, state);

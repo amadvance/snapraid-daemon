@@ -131,6 +131,22 @@ paths:
         '202':
           $ref: '#/components/responses/AsyncAccepted'
 
+  /api/v1/stop:
+    post:
+      summary: Stop active task
+      description: >
+        Terminates the currently running SnapRAID task (scrub, sync, etc.) by 
+        sending a SIGTERM signal to the process.
+
+        This command is synchronous in the sense that it returns only after 
+        the signal has been successfully sent. However, the actual termination 
+        of the SnapRAID process may take a few seconds to complete gracefully.
+      responses:
+        '202':
+          $ref: '#/components/responses/AsyncAccepted'
+        '409':
+          description: No task is currently running.
+
   /api/v1/sync:
     post:
       summary: Synchronize array parity

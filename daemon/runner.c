@@ -153,6 +153,11 @@ static void runner_go(struct snapraid_state* state)
 		else
 			log_msg(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
 
+		/* store the pid to allow stop actions */
+		state_lock();
+		state->runner.latest->pid = pid;
+		state_unlock();
+
 		parse_log(state, f, log_f, log_path);
 
 		/* wait for the child process to terminate */
@@ -522,6 +527,41 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 	}
 
 	*status = 200;
+	return 0;
+}
+
+int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	pid_t pid;
+
+	/* signal the runner thread that there is a task to execute (or check?) */
+	state_lock();
+
+	struct snapraid_task* task = state->runner.latest;
+	if (!task || !task->running) {
+		sncpy(msg, msg_size, "No task running");
+		*status = 409;
+		state_unlock();
+		return -1;
+	}
+
+	pid = task->pid;
+
+	state_unlock();
+
+	if (pid > 0) {
+		if (kill(pid, SIGTERM) != 0) {
+			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", task->number, (uint64_t)task->pid, strerror(errno), errno);
+			sncpy(msg, msg_size, "Failed to stop task");
+			*status = 500;
+			return -1;
+		}
+
+		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", task->number, (uint64_t)task->pid);
+	}
+
+	sncpy(msg, msg_size, "Signal sent");
+	*status = 202;
 	return 0;
 }
 

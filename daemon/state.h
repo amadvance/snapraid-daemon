@@ -184,6 +184,7 @@ struct snapraid_task {
 	unsigned block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
 	unsigned block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
+	pid_t pid; /**< Process ID of the running task */
 	int exit_code; /**< Exit code of SnapRAID */
 	int exit_sig; /**< Signal that terminated SnapRAID */
 	sl_t arg_list; /**< List of arguments */
