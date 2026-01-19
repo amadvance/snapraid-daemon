@@ -166,6 +166,7 @@ struct snapraid_parity {
 #define PROCESS_STATE_CANCEL 5 /**< The task is canceled */
 
 struct snapraid_task {
+	char log_file[PATH_MAX]; /**< Log file of the task. */
 	int cmd; /**< The command running */
 	int number; /**< Number of the task. It's an increasing number. */
 	int running; /**< If the command is running or finished */

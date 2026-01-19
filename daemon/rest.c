@@ -1122,6 +1122,8 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 			break;
 		}
 	}
+	if (task->log_file[0])
+		ss_jsonf(s, tab, "\"log_file\": \"%s\",\n", task->log_file);
 	ss_jsonf(s, tab, "\"messages\": [\n");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		sn_t* message = i->data;

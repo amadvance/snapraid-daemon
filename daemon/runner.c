@@ -57,28 +57,25 @@ static void runner_go(struct snapraid_state* state)
 	tommy_node* j;
 	int i;
 	int number;
+	struct snapraid_task* task = state->runner.latest;
 
 	sncpy(script_pre_run, sizeof(script_pre_run), state->config.script_pre_run);
 	sncpy(script_post_run, sizeof(script_post_run), state->config.script_post_run);
 	sncpy(script_run_as_user, sizeof(script_run_as_user), state->config.script_run_as_user);
 	sncpy(log_directory, sizeof(log_directory), state->config.log_directory);
-	unix_queue_time = state->runner.latest->unix_queue_time;
-	unix_start_time = state->runner.latest->unix_start_time;
-	cmd = state->runner.latest->cmd;
-	number = state->runner.latest->number;
-	argc = tommy_list_count(&state->runner.latest->arg_list);
+	unix_queue_time = task->unix_queue_time;
+	unix_start_time = task->unix_start_time;
+	cmd = task->cmd;
+	number = task->number;
+	argc = tommy_list_count(&task->arg_list);
 	argv = calloc_nofail(argc + 1, sizeof(char*));
-	for (i = 0, j = tommy_list_head(&state->runner.latest->arg_list); i < argc; ++i, j = j->next) {
+	for (i = 0, j = tommy_list_head(&task->arg_list); i < argc; ++i, j = j->next) {
 		sn_t* arg = j->data;
 		argv[i] = strdup_nofail(arg->str);
 	}
 	argv[argc] = 0;
 
-	state_unlock();
-
-	int f = -1;
 	FILE* log_f = 0;
-
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
 
@@ -103,7 +100,13 @@ static void runner_go(struct snapraid_state* state)
 		if (log_f == 0) {
 			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
+
+		sncpy(task->log_file, sizeof(task->log_file), log_path);
 	}
+
+	state_unlock();
+
+	int f = -1;
 
 	if (log_f != 0) {
 		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
@@ -155,7 +158,7 @@ static void runner_go(struct snapraid_state* state)
 
 		/* store the pid to allow stop actions */
 		state_lock();
-		state->runner.latest->pid = pid;
+		task->pid = pid;
 		state_unlock();
 
 		parse_log(state, f, log_f, log_path);
@@ -237,8 +240,6 @@ bail:
 	free(argv);
 
 	state_lock();
-
-	struct snapraid_task* task = state->runner.latest;
 
 	/* the task is not running anymore */
 	task->running = 0;

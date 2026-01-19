@@ -561,6 +561,12 @@ components:
           format: int64
           description: >
             Size of blocks processed.
+        log_file:
+          type: string
+          example: "/var/log/snapraid/20260112-sync.log"
+          description: >
+            The absolute path to the log file for this specific task execution. 
+            This file is stored in the directory defined by 'log_directory' in the config.
         messages:
           type: array
           description: >
