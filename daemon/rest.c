@@ -1152,8 +1152,10 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	switch (task->cmd) {
 	case CMD_SYNC :
 	case CMD_SCRUB :
+		ss_jsonf(s, tab, "\"error_soft\": %" PRIi64 ",\n", task->error_soft + task->hash_error_soft);
 		ss_jsonf(s, tab, "\"error_io\": %" PRIi64 ",\n", task->error_io);
 		ss_jsonf(s, tab, "\"error_data\": %" PRIi64 ",\n", task->error_data);
+		ss_jsonf(s, tab, "\"block_bad\": %" PRIi64 ",\n", task->block_bad);
 		break;
 	case CMD_STATUS :
 		ss_jsonf(s, tab, "\"block_bad\": %" PRIi64 ",\n", task->block_bad);
@@ -1281,6 +1283,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
  */
 static int handler_array(struct mg_connection* conn, void* cbdata)
 {
+	char esc_buf[JSON_ESC_MAX];
 	struct snapraid_state* state = cbdata;
 	struct snapraid_global* global = &state->global;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1299,8 +1302,8 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"daemon_version\": \"%s\"\n", PACKAGE_VERSION);
 	if (*global->version) {
 		ss_jsonf(&s, tab, "\"engine_version\": \"%s\",\n", global->version);
+		ss_jsonf(&s, tab, "\"engine_conf\": \"%s\",\n", global->conf_engine);
 		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_array(state)));
-		ss_jsonf(&s, tab, "\"conf\": \"%s\",\n", global->conf);
 		ss_jsonf(&s, tab, "\"block_size_bytes\": %d,\n", global->blocksize);
 		if (*global->content)
 			ss_jsonf(&s, tab, "\"content\": \"%s\",\n", global->content);
@@ -1331,6 +1334,26 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_moved);
 		ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_copied);
 		ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_restored);
+		ss_jsonf(&s, tab, "\"diffs\": [\n");
+		for (tommy_node* i = tommy_list_head(&global->diff_list); i; i = i->next) {
+			struct snapraid_diff* diff = i->data;
+			++tab;
+			ss_jsonf(&s, tab, "{\n");
+			++tab;
+
+			ss_jsonf(&s, tab, "\"change\": \"%s\",\n", change_name(diff->change));
+			if (diff->source_disk[0])
+				ss_jsonf(&s, tab, "\"source_disk\": \"%s\",\n", json_esc(diff->source_disk, esc_buf));
+			if (diff->source_path[0])
+				ss_jsonf(&s, tab, "\"source_path\": \"%s\",\n", json_esc(diff->source_path, esc_buf));
+			ss_jsonf(&s, tab, "\"disk\": \"%s\",\n", json_esc(diff->disk, esc_buf));
+			ss_jsonf(&s, tab, "\"path\": \"%s\"\n", json_esc(diff->path, esc_buf));
+
+			--tab;
+			ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
+			--tab;
+		}
+		ss_jsonf(&s, tab, "]\n");
 	} else {
 		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(HEALTH_PENDING));
 	}

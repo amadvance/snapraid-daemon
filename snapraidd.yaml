@@ -588,6 +588,17 @@ components:
             List of messages.
           items:
             type: string
+        error_soft:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of non-fatal logical errors encountered in the task.
+            This tracks transient issues that do not indicate hardware or
+            media failure, such as files being modified or moved by other
+            processes during a sync. These are skipped or retried without
+            halting the task.
+            This field is available only on the `sync` and `scrub` command.
         error_io:
           type: integer
           format: int64
@@ -606,13 +617,13 @@ components:
             This tracks 'silent' errors where a read was physically successful,
             but the data failed checksum verification, across the task execution.
             This field is available only on the `sync` and `scrub` command.
-        error_bad:
+        block_bad:
           type: integer
           format: int64
           example: 0
           description: >
             The count of blocks marked bad. 
-            This field is available only on the `status` command.
+            This field is available only on the `status`, `sync` and `scrub` commands.
         errors:
           type: array
           description: >
@@ -1087,6 +1098,50 @@ components:
             Includes a detailed list of added/removed/modified files in 
             the 'notify_result' and 'notify_email' report bodies.
 
+    Diff:
+      type: object
+      required:
+        - change
+        - disk
+        - path
+      description: >
+        Represents an individual file change detected during a diff operation.
+      properties:
+        change:
+          type: string
+          enum: [added, removed, updated, moved, copied, restored]
+          description: >
+            The specific type of change detected:
+            - added: New file not in content file.
+            - removed: File missing from filesystem.
+            - updated: Size, timestamp, or link target changed.
+            - moved: Path changed on the same disk.
+            - copied: New file is a copy from another disk.
+            - restored: Inode changed but metadata matches; likely a backup restore.
+          example: "moved"
+        disk:
+          type: string
+          description: >
+            The name of the disk where the file currently resides.
+          example: "d1"
+        path:
+          type: string
+          description: >
+            The current relative path of the file on the disk.
+          example: "movies/file.mkv"
+        source_disk:
+          type: string
+          description: >
+            The name of the originating disk. This field is only populated if
+            the reason is 'moved' or 'copied'.
+          example: "d2"
+        source_path:
+          type: string
+          description: >
+            The original path of the file. This field is only populated if the
+            reason is 'moved' or 'copied'.
+          example: "downloads/file.mkv"
+
     Array:
       type: object
       description: >
@@ -1116,7 +1171,7 @@ components:
             * 'passed': The status is 'passed' if no hardware error was encountered.
             * 'failing': The status is 'failing' if any I/O or data errors were encountered.
             * 'pending': The status is not yet established.
-        conf:
+        engine_conf:
           type: string
           example: "/etc/snapraid.conf"
           description: >
@@ -1234,3 +1289,9 @@ components:
           format: int64
           description: >
             The count of new files matching a parity entry by name/time/size but with a new inode (e.g., replaced from backup).
+        diffs:
+          type: array
+          description: >
+            A collection of all changes detected in the array state from the latest diff.
+          items:
+            $ref: '#/components/schemas/Diff'

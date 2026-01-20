@@ -18,6 +18,7 @@
 #include "portable.h"
 
 #include "support.h"
+#include "elem.h"
 #include "state.h"
 
 struct snapraid_state STATE;
@@ -25,13 +26,20 @@ struct snapraid_state STATE;
 void state_init(void)
 {
 	memset(&STATE, 0, sizeof(STATE));
-	thread_mutex_init(&STATE.lock);
-	STATE.daemon_running = 1;
+	struct snapraid_state* state = &STATE;
+
+	thread_mutex_init(&state->lock);
+	state->daemon_running = 1;
 }
 
 void state_done(void)
 {
-	thread_mutex_destroy(&STATE.lock);
+	struct snapraid_state* state = &STATE;
+
+	tommy_list_foreach(&state->runner.waiting_list, task_free);
+	tommy_list_foreach(&state->runner.history_list, task_free);
+	tommy_list_foreach(&state->global.diff_list, diff_free);
+	thread_mutex_destroy(&state->lock);
 }
 
 struct snapraid_state* state_ptr(void)

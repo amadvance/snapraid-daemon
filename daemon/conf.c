@@ -149,7 +149,7 @@ int config_load(struct snapraid_state* state)
 		char* s;
 		struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
 		sncpy(line->text, sizeof(line->text), buffer);
-		tommy_list_insert_tail(&config->lines, &line->node, line);
+		tommy_list_insert_tail(&config->line_list, &line->node, line);
 
 		/* skip initial spaces */
 		s = buffer;
@@ -358,7 +358,7 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	struct snapraid_config_line* line;
 
 	line = 0;
-	i = tommy_list_head(&config->lines);
+	i = tommy_list_head(&config->line_list);
 	while (i) {
 		line = i->data;
 		if (line_matches_key(line->text, key)) {
@@ -379,7 +379,7 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 
 	line = malloc_nofail(sizeof(struct snapraid_config_line));
 	snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
-	tommy_list_insert_tail(&config->lines, &line->node, line);
+	tommy_list_insert_tail(&config->line_list, &line->node, line);
 }
 
 void config_set_string(struct snapraid_config* config, const char* key, char* value)
@@ -410,7 +410,7 @@ int config_save(struct snapraid_config* config)
 		return -1;
 	}
 
-	i = tommy_list_head(&config->lines);
+	i = tommy_list_head(&config->line_list);
 	while (i) {
 		line = i->data;
 		if (fputs(line->text, fp) == EOF) {

@@ -25,6 +25,11 @@
 typedef tommy_list sl_t;
 
 /**
+ * Max disk name length
+ */
+#define DISK_MAX 128
+
+/**
  * Max UUID length.
  */
 #define UUID_MAX 128
@@ -107,11 +112,11 @@ struct snapraid_device {
 };
 
 struct snapraid_data {
-	char name[PATH_MAX]; /**< Name of the disk. */
+	char name[DISK_MAX]; /**< Name of the disk. */
 	char dir[PATH_MAX]; /**< Mount point */
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< List of snapraid_devices */
+	tommy_list device_list; /**< List of snapraid_device */
 	uint64_t content_size; /**< Size of the disk stored in the content file. */
 	uint64_t content_free; /**< Free size of the disk stored in the content file. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -128,14 +133,14 @@ struct snapraid_split {
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_path[PATH_MAX]; /**< Parity file stored in the content file. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< List of snapraid_devices */
+	tommy_list device_list; /**< List of snapraid_device */
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
 	tommy_node node;
 };
 
 struct snapraid_parity {
-	char name[PATH_MAX]; /**< Name of the parity. */
-	tommy_list split_list; /**< List of snapraid_splits */
+	char name[DISK_MAX]; /**< Name of the parity. */
+	tommy_list split_list; /**< List of snapraid_split */
 	uint64_t content_size; /**< Size of the disk stored in the content file. */
 	uint64_t content_free; /**< Free size of the disk stored in the content file. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -201,12 +206,12 @@ struct snapraid_task {
 	tommy_node node;
 
 	/* error stats */
-	uint64_t hash_error_alert; /**< File errors during hashing phase (sync only). */
-	uint64_t error_alert; /**< Total alert errors encountered. */
+	uint64_t hash_error_soft; /**< Total software errors during hashing phase (sync only). */
+	uint64_t error_soft; /**< Total software errors encountered. */
 	uint64_t error_io; /**< Total I/O errors encountered. */
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
 	uint64_t block_bad; /**< Total blocks marked as bad (status only). */
-	char exit[32]; /**< Exit status: ok/alert/error. */
+	char exit_status[32]; /**< Exit status: ok/warning/error. */
 };
 
 struct snapraid_runner {
@@ -214,8 +219,8 @@ struct snapraid_runner {
 	thread_id_t thread_id;
 	int number_allocator; /**< Allocator of number of tasks */
 	struct snapraid_task* latest; /**< Task running, or latest one finished */
-	tommy_list waiting_list; /**< List of task waiting to be executed */
-	tommy_list history_list; /**< List of task already executed */
+	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
+	tommy_list history_list; /**< List of snapraid_task already executed */
 };
 
 struct snapraid_scheduler {
@@ -223,11 +228,27 @@ struct snapraid_scheduler {
 	thread_id_t thread_id;
 };
 
+#define DIFF_CHANGE_ADD 1 /**< A new file or link was found that is not in the content file. */
+#define DIFF_CHANGE_REMOVE 2 /**< A file or link has been removed from the filesystem since the last sync. */
+#define DIFF_CHANGE_UPDATE 3 /**< A file or link has been updated (size, timestamp, or link target changed). */
+#define DIFF_CHANGE_MOVE 4 /**< A file was moved on the same disk. */
+#define DIFF_CHANGE_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
+#define DIFF_CHANGE_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
+
+struct snapraid_diff {
+	char path[PATH_MAX]; /**< Path of the file */
+	char source_path[PATH_MAX]; /**< Path of the source/old file, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
+	char disk[DISK_MAX]; /**< Name of the disk */
+	char source_disk[DISK_MAX]; /**< Name of the source disk, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
+	int change; /**< One of the DIFF_CHANGE_* */
+	tommy_node node;
+};
+
 struct snapraid_global {
 	char version[64]; /**< SnapRAID version. */
 	int version_major;
 	int version_minor;
-	char conf[PATH_MAX]; /**< Configuration file. */
+	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	unsigned blocksize; /**< Block size */
 	int64_t last_time; /**< Time of the latest command */
@@ -255,6 +276,8 @@ struct snapraid_global {
 	int64_t diff_moved;
 	int64_t diff_copied;
 	int64_t diff_restored;
+
+	tommy_list diff_list; /**< List of snapraid_diff entries */ 
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
@@ -276,8 +299,8 @@ struct snapraid_config_line {
 };
 
 struct snapraid_config {
-	char conf[PATH_MAX]; /**< Configuration file. */
-	tommy_list lines; /**< Lines of the config file. */
+	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
+	tommy_list line_list; /**< List of snapraid_config_line */
 	/* empty string or 0 value means value not set and/or disabled */
 	int net_enabled;
 	char net_port[CONFIG_MAX];

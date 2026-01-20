@@ -79,8 +79,9 @@ struct snapraid_task* task_alloc(void)
 	return task;
 }
 
-void task_free(struct snapraid_task* task)
+void task_free(void* void_task)
 {
+	struct snapraid_task* task = void_task;
 	if (!task)
 		return;
 	sl_free(&task->arg_list);
@@ -103,3 +104,58 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 	}
 	tommy_list_init(waiting_list);
 }
+
+/****************************************************************************/
+/* diff */
+
+struct {
+	int change;
+	const char* str;
+} CHANGES[] = {
+	{ DIFF_CHANGE_ADD, "added" },
+	{ DIFF_CHANGE_REMOVE, "removed" },
+	{ DIFF_CHANGE_UPDATE, "updated" },
+	{ DIFF_CHANGE_MOVE, "moved" },
+	{ DIFF_CHANGE_COPY, "copied" },
+	{ DIFF_CHANGE_RESTORE, "restored" },
+	{ 0 }
+};
+
+const char* change_name(int change)
+{
+	for (int i = 0; CHANGES[i].change; ++i) {
+		if (change == CHANGES[i].change)
+			return CHANGES[i].str;
+	}
+
+	return "-";
+}
+
+struct snapraid_diff* diff_alloc(int change, const char* disk, const char* path)
+{
+	struct snapraid_diff* diff = malloc_nofail(sizeof(struct snapraid_diff));
+	diff->change = change;
+	sncpy(diff->disk, sizeof(diff->disk), disk);
+	sncpy(diff->path, sizeof(diff->path), path);
+	diff->source_disk[0] = 0;
+	diff->source_path[0] = 0;
+	return diff;
+}
+
+struct snapraid_diff* diff_alloc_source(int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
+{
+	struct snapraid_diff* diff = diff_alloc(change, disk, path);
+	if (source_disk)
+		sncpy(diff->source_disk, sizeof(diff->source_disk), source_disk);
+	if (source_path)
+		sncpy(diff->source_path, sizeof(diff->source_path), source_path);
+	return diff;
+}
+
+void diff_free(void* void_diff)
+{
+	struct snapraid_diff* diff = void_diff;
+	free(diff);
+}
+
+

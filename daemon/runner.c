@@ -98,6 +98,11 @@ static void runner_go(struct snapraid_state* state)
 		sncpy(task->log_file, sizeof(task->log_file), log_path);
 	}
 
+	if (cmd == CMD_SYNC || cmd == CMD_DIFF) {
+		/* these commands output a new diff list, so cleanup it */
+		tommy_list_foreach(&state->global.diff_list, diff_free);
+	}
+
 	state_unlock();
 
 	int f = -1;

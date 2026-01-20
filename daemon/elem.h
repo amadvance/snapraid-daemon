@@ -35,13 +35,21 @@ const char* command_name(int cmd);
 /* task */
 
 struct snapraid_task* task_alloc(void);
-
-void task_free(struct snapraid_task* task);
+void task_free(void* void_task);
 
 /**
  * Move all the tasks in the history list
  */
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
+
+/****************************************************************************/
+/* diff */
+
+const char* change_name(int change);
+
+struct snapraid_diff* diff_alloc(int reason, const char* disk, const char* path);
+struct snapraid_diff* diff_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
+void diff_free(void* void_diff);
 
 #endif
 

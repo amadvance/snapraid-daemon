@@ -409,6 +409,36 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	}
 }
 
+static void process_scan(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 4)
+		return;
+
+	const char* tag = map[1];
+	const char* disk = map[2];
+	const char* path = map[3];
+
+	if (strcmp(tag, "add") == 0) {
+		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_ADD, disk, path);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	} else if (strcmp(tag, "remove") == 0) {
+		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_REMOVE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	} else if (strcmp(tag, "update") == 0) {
+		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_UPDATE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
+		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_MOVE, disk, path, disk, map[4]);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
+		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_COPY, disk, path, map[4], map[5]);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	} else if (strcmp(tag, "restore") == 0) {
+		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_RESTORE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+	}
+}
+
 static void process_run(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -619,7 +649,7 @@ static void process_conf(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	if (strcmp(map[1], "file") == 0)
-		sncpy(state->global.conf, sizeof(state->global.conf), map[2]);
+		sncpy(state->global.conf_engine, sizeof(state->global.conf_engine), map[2]);
 }
 
 static void process_content(struct snapraid_state* state, char** map, size_t mac)
@@ -730,7 +760,7 @@ static void process_hash_summary(struct snapraid_state* state, char** map, size_
 		return;
 
 	if (strcmp(map[1], "error_file") == 0) {
-		stru64(&task->hash_error_alert, map[2]);
+		stru64(&task->hash_error_soft, map[2]);
 	}
 }
 
@@ -765,7 +795,7 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	}
 
 	if (strcmp(tag, "error_file") == 0)
-		stru64(&task->error_alert, val);
+		stru64(&task->error_soft, val);
 	else if (strcmp(tag, "error_io") == 0)
 		stru64(&task->error_io, val);
 	else if (strcmp(tag, "error_data") == 0)
@@ -773,7 +803,7 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	else if (strcmp(tag, "exit") == 0) {
 		/* copy exit status */
 		if (mac >= 3)
-			sncpy(task->exit, sizeof(task->exit), val);
+			sncpy(task->exit_status, sizeof(task->exit_status), val);
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
@@ -818,6 +848,10 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "attr") == 0) {
 		state_lock();
 		process_attr(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "scan") == 0) {
+		state_lock();
+		process_scan(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "run") == 0) {
 		state_lock();
