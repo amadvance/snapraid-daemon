@@ -51,5 +51,15 @@ struct snapraid_diff* diff_alloc(int reason, const char* disk, const char* path)
 struct snapraid_diff* diff_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
 void diff_free(void* void_diff);
 
+/****************************************************************************/
+/* health */
+
+const char* power_name(int power);
+const char* health_name(int health);
+int health_data(struct snapraid_data* data);
+int health_parity(struct snapraid_parity* parity);
+int health_task(struct snapraid_task* task);
+int health_array(struct snapraid_state* state);
+
 #endif
 
