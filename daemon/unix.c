@@ -478,7 +478,7 @@ int os_script(const char* script_path, const char* run_as_user)
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "script %s timeout after %lld seconds", resolved_path, execution_time);
 		} else {
-			log_msg(LVL_INFO, "script %s terminated in %lld seconds with signal %s(%d)", resolved_path, execution_time, log_signame(sig), sig);
+			log_msg(LVL_INFO, "script %s terminated in %lld seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
@@ -635,7 +635,7 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "command %s timeout after %lld seconds", command, execution_time);
 		} else {
-			log_msg(LVL_INFO, "command %s terminated in %lld seconds with signal %s(%d)", command, execution_time, log_signame(sig), sig);
+			log_msg(LVL_INFO, "command %s terminated in %lld seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {

@@ -54,7 +54,7 @@ void log_msg_lock(int level, const char *fmt, ...) __attribute__((format(attribu
  * @param sig Signal number
  * @return Signal name string
  */
-const char* log_signame(int sig);
+const char* signal_name(int sig);
 
 #endif
 

@@ -44,6 +44,7 @@ static void runner_go(struct snapraid_state* state)
 	char script_pre_run[CONFIG_MAX];
 	char script_post_run[CONFIG_MAX];
 	char script_run_as_user[CONFIG_MAX];
+	char msg[128];
 	char log_directory[PATH_MAX];
 	time_t unix_start_time;
 	time_t unix_queue_time;
@@ -75,10 +76,8 @@ static void runner_go(struct snapraid_state* state)
 	}
 	argv[argc] = 0;
 
-	FILE* log_f = 0;
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
-
 	if (log_directory[0] != 0) {
 		time_t now = unix_start_time;
 		struct tm* local = localtime(&now);
@@ -96,17 +95,20 @@ static void runner_go(struct snapraid_state* state)
 			snprintf(log_path, sizeof(log_path), "%s/%s.log", log_directory, command_name(cmd));
 		}
 
-		log_f = fopen(log_path, "wte");
-		if (log_f == 0) {
-			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
-		}
-
 		sncpy(task->log_file, sizeof(task->log_file), log_path);
 	}
 
 	state_unlock();
 
 	int f = -1;
+	FILE* log_f = 0;
+
+	if (log_path[0] != 0) {
+		log_f = fopen(log_path, "wte");
+		if (log_f == 0) {
+			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+		}
+	}
 
 	if (log_f != 0) {
 		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
@@ -137,7 +139,7 @@ static void runner_go(struct snapraid_state* state)
 			ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_pre_run, log_signame(script_ret - 128), script_ret - 128);
+			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_pre_run, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
 			ret = -1;
@@ -181,7 +183,7 @@ static void runner_go(struct snapraid_state* state)
 				if (log_f != 0)
 					fprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
 			} else if (WIFSIGNALED(status)) {
-				log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with signal %s(%d)", number, command_name(cmd), (uint64_t)pid, log_signame(WTERMSIG(status)), WTERMSIG(status));
+				log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with signal %s(%d)", number, command_name(cmd), (uint64_t)pid, signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
 					fprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
@@ -212,7 +214,7 @@ static void runner_go(struct snapraid_state* state)
 			ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_post_run, log_signame(script_ret - 128), script_ret - 128);
+			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_post_run, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
 			ret = -1;
@@ -252,33 +254,64 @@ bail:
 		task->exit_code = -1;
 		task->state = PROCESS_STATE_TERM;
 
+		snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
+
 		/* cancel all queued tasks */
-		task_list_cancel(&state->runner.waiting_list, &state->runner.history_list);
+		task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 	} else {
 		if (WIFEXITED(status)) {
 			/* child's exit(code) or return from main */
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
+			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
+
 			/* cancel all queued tasks on failure */
 			if (task->exit_code != 0)
-				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list);
+				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */
 			task->exit_sig = WTERMSIG(status);
 			task->state = PROCESS_STATE_SIGNAL;
 
+			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), signal_name(task->exit_sig), task->exit_sig);
+
 			/* cancel all queued tasks */
-			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list);
+			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		} else {
 			/* it should never happen */
 			task->exit_code = -1;
 			task->state = PROCESS_STATE_TERM;
+			
+			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 
 			/* cancel all queued tasks */
-			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list);
+			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		}
 	}
+}
+
+static int runner_precondition(struct snapraid_state* state)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (task->cmd == CMD_SYNC) {
+		if (state->config.sync_threshold_deletes) {
+			if (state->global.diff_removed >= state->config.sync_threshold_deletes) {
+				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many deleted files");
+				return -1;
+			}
+		}
+
+		if (state->config.sync_threshold_updates) {
+			if (state->global.diff_updated >= state->config.sync_threshold_deletes) {
+				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many updated files");
+				return -1;
+			}
+		}
+	}
+	
+	return 0;
 }
 
 static void* runner_thread(void* arg)
@@ -291,14 +324,21 @@ static void* runner_thread(void* arg)
 		while (state->daemon_running /* daemon is still running */
 			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
 			&& !tommy_list_empty(&state->runner.waiting_list)) { /* there is something to run */
+			
+			time_t now = time(0);
 
 			/* setup a new task to run, note that the task in latest is also in the history_list */
 			state->runner.latest = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
-			state->runner.latest->running = 1;
-			state->runner.latest->state = PROCESS_STATE_START;
-			state->runner.latest->unix_start_time = time(0);
+			state->runner.latest->unix_start_time = now;
 
-			runner_go(state);
+			if (runner_precondition(state) == 0) {
+				state->runner.latest->running = 1;
+				state->runner.latest->state = PROCESS_STATE_START;
+				runner_go(state);
+			} else {
+				state->runner.latest->state = PROCESS_STATE_CANCEL;
+				state->runner.latest->unix_end_time = now;
+			}
 		}
 
 		if (!state->daemon_running)

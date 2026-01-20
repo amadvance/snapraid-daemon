@@ -191,8 +191,9 @@ struct snapraid_task {
 	unsigned block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
 	pid_t pid; /**< Process ID of the running task */
-	int exit_code; /**< Exit code of SnapRAID */
-	int exit_sig; /**< Signal that terminated SnapRAID */
+	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
+	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
+	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
 	sl_t arg_list; /**< List of arguments */
 	sl_t message_list; /**< List of messages */
 	sl_t error_list; /**< List of error messages */
@@ -246,13 +247,13 @@ struct snapraid_global {
 	uint64_t block_total; /**< Total blocks */
 
 	/* diff counters. Updated in diff and sync */
-	uint64_t diff_equal; /**< Comparison of the content state with the real state of the array */
-	uint64_t diff_added;
-	uint64_t diff_removed;
-	uint64_t diff_updated;
-	uint64_t diff_moved;
-	uint64_t diff_copied;
-	uint64_t diff_restored;
+	int64_t diff_equal; /**< Comparison of the content state with the real state of the array */
+	int64_t diff_added;
+	int64_t diff_removed;
+	int64_t diff_updated;
+	int64_t diff_moved;
+	int64_t diff_copied;
+	int64_t diff_restored;
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
@@ -284,7 +285,8 @@ struct snapraid_config {
 	int schedule_hour;
 	int schedule_minute;
 	int schedule_day_of_week;
-	int sync_suspend_on_deletes;
+	int sync_threshold_deletes;
+	int sync_threshold_updates;
 	int sync_prehash;
 	int sync_force_zero;
 	int scrub_percentage;

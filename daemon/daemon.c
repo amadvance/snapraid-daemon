@@ -84,7 +84,7 @@ static void run(struct snapraid_state* state)
 	}
 
 	if (state->daemon_sig)
-		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", log_signame(state->daemon_sig), state->daemon_sig);
+		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", signal_name(state->daemon_sig), state->daemon_sig);
 
 	log_msg(LVL_INFO, "daemon exiting cleanly");
 }

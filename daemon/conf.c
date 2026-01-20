@@ -188,8 +188,13 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
-			} else if (strcmp(key, "sync_suspend_on_deletes") == 0) {
-				if (parse_int(val, 0, 10000, &config->sync_suspend_on_deletes) == 0) {
+			} else if (strcmp(key, "sync_threshold_deletes") == 0) {
+				if (parse_int(val, 0, 10000, &config->sync_threshold_deletes) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "sync_threshold_updates") == 0) {
+				if (parse_int(val, 0, 10000, &config->sync_threshold_updates) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -446,7 +451,8 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->schedule_hour = 0;
 	config->schedule_minute = 0;
 	config->schedule_day_of_week = 0;
-	config->sync_suspend_on_deletes = 0;
+	config->sync_threshold_deletes = 0;
+	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
 	config->sync_force_zero = 0;
 	config->notify_differences = 0;

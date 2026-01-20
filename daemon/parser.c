@@ -749,19 +749,19 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	/* diff */
 	if (task->cmd == CMD_DIFF) {
 		if (strcmp(tag, "equal") == 0)
-			stru64(&state->global.diff_equal, val);
+			stri64(&state->global.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
-			stru64(&state->global.diff_added, val);
+			stri64(&state->global.diff_added, val);
 		else if (strcmp(tag, "removed") == 0)
-			stru64(&state->global.diff_removed, val);
+			stri64(&state->global.diff_removed, val);
 		else if (strcmp(tag, "updated") == 0)
-			stru64(&state->global.diff_updated, val);
+			stri64(&state->global.diff_updated, val);
 		else if (strcmp(tag, "moved") == 0)
-			stru64(&state->global.diff_moved, val);
+			stri64(&state->global.diff_moved, val);
 		else if (strcmp(tag, "copied") == 0)
-			stru64(&state->global.diff_copied, val);
+			stri64(&state->global.diff_copied, val);
 		else if (strcmp(tag, "restored") == 0)
-			stru64(&state->global.diff_restored, val);
+			stri64(&state->global.diff_restored, val);
 	}
 
 	if (strcmp(tag, "error_file") == 0)

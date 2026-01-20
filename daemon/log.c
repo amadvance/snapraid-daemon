@@ -77,7 +77,7 @@ void log_done(void)
 	closelog();
 }
 
-const char* log_signame(int sig)
+const char* signal_name(int sig)
 {
 	switch (sig) {
 	case SIGHUP : return "SIGHUP";

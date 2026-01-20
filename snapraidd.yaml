@@ -489,15 +489,23 @@ components:
             stopping - The task received a signal, and it's doing the final phase.
             terminated - The task terminated, `exit_code` contains it's return code.
             signaled - The task terminated by a signal. `exit_sig` contains it's signal code.
-            canceled - The task was never executed because a previous operation failed. For example, a canceled scrub because the previous sync failed.
+            canceled - The task was never executed because a previous operation failed. 
+              For example, a canceled scrub because the previous sync failed.
+              `exit_msg` contains the reason of the cancelation.
         exit_code:
           type: integer
           description: >
-            Exit code of the SnapRAID process. Present only with status=terminated.
+            Process exit code. Present only with status=terminated.
         exit_sig:
           type: integer
           description: >
-            Signal code of the SnapRAID process. Present only with status=signaled.
+            Process signal code. Present only with status=signaled.
+        exit_msg:
+          type: string
+          description: >
+            Reason for task cancellation. Present only with status=canceled.
+            This field describes either a failed dependency in a task sequence (e.g., sync failed
+            so scrub was skipped) or a safety suspension (e.g., sync_threshold_deletes reached).
         scheduled_at:
           type: string
           example: "2026-01-12T08:00:00"
@@ -934,13 +942,27 @@ components:
             Execution schedule for the automated 'sync' and 'scrub' sequence. 
             Accepted formats: "daily HH:MM" or "weekly <day> HH:MM". If empty, 
             background maintenance is disabled.
-        sync_suspend_on_deletes:
+        sync_threshold_deletes:
           type: integer
+          format: int32
+          default: 0
           example: 50
           description: >
-            Safety threshold for automated tasks. Aborts 'sync' if deletions 
-            exceed N files. Set to 0 to disable. Does not apply to explicit 
-            API-triggered commands.
+            Threshold for deleted files. If the number of missing files exceeds 
+            this value, the sync operation is suspended. 
+            This threshold is ignored for manual syncs triggered 
+            via the API. Set to 0 for no threshold.
+        sync_threshold_updates:
+          type: integer
+          format: int32
+          default: 0
+          example: 500
+          description: >
+            Threshold for updated files. If the number of files with changed 
+            sizes or timestamps exceeds this value, the sync operation is 
+            suspended.
+            This threshold is ignored for manual syncs triggered 
+            via the API. Set to 0 for no threshold.
         sync_prehash:
           type: boolean
           example: true

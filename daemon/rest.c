@@ -504,11 +504,20 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("sync_suspend_on_deletes")) == 0) {
+			} else if (json_entry(js, &jv[j], json_const("sync_threshold_deletes")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 10000, &state->config.sync_suspend_on_deletes) == 0) {
+				if (json_value(js, &jv[j], 0, 10000, &state->config.sync_threshold_deletes) == 0) {
 				} else {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_suspend_on_deletes);
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_deletes);
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("sync_threshold_updates")) == 0) {
+				++j;
+				if (json_value(js, &jv[j], 0, 10000, &state->config.sync_threshold_updates) == 0) {
+				} else {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_updates);
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
@@ -705,7 +714,8 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	++tab;
 
 	ss_jsonf(&s, tab, "\"scheduled_run\": \"%s\",\n", json_esc(schedule_buf, esc_buf));
-	ss_jsonf(&s, tab, "\"sync_suspend_on_deletes\": %d,\n", config->sync_suspend_on_deletes);
+	ss_jsonf(&s, tab, "\"sync_threshold_deletes\": %d,\n", config->sync_threshold_deletes);
+	ss_jsonf(&s, tab, "\"sync_threshold_updates\": %d,\n", config->sync_threshold_updates);
 	ss_jsonf(&s, tab, "\"sync_prehash\": %s,\n", config->sync_prehash ? "true" : "false");
 	ss_jsonf(&s, tab, "\"sync_force_zero\": %s,\n", config->sync_force_zero ? "true" : "false");
 	ss_jsonf(&s, tab, "\"scrub_percentage\": %d,\n", config->scrub_percentage);
@@ -1094,6 +1104,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 			break;
 		case PROCESS_STATE_CANCEL :
 			ss_jsonf(s, tab, "\"status\": \"canceled\",\n");
+			ss_jsonf(s, tab, "\"exit_msg\": %s,\n", task->exit_msg);
 			break;
 		case PROCESS_STATE_TERM :
 			ss_jsonf(s, tab, "\"status\": \"terminated\",\n");
