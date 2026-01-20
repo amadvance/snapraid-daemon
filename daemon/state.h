@@ -207,11 +207,10 @@ struct snapraid_task {
 
 	/* error stats */
 	uint64_t hash_error_soft; /**< Total software errors during hashing phase (sync only). */
-	uint64_t error_soft; /**< Total software errors encountered. */
-	uint64_t error_io; /**< Total I/O errors encountered. */
+	uint64_t error_soft; /**< Total software errors encountered (sync/scrub only). */
+	uint64_t error_io; /**< Total I/O errors encountered (sync/scrub only). */
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
-	uint64_t block_bad; /**< Total blocks marked as bad (status only). */
-	char exit_status[32]; /**< Exit status: ok/warning/error. */
+	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
 };
 
 struct snapraid_runner {
@@ -245,7 +244,7 @@ struct snapraid_diff {
 };
 
 struct snapraid_global {
-	char version[64]; /**< SnapRAID version. */
+	char version[64]; /**< SnapRAID engine full version. */
 	int version_major;
 	int version_minor;
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
@@ -265,7 +264,7 @@ struct snapraid_global {
 	/* info counters. Updated in sync/scrub */
 	uint64_t file_total; /**< Total file count in the array as stored in the content file */
 	uint64_t block_bad; /**< Total blocks marked as bad */
-	uint64_t block_rehash; /**< Total blocks marked as bad */
+	uint64_t block_rehash; /**< Total blocks marked as rehash needed */
 	uint64_t block_total; /**< Total blocks */
 
 	/* diff counters. Updated in diff and sync */

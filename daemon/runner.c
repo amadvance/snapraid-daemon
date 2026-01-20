@@ -23,6 +23,7 @@
 #include "parser.h"
 #include "daemon.h"
 #include "elem.h"
+#include "report.h"
 #include "runner.h"
 
 /****************************************************************************/
@@ -35,6 +36,55 @@ static int runner_need_script(int cmd)
 	case CMD_SCRUB : return 1;
 	case CMD_FIX : return 1;
 	}
+
+	return 0;
+}
+
+static int runner_report(struct snapraid_state* state)
+{
+	struct snapraid_task* report_task = state->runner.latest;
+	struct snapraid_task* sync_task = 0;
+	struct snapraid_task* scrub_task = 0;
+	ss_t ss;
+
+	/* find the latest sync and scrub tasks from history */
+	tommy_node* i = tommy_list_tail(&state->runner.history_list);
+	while (i != 0) {
+		struct snapraid_task* task = i->data;
+
+		/* they should have the same queue time */
+		if (task->unix_queue_time != report_task->unix_queue_time)
+			break;
+
+		if (task->cmd == CMD_SYNC && !sync_task)
+			sync_task = task;
+
+		if (task->cmd == CMD_SCRUB && !scrub_task)
+			scrub_task = task;
+
+		/* stop if we found both */
+		if (sync_task != 0 && scrub_task != 0)
+			break;
+
+		/* stop if we reached the head of the circular list */
+		if (i == tommy_list_head(&state->runner.history_list))
+			break;
+
+		i = i->prev;
+	}
+
+	ss_init(&ss, 8192);
+
+	if (report(state, &ss, sync_task, scrub_task) != 0) {
+		ss_done(&ss);
+		log_msg(LVL_ERROR, "failed to generate report");
+		return -1;
+	}
+
+	/* TODO log the report */
+	printf("%s\n", ss_ptr(&ss));
+
+	ss_done(&ss);
 
 	return 0;
 }
@@ -332,17 +382,27 @@ static void* runner_thread(void* arg)
 			
 			time_t now = time(0);
 
-			/* setup a new task to run, note that the task in latest is also in the history_list */
-			state->runner.latest = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
-			state->runner.latest->unix_start_time = now;
+			/* setup a new task to run */
+			struct snapraid_task* task = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
+			task->unix_start_time = now;
 
-			if (runner_precondition(state) == 0) {
-				state->runner.latest->running = 1;
-				state->runner.latest->state = PROCESS_STATE_START;
+			/* set in the latest */
+			state->runner.latest = task;
+
+			if (task->cmd == CMD_REPORT) {
+				task->running = 1;
+				task->state = PROCESS_STATE_START;
+				runner_report(state);
+				task->running = 0;
+				task->state = PROCESS_STATE_TERM;
+				task->unix_end_time = now;
+			} else if (runner_precondition(state) == 0) {
+				task->running = 1;
+				task->state = PROCESS_STATE_START;
 				runner_go(state);
 			} else {
-				state->runner.latest->state = PROCESS_STATE_CANCEL;
-				state->runner.latest->unix_end_time = now;
+				task->state = PROCESS_STATE_CANCEL;
+				task->unix_end_time = now;
 			}
 		}
 

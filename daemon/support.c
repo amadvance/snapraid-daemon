@@ -75,7 +75,7 @@ void ss_prints(struct ss* s, const char* arg)
 	s->len += len;
 }
 
-int ss_vprintf(struct ss* s, const char* fmt, va_list ap)
+ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap)
 {
 	size_t available;
 	ssize_t needed;
@@ -103,7 +103,7 @@ int ss_vprintf(struct ss* s, const char* fmt, va_list ap)
 	return 0;
 }
 
-int ss_printf(struct ss* s, const char* fmt, ...)
+ssize_t ss_printf(struct ss* s, const char* fmt, ...)
 {
 	va_list ap;
 	int ret;
@@ -113,6 +113,38 @@ int ss_printf(struct ss* s, const char* fmt, ...)
 	va_end(ap);
 
 	return ret;
+}
+
+ssize_t ss_printc(struct ss* s, char c, size_t pad)
+{
+	ss_reserve(s, pad);
+	memset(ss_top(s), c, pad);
+	ss_forward(s, pad);
+	return pad;
+}
+
+ssize_t ss_printr(struct ss* s, const char* str, size_t pad)
+{
+	size_t len = strlen(str);
+
+	if (len < pad)
+		ss_printc(s, ' ', pad - len);
+
+	ss_write(s, str, len);
+
+	return len < pad ? pad : len;
+}
+
+ssize_t ss_printl(struct ss* s, const char* str, size_t pad)
+{
+	size_t len = strlen(str);
+
+	ss_write(s, str, len);	
+
+	if (len < pad)
+		ss_printc(s, ' ', pad - len);
+
+	return len < pad ? pad : len;
 }
 
 void ss_jsons(struct ss* s, int tab, const char* arg)

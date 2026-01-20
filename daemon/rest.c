@@ -276,9 +276,9 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 /****************************************************************************/
 /* helper */
 
-static void send_json_answer(struct mg_connection* conn, ss_t* s)
+static void send_json_answer(struct mg_connection* conn, int status, ss_t* s)
 {
-	mg_printf(conn, "HTTP/1.1 200 OK\r\n");
+	mg_printf(conn, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
 	mg_printf(conn, "Content-Type: application/json\r\n");
 	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(s));
 	mg_printf(conn, "Connection: close\r\n");
@@ -636,7 +636,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -781,17 +781,32 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	--tab;
 	ss_jsonf(&s, tab, "}\n");
 
-	mg_printf(conn, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
-	mg_printf(conn, "Content-Type: application/json\r\n");
-	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(&s));
-	mg_printf(conn, "Connection: close\r\n");
-	mg_printf(conn, "\r\n");
-
-	mg_write(conn, ss_ptr(&s), ss_len(&s));
+	send_json_answer(conn, status, &s);
 
 	ss_done(&s);
 
 	return status;
+}
+
+/**
+ * POST /api/v1/report
+ */
+static int handler_report(struct mg_connection* conn, void* cbdata)
+{
+	char msg[128];
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int status;
+
+	if (strcmp(ri->request_method, "POST") != 0)
+		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	runner(state, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+
+	if (status >= 200 && status <= 299)
+		return send_json_success(conn, status);
+	else
+		return send_json_error(conn, status, msg);
 }
 
 static void json_device_list(ss_t* s, int tab, tommy_list* list)
@@ -959,7 +974,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -1087,7 +1102,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -1123,7 +1138,7 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -1160,7 +1175,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -1251,7 +1266,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	state_unlock();
 
-	send_json_answer(conn, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
@@ -1319,6 +1334,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/diff", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/status", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/report", handler_report, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/queue", handler_queue, state);

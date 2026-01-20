@@ -226,10 +226,14 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 4)
 		return;
 
-	data = find_data(&state->data_list, map[1]);
+	const char* name = map[1];
+	const char* dir = map[2];
+	const char* uuid = map[3];
 
-	sncpy(data->dir, sizeof(data->dir), map[2]);
-	sncpy(data->uuid, sizeof(data->uuid), map[3]);
+	data = find_data(&state->data_list, name);
+
+	sncpy(data->dir, sizeof(data->dir), dir);
+	sncpy(data->uuid, sizeof(data->uuid), uuid);
 }
 
 static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
@@ -239,9 +243,12 @@ static void process_content_data(struct snapraid_state* state, char** map, size_
 	if (mac < 3)
 		return;
 
-	data = find_data(&state->data_list, map[1]);
+	const char* name = map[1];
+	const char* uuid = map[2];
 
-	sncpy(data->content_uuid, sizeof(data->content_uuid), map[2]);
+	data = find_data(&state->data_list, name);
+
+	sncpy(data->content_uuid, sizeof(data->content_uuid), uuid);
 }
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -252,14 +259,19 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 
 	if (mac < 3)
 		return;
-	if (!is_split_parity(map[0], &index))
+
+	char* name = map[0];
+	const char* uuid = map[1];
+	const char* path = map[2];
+
+	if (!is_split_parity(name, &index))
 		return;
 
-	parity = find_parity(&state->parity_list, map[0]);
+	parity = find_parity(&state->parity_list, name);
 	split = find_split(&parity->split_list, index);
 
-	sncpy(split->path, sizeof(split->path), map[1]);
-	sncpy(split->uuid, sizeof(split->uuid), map[2]);
+	sncpy(split->path, sizeof(split->path), path);
+	sncpy(split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_content_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -270,30 +282,40 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 
 	if (mac < 4)
 		return;
-	if (!is_split_parity(map[0], &index))
+
+	char* name = map[0];
+	const char* uuid = map[1];
+	const char* path = map[2];
+	const char* size_alloc = map[3];
+
+	if (!is_split_parity(name, &index))
 		return;
 
-	parity = find_parity(&state->parity_list, map[0]);
+	parity = find_parity(&state->parity_list, name);
 	split = find_split(&parity->split_list, index);
 
-	sncpy(split->content_uuid, sizeof(split->content_uuid), map[1]);
-	sncpy(split->content_path, sizeof(split->content_path), map[2]);
-	stru64(&split->content_size, map[3]);
+	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
+	sncpy(split->content_path, sizeof(split->content_path), path);
+	stru64(&split->content_size, size_alloc);
 }
 
 static void process_content_allocation(struct snapraid_state* state, char** map, size_t mac)
 {
-	if (mac < 3)
+	if (mac < 4)
 		return;
+	
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
 
-	if (is_parity(map[0])) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, map[0]);
-		stru64(&parity->content_size, map[1]);
-		stru64(&parity->content_free, map[2]);
+	if (is_parity(name)) {
+		struct snapraid_parity* parity = find_parity(&state->parity_list, name);
+		stru64(&parity->content_size, size_alloc);
+		stru64(&parity->content_free, size_free);
 	} else {
-		struct snapraid_data* data = find_data(&state->data_list, map[0]);
-		stru64(&data->content_size, map[1]);
-		stru64(&data->content_free, map[2]);
+		struct snapraid_data* data = find_data(&state->data_list, name);
+		stru64(&data->content_size, size_alloc);
+		stru64(&data->content_free, size_free);
 	}
 }
 
@@ -801,9 +823,6 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	else if (strcmp(tag, "error_data") == 0)
 		stru64(&task->error_data, val);
 	else if (strcmp(tag, "exit") == 0) {
-		/* copy exit status */
-		if (mac >= 3)
-			sncpy(task->exit_status, sizeof(task->exit_status), val);
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
@@ -1036,7 +1055,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	}
 }
 
-int parse_timestamp(const char *name, time_t* out)
+int parse_timestamp(const char *name, int64_t* out)
 {
 	int Y, M, D, h, m, s;
 	char dash;
@@ -1070,7 +1089,7 @@ int parse_timestamp(const char *name, time_t* out)
 
 	*out = mktime(&tm);
 
-	if (*out == (time_t)-1)
+	if (*out == -1)
 		return -1;
 
 	return 0;
@@ -1097,8 +1116,9 @@ int parse_past_log(struct snapraid_state* state)
 	else if (log_retention_days > HISTORY_PAST_DAYS)
 		log_retention_days = HISTORY_PAST_DAYS;
 
-	time_t now = time(0);
-	time_t cutoff_seconds = now - log_retention_days * SECONDS_IN_A_DAY;
+	int count = 0;
+	int64_t now = time(0);
+	int64_t cutoff_seconds = now - log_retention_days * SECONDS_IN_A_DAY;
 
 	sl_init(&log_list);
 	struct dirent *ent;
@@ -1109,7 +1129,7 @@ int parse_past_log(struct snapraid_state* state)
 			continue;
 
 		/* only files matching the pattern */
-		time_t ntime;
+		int64_t ntime;
 		if (parse_timestamp(ent->d_name, &ntime) != 0)
 			continue;
 
@@ -1144,6 +1164,7 @@ int parse_past_log(struct snapraid_state* state)
 		state->runner.latest = task;
 
 		parse_log(state, f, 0, 0);
+		++count;
 
 		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
 			task->state = PROCESS_STATE_TERM;
@@ -1156,6 +1177,10 @@ int parse_past_log(struct snapraid_state* state)
 	}
 
 	sl_free(&log_list);
+
+	int64_t stop = time(0);
+
+	log_msg(LVL_INFO, "loaded %d logs in %" PRIi64 " seconds", count, stop - now);
 
 	return 0;
 }

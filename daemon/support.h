@@ -64,7 +64,7 @@ void ss_prints(struct ss* s, const char* arg);
  * @param ap Variable arguments
  * @return Number of characters written
  */
-int ss_vprintf(struct ss* s, const char* fmt, va_list ap);
+ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap);
 
 /**
  * Print formatted string to string stream.
@@ -72,7 +72,22 @@ int ss_vprintf(struct ss* s, const char* fmt, va_list ap);
  * @param fmt Format string
  * @return Number of characters written
  */
-int ss_printf(struct ss* s, const char* fmt, ...)  __attribute__((format(attribute_printf, 2, 3)));
+ssize_t ss_printf(struct ss* s, const char* fmt, ...)  __attribute__((format(attribute_printf, 2, 3)));
+
+/**
+ * Write a repeated char.
+ */
+ssize_t ss_printc(struct ss* s, char c, size_t pad);
+
+/**
+ * Write a string with right space padding.
+ */
+ssize_t ss_printr(struct ss* s, const char* str, size_t pad);
+
+/**
+ * Write a string with left space padding.
+ */
+ssize_t ss_printl(struct ss* s, const char* str, size_t pad);
 
 /**
  * Write JSON-escaped string to string stream.
