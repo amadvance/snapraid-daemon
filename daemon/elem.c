@@ -44,6 +44,7 @@ struct {
 	{ CMD_SCRUB, "scrub" },
 	{ CMD_FIX, "fix" },
 	{ CMD_CHECK, "check" },
+	{ CMD_REPORT, "report" },
 	{ 0 }
 };
 
@@ -59,18 +60,9 @@ int command_parse(const char* str)
 
 const char* command_name(int cmd)
 {
-	switch (cmd) {
-	case CMD_PROBE : return "probe";
-	case CMD_UP : return "up";
-	case CMD_DOWN : return "down";
-	case CMD_SMART : return "smart";
-	case CMD_STATUS : return "status";
-	case CMD_LIST : return "list";
-	case CMD_DIFF : return "diff";
-	case CMD_SYNC : return "sync";
-	case CMD_SCRUB : return "scrub";
-	case CMD_FIX : return "fix";
-	case CMD_CHECK : return "check";
+	for (int i = 0; COMMANDS[i].cmd; ++i) {
+		if (cmd == COMMANDS[i].cmd)
+			return COMMANDS[i].str;
 	}
 
 	return "-";

@@ -101,13 +101,15 @@ void* scheduler_thread(void* arg)
 				 */
 				int ret = 0;
 				if (ret == 0 && do_diff)
-					ret = runner(state, CMD_DIFF, &diff_arg_list, msg, sizeof(msg), &status);
+					ret = runner(state, CMD_DIFF, now, &diff_arg_list, msg, sizeof(msg), &status);
 
 				if (ret == 0)
-					ret = runner(state, CMD_SYNC, &sync_arg_list, msg, sizeof(msg), &status);
+					ret = runner(state, CMD_SYNC, now, &sync_arg_list, msg, sizeof(msg), &status);
 
 				if (ret == 0 && do_scrub)
-					(void)runner(state, CMD_SCRUB, &scrub_arg_list, msg, sizeof(msg), &status);
+					(void)runner(state, CMD_SCRUB, now, &scrub_arg_list, msg, sizeof(msg), &status);
+					
+				(void)runner(state, CMD_REPORT, now, 0, msg, sizeof(msg), &status);
 
 				sl_free(&diff_arg_list);
 				sl_free(&sync_arg_list);
@@ -162,7 +164,7 @@ void* scheduler_thread(void* arg)
 				state_unlock();
 
 				last_probe_ts = mono_now_secs;
-				if (runner(state, CMD_PROBE, 0, msg, sizeof(msg), &status) == 0) {
+				if (runner(state, CMD_PROBE, now, 0, msg, sizeof(msg), &status) == 0) {
 					if (spindown_idle_minutes > 0) {
 						/* spindown inactive */
 						last_spindown_ts = mono_now_secs;

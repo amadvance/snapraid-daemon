@@ -464,7 +464,7 @@ components:
             Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub]
+          enum: [probe, up, down, smart, diff, status, sync, scrub, report]
           description: >
             The command executed.
         health:

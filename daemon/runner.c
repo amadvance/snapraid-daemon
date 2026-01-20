@@ -394,10 +394,8 @@ const char* find_snapraid(void)
 	return 0;
 }
 
-int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	sncpy(msg, msg_size, "");
-
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
@@ -406,9 +404,14 @@ int runner(struct snapraid_state* state, int cmd, sl_t* arg_list, char* msg, siz
 		return -1;
 	}
 
+	sncpy(msg, msg_size, "");
+
+	if (now == 0)
+		now = time(0);
+
 	struct snapraid_task* task = task_alloc();
 	task->cmd = cmd;
-	task->unix_queue_time = time(0);
+	task->unix_queue_time = now;
 
 	sl_insert_str(&task->arg_list, snapraid);
 	sl_insert_str(&task->arg_list, command_name(cmd));
@@ -502,7 +505,7 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 		*status = 200;
 		ret = 0;
 	} else {
-		ret = runner(state, CMD_DOWN, &arg_list, msg, msg_size, status);
+		ret = runner(state, CMD_DOWN, 0, &arg_list, msg, msg_size, status);
 	}
 
 	sl_free(&arg_list);

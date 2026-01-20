@@ -159,6 +159,7 @@ struct snapraid_parity {
 #define CMD_SCRUB 11
 #define CMD_FIX 12
 #define CMD_CHECK 13
+#define CMD_REPORT 100 /**< Generate a notification report */
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */

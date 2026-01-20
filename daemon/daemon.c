@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	/*
 	 * Load initial info into the state
 	 */
-	if (runner(state_ptr(), CMD_PROBE, 0, msg, sizeof(msg), &status) != 0) {
+	if (runner(state_ptr(), CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the first probe command");
 		exit(EXIT_FAILURE);
 	}

@@ -828,21 +828,21 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	}
 
 	if (strcmp(path, "/api/v1/sync") == 0)
-		runner(state, CMD_SYNC, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_SYNC, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/scrub") == 0)
-		runner(state, CMD_SCRUB, &arg_list, msg, sizeof(msg), &status);		
+		runner(state, CMD_SCRUB, 0, &arg_list, msg, sizeof(msg), &status);		
 	else if (strcmp(path, "/api/v1/probe") == 0)
-		runner(state, CMD_PROBE, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_PROBE, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/up") == 0)
-		runner(state, CMD_UP, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_UP, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/down") == 0)
-		runner(state, CMD_DOWN, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_DOWN, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/smart") == 0)
-		runner(state, CMD_SMART, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_SMART, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/diff") == 0)
-		runner(state, CMD_DIFF, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_DIFF, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/status") == 0)
-		runner(state, CMD_STATUS, &arg_list, msg, sizeof(msg), &status);
+		runner(state, CMD_STATUS, 0, &arg_list, msg, sizeof(msg), &status);
 	else {
 		sncpy(msg, sizeof(msg), "Resource not found");
 		status = 404;
