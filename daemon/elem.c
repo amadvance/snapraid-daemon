@@ -133,22 +133,34 @@ const char* change_name(int change)
 
 struct snapraid_diff* diff_alloc(int change, const char* disk, const char* path)
 {
-	struct snapraid_diff* diff = malloc_nofail(sizeof(struct snapraid_diff));
-	diff->change = change;
-	sncpy(diff->disk, sizeof(diff->disk), disk);
-	sncpy(diff->path, sizeof(diff->path), path);
-	diff->source_disk[0] = 0;
-	diff->source_path[0] = 0;
-	return diff;
+	return diff_alloc_source(change, disk, path, 0, 0);
 }
 
 struct snapraid_diff* diff_alloc_source(int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
 {
-	struct snapraid_diff* diff = diff_alloc(change, disk, path);
+	ssize_t disk_len = strlen(disk);
+	ssize_t path_len = strlen(path);
+	ssize_t source_disk_len = source_disk ? strlen(source_disk) : 0;
+	ssize_t source_path_len = source_path ? strlen(source_path) : 0;
+
+	struct snapraid_diff* diff = malloc_nofail(sizeof(struct snapraid_diff) + disk_len + path_len + source_disk_len + source_path_len + 4);
+	diff->change = change;
+	diff->disk = diff->str;
+	diff->path = diff->disk + disk_len + 1;
+	diff->source_disk = diff->path + path_len + 1;
+	diff->source_path = diff->source_disk + source_disk_len + 1;
+
+	memcpy(diff->disk, disk, disk_len + 1);
+	memcpy(diff->path, path, path_len + 1);
 	if (source_disk)
-		sncpy(diff->source_disk, sizeof(diff->source_disk), source_disk);
+		memcpy(diff->source_disk, source_disk, source_disk_len + 1);
+	else
+		diff->source_disk[0] = 0;
 	if (source_path)
-		sncpy(diff->source_path, sizeof(diff->source_path), source_path);
+		memcpy(diff->source_path, source_path, source_path_len + 1);
+	else
+		diff->source_path[0] = 0;
+
 	return diff;
 }
 

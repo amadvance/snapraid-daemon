@@ -235,12 +235,13 @@ struct snapraid_scheduler {
 #define DIFF_CHANGE_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
 
 struct snapraid_diff {
-	char path[PATH_MAX]; /**< Path of the file */
-	char source_path[PATH_MAX]; /**< Path of the source/old file, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
-	char disk[DISK_MAX]; /**< Name of the disk */
-	char source_disk[DISK_MAX]; /**< Name of the source disk, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
-	int change; /**< One of the DIFF_CHANGE_* */
 	tommy_node node;
+	int change; /**< One of the DIFF_CHANGE_* */
+	char* path; /**< Path of the file */
+	char* source_path; /**< Path of the source/old file, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
+	char* disk; /**< Name of the disk */
+	char* source_disk; /**< Name of the source disk, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
+	char str[]; /**< Allocated string */
 };
 
 struct snapraid_global {
