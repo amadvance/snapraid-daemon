@@ -22,6 +22,54 @@
 #include "support.h"
 #include "elem.h"
 
+static int data_count_device(struct snapraid_data* data)
+{
+	int count = 0;
+	for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
+		++count;
+	}
+	return count;
+}
+
+static int parity_count_device(struct snapraid_parity* parity)
+{
+	int count = 0;
+	for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
+		struct snapraid_split* split = j->data;
+		for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
+			++count;
+		}
+	}
+	return count;
+}
+
+static const char* health_report(int health)
+{
+	switch (health) {
+	case HEALTH_PASSED : return " [passed]";
+	case HEALTH_FAILING : return "[FAILING]";
+	case HEALTH_PENDING : return "[pending]";
+	}
+
+	return "-";
+}
+
+static const char* smart_report(int flag)
+{
+	if (flag & SMARTCTL_FLAG_FAIL)
+		return "FAILING";
+	else if (flag & SMARTCTL_FLAG_PREFAIL)
+		return "PREFAIL";
+	else if (flag & SMARTCTL_FLAG_PREFAIL_LOGGED)
+		return "Prefail condition in the past";
+	else if (flag & SMARTCTL_FLAG_ERROR_LOGGED)
+		return "Error Logged";
+	else if (flag & SMARTCTL_FLAG_SELFERROR_LOGGED)
+		return "Selt Test Error Logged";
+
+	return 0;
+}
+
 /**
  * Format a duration in seconds to a human-readable string.
  */
@@ -191,19 +239,36 @@ static void print_differences(ss_t* ss, struct snapraid_state* state)
 	}
 }
 
+static void print_device(struct snapraid_device* device, ss_t* ss, int tab_len, int name_len, int health_len, int model_len, int serial_len, int has_many)
+{
+	if (has_many) {
+		ss_printc(ss, ' ', tab_len + name_len);
+		ss_prints(ss, health_report(device->health));
+	}
+	if (device->prob != 0)
+		ss_printf(ss, "   FP:%3d%%", (int)(device->prob * 100));
+	else if (device->wear_level != SMART_UNASSIGNED)
+		ss_printf(ss, "   WL:%3d%%", (int)(device->wear_level));
+	else
+		ss_prints(ss, "          ");
+	ss_prints(ss, "   Model: ");
+	ss_printl(ss, device->model[0] ? device->model : "-", model_len);
+	ss_prints(ss, "   Serial: ");
+	ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
+	ss_prints(ss, "\n");
+	if (device->error_medium != SMART_UNASSIGNED || device->error_protocol != SMART_UNASSIGNED) {
+		ss_printc(ss, ' ', tab_len + name_len + health_len);
+		ss_printf(ss, ">> Medium Errors: %" PRIu64 ", Protocol Errors: %" PRIu64 "\n", device->error_medium, device->error_protocol);
+	}
+	const char* smart = smart_report(device->flags);
+	if (smart) {
+		ss_printc(ss, ' ', tab_len + name_len + health_len);
+		ss_printf(ss, ">> SMART reports: %s\n", smart);
+	}
+}
+
 /****************************************************************************/
 /* report */
-
-const char* health_report(int health)
-{
-	switch (health) {
-	case HEALTH_PASSED : return "[passed] ";
-	case HEALTH_FAILING : return "[FAILING]";
-	case HEALTH_PENDING : return "[pending]";
-	}
-
-	return "-";
-}
 
 int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub)
 {
@@ -295,21 +360,19 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 			ss_printl(ss, data->name, name_len);
 			ss_prints(ss, health_report(data_health));
 
+			int has_many = data_count_device(data) > 1;
+			if (has_many)
+				ss_prints(ss, "\n");
+
 			for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
 				struct snapraid_device* device = j->data;
-				if (j != tommy_list_head(&data->device_list))
-					ss_printc(ss, ' ', tab_len + name_len + health_len);
-				ss_prints(ss, "  Model: ");
-				ss_printl(ss, device->model[0] ? device->model : "-", model_len);
-				ss_prints(ss, "   Serial: ");
-				ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
-				ss_prints(ss, "\n");
+				print_device(device, ss, tab_len, name_len, health_len, model_len, serial_len, has_many);
 			}
 
 			/* print error counters if not zero */
 			if (data->error_io != 0 || data->error_data != 0) {
 				ss_printc(ss, ' ', tab_len + name_len);
-				ss_printf(ss, "I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", data->error_io, data->error_data);
+				ss_printf(ss, ">> I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", data->error_io, data->error_data);
 			}
 		}
 		ss_prints(ss, "\n");
@@ -326,24 +389,22 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 			ss_printl(ss, parity->name, name_len);
 			ss_prints(ss, health_report(parity_health));
 
+			int has_many = parity_count_device(parity) > 1;
+			if (has_many)
+				ss_prints(ss, "\n");
+
 			for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
 				struct snapraid_split* split = j->data;
 				for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
 					struct snapraid_device* device = k->data;
-					if (k != tommy_list_head(&split->device_list))
-						ss_printc(ss, ' ', tab_len + name_len + health_len);
-					ss_prints(ss, "  Model: ");
-					ss_printl(ss, device->model[0] ? device->model : "-", model_len);
-					ss_prints(ss, "   Serial: ");
-					ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
-					ss_prints(ss, "\n");
+					print_device(device, ss, tab_len, name_len, health_len, model_len, serial_len, has_many);
 				}
 			}
 
 			/* print error counters if not zero */
 			if (parity->error_io != 0 || parity->error_data != 0) {
 				ss_printc(ss, ' ', tab_len + name_len);
-				ss_printf(ss, "I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", parity->error_io, parity->error_data);
+				ss_printf(ss, ">> I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", parity->error_io, parity->error_data);
 			}
 		}
 		ss_prints(ss, "\n");
