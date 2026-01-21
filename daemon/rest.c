@@ -599,7 +599,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
-	ss_jsonf(&s, tab, "{\n");
+	ss_jsons(&s, tab, "{\n");
 	++tab;
 
 	ss_jsonf(&s, tab, "\"scheduled_run\": \"%s\",\n", json_esc(schedule_buf, esc_buf));
@@ -632,7 +632,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"notify_differences\": %s,\n", config->notify_differences ? "true" : "false");
 
 	--tab;
-	ss_jsonf(&s, tab, "}\n");
+	ss_jsons(&s, tab, "}\n");
 
 	state_unlock();
 
@@ -772,14 +772,14 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
-	ss_jsonf(&s, tab, "{\n");
+	ss_jsons(&s, tab, "{\n");
 	++tab;
-	ss_jsonf(&s, tab, "\"success\": true,\n");
-	ss_jsonf(&s, tab, "\"message\": \"Signal sent\",\n");
+	ss_jsons(&s, tab, "\"success\": true,\n");
+	ss_jsons(&s, tab, "\"message\": \"Signal sent\",\n");
 	ss_jsonf(&s, tab, "\"number\": %d,\n", number);
 	ss_jsonf(&s, tab, "\"pid\": %" PRIu64 "\n", (uint64_t)pid);
 	--tab;
-	ss_jsonf(&s, tab, "}\n");
+	ss_jsons(&s, tab, "}\n");
 
 	send_json_answer(conn, status, &s);
 
@@ -816,7 +816,7 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 	++tab;
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* dev = i->data;
-		ss_jsonf(s, tab, "{\n");
+		ss_jsons(s, tab, "{\n");
 		++tab;
 		ss_jsonf(s, tab, "\"health\": \"%s\",\n", health_name(dev->health));
 		if (*dev->family)
@@ -887,14 +887,14 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_jsonf(&s, 0, "{\n");
+	ss_jsons(&s, 0, "{\n");
 	++tab;
-	ss_jsonf(&s, 1, "\"data_disks\": [\n");
+	ss_jsons(&s, 1, "\"data_disks\": [\n");
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_data* data = i->data;
 
 		++tab;
-		ss_jsonf(&s, tab, "{\n");
+		ss_jsons(&s, tab, "{\n");
 		++tab;
 		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(data->name, esc_buf));
 		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_data(data)));
@@ -914,20 +914,20 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		}
 		ss_jsonf(&s, tab, "\"error_io\": %" PRIi64 ",\n", data->error_io);
 		ss_jsonf(&s, tab, "\"error_data\": %" PRIi64 ",\n", data->error_data);
-		ss_jsonf(&s, tab, "\"devices\": [\n");
+		ss_jsons(&s, tab, "\"devices\": [\n");
 		json_device_list(&s, tab, &data->device_list);
-		ss_jsonf(&s, tab, "]\n");
+		ss_jsons(&s, tab, "]\n");
 		--tab;
 		ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(&s, tab, "],\n");
-	ss_jsonf(&s, tab, "\"parity_disks\": [\n");
+	ss_jsons(&s, tab, "],\n");
+	ss_jsons(&s, tab, "\"parity_disks\": [\n");
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_parity* parity = i->data;
 
 		++tab;
-		ss_jsonf(&s, tab, "{\n");
+		ss_jsons(&s, tab, "{\n");
 		++tab;
 		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(parity->name, esc_buf));
 		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_parity(parity)));
@@ -943,34 +943,34 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "\"error_io\": %" PRIi64 ",\n", parity->error_io);
 		ss_jsonf(&s, tab, "\"error_data\": %" PRIi64 ",\n", parity->error_data);
 
-		ss_jsonf(&s, tab, "\"splits\": [\n");
+		ss_jsons(&s, tab, "\"splits\": [\n");
 		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
 			struct snapraid_split* split = j->data;
 
 			++tab;
-			ss_jsonf(&s, tab, "{\n");
+			ss_jsons(&s, tab, "{\n");
 			++tab;
 			ss_jsonf(&s, tab, "\"parity_path\": \"%s\",\n", json_esc(split->path, esc_buf));
 			if (*split->uuid)
 				ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", json_esc(split->uuid, esc_buf));
 			if (*split->content_uuid)
 				ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", json_esc(split->content_uuid, esc_buf));
-			ss_jsonf(&s, tab, "\"devices\": [\n");
+			ss_jsons(&s, tab, "\"devices\": [\n");
 			json_device_list(&s, tab, &split->device_list);
-			ss_jsonf(&s, tab, "]\n");
+			ss_jsons(&s, tab, "]\n");
 			--tab;
 			ss_jsonf(&s, tab, "}%s\n", j->next ? "," : "");
 			--tab;
 		}
 
-		ss_jsonf(&s, tab, "]\n");
+		ss_jsons(&s, tab, "]\n");
 		--tab;
 		ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(&s, tab, "]\n");
+	ss_jsons(&s, tab, "]\n");
 	--tab;
-	ss_jsonf(&s, tab, "}\n");
+	ss_jsons(&s, tab, "}\n");
 
 	state_unlock();
 
@@ -992,26 +992,26 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	ss_jsonf(s, tab, "\"health\": \"%s\",\n", health_name(health_task(task)));
 	if (task->running) {
 		switch (task->state) {
-		case PROCESS_STATE_START : ss_jsonf(s, tab, "\"status\": \"starting\",\n"); break;
-		case PROCESS_STATE_RUN : ss_jsonf(s, tab, "\"status\": \"processing\",\n"); break;
-		case PROCESS_STATE_TERM : ss_jsonf(s, tab, "\"status\": \"finishing\",\n"); break;
-		case PROCESS_STATE_SIGNAL : ss_jsonf(s, tab, "\"status\": \"stopping\",\n"); break;
+		case PROCESS_STATE_START : ss_jsons(s, tab, "\"status\": \"starting\",\n"); break;
+		case PROCESS_STATE_RUN : ss_jsons(s, tab, "\"status\": \"processing\",\n"); break;
+		case PROCESS_STATE_TERM : ss_jsons(s, tab, "\"status\": \"finishing\",\n"); break;
+		case PROCESS_STATE_SIGNAL : ss_jsons(s, tab, "\"status\": \"stopping\",\n"); break;
 		}
 	} else {
 		switch (task->state) {
 		case PROCESS_STATE_QUEUE :
-			ss_jsonf(s, tab, "\"status\": \"queued\",\n");
+			ss_jsons(s, tab, "\"status\": \"queued\",\n");
 			break;
 		case PROCESS_STATE_SIGNAL :
-			ss_jsonf(s, tab, "\"status\": \"signaled\",\n");
+			ss_jsons(s, tab, "\"status\": \"signaled\",\n");
 			ss_jsonf(s, tab, "\"exit_sig\": %d,\n", task->exit_sig);
 			break;
 		case PROCESS_STATE_CANCEL :
-			ss_jsonf(s, tab, "\"status\": \"canceled\",\n");
+			ss_jsons(s, tab, "\"status\": \"canceled\",\n");
 			ss_jsonf(s, tab, "\"exit_msg\": %s,\n", task->exit_msg);
 			break;
 		case PROCESS_STATE_TERM :
-			ss_jsonf(s, tab, "\"status\": \"terminated\",\n");
+			ss_jsons(s, tab, "\"status\": \"terminated\",\n");
 			ss_jsonf(s, tab, "\"exit_code\": %d,\n", task->exit_code);
 			break;
 		}
@@ -1044,14 +1044,14 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 	}
 	if (task->log_file[0])
 		ss_jsonf(s, tab, "\"log_file\": \"%s\",\n", task->log_file);
-	ss_jsonf(s, tab, "\"messages\": [\n");
+	ss_jsons(s, tab, "\"messages\": [\n");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		sn_t* message = i->data;
 		++tab;
 		ss_jsonf(s, tab, "\"%s\"%s\n", json_esc(message->str, esc_buf), i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(s, tab, "],\n");
+	ss_jsons(s, tab, "],\n");
 
 	switch (task->cmd) {
 	case CMD_SYNC :
@@ -1065,14 +1065,14 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 		ss_jsonf(s, tab, "\"block_bad\": %" PRIi64 ",\n", task->block_bad);
 		break;
 	}
-	ss_jsonf(s, tab, "\"errors\": [\n");
+	ss_jsons(s, tab, "\"errors\": [\n");
 	for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
 		sn_t* error = i->data;
 		++tab;
 		ss_jsonf(s, tab, "\"%s\"%s\n", json_esc(error->str, esc_buf), i->next ? "," : "");
 		--tab;
 	}
-	ss_jsonf(s, tab, "]\n");
+	ss_jsons(s, tab, "]\n");
 	--tab;
 	ss_jsonf(s, tab, "}%s\n", next);
 }
@@ -1126,15 +1126,16 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_jsonf(&s, tab, "[\n");
+	ss_jsons(&s, tab, "[\n");
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
+
 		++tab;
 		json_task(&s, tab, task, i->next ? "," : "");
 		--tab;
 	}
 
-	ss_jsonf(&s, tab, "]\n");
+	ss_jsons(&s, tab, "]\n");
 
 	state_unlock();
 
@@ -1162,7 +1163,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_jsonf(&s, tab, "[\n");
+	ss_jsons(&s, tab, "[\n");
 	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
@@ -1171,7 +1172,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 		--tab;
 	}
 
-	ss_jsonf(&s, tab, "]\n");
+	ss_jsons(&s, tab, "]\n");
 
 	state_unlock();
 
@@ -1238,11 +1239,11 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_moved);
 		ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_copied);
 		ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_restored);
-		ss_jsonf(&s, tab, "\"diffs\": [\n");
+		ss_jsons(&s, tab, "\"diffs\": [\n");
 		for (tommy_node* i = tommy_list_head(&global->diff_list); i; i = i->next) {
 			struct snapraid_diff* diff = i->data;
 			++tab;
-			ss_jsonf(&s, tab, "{\n");
+			ss_jsons(&s, tab, "{\n");
 			++tab;
 
 			ss_jsonf(&s, tab, "\"change\": \"%s\",\n", change_name(diff->change));
@@ -1257,12 +1258,12 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
 			--tab;
 		}
-		ss_jsonf(&s, tab, "]\n");
+		ss_jsons(&s, tab, "]\n");
 	} else {
 		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(HEALTH_PENDING));
 	}
 	--tab;
-	ss_jsonf(&s, tab, "}\n");
+	ss_jsons(&s, tab, "}\n");
 
 	state_unlock();
 

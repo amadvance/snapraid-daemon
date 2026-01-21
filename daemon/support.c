@@ -67,14 +67,6 @@ void ss_write(struct ss* s, const char* arg, size_t len)
 	s->len += len;
 }
 
-void ss_prints(struct ss* s, const char* arg)
-{
-	size_t len = strlen(arg);
-	ss_reserve(s, len);
-	memcpy(s->ptr + s->len, arg, len);
-	s->len += len;
-}
-
 ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap)
 {
 	size_t available;

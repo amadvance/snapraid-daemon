@@ -28,7 +28,7 @@
 static void format_duration(ss_t* ss, int64_t seconds)
 {
 	if (seconds < 0) {
-		ss_printf(ss, "N/A");
+		ss_prints(ss, "N/A");
 		return;
 	}
 
@@ -50,7 +50,7 @@ static void format_duration(ss_t* ss, int64_t seconds)
 static void format_timestamp(ss_t* ss, int64_t timestamp)
 {
 	if (timestamp == 0) {
-		ss_printf(ss, "Never");
+		ss_prints(ss, "Never");
 		return;
 	}
 
@@ -65,7 +65,7 @@ static void format_timestamp(ss_t* ss, int64_t timestamp)
 			tm_info->tm_min,
 			tm_info->tm_sec);
 	} else {
-		ss_printf(ss, "Invalid");
+		ss_prints(ss, "Invalid");
 	}
 }
 
@@ -74,12 +74,15 @@ static void format_timestamp(ss_t* ss, int64_t timestamp)
  */
 static void print_separator(ss_t* ss)
 {
-	ss_printf(ss, "================================================================================\n");
+	ss_printc(ss, '=', 80);
+	ss_prints(ss, "\n");
 }
+
 
 static void print_line_separator(ss_t* ss)
 {
-	ss_printf(ss, "--------------------------------------------------------------------------------\n");
+	ss_printc(ss, '-', 80);
+	ss_prints(ss, "\n");
 }
 
 /**
@@ -94,22 +97,22 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 
 	ss_printf(ss, "%s (", task_name);
 	format_timestamp(ss, task->unix_end_time);
-	ss_printf(ss, ")\n");
+	ss_prints(ss, ")\n");
 
 	/* duration */
-	ss_printf(ss, "  Duration:       ");
+	ss_prints(ss, "  Duration:       ");
 	if (task->unix_end_time > 0 && task->unix_start_time > 0) {
 		format_duration(ss, task->unix_end_time - task->unix_start_time);
 	} else {
-		ss_printf(ss, "N/A");
+		ss_prints(ss, "N/A");
 	}
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 
 	/* exit status */
-	ss_printf(ss, "  Status:         ");
+	ss_prints(ss, "  Status:         ");
 	if (task->state == PROCESS_STATE_TERM) {
 		if (task->exit_code == 0)
-			ss_printf(ss, "Completed successfully (exit code 0)\n");
+			ss_prints(ss, "Completed successfully (exit code 0)\n");
 		else
 			ss_printf(ss, "Failed (exit code %d)\n", task->exit_code);
 	} else if (task->state == PROCESS_STATE_SIGNAL) {
@@ -117,7 +120,7 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 	} else if (task->state == PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "Canceled: %s\n", task->exit_msg);
 	} else {
-		ss_printf(ss, "Unknown state\n");
+		ss_prints(ss, "Unknown state\n");
 	}
 
 	/* error statistics for sync */
@@ -133,7 +136,7 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 
 	/* print error messages if any */
 	if (!tommy_list_empty(&task->error_list)) {
-		ss_printf(ss, "\nERROR MESSAGES:\n");
+		ss_prints(ss, "\nERROR MESSAGES:\n");
 		for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
 			sn_t* error = i->data;
 			ss_printf(ss, "  - %s\n", error->str);
@@ -149,7 +152,7 @@ static void print_differences(ss_t* ss, struct snapraid_state* state)
 	if (tommy_list_empty(&state->global.diff_list))
 		return;
 
-	ss_printf(ss, "CHANGED FILES:\n\n");
+	ss_prints(ss, "CHANGED FILES:\n\n");
 
 	/* group by change type */
 	for (int change = DIFF_CHANGE_ADD; change <= DIFF_CHANGE_RESTORE; ++change) {
@@ -184,7 +187,7 @@ static void print_differences(ss_t* ss, struct snapraid_state* state)
 				ss_printf(ss, "    %s: %s\n", diff->disk, diff->path);
 			}
 		}
-		ss_printf(ss, "\n");
+		ss_prints(ss, "\n");
 	}
 }
 
@@ -209,12 +212,12 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	/* header */
 	print_separator(ss);
-	ss_printf(ss, "SnapRAID Array Status Report\n");
-	ss_printf(ss, "Generated: ");
+	ss_prints(ss, "SnapRAID Array Status Report\n");
+	ss_prints(ss, "Generated: ");
 	format_timestamp(ss, now);
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 	print_separator(ss);
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 
 	/* array health */
 	array_health = health_array(state);
@@ -222,16 +225,16 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	/* overall status message */
 	if (array_health == HEALTH_PASSED)
-		ss_printf(ss, "  Overall Status: All systems nominal\n");
+		ss_prints(ss, "  Overall Status: All systems nominal\n");
 	else if (array_health == HEALTH_FAILING)
-		ss_printf(ss, "  Overall Status: FAILURES DETECTED\n");
+		ss_prints(ss, "  Overall Status: FAILURES DETECTED\n");
 	else
-		ss_printf(ss, "  Overall Status: Pending\n");
+		ss_prints(ss, "  Overall Status: Pending\n");
 
 	/* bad blocks */
 	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", state->global.block_bad);
 
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 
 	int name_len = 0;
 	int serial_len = 0;
@@ -283,12 +286,12 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	/* data disks */
 	if (!tommy_list_empty(&state->data_list)) {
-		ss_printf(ss, "DATA DISKS:\n");
+		ss_prints(ss, "DATA DISKS:\n");
 		for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 			struct snapraid_data* data = i->data;
 			int data_health = health_data(data);
 
-			ss_printf(ss, "  ");
+			ss_prints(ss, "  ");
 			ss_printl(ss, data->name, name_len);
 			ss_prints(ss, health_report(data_health));
 
@@ -296,11 +299,11 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 				struct snapraid_device* device = j->data;
 				if (j != tommy_list_head(&data->device_list))
 					ss_printc(ss, ' ', tab_len + name_len + health_len);
-				ss_printf(ss, "  Model: ");
+				ss_prints(ss, "  Model: ");
 				ss_printl(ss, device->model[0] ? device->model : "-", model_len);
-				ss_printf(ss, "   Serial: ");
+				ss_prints(ss, "   Serial: ");
 				ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
-				ss_printf(ss, "\n");
+				ss_prints(ss, "\n");
 			}
 
 			/* print error counters if not zero */
@@ -309,17 +312,17 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 				ss_printf(ss, "I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", data->error_io, data->error_data);
 			}
 		}
-		ss_printf(ss, "\n");
+		ss_prints(ss, "\n");
 	}
 
 	/* parity disks */
 	if (!tommy_list_empty(&state->parity_list)) {
-		ss_printf(ss, "PARITY DISKS:\n");
+		ss_prints(ss, "PARITY DISKS:\n");
 		for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 			struct snapraid_parity* parity = i->data;
 			int parity_health = health_parity(parity);
 
-			ss_printf(ss, "  ");
+			ss_prints(ss, "  ");
 			ss_printl(ss, parity->name, name_len);
 			ss_prints(ss, health_report(parity_health));
 
@@ -329,11 +332,11 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 					struct snapraid_device* device = k->data;
 					if (k != tommy_list_head(&split->device_list))
 						ss_printc(ss, ' ', tab_len + name_len + health_len);
-					ss_printf(ss, "  Model: ");
+					ss_prints(ss, "  Model: ");
 					ss_printl(ss, device->model[0] ? device->model : "-", model_len);
-					ss_printf(ss, "   Serial: ");
+					ss_prints(ss, "   Serial: ");
 					ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
-					ss_printf(ss, "\n");
+					ss_prints(ss, "\n");
 				}
 			}
 
@@ -343,7 +346,7 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 				ss_printf(ss, "I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", parity->error_io, parity->error_data);
 			}
 		}
-		ss_printf(ss, "\n");
+		ss_prints(ss, "\n");
 	}
 
 	/* latest Sync */
@@ -351,17 +354,17 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 	print_task(ss, "SYNC", latest_sync);
 
 	/* latest Scrub */
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 	print_line_separator(ss);
 	print_task(ss, "SCRUB", latest_scrub);
 
 	/* global statistics */
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 	print_line_separator(ss);
-	ss_printf(ss, "GLOBAL STATISTICS\n");
+	ss_prints(ss, "GLOBAL STATISTICS\n");
 	ss_printf(ss, "  Total Files:    %" PRIu64 "\n", state->global.file_total);
-	ss_printf(ss, "\n");
-	ss_printf(ss, "DIFFERENCES:\n");
+	ss_prints(ss, "\n");
+	ss_prints(ss, "DIFFERENCES:\n");
 	ss_printf(ss, "  Equal:          %" PRId64 "\n", state->global.diff_equal);
 	ss_printf(ss, "  Added:          %" PRId64 "\n", state->global.diff_added);
 	ss_printf(ss, "  Removed:        %" PRId64 "\n", state->global.diff_removed);
@@ -372,13 +375,13 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	/* differences list if enabled */
 	if (state->config.notify_differences != 0) {
-		ss_printf(ss, "\n");
+		ss_prints(ss, "\n");
 		print_line_separator(ss);
 		print_differences(ss, state);
 	}
 
 	/* footer */
-	ss_printf(ss, "\n");
+	ss_prints(ss, "\n");
 	print_separator(ss);
 
 	return 0;
