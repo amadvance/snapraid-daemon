@@ -53,6 +53,7 @@ const char* runner_cmd(int cmd);
  * @return Exit status of command
  */
 int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status);
+int runner_locked(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status);
 
 /**
  * Spin down inactive disks.
@@ -62,7 +63,7 @@ int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, ch
  * @param status Pointer to store HTTP status code
  * @return Exit status of operation
  */
-int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+int runner_spindown_inactive_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
  * Delete old log files.

@@ -291,10 +291,10 @@ struct snapraid_config {
 	int net_enabled;
 	char net_port[CONFIG_MAX];
 	char net_acl[CONFIG_MAX];
-	int schedule_run;
-	int schedule_hour;
-	int schedule_minute;
-	int schedule_day_of_week;
+	int maintenance_run;
+	int maintenance_hour;
+	int maintenance_minute;
+	int maintenance_day_of_week;
 	int sync_threshold_deletes;
 	int sync_threshold_updates;
 	int sync_prehash;

@@ -23,6 +23,7 @@
 #include "conf.h"
 #include "log.h"
 #include "elem.h"
+#include "scheduler.h"
 #include "rest.h"
 
 /****************************************************************************/
@@ -732,6 +733,10 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		runner(state, CMD_DIFF, 0, &arg_list, msg, sizeof(msg), &status);
 	else if (strcmp(path, "/api/v1/status") == 0)
 		runner(state, CMD_STATUS, 0, &arg_list, msg, sizeof(msg), &status);
+	else if (strcmp(path, "/api/v1/maintenance") == 0)
+		schedule_maintenance(state, msg, sizeof(msg), &status);
+	else if (strcmp(path, "/api/v1/down_idle") == 0)
+		schedule_down_idle(state, msg, sizeof(msg), &status);
 	else {
 		sncpy(msg, sizeof(msg), "Resource not found");
 		status = 404;
@@ -1312,6 +1317,8 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/smart", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/diff", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/status", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/maintenance", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/down_idle", handler_action, state);	
 	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/report", handler_report, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);

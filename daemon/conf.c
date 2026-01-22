@@ -54,10 +54,10 @@ const char* config_level_str(int level)
 void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
 {
 	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
-	if (config->schedule_run == RUN_DAILY) {
-		snprintf(buf, size, "daily %02d:%02d", config->schedule_hour, config->schedule_minute);
-	} else if (config->schedule_run == RUN_WEEKLY && config->schedule_day_of_week >= 0 && config->schedule_day_of_week < 7) {
-		snprintf(buf, size, "weekly %s %02d:%02d", days[config->schedule_day_of_week], config->schedule_hour, config->schedule_minute);
+	if (config->maintenance_run == RUN_DAILY) {
+		snprintf(buf, size, "daily %02d:%02d", config->maintenance_hour, config->maintenance_minute);
+	} else if (config->maintenance_run == RUN_WEEKLY && config->maintenance_day_of_week >= 0 && config->maintenance_day_of_week < 7) {
+		snprintf(buf, size, "weekly %s %02d:%02d", days[config->maintenance_day_of_week], config->maintenance_hour, config->maintenance_minute);
 	} else {
 		buf[0] = '\0';
 	}
@@ -85,20 +85,20 @@ int config_parse_scheduled_run(const char* input, struct snapraid_config* config
 	int hour, minute;
 
 	if (!input || strlen(input) == 0) {
-		config->schedule_run = RUN_DISABLED;
+		config->maintenance_run = RUN_DISABLED;
 		return 0;
 	}
 
-	config->schedule_hour = 0;
-	config->schedule_minute = 0;
-	config->schedule_day_of_week = -1;
+	config->maintenance_hour = 0;
+	config->maintenance_minute = 0;
+	config->maintenance_day_of_week = -1;
 
 	if (sscanf(input, "daily %2d:%2d", &hour, &minute) == 2) {
 		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
 			return -1;
-		config->schedule_run = RUN_DAILY;
-		config->schedule_hour = hour;
-		config->schedule_minute = minute;
+		config->maintenance_run = RUN_DAILY;
+		config->maintenance_hour = hour;
+		config->maintenance_minute = minute;
 		return 0;
 	}
 
@@ -108,10 +108,10 @@ int config_parse_scheduled_run(const char* input, struct snapraid_config* config
 			return -1;
 		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
 			return -1;
-		config->schedule_run = RUN_WEEKLY;
-		config->schedule_day_of_week = day_of_week;
-		config->schedule_hour = hour;
-		config->schedule_minute = minute;
+		config->maintenance_run = RUN_WEEKLY;
+		config->maintenance_day_of_week = day_of_week;
+		config->maintenance_hour = hour;
+		config->maintenance_minute = minute;
 		return 0;
 	}
 
@@ -447,10 +447,10 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:8080");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
-	config->schedule_run = RUN_DISABLED;
-	config->schedule_hour = 0;
-	config->schedule_minute = 0;
-	config->schedule_day_of_week = 0;
+	config->maintenance_run = RUN_DISABLED;
+	config->maintenance_hour = 0;
+	config->maintenance_minute = 0;
+	config->maintenance_day_of_week = 0;
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
@@ -482,4 +482,3 @@ void config_init(struct snapraid_config* config, const char* argv0)
 #endif
 	sncpy(config->conf, sizeof(config->conf), "/etc/snapraidd.conf");
 }
-

@@ -10,6 +10,56 @@ servers:
   - url: /
 
 paths:
+  /api/v1/maintenance:
+    post:
+      summary: Trigger full maintenance sequence
+      description: >
+        Initiates the automated maintenance workflow, executing 'sync', 
+        'scrub', and 'report' tasks in sequential order.
+
+        This operation is subject to all safety thresholds defined in the 
+        daemon configuration, specifically 'sync_threshold_deletes' and 
+        'sync_threshold_updates'. 
+
+        If the 'sync' phase exceeds the delete threshold, the daemon will 
+        suspend the task to prevent accidental data loss. In this event, 
+        the 'scrub' phase is bypassed, and the 'report' phase is 
+        triggered immediately to notify the administrator of the 
+        safety suspension.
+
+        This is an asynchronous operation. Monitor progress via the 
+        '/api/v1/progress' endpoint.
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
+  /api/v1/down_idle:
+    post:
+      summary: Conditional spindown of idle disks
+      description: >
+        Initiates a power management sequence that targets disks based 
+        on inactivity duration.
+
+        The task first performs a non-intrusive probe to refresh the 
+        'access_count_idle_duration' metric for all disks without 
+        waking those in standby. 
+
+        Subsequently, any active disk with an idle duration exceeding 
+        'spindown_idle_minutes'—as defined in the daemon 
+        configuration—is issued a spindown command.
+
+        This is an asynchronous operation. Monitor progress via the 
+        '/api/v1/progress' endpoint.
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
   /api/v1/probe:
     post:
       summary: Non-intrusive disk state discovery

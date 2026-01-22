@@ -41,5 +41,15 @@ void scheduler_done(struct snapraid_state* state);
  */
 void scheduler(struct snapraid_state* state);
 
+/**
+ * Schedule a full maintenance cycle
+ */
+void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+
+/**
+ * Schedule a spindown of idle disks
+ */
+void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+
 #endif
 

@@ -459,7 +459,7 @@ const char* find_snapraid(void)
 	return 0;
 }
 
-int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+static int runner_lock(struct snapraid_state* state, int lock, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
@@ -486,10 +486,12 @@ int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, ch
 	if (arg_list)
 		sl_insert_list(&task->arg_list, arg_list);
 
-	state_lock();
+	if (lock)
+		state_lock();
 
 	if (!state->daemon_running) {
-		state_unlock();
+		if (lock)
+			state_unlock();
 		task_free(task);
 		log_msg(LVL_ERROR, "failed to start runner %s because daemon is terminating", command_name(cmd));
 		sncpy(msg, msg_size, "Daemon is terminating");
@@ -505,21 +507,30 @@ int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, ch
 	/* signal the runner thread that there is a task to execute */
 	thread_cond_signal(&state->runner.cond);
 
-	state_unlock();
+	if (lock)
+		state_unlock();
 
 	*status = 202;
 	return 0;
 }
 
-int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+int runner_locked(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+{
+	return runner_lock(state, 0, cmd, now, arg_list, msg, msg_size, status);
+}
+
+int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+{
+	return runner_lock(state, 1, cmd, now, arg_list, msg, msg_size, status);
+}
+
+int runner_spindown_inactive_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	int ret;
 	sl_t arg_list;
 
 	sncpy(msg, msg_size, "");
 	sl_init(&arg_list);
-
-	state_lock();
 
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
@@ -559,14 +570,12 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 		}
 	}
 
-	state_unlock();
-
 	if (tommy_list_empty(&arg_list)) {
 		sncpy(msg, msg_size, "Nothing to do");
 		*status = 200;
 		ret = 0;
 	} else {
-		ret = runner(state, CMD_DOWN, 0, &arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_DOWN, 0, &arg_list, msg, msg_size, status);
 	}
 
 	sl_free(&arg_list);

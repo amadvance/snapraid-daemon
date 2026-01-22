@@ -23,20 +23,102 @@
 #include "log.h"
 #include "scheduler.h"
 
+static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
+{
+	sl_t diff_arg_list;
+	sl_t sync_arg_list;
+	sl_t scrub_arg_list;
+	int do_scrub = 0;
+	int do_diff = 0;
+
+	sl_init(&diff_arg_list);
+	sl_init(&scrub_arg_list);
+	sl_init(&sync_arg_list);
+	if (state->config.sync_prehash) {
+		sl_insert_str(&sync_arg_list, "-h");
+	}
+	if (state->config.sync_force_zero) {
+		sl_insert_str(&sync_arg_list, "-Z");
+	}
+	if (state->config.notify_differences
+		|| state->config.sync_threshold_deletes
+		|| state->config.sync_threshold_updates) {
+		do_diff = 1;
+	}
+	if (state->config.scrub_percentage > 0) {
+		do_scrub = 1;
+		sl_insert_str(&scrub_arg_list, "-p");
+		sl_insert_int(&scrub_arg_list, state->config.scrub_percentage);
+		sl_insert_str(&scrub_arg_list, "-o");
+		sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
+	}
+
+	/*
+	 * Schedule all the actions, note that they are just scheduled,
+	 * the eventual failure won't be detected here.
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
+	 */
+	int ret = 0;
+	if (ret == 0 && do_diff)
+		ret = runner_locked(state, CMD_DIFF, now, &diff_arg_list, msg, msg_size, status);
+
+	if (ret == 0)
+		ret = runner_locked(state, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
+
+	if (ret == 0 && do_scrub)
+		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	sl_free(&diff_arg_list);
+	sl_free(&sync_arg_list);
+	sl_free(&scrub_arg_list);
+}
+
+void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+	state_lock();
+	schedule_maintenance_locked(state, now, msg, msg_size, status);
+	state_unlock();
+}
+
+static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
+{
+	/* 
+	 * Schedule a probe and spindown 
+	 */
+	int spindown_idle_minutes = state->config.spindown_idle_minutes;
+
+	if (runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status) == 0) {
+		if (spindown_idle_minutes > 0) {
+			/* spindown inactive */
+			(void)runner_spindown_inactive_locked(state, msg, msg_size, status); /* error already logged */
+		}
+	}
+}
+
+void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+	state_lock();
+	schedule_down_idle_locked(state, now, msg, msg_size, status);
+	state_unlock();
+}
+
 void* scheduler_thread(void* arg)
 {
 	char msg[128];
 	int status;
 	struct snapraid_state* state = arg;
 	int last_minute;
-	int64_t last_probe_ts;
-	int64_t last_spindown_ts;
+	int64_t last_probe_and_spindown_ts;
 	int64_t last_delete_ts;
 	int64_t last_history_ts;
 
 	last_minute = -1;
-	last_probe_ts = 0;
-	last_spindown_ts = 0;
+	last_probe_and_spindown_ts = 0;
 	last_delete_ts = 0;
 	last_history_ts = 0;
 
@@ -62,60 +144,10 @@ void* scheduler_thread(void* arg)
 			mono_now_secs = ts.tv_sec;
 
 			/* sync and scrub */
-			if (current_hour == state->config.schedule_hour
-				&& current_minute == state->config.schedule_minute
-				&& (state->config.schedule_run == RUN_DAILY || (state->config.schedule_run == RUN_WEEKLY && current_wday == state->config.schedule_day_of_week))) {
-				sl_t diff_arg_list;
-				sl_t sync_arg_list;
-				sl_t scrub_arg_list;
-				int do_scrub = 0;
-				int do_diff = 0;
-
-				sl_init(&diff_arg_list);
-				sl_init(&scrub_arg_list);
-				sl_init(&sync_arg_list);
-				if (state->config.sync_prehash) {
-					sl_insert_str(&sync_arg_list, "-h");
-				}
-				if (state->config.sync_force_zero) {
-					sl_insert_str(&sync_arg_list, "-Z");
-				}
-				if (state->config.notify_differences
-					|| state->config.sync_threshold_deletes
-					|| state->config.sync_threshold_updates) {
-					do_diff = 1;
-				}
-				if (state->config.scrub_percentage > 0) {
-					do_scrub = 1;
-					sl_insert_str(&scrub_arg_list, "-p");
-					sl_insert_int(&scrub_arg_list, state->config.scrub_percentage);
-					sl_insert_str(&scrub_arg_list, "-o");
-					sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
-				}
-
-				state_unlock();
-
-				/*
-				 * Run all the actions, note that they are just scheduled,
-				 * the eventual failure won't be detected here.
-				 */
-				int ret = 0;
-				if (ret == 0 && do_diff)
-					ret = runner(state, CMD_DIFF, now, &diff_arg_list, msg, sizeof(msg), &status);
-
-				if (ret == 0)
-					ret = runner(state, CMD_SYNC, now, &sync_arg_list, msg, sizeof(msg), &status);
-
-				if (ret == 0 && do_scrub)
-					(void)runner(state, CMD_SCRUB, now, &scrub_arg_list, msg, sizeof(msg), &status);
-					
-				(void)runner(state, CMD_REPORT, now, 0, msg, sizeof(msg), &status);
-
-				sl_free(&diff_arg_list);
-				sl_free(&sync_arg_list);
-				sl_free(&scrub_arg_list);
-
-				state_lock();
+			if (current_hour == state->config.maintenance_hour
+				&& current_minute == state->config.maintenance_minute
+				&& (state->config.maintenance_run == RUN_DAILY || (state->config.maintenance_run == RUN_WEEKLY && current_wday == state->config.maintenance_day_of_week))) {
+				schedule_maintenance_locked(state, now, msg, sizeof(msg), &status);
 				break;
 			}
 
@@ -131,7 +163,7 @@ void* scheduler_thread(void* arg)
 				state_lock();
 				/* continue with other tasks */
 			}
-			
+
 			/* clean history every 10 minutes */
 			if (mono_now_secs - last_history_ts >= 10 * 60) {
 				state_unlock();
@@ -148,31 +180,17 @@ void* scheduler_thread(void* arg)
 				break;
 
 			/* probe and spindown */
-			int do_probe = 0;
-			int do_spindown = 0;
-			int spindown_idle_minutes = state->config.spindown_idle_minutes;
+			int64_t interval_minutes = 0;
+			if (state->config.probe_interval_minutes > 0 && interval_minutes > state->config.probe_interval_minutes)
+				interval_minutes = state->config.probe_interval_minutes;
+			if (state->config.spindown_idle_minutes > 0 && interval_minutes > state->config.spindown_idle_minutes)
+				interval_minutes = state->config.spindown_idle_minutes;
 
-			if ((state->config.probe_interval_minutes > 0
-				&& mono_now_secs - last_probe_ts >= state->config.probe_interval_minutes * (int64_t)60))
-				do_probe = 1;
-
-			if ((state->config.spindown_idle_minutes > 0
-				&& mono_now_secs - last_spindown_ts >= state->config.spindown_idle_minutes * (int64_t)60))
-				do_spindown = 1;
-
-			if (do_probe || do_spindown) {
-				state_unlock();
-
-				last_probe_ts = mono_now_secs;
-				if (runner(state, CMD_PROBE, now, 0, msg, sizeof(msg), &status) == 0) {
-					if (spindown_idle_minutes > 0) {
-						/* spindown inactive */
-						last_spindown_ts = mono_now_secs;
-						(void)runner_spindown_inactive(state, msg, sizeof(msg), &status); /* error already logged */
-					}
-				}
-
-				state_lock();
+			if (interval_minutes > 0 
+				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60)
+			{
+				last_probe_and_spindown_ts = mono_now_secs;
+				schedule_down_idle_locked(state, now, msg, sizeof(msg), &status);
 				break;
 			}
 		}
