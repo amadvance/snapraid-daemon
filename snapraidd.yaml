@@ -238,12 +238,12 @@ paths:
                     type: array
                     description: "Ordered list of data disks (d1, d2, ...)"
                     items:
-                      $ref: '#/components/schemas/DataDisk'
+                      $ref: '#/components/schemas/Disk'
                   parity_disks:
                     type: array
                     description: "Ordered list of parity disks (parity, 2-parity, ...)"
                     items:
-                      $ref: '#/components/schemas/ParityDisk'
+                      $ref: '#/components/schemas/Disk'
 
   /api/v1/progress:
     get:
@@ -479,13 +479,13 @@ components:
             * 'pending': The task is not yet executed.
         status:
           type: string
-          enum: [queued, starting, processing, finishing, stopping, terminated, signaled, canceled]
+          enum: [queued, starting, processing, finalizing, stopping, terminated, signaled, canceled]
           description: >
             The current status of the task:
             queued - Waiting to be executed.
             starting - The task started and it's executing it's initialization phase, like loading the content file.
             processing - The task is executing and you'll get progress information like `percentage`.
-            finishing - The task finished and it's doing the final phase, like saving the content file.
+            finalizing - The task finished and it's doing the final phase, like saving the content file.
             stopping - The task received a signal, and it's doing the final phase.
             terminated - The task terminated, `exit_code` contains it's return code.
             signaled - The task terminated by a signal. `exit_sig` contains it's signal code.
@@ -637,6 +637,7 @@ components:
       type: object
       required:
         - device_node
+        - split_index
         - health
         - power
       properties:
@@ -644,6 +645,13 @@ components:
           type: string
           description: >
             System device path (e.g., /dev/sdb1).
+        split_index:
+          type: integer
+          description: >
+            The zero-based index of the logical partition within the 'splits' array.
+            This index links the physical device to its specific configuration
+            entry, identifying which mount point or parity file path or data
+            disk mount point resides on this particular hardware block device.
         health:
           type: string
           enum: [passed, failing, pending]
@@ -796,9 +804,27 @@ components:
             one-year period, calculated using a Poisson distribution model
             based on the aggregate Annual Failure Rate.
 
-    BaseDisk:
+    Split:
       type: object
-      required: [name, health, power]
+      required:
+        - path
+      properties:
+        path:
+          type: string
+          description: >
+            Path to the parity file for parity disks or filesystem mount point for data disks.         
+        uuid:
+          type: string
+          description: >
+            Actual UUID of the filesystem containing the parity file/mount dir.
+        stored_uuid:
+          type: string
+          description: >
+            Stored UUID of the filesystem containing the parity file/mount dir.
+
+    Disk:
+      type: object
+      required: [name, health, power, splits, devices]
       properties:
         name:
           type: string
@@ -884,63 +910,14 @@ components:
             verification, across all tasks in the current session.
             This accumulated counter is cleared after a `scrub` command
             reports that no blocks are bad.
-
-    DataDisk:
-      allOf:
-        - $ref: '#/components/schemas/BaseDisk'
-        - type: object
-          required: [mount_dir, devices]
-          properties:
-            mount_dir:
-              type: string
-              description: >
-                Filesystem mount point path.
-            uuid:
-              type: string
-              description: >
-                Actual UUID of the filesystem containing the mount dir.
-            stored_uuid:
-              type: string
-              description: >
-                Stored UUID of the filesystem containing the mount dir.
-            devices:
-              type: array
-              items:
-                $ref: '#/components/schemas/Device'
-
-    ParitySplit:
-      type: object
-      required:
-        - parity_path
-        - devices
-      properties:
-        parity_path:
-          type: string
-          description: >
-            Path to the parity file.
-        uuid:
-          type: string
-          description: >
-            Actual UUID of the filesystem containing the parity file.
-        stored_uuid:
-          type: string
-          description: >
-            Stored UUID of the filesystem containing the parity file.
+        splits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Split'
         devices:
           type: array
           items:
             $ref: '#/components/schemas/Device'
-
-    ParityDisk:
-      allOf:
-        - $ref: '#/components/schemas/BaseDisk'
-        - type: object
-          required: [splits]
-          properties:
-            splits:
-              type: array
-              items:
-                $ref: '#/components/schemas/ParitySplit'
 
     Config:
       type: object

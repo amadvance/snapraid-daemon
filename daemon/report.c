@@ -22,25 +22,9 @@
 #include "support.h"
 #include "elem.h"
 
-static int data_count_device(struct snapraid_data* data)
+static int disk_count_device(struct snapraid_disk* disk)
 {
-	int count = 0;
-	for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
-		++count;
-	}
-	return count;
-}
-
-static int parity_count_device(struct snapraid_parity* parity)
-{
-	int count = 0;
-	for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
-		struct snapraid_split* split = j->data;
-		for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
-			++count;
-		}
-	}
-	return count;
+	return tommy_list_count(&disk->device_list);
 }
 
 static const char* health_report(int health)
@@ -239,10 +223,37 @@ static void print_differences(ss_t* ss, struct snapraid_state* state)
 	}
 }
 
-static void print_device(struct snapraid_device* device, ss_t* ss, int tab_len, int name_len, int health_len, int model_len, int serial_len, int has_many)
+struct disk_spacing {
+	int tab_len;
+	int name_len;
+	int health_len;
+	int model_len;
+	int serial_len;
+};
+
+static void spacing_disk_list(tommy_list* disk_list, struct disk_spacing* sp)
+{
+	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		int len = strlen(disk->name);
+		if (sp->name_len < len)
+			sp->name_len = len;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			len = strlen(device->model);
+			if (sp->model_len < len)
+				sp->model_len = len;
+			len = strlen(device->serial);
+			if (sp->serial_len < len)
+				sp->serial_len = len;
+		}
+	}
+}
+
+static void print_device(struct snapraid_device* device, ss_t* ss, struct disk_spacing* sp, int has_many)
 {
 	if (has_many) {
-		ss_printc(ss, ' ', tab_len + name_len);
+		ss_printc(ss, ' ', sp->tab_len + sp->name_len);
 		ss_prints(ss, health_report(device->health));
 	}
 	if (device->prob != 0)
@@ -252,18 +263,45 @@ static void print_device(struct snapraid_device* device, ss_t* ss, int tab_len, 
 	else
 		ss_prints(ss, "          ");
 	ss_prints(ss, "   Model: ");
-	ss_printl(ss, device->model[0] ? device->model : "-", model_len);
+	ss_printl(ss, device->model[0] ? device->model : "-", sp->model_len);
 	ss_prints(ss, "   Serial: ");
-	ss_printl(ss, device->serial[0] ? device->serial : "-", serial_len);
+	ss_printl(ss, device->serial[0] ? device->serial : "-", sp->serial_len);
 	ss_prints(ss, "\n");
 	if (device->error_medium != SMART_UNASSIGNED || device->error_protocol != SMART_UNASSIGNED) {
-		ss_printc(ss, ' ', tab_len + name_len + health_len);
+		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
 		ss_printf(ss, ">> Medium Errors: %" PRIu64 ", Protocol Errors: %" PRIu64 "\n", device->error_medium, device->error_protocol);
 	}
 	const char* smart = smart_report(device->flags);
 	if (smart) {
-		ss_printc(ss, ' ', tab_len + name_len + health_len);
+		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
 		ss_printf(ss, ">> SMART reports: %s\n", smart);
+	}
+}
+
+static void print_disk_list(tommy_list* disk_list, ss_t* ss, struct disk_spacing* sp)
+{
+	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;	
+		int disk_health = health_disk(disk);
+
+		ss_prints(ss, "  ");
+		ss_printl(ss, disk->name, sp->name_len);
+		ss_prints(ss, health_report(disk_health));
+
+		int has_many = disk_count_device(disk) > 1;
+		if (has_many)
+			ss_prints(ss, "\n");
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			print_device(device, ss, sp, has_many);
+		}
+
+		/* print error counters if not zero */
+		if (disk->error_io != 0 || disk->error_data != 0) {
+			ss_printc(ss, ' ', sp->tab_len + sp->name_len);
+			ss_printf(ss, ">> I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", disk->error_io, disk->error_data);
+		}
 	}
 }
 
@@ -301,112 +339,30 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	ss_prints(ss, "\n");
 
-	int name_len = 0;
-	int serial_len = 0;
-	int model_len = 0;
-	int tab_len = 2;
-	int health_len = 9;
+	struct disk_spacing sp;
+	sp.name_len = 0;
+	sp.serial_len = 0;
+	sp.model_len = 0;
+	sp.tab_len = 2;
+	sp.health_len = 9;
 
 	/* get field lenghts */
-	if (!tommy_list_empty(&state->data_list)) {
-		for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-			struct snapraid_data* data = i->data;
-			int len = strlen(data->name);
-			if (name_len < len)
-				name_len = len;
-			for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
-				struct snapraid_device* device = j->data;
-				len = strlen(device->model);
-				if (model_len < len)
-					model_len = len;
-				len = strlen(device->serial);
-				if (serial_len < len)
-					serial_len = len;
-			}
-		}
-	}
-	if (!tommy_list_empty(&state->parity_list)) {
-		/* get field lenghts */
-		for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-			struct snapraid_parity* parity = i->data;
-			int len = strlen(parity->name);
-			if (name_len < len)
-				name_len = len;
-			for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
-				struct snapraid_split* split = j->data;
-				for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
-					struct snapraid_device* device = k->data;
-					len = strlen(device->model);
-					if (model_len < len)
-						model_len = len;
-					len = strlen(device->serial);
-					if (serial_len < len)
-						serial_len = len;
-				}
-			}
-		}
-	}
+	spacing_disk_list(&state->data_list, &sp);
+	spacing_disk_list(&state->parity_list, &sp);
 
-	++name_len; /* extra space after the name */
+	++sp.name_len; /* extra space after the name */
 
 	/* data disks */
 	if (!tommy_list_empty(&state->data_list)) {
 		ss_prints(ss, "DATA DISKS:\n");
-		for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-			struct snapraid_data* data = i->data;
-			int data_health = health_data(data);
-
-			ss_prints(ss, "  ");
-			ss_printl(ss, data->name, name_len);
-			ss_prints(ss, health_report(data_health));
-
-			int has_many = data_count_device(data) > 1;
-			if (has_many)
-				ss_prints(ss, "\n");
-
-			for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
-				struct snapraid_device* device = j->data;
-				print_device(device, ss, tab_len, name_len, health_len, model_len, serial_len, has_many);
-			}
-
-			/* print error counters if not zero */
-			if (data->error_io != 0 || data->error_data != 0) {
-				ss_printc(ss, ' ', tab_len + name_len);
-				ss_printf(ss, ">> I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", data->error_io, data->error_data);
-			}
-		}
+		print_disk_list(&state->data_list, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* parity disks */
 	if (!tommy_list_empty(&state->parity_list)) {
 		ss_prints(ss, "PARITY DISKS:\n");
-		for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-			struct snapraid_parity* parity = i->data;
-			int parity_health = health_parity(parity);
-
-			ss_prints(ss, "  ");
-			ss_printl(ss, parity->name, name_len);
-			ss_prints(ss, health_report(parity_health));
-
-			int has_many = parity_count_device(parity) > 1;
-			if (has_many)
-				ss_prints(ss, "\n");
-
-			for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
-				struct snapraid_split* split = j->data;
-				for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
-					struct snapraid_device* device = k->data;
-					print_device(device, ss, tab_len, name_len, health_len, model_len, serial_len, has_many);
-				}
-			}
-
-			/* print error counters if not zero */
-			if (parity->error_io != 0 || parity->error_data != 0) {
-				ss_printc(ss, ' ', tab_len + name_len);
-				ss_printf(ss, ">> I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n", parity->error_io, parity->error_data);
-			}
-		}
+		print_disk_list(&state->parity_list, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 

@@ -64,48 +64,37 @@ static int is_split_parity(char* s, int* index)
 	return 0;
 }
 
-static struct snapraid_data* find_data(tommy_list* list, const char* name)
+static struct snapraid_disk* find_disk(tommy_list* list, const char* name)
 {
-	struct snapraid_data* data;
+	struct snapraid_disk* disk;
 	tommy_node* i;
 
 	i = tommy_list_head(list);
 	while (i) {
-		data = i->data;
-		if (strcmp(name, data->name) == 0)
-			return data;
+		disk = i->data;
+		if (strcmp(name, disk->name) == 0)
+			return disk;
 		i = i->next;
 	}
 
-	data = calloc_nofail(1, sizeof(struct snapraid_data));
-	data->content_size = SMART_UNASSIGNED;
-	data->content_free = SMART_UNASSIGNED;
-	sncpy(data->name, sizeof(data->name), name);
-	tommy_list_insert_tail(list, &data->node, data);
+	disk = calloc_nofail(1, sizeof(struct snapraid_disk));
+	disk->content_size = SMART_UNASSIGNED;
+	disk->content_free = SMART_UNASSIGNED;
+	sncpy(disk->name, sizeof(disk->name), name);
+	tommy_list_insert_tail(list, &disk->node, disk);
 
-	return data;
+	return disk;
 }
 
-static struct snapraid_parity* find_parity(tommy_list* list, const char* name)
+int split_compare(const void* void_a, const void* void_b)
 {
-	struct snapraid_parity* parity;
-	tommy_node* i;
-
-	i = tommy_list_head(list);
-	while (i) {
-		parity = i->data;
-		if (strcmp(name, parity->name) == 0)
-			return parity;
-		i = i->next;
-	}
-
-	parity = calloc_nofail(1, sizeof(struct snapraid_parity));
-	parity->content_size = SMART_UNASSIGNED;
-	parity->content_free = SMART_UNASSIGNED;
-	sncpy(parity->name, sizeof(parity->name), name);
-	tommy_list_insert_tail(list, &parity->node, parity);
-
-	return parity;
+	const struct snapraid_split* split_a = void_a;
+	const struct snapraid_split* split_b = void_b;
+	if (split_a->index < split_b->index)
+		return -1;
+	if (split_a->index > split_b->index)
+		return 1;
+	return 0;
 }
 
 static struct snapraid_split* find_split(tommy_list* list, int index)
@@ -125,10 +114,13 @@ static struct snapraid_split* find_split(tommy_list* list, int index)
 	split->index = index;
 	tommy_list_insert_tail(list, &split->node, split);
 
+	/* the list must be sorted by index for the JSON output that references the array position */
+	tommy_list_sort(list, split_compare);
+
 	return split;
 }
 
-static struct snapraid_device* find_device_from_file(tommy_list* list, const char* file)
+static struct snapraid_device* find_device_from_file(tommy_list* list, const char* file, int split_index)
 {
 	struct snapraid_device* device;
 	tommy_node* i;
@@ -153,6 +145,7 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	device->flags = SMART_UNASSIGNED;
 	device->power = POWER_PENDING;
 	device->health = HEALTH_PENDING;
+	device->split_index = split_index;
 	sncpy(device->file, sizeof(device->file), file);
 	tommy_list_insert_tail(list, &device->node, device);
 
@@ -164,12 +157,11 @@ static struct snapraid_device* find_device(struct snapraid_state* state, char* n
 	int index;
 
 	if (is_split_parity(name, &index)) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, name);
-		struct snapraid_split* split = find_split(&parity->split_list, index);
-		return find_device_from_file(&split->device_list, file);
+		struct snapraid_disk* parity = find_disk(&state->parity_list, name);
+		return find_device_from_file(&parity->device_list, file, index);
 	} else {
-		struct snapraid_data* data = find_data(&state->data_list, name);
-		return find_device_from_file(&data->device_list, file);
+		struct snapraid_disk* data = find_disk(&state->data_list, name);
+		return find_device_from_file(&data->device_list, file, 0); /* at present data disks don't have the split index */
 	}
 }
 
@@ -179,12 +171,12 @@ static struct snapraid_device* find_device(struct snapraid_state* state, char* n
 static void clear_disk_accumulator(struct snapraid_state* state)
 {
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_data* data = i->data;
+		struct snapraid_disk* data = i->data;
 		data->error_io = 0;
 		data->error_data = 0;
 	}
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_parity* parity = i->data;
+		struct snapraid_disk* parity = i->data;
 		parity->error_io = 0;
 		parity->error_data = 0;
 	}
@@ -201,7 +193,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	if (is_parity(map[1])) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, map[1]);
+		struct snapraid_disk* parity = find_disk(&state->parity_list, map[1]);
 		/* if the value is the same, doesn't update the first time */
 		if (parity->access_count != access_count) {
 			parity->access_count = access_count;
@@ -209,7 +201,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 		}
 		parity->access_count_latest_time = state->global.last_time;
 	} else {
-		struct snapraid_data* data = find_data(&state->data_list, map[1]);
+		struct snapraid_disk* data = find_disk(&state->data_list, map[1]);
 		/* if the value is the same, doesn't update the first time */
 		if (data->access_count != access_count) {
 			data->access_count = access_count;
@@ -221,8 +213,6 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_data(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_data* data;
-
 	if (mac < 4)
 		return;
 
@@ -230,45 +220,43 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	const char* dir = map[2];
 	const char* uuid = map[3];
 
-	data = find_data(&state->data_list, name);
+	struct snapraid_disk* disk = find_disk(&state->data_list, name);
+	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
-	sncpy(data->dir, sizeof(data->dir), dir);
-	sncpy(data->uuid, sizeof(data->uuid), uuid);
+	sncpy(split->path, sizeof(split->path), dir);
+	sncpy(split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_data* data;
-
 	if (mac < 3)
 		return;
 
 	const char* name = map[1];
 	const char* uuid = map[2];
 
-	data = find_data(&state->data_list, name);
+	struct snapraid_disk* disk = find_disk(&state->data_list, name);
+	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
-	sncpy(data->content_uuid, sizeof(data->content_uuid), uuid);
+	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
 }
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_parity* parity;
-	struct snapraid_split* split;
 	int index;
 
 	if (mac < 3)
 		return;
 
 	char* name = map[0];
-	const char* uuid = map[1];
-	const char* path = map[2];
+	const char* path = map[1];
+	const char* uuid = map[2];
 
 	if (!is_split_parity(name, &index))
 		return;
 
-	parity = find_parity(&state->parity_list, name);
-	split = find_split(&parity->split_list, index);
+	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
+	struct snapraid_split* split = find_split(&disk->split_list, index);
 
 	sncpy(split->path, sizeof(split->path), path);
 	sncpy(split->uuid, sizeof(split->uuid), uuid);
@@ -276,8 +264,6 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_content_parity(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_parity* parity;
-	struct snapraid_split* split;
 	int index;
 
 	if (mac < 4)
@@ -291,8 +277,8 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 	if (!is_split_parity(name, &index))
 		return;
 
-	parity = find_parity(&state->parity_list, name);
-	split = find_split(&parity->split_list, index);
+	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
+	struct snapraid_split* split = find_split(&disk->split_list, index);
 
 	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
 	sncpy(split->content_path, sizeof(split->content_path), path);
@@ -309,11 +295,11 @@ static void process_content_allocation(struct snapraid_state* state, char** map,
 	const char* size_free = map[3];
 
 	if (is_parity(name)) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, name);
+		struct snapraid_disk* parity = find_disk(&state->parity_list, name);
 		stru64(&parity->content_size, size_alloc);
 		stru64(&parity->content_free, size_free);
 	} else {
-		struct snapraid_data* data = find_data(&state->data_list, name);
+		struct snapraid_disk* data = find_disk(&state->data_list, name);
 		stru64(&data->content_size, size_alloc);
 		stru64(&data->content_free, size_free);
 	}
@@ -557,10 +543,10 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
 	if (strcmp(map[0], "error_io") == 0) {
-		struct snapraid_data* data = find_data(&state->data_list, map[2]);
+		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
 		++data->error_io;
 	} else if (strcmp(map[0], "error_data") == 0) {
-		struct snapraid_data* data = find_data(&state->data_list, map[2]);
+		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
 		++data->error_data;
 	}
 }
@@ -584,10 +570,10 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 	sl_insert_str(&task->error_list, msg);
 
 	if (strcmp(map[0], "parity_error_io") == 0) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, map[2]);
+		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
 		++parity->error_io;
 	} else if (strcmp(map[0], "parity_error_data") == 0) {
-		struct snapraid_parity* parity = find_parity(&state->parity_list, map[2]);
+		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
 		++parity->error_data;
 	}
 }

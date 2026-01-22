@@ -524,11 +524,11 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_data* data = i->data;
+		struct snapraid_disk* data = i->data;
 		int active = 0;
 
-		for (tommy_node* k = tommy_list_head(&data->device_list); k; k = k->next) {
-			struct snapraid_device* device = k->data;
+		for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
 			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
 			if (device->power == POWER_ACTIVE)
 				active = 1;
@@ -542,18 +542,14 @@ int runner_spindown_inactive(struct snapraid_state* state, char* msg, size_t msg
 	}
 
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_parity* parity = i->data;
+		struct snapraid_disk* parity = i->data;
 		int active = 0;
 
-		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
-			struct snapraid_split* split = j->data;
-
-			for (tommy_node* k = tommy_list_head(&split->device_list); k; k = k->next) {
-				struct snapraid_device* device = k->data;
-				/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-				if (device->power == POWER_ACTIVE)
-					active = 1;
-			}
+		for (tommy_node* j = tommy_list_head(&parity->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+			if (device->power == POWER_ACTIVE)
+				active = 1;
 		}
 
 		if (active

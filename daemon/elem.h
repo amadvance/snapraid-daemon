@@ -56,8 +56,7 @@ void diff_free(void* void_diff);
 
 const char* power_name(int power);
 const char* health_name(int health);
-int health_data(struct snapraid_data* data);
-int health_parity(struct snapraid_parity* parity);
+int health_disk(struct snapraid_disk* disk);
 int health_task(struct snapraid_task* task);
 int health_array(struct snapraid_state* state);
 

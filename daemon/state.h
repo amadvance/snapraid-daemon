@@ -108,39 +108,22 @@ struct snapraid_device {
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
-	tommy_node node;
-};
-
-struct snapraid_data {
-	char name[DISK_MAX]; /**< Name of the disk. */
-	char dir[PATH_MAX]; /**< Mount point */
-	char uuid[UUID_MAX]; /**< Current UUID. */
-	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< List of snapraid_device */
-	uint64_t content_size; /**< Size of the disk stored in the content file. */
-	uint64_t content_free; /**< Free size of the disk stored in the content file. */
-	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
-	int64_t access_count_initial_time; /**< Time of the first access_count to this value. */
-	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
-	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
-	uint64_t error_data; /**< Accumulator of all silent data errors encountered. */
+	int split_index; /**< Index of the split */
 	tommy_node node;
 };
 
 struct snapraid_split {
 	int index; /**< Index of the split */
-	char path[PATH_MAX]; /**< Parity file */
+	char path[PATH_MAX]; /**< Parity file or mount dir */
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_path[PATH_MAX]; /**< Parity file stored in the content file. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
-	tommy_list device_list; /**< List of snapraid_device */
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
 	tommy_node node;
 };
 
-struct snapraid_parity {
-	char name[DISK_MAX]; /**< Name of the parity. */
-	tommy_list split_list; /**< List of snapraid_split */
+struct snapraid_disk {
+	char name[DISK_MAX]; /**< Name of the disk. */
 	uint64_t content_size; /**< Size of the disk stored in the content file. */
 	uint64_t content_free; /**< Free size of the disk stored in the content file. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -148,6 +131,9 @@ struct snapraid_parity {
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
 	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
 	uint64_t error_data; /**< Accumulator of all silent data errors encountered. */
+	
+	tommy_list device_list; /**< List of snapraid_device */
+	tommy_list split_list; /**< List of snapraid_split */
 	tommy_node node;
 };
 

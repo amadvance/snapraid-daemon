@@ -860,12 +860,65 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_jsonf(s, tab, "\"annual_failure_rate\": %g,\n", dev->afr);
 		if (dev->prob != 0)
 			ss_jsonf(s, tab, "\"failure_probability\": %g,\n", dev->prob);
+		ss_jsonf(s, tab, "\"split_index\": %d,\n", dev->split_index);
 		ss_jsonf(s, tab, "\"device_node\": \"%s\"\n", json_esc(dev->file, esc_buf));
 		--tab;
 		ss_jsonf(s, tab, "}%s\n", i->next ? "," : "");
 		--tab;
 	}
 	--tab;
+}
+
+static void json_disk_list(ss_t* s, int tab, tommy_list* list)
+{
+	char esc_buf[JSON_ESC_MAX];
+
+	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		++tab;
+		ss_jsons(s, tab, "{\n");
+		++tab;
+		ss_jsonf(s, tab, "\"name\": \"%s\",\n", json_esc(disk->name, esc_buf));
+		ss_jsonf(s, tab, "\"health\": \"%s\",\n", health_name(health_disk(disk)));
+		if (disk->content_size != SMART_UNASSIGNED)
+			ss_jsonf(s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", disk->content_size);
+		if (disk->content_free != SMART_UNASSIGNED)
+			ss_jsonf(s, tab, "\"free_space_bytes\": %" PRIu64 ",\n", disk->content_free);
+		if (disk->access_count != 0) {
+			ss_jsonf(s, tab, "\"access_count\": %" PRIi64 ",\n", disk->access_count);
+			ss_json_iso8601(s, tab, "\"access_count_initial_time\": \"%s\",\n", disk->access_count_initial_time);
+			ss_jsonf(s, tab, "\"access_count_idle_duration\": %" PRIi64 ",\n", disk->access_count_latest_time - disk->access_count_initial_time);
+		}
+		ss_jsonf(s, tab, "\"error_io\": %" PRIi64 ",\n", disk->error_io);
+		ss_jsonf(s, tab, "\"error_data\": %" PRIi64 ",\n", disk->error_data);
+
+		ss_jsons(s, tab, "\"devices\": [\n");
+		json_device_list(s, tab, &disk->device_list);
+		ss_jsons(s, tab, "]\n");
+
+		ss_jsons(s, tab, "\"splits\": [\n");
+		for (tommy_node* j = tommy_list_head(&disk->split_list); j; j = j->next) {
+			struct snapraid_split* split = j->data;
+
+			++tab;
+			ss_jsons(s, tab, "{\n");
+			++tab;
+			ss_jsonf(s, tab, "\"path\": \"%s\",\n", json_esc(split->path, esc_buf));
+			if (*split->uuid)
+				ss_jsonf(s, tab, "\"uuid\": \"%s\",\n", json_esc(split->uuid, esc_buf));
+			if (*split->content_uuid)
+				ss_jsonf(s, tab, "\"stored_uuid\": \"%s\",\n", json_esc(split->content_uuid, esc_buf));
+			--tab;
+			ss_jsonf(s, tab, "}%s\n", j->next ? "," : "");
+			--tab;
+		}
+		ss_jsons(s, tab, "]\n");
+
+		--tab;
+		ss_jsonf(s, tab, "}%s\n", i->next ? "," : "");
+		--tab;
+	}
 }
 
 /**
@@ -878,7 +931,6 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int tab = 0;
 	ss_t s;
-	char esc_buf[JSON_ESC_MAX];
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -890,84 +942,10 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_jsons(&s, 0, "{\n");
 	++tab;
 	ss_jsons(&s, 1, "\"data_disks\": [\n");
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_data* data = i->data;
-
-		++tab;
-		ss_jsons(&s, tab, "{\n");
-		++tab;
-		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(data->name, esc_buf));
-		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_data(data)));
-		ss_jsonf(&s, tab, "\"mount_dir\": \"%s\",\n", json_esc(data->dir, esc_buf));
-		if (*data->uuid)
-			ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", json_esc(data->uuid, esc_buf));
-		if (*data->content_uuid)
-			ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", json_esc(data->content_uuid, esc_buf));
-		if (data->content_size != SMART_UNASSIGNED)
-			ss_jsonf(&s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", data->content_size);
-		if (data->content_free != SMART_UNASSIGNED)
-			ss_jsonf(&s, tab, "\"free_space_bytes\": %" PRIu64 ",\n", data->content_free);
-		if (data->access_count != 0) {
-			ss_jsonf(&s, tab, "\"access_count\": %" PRIi64 ",\n", data->access_count);
-			ss_json_iso8601(&s, tab, "\"access_count_initial_time\": \"%s\",\n", data->access_count_initial_time);
-			ss_jsonf(&s, tab, "\"access_count_idle_duration\": %" PRIi64 ",\n", data->access_count_latest_time - data->access_count_initial_time);
-		}
-		ss_jsonf(&s, tab, "\"error_io\": %" PRIi64 ",\n", data->error_io);
-		ss_jsonf(&s, tab, "\"error_data\": %" PRIi64 ",\n", data->error_data);
-		ss_jsons(&s, tab, "\"devices\": [\n");
-		json_device_list(&s, tab, &data->device_list);
-		ss_jsons(&s, tab, "]\n");
-		--tab;
-		ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
-		--tab;
-	}
+	json_disk_list(&s, tab, &state->data_list);
 	ss_jsons(&s, tab, "],\n");
 	ss_jsons(&s, tab, "\"parity_disks\": [\n");
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_parity* parity = i->data;
-
-		++tab;
-		ss_jsons(&s, tab, "{\n");
-		++tab;
-		ss_jsonf(&s, tab, "\"name\": \"%s\",\n", json_esc(parity->name, esc_buf));
-		ss_jsonf(&s, tab, "\"health\": \"%s\",\n", health_name(health_parity(parity)));
-		if (parity->content_size != SMART_UNASSIGNED)
-			ss_jsonf(&s, tab, "\"allocated_space_bytes\": %" PRIu64 ",\n", parity->content_size);
-		if (parity->content_free != SMART_UNASSIGNED)
-			ss_jsonf(&s, tab, "\"free_space_bytes\": %" PRIu64 ",\n", parity->content_free);
-		if (parity->access_count != 0) {
-			ss_jsonf(&s, tab, "\"access_count\": %" PRIi64 ",\n", parity->access_count);
-			ss_json_iso8601(&s, tab, "\"access_count_initial_time\": \"%s\",\n", parity->access_count_initial_time);
-			ss_jsonf(&s, tab, "\"access_count_idle_duration\": %" PRIi64 ",\n", parity->access_count_latest_time - parity->access_count_initial_time);
-		}
-		ss_jsonf(&s, tab, "\"error_io\": %" PRIi64 ",\n", parity->error_io);
-		ss_jsonf(&s, tab, "\"error_data\": %" PRIi64 ",\n", parity->error_data);
-
-		ss_jsons(&s, tab, "\"splits\": [\n");
-		for (tommy_node* j = tommy_list_head(&parity->split_list); j; j = j->next) {
-			struct snapraid_split* split = j->data;
-
-			++tab;
-			ss_jsons(&s, tab, "{\n");
-			++tab;
-			ss_jsonf(&s, tab, "\"parity_path\": \"%s\",\n", json_esc(split->path, esc_buf));
-			if (*split->uuid)
-				ss_jsonf(&s, tab, "\"uuid\": \"%s\",\n", json_esc(split->uuid, esc_buf));
-			if (*split->content_uuid)
-				ss_jsonf(&s, tab, "\"stored_uuid\": \"%s\",\n", json_esc(split->content_uuid, esc_buf));
-			ss_jsons(&s, tab, "\"devices\": [\n");
-			json_device_list(&s, tab, &split->device_list);
-			ss_jsons(&s, tab, "]\n");
-			--tab;
-			ss_jsonf(&s, tab, "}%s\n", j->next ? "," : "");
-			--tab;
-		}
-
-		ss_jsons(&s, tab, "]\n");
-		--tab;
-		ss_jsonf(&s, tab, "}%s\n", i->next ? "," : "");
-		--tab;
-	}
+	json_disk_list(&s, tab, &state->parity_list);
 	ss_jsons(&s, tab, "]\n");
 	--tab;
 	ss_jsons(&s, tab, "}\n");
@@ -994,7 +972,7 @@ static void json_task(ss_t* s, int tab, struct snapraid_task* task, const char* 
 		switch (task->state) {
 		case PROCESS_STATE_START : ss_jsons(s, tab, "\"status\": \"starting\",\n"); break;
 		case PROCESS_STATE_RUN : ss_jsons(s, tab, "\"status\": \"processing\",\n"); break;
-		case PROCESS_STATE_TERM : ss_jsons(s, tab, "\"status\": \"finishing\",\n"); break;
+		case PROCESS_STATE_TERM : ss_jsons(s, tab, "\"status\": \"finalizing\",\n"); break;
 		case PROCESS_STATE_SIGNAL : ss_jsons(s, tab, "\"status\": \"stopping\",\n"); break;
 		}
 	} else {

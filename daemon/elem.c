@@ -210,34 +210,11 @@ static int health_device_list(tommy_list* list)
 	return health;
 }
 
-static int health_split_list(tommy_list* list)
-{
-	int health = HEALTH_PASSED;
-
-	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
-		struct snapraid_split* split = i->data;
-		int device_health = health_device_list(&split->device_list);
-		if (device_health == HEALTH_FAILING)
-			return HEALTH_FAILING;
-		if (device_health == HEALTH_PENDING)
-			health = HEALTH_PENDING;
-	}
-
-	return health;
-}
-
-int health_data(struct snapraid_data* data)
+int health_disk(struct snapraid_disk* data)
 {
 	if (data->error_data != 0 || data->error_io != 0)
 		return HEALTH_FAILING;
 	return health_device_list(&data->device_list);
-}
-
-int health_parity(struct snapraid_parity* parity)
-{
-	if (parity->error_data != 0 || parity->error_io != 0)
-		return HEALTH_FAILING;
-	return health_split_list(&parity->split_list);
 }
 
 int health_task(struct snapraid_task* task)
@@ -263,20 +240,20 @@ int health_array(struct snapraid_state* state)
 	if (state->global.block_bad != 0)
 		return HEALTH_FAILING;
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_data* data = i->data;
-		int data_health = health_data(data);
-		if (data_health == HEALTH_FAILING)
+		struct snapraid_disk* disk = i->data;
+		int disk_health = health_disk(disk);
+		if (disk_health == HEALTH_FAILING)
 			return HEALTH_FAILING;
-		if (data_health == HEALTH_PENDING)
+		if (disk_health == HEALTH_PENDING)
 			health = HEALTH_PENDING;
 	}
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_parity* parity = i->data;
-		int parity_health = health_parity(parity);
-		if (parity_health == HEALTH_FAILING)
+		struct snapraid_disk* disk = i->data;
+		int disk_health = health_disk(disk);
+		if (disk_health == HEALTH_FAILING)
 			return HEALTH_FAILING;
-		if (parity_health == HEALTH_PENDING)
-			parity_health = HEALTH_PENDING;
+		if (disk_health == HEALTH_PENDING)
+			health = HEALTH_PENDING;
 	}
 	return health;
 }
