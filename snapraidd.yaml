@@ -22,7 +22,7 @@ paths:
         'sync_threshold_updates'.
 
         If the 'sync' phase exceeds the delete threshold, the daemon will
-        suspend the 'sync' task to prevent accidental data loss. 
+        suspend the 'sync' task to prevent accidental data loss.
         Anyway, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
@@ -1088,6 +1088,15 @@ components:
             physical read/write I/O. Power-state probes do not reset
             this timer but allow more frequent I/O detection.
             Set to 0 to disable.
+        script_run_as_user:
+          type: string
+          example: "nobody"
+          description: >
+            The system user account utilized for the execution of 'script_pre_run'
+            and 'script_post_run' hooks.
+
+            If this parameter is null or empty, the scripts inherit the
+            process privileges of the running daemon.
         script_pre_run:
           type: string
           example: "/usr/local/bin/pre-snapraid.sh"
@@ -1129,6 +1138,15 @@ components:
           description: >
             Minimum severity filter for task-related syslog entries.
             Defaults to 'critical' if unset.
+        notify_run_as_user:
+          type: string
+          example: "nobody"
+        description: >
+           The system user account utilized for the execution of notification
+           subprocesses, including heartbeat pings and result shell commands.
+
+           If this parameter is null or empty, notification commands inherit
+           the process privileges of the running daemon.
         notify_heartbeat:
           type: string
           example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/..."

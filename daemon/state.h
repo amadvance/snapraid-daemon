@@ -296,6 +296,7 @@ struct snapraid_config {
 	int net_enabled;
 	char net_port[CONFIG_MAX];
 	char net_acl[CONFIG_MAX];
+	int net_config_full_access;
 	int maintenance_run;
 	int maintenance_hour;
 	int maintenance_minute;
@@ -308,19 +309,19 @@ struct snapraid_config {
 	int scrub_older_than;
 	int probe_interval_minutes;
 	int spindown_idle_minutes;
+	char script_run_as_user[CONFIG_MAX];
 	char script_pre_run[CONFIG_MAX];
 	char script_post_run[CONFIG_MAX];
-	char script_run_as_user[CONFIG_MAX];
 	char log_directory[CONFIG_MAX];
 	int log_retention_days;
 	int notify_syslog_enabled;
 	int notify_syslog_level;
+	char notify_run_as_user[CONFIG_MAX];
 	char notify_heartbeat[CONFIG_MAX];
 	char notify_result[CONFIG_MAX];
 	int notify_result_level;
 	char notify_email_recipient[CONFIG_MAX];
 	int notify_email_level;
-	char notify_run_as_user[CONFIG_MAX];
 	int notify_differences;
 };
 

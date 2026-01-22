@@ -173,6 +173,11 @@ int config_load(struct snapraid_state* state)
 				sncpy(config->net_port, sizeof(config->net_port), val);
 			} else if (strcmp(key, "net_acl") == 0) {
 				sncpy(config->net_acl, sizeof(config->net_acl), val);
+			} else if (strcmp(key, "net_config_full_access") == 0) {
+				if (parse_int(val, 0, 1, &config->net_config_full_access) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "maintenance_schedule") == 0) {
 				if (config_parse_maintenance_schedule(val, config) == 0) {
 				} else {
@@ -208,11 +213,6 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
-			} else if (strcmp(key, "notify_differences") == 0) {
-				if (parse_int(val, 0, 1, &config->notify_differences) == 0) {
-				} else {
-					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
-				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
 				if (parse_int(val, 0, 100, &config->scrub_percentage) == 0) {
 				} else {
@@ -223,6 +223,8 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "script_run_as_user") == 0) {
+				sncpy(config->script_run_as_user, sizeof(config->script_run_as_user), val);
 			} else if (strcmp(key, "script_pre_run") == 0) {
 				sncpy(config->script_pre_run, sizeof(config->script_pre_run), val);
 			} else if (strcmp(key, "script_post_run") == 0) {
@@ -245,6 +247,8 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "notify_run_as_user") == 0) {
+				sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), val);
 			} else if (strcmp(key, "notify_heartbeat") == 0) {
 				sncpy(config->notify_heartbeat, sizeof(config->notify_heartbeat), val);
 			} else if (strcmp(key, "notify_result") == 0) {
@@ -258,6 +262,11 @@ int config_load(struct snapraid_state* state)
 				sncpy(config->notify_email_recipient, sizeof(config->notify_email_recipient), val);
 			} else if (strcmp(key, "notify_email_level") == 0) {
 				if (config_parse_level(val, &config->notify_email_level) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "notify_differences") == 0) {
+				if (parse_int(val, 0, 1, &config->notify_differences) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -447,6 +456,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:8080");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
+	config->net_config_full_access = 0;
 	config->maintenance_run = RUN_DISABLED;
 	config->maintenance_hour = 0;
 	config->maintenance_minute = 0;
@@ -455,24 +465,24 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
 	config->sync_force_zero = 0;
-	config->notify_differences = 0;
 	config->scrub_percentage = 0;
 	config->scrub_older_than = 0;
 	config->probe_interval_minutes = 0;
 	config->spindown_idle_minutes = 0;
+	config->script_run_as_user[0] = 0;
 	config->script_pre_run[0] = 0;
 	config->script_post_run[0] = 0;
-	config->script_run_as_user[0] = 0;
 	config->log_directory[0] = 0;
 	config->log_retention_days = 0;
 	config->notify_syslog_enabled = 0;
 	config->notify_syslog_level = LVL_CRITICAL;
+	config->notify_run_as_user[0] = 0;
 	config->notify_heartbeat[0] = 0;
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_CRITICAL;
 	config->notify_email_recipient[0] = 0;
 	config->notify_email_level = LVL_CRITICAL;
-	config->notify_run_as_user[0] = 0;
+	config->notify_differences = 0;
 
 #ifdef SYSCONFDIR
 	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc */

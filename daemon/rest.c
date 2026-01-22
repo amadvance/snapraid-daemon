@@ -238,6 +238,11 @@ static void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv
 	snprintf(str, str_size, "Unrecognized JSON token %s", json_token(js, jv));
 }
 
+static void json_error_forbidden(char* str, size_t str_size, char* js, jsmntok_t* jv)
+{
+	snprintf(str, str_size, "Modification of restricted parameter '%s' is disabled by host configuration.", json_token(js, jv));
+}
+
 static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, size_t msg_size)
 {
 	ss_t s;
@@ -430,15 +435,6 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("notify_differences")) == 0) {
-				++j;
-				if (json_boolean(js, &jv[j], &state->config.notify_differences) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_differences);
-				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
-					goto bad;
-				}
-				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
 				if (json_value(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
@@ -457,7 +453,24 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("script_run_as_user")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
+				++j;
+				if (json_string(js, &jv[j], state->config.script_run_as_user, sizeof(state->config.script_run_as_user)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("script_pre_run")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], state->config.script_pre_run, sizeof(state->config.script_pre_run)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
@@ -467,6 +480,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("script_post_run")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], state->config.script_post_run, sizeof(state->config.script_post_run)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
@@ -476,6 +493,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("log_directory")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], state->config.log_directory, sizeof(state->config.log_directory)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
@@ -512,7 +533,24 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_run_as_user")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
+				++j;
+				if (json_string(js, &jv[j], state->config.notify_run_as_user, sizeof(state->config.notify_run_as_user)) == 0) {
+					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_heartbeat")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], state->config.notify_heartbeat, sizeof(state->config.notify_heartbeat)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
@@ -522,6 +560,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_result")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], state->config.notify_result, sizeof(state->config.notify_result)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
@@ -559,6 +601,15 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_differences")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.notify_differences) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_differences);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else {
 				json_error_entry(msg, sizeof(msg), js, &jv[j]);
 				goto bad;
@@ -580,6 +631,14 @@ bad:
 
 	free(js);
 	return send_json_error(conn, 400, msg);
+
+forbidden:
+	(void)config_save(&state->config); /* error logged inside */
+
+	state_unlock();
+
+	free(js);
+	return send_json_error(conn, 403, msg);
 }
 
 /**
@@ -614,6 +673,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"probe_interval_minutes\": %d,\n", config->probe_interval_minutes);
 	ss_jsonf(&s, tab, "\"spindown_idle_minutes\": %d,\n", config->spindown_idle_minutes);
 
+	ss_jsonf(&s, tab, "\"script_run_as_user\": \"%s\",\n", json_esc(config->script_run_as_user, esc_buf));
 	ss_jsonf(&s, tab, "\"script_pre_run\": \"%s\",\n", json_esc(config->script_pre_run, esc_buf));
 	ss_jsonf(&s, tab, "\"script_post_run\": \"%s\",\n", json_esc(config->script_post_run, esc_buf));
 
@@ -623,6 +683,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsonf(&s, tab, "\"notify_syslog_enabled\": %s,\n", config->notify_syslog_enabled ? "true" : "false");
 	ss_jsonf(&s, tab, "\"notify_syslog_level\": \"%s\",\n", config_level_str(config->notify_syslog_level));
 
+	ss_jsonf(&s, tab, "\"notify_run_as_user\": \"%s\",\n", json_esc(config->notify_run_as_user, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_heartbeat\": \"%s\",\n", json_esc(config->notify_heartbeat, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_result\": \"%s\",\n", json_esc(config->notify_result, esc_buf));
 	ss_jsonf(&s, tab, "\"notify_result_level\": \"%s\",\n", config_level_str(config->notify_result_level));
