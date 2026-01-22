@@ -252,6 +252,47 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
+  /api/v1/check:
+    post:
+      summary: Initiate array integrity check
+      description: >
+        Queues an asynchronous task to verify the integrity of the parity
+        and data files. This command performs a read-only verification
+        against the current parity state to detect silent corruption.
+
+        It is highly recommended to use the arguments to specify a filter
+        (such as a specific disk or directory) to avoid performing a
+        full-array check, which can be extremely time-consuming.
+      requestBody:
+        $ref: '#/components/requestBodies/CommandRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
+  /api/v1/fix:
+    post:
+      summary: Initiate data restoration from parity
+      description: >
+        Queues an asynchronous task to repair corrupted files or restore
+        missing data using parity information. This is a write-heavy
+        operation that modifies data on the target disks.
+
+        It is highly recommended to use the arguments to specify a filter
+        (such as a specific file, directory, or disk) to restrict the scope.
+        Running a 'fix' on the entire array is usually unnecessary and
+        increases mechanical wear on the drives.
+      requestBody:
+        $ref: '#/components/requestBodies/CommandRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
   /api/v1/stop:
     post:
       summary: Stop active task
@@ -415,6 +456,19 @@ paths:
           description: >
             Invalid configuration. One or more values failed validation (e.g.,
             unsupported log level or out-of-range scrub frequency).
+
+            Updates are processed sequentially. All configuration options provided
+            before the one that caused the issue are successfully set. All options
+            appearing after the failing field are not processed and remain unchanged.
+          $ref: '#/components/responses/CommandResult'
+        '403':
+          description: >
+            The server understood the request but refuses to authorize the
+            modification of the specified configuration parameters.
+
+            Updates are processed sequentially. All configuration options provided
+            before the one that caused the issue are successfully set. All options
+            appearing after the failing field are not processed and remain unchanged.
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/array:
@@ -527,7 +581,7 @@ components:
             Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub, report]
+          enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
           description: >
             The command executed.
         health:
