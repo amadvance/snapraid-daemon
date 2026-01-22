@@ -33,3 +33,4 @@
 int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub);
 
 #endif
+

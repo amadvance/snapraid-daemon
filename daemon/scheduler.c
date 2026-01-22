@@ -86,8 +86,8 @@ void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_si
 
 static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
 {
-	/* 
-	 * Schedule a probe and spindown 
+	/*
+	 * Schedule a probe and spindown
 	 */
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
@@ -186,9 +186,8 @@ void* scheduler_thread(void* arg)
 			if (state->config.spindown_idle_minutes > 0 && interval_minutes > state->config.spindown_idle_minutes)
 				interval_minutes = state->config.spindown_idle_minutes;
 
-			if (interval_minutes > 0 
-				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60)
-			{
+			if (interval_minutes > 0
+				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60) {
 				last_probe_and_spindown_ts = mono_now_secs;
 				schedule_down_idle_locked(state, now, msg, sizeof(msg), &status);
 				break;

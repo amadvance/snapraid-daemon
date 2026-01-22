@@ -57,15 +57,15 @@ void ss_write(struct ss* s, const char* arg, size_t len);
  */
 #if defined(__GNUC__) || defined(__clang__)
 #define ss_prints(s, arg) \
-    do { \
-	const char* p_arg = (arg); \
-	ssize_t p_len; \
-        if (__builtin_constant_p(arg)) \
-		p_len = sizeof(arg) - 1; \
-	else \
+	do { \
+		const char* p_arg = (arg); \
+		ssize_t p_len; \
+		if (__builtin_constant_p(arg)) \
+		p_len = sizeof(arg) -1; \
+		else \
 		p_len = strlen(p_arg); \
-	ss_write(s, p_arg, p_len); \
-    } while (0)
+		ss_write(s, p_arg, p_len); \
+	} while (0)
 #else /* no __builtin_constant_p available */
 static inline void ss_prints(struct ss* s, const char* arg)
 {

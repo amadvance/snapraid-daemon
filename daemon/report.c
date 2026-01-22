@@ -281,7 +281,7 @@ static void print_device(struct snapraid_device* device, ss_t* ss, struct disk_s
 static void print_disk_list(tommy_list* disk_list, ss_t* ss, struct disk_spacing* sp)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;	
+		struct snapraid_disk* disk = i->data;
 		int disk_health = health_disk(disk);
 
 		ss_prints(ss, "  ");
@@ -403,3 +403,4 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 
 	return 0;
 }
+

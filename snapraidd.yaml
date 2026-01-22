@@ -14,20 +14,20 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'sync', 
+        Initiates the automated maintenance workflow, executing 'sync',
         'scrub', and 'report' tasks in sequential order.
 
-        This operation is subject to all safety thresholds defined in the 
-        daemon configuration, specifically 'sync_threshold_deletes' and 
-        'sync_threshold_updates'. 
+        This operation is subject to all safety thresholds defined in the
+        daemon configuration, specifically 'sync_threshold_deletes' and
+        'sync_threshold_updates'.
 
-        If the 'sync' phase exceeds the delete threshold, the daemon will 
-        suspend the task to prevent accidental data loss. In this event, 
-        the 'scrub' phase is bypassed, and the 'report' phase is 
-        triggered immediately to notify the administrator of the 
+        If the 'sync' phase exceeds the delete threshold, the daemon will
+        suspend the task to prevent accidental data loss. In this event,
+        the 'scrub' phase is bypassed, and the 'report' phase is
+        triggered immediately to notify the administrator of the
         safety suspension.
 
-        This is an asynchronous operation. Monitor progress via the 
+        This is an asynchronous operation. Monitor progress via the
         '/api/v1/progress' endpoint.
       responses:
         '202':
@@ -40,18 +40,18 @@ paths:
     post:
       summary: Conditional spindown of idle disks
       description: >
-        Initiates a power management sequence that targets disks based 
+        Initiates a power management sequence that targets disks based
         on inactivity duration.
 
-        The task first performs a non-intrusive probe to refresh the 
-        'access_count_idle_duration' metric for all disks without 
-        waking those in standby. 
+        The task first performs a non-intrusive probe to refresh the
+        'access_count_idle_duration' metric for all disks without
+        waking those in standby.
 
-        Subsequently, any active disk with an idle duration exceeding 
-        'spindown_idle_minutes'—as defined in the daemon 
+        Subsequently, any active disk with an idle duration exceeding
+        'spindown_idle_minutes'—as defined in the daemon
         configuration—is issued a spindown command.
 
-        This is an asynchronous operation. Monitor progress via the 
+        This is an asynchronous operation. Monitor progress via the
         '/api/v1/progress' endpoint.
       responses:
         '202':
@@ -862,7 +862,7 @@ components:
         path:
           type: string
           description: >
-            Path to the parity file for parity disks or filesystem mount point for data disks.         
+            Path to the parity file for parity disks or filesystem mount point for data disks.
         uuid:
           type: string
           description: >

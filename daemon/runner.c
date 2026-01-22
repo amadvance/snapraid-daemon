@@ -337,7 +337,7 @@ bail:
 			/* it should never happen */
 			task->exit_code = -1;
 			task->state = PROCESS_STATE_TERM;
-			
+
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 
 			/* cancel all queued tasks */
@@ -365,7 +365,7 @@ static int runner_precondition(struct snapraid_state* state)
 			}
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -379,7 +379,7 @@ static void* runner_thread(void* arg)
 		while (state->daemon_running /* daemon is still running */
 			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
 			&& !tommy_list_empty(&state->runner.waiting_list)) { /* there is something to run */
-			
+
 			time_t now = time(0);
 
 			/* setup a new task to run */
@@ -730,3 +730,4 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	*status = 202;
 	return 0;
 }
+

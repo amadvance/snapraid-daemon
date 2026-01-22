@@ -289,7 +289,7 @@ static void process_content_allocation(struct snapraid_state* state, char** map,
 {
 	if (mac < 4)
 		return;
-	
+
 	const char* name = map[1];
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];

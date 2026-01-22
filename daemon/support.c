@@ -131,7 +131,7 @@ ssize_t ss_printl(struct ss* s, const char* str, size_t pad)
 {
 	size_t len = strlen(str);
 
-	ss_write(s, str, len);	
+	ss_write(s, str, len);
 
 	if (len < pad)
 		ss_printc(s, ' ', pad - len);
@@ -335,7 +335,7 @@ int strdouble(double* out, const char* s)
 	if (e == s || *e != '\0')
 		return -1; /* not a valid number */
 
-	if (!isfinite(v)) 
+	if (!isfinite(v))
 		return -1; /* exclude nan and inf */
 
 	*out = v;

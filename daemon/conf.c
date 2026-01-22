@@ -482,3 +482,4 @@ void config_init(struct snapraid_config* config, const char* argv0)
 #endif
 	sncpy(config->conf, sizeof(config->conf), "/etc/snapraidd.conf");
 }
+

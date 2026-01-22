@@ -131,7 +131,7 @@ struct snapraid_disk {
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
 	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
 	uint64_t error_data; /**< Accumulator of all silent data errors encountered. */
-	
+
 	tommy_list device_list; /**< List of snapraid_device */
 	tommy_list split_list; /**< List of snapraid_split */
 	tommy_node node;
@@ -263,7 +263,7 @@ struct snapraid_global {
 	int64_t diff_copied;
 	int64_t diff_restored;
 
-	tommy_list diff_list; /**< List of snapraid_diff entries */ 
+	tommy_list diff_list; /**< List of snapraid_diff entries */
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
