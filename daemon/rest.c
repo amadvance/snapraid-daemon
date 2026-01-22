@@ -909,11 +909,11 @@ static void json_disk_list(ss_t* s, int tab, tommy_list* list)
 			++tab;
 			ss_jsons(s, tab, "{\n");
 			++tab;
-			ss_jsonf(s, tab, "\"path\": \"%s\",\n", json_esc(split->path, esc_buf));
 			if (*split->uuid)
 				ss_jsonf(s, tab, "\"uuid\": \"%s\",\n", json_esc(split->uuid, esc_buf));
 			if (*split->content_uuid)
 				ss_jsonf(s, tab, "\"stored_uuid\": \"%s\",\n", json_esc(split->content_uuid, esc_buf));
+			ss_jsonf(s, tab, "\"path\": \"%s\"\n", json_esc(split->path, esc_buf));
 			--tab;
 			ss_jsonf(s, tab, "}%s\n", j->next ? "," : "");
 			--tab;

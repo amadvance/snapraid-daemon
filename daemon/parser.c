@@ -266,13 +266,13 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 {
 	int index;
 
-	if (mac < 4)
+	if (mac < 5)
 		return;
 
-	char* name = map[0];
-	const char* uuid = map[1];
-	const char* path = map[2];
-	const char* size_alloc = map[3];
+	char* name = map[1];
+	const char* uuid = map[2];
+	const char* path = map[3];
+	const char* size_alloc = map[4];
 
 	if (!is_split_parity(name, &index))
 		return;
@@ -873,7 +873,7 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_unixtime(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "content_disk") == 0) {
+	} else if (strcmp(cmd, "content_data") == 0) {
 		state_lock();
 		process_content_data(state, map, mac);
 		state_unlock();
