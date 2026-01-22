@@ -22,10 +22,8 @@ paths:
         'sync_threshold_updates'.
 
         If the 'sync' phase exceeds the delete threshold, the daemon will
-        suspend the task to prevent accidental data loss. In this event,
-        the 'scrub' phase is bypassed, and the 'report' phase is
-        triggered immediately to notify the administrator of the
-        safety suspension.
+        suspend the 'sync' task to prevent accidental data loss. 
+        Anyway, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
         '/api/v1/progress' endpoint.
@@ -207,6 +205,11 @@ paths:
         across the array. This process ensures that the parity disks
         accurately reflect the current state of all data disks.
 
+        Unlike the automated maintenance schedule, this standalone API
+        request acts as a manual override and is NOT subject to the
+        'sync_threshold_deletes' or 'sync_threshold_updates' safety
+        limits defined in the configuration.
+
         This is a resource-intensive, asynchronous operation. Real-time
         progress, including percentage completion and estimated time
         remaining, is available via the '/api/v1/progress' endpoint.
@@ -227,6 +230,12 @@ paths:
         Initiates an integrity check across the array to detect 'silent'
         data corruption or bit-rot. This process reads data and parity
         blocks to verify that the checksums still match.
+
+        This command is not restricted by the 'scrub_percentage' or
+        'scrub_older_than' settings defined in the daemon configuration.
+        Those parameters apply strictly to automated maintenance; manual API
+        calls will process the array according to the arguments provided in
+        the request body.
 
         This is a resource-intensive, asynchronous operation that
         validates the oldest parts of the array first. Real-time
@@ -254,7 +263,7 @@ paths:
         the signal has been successfully sent. However, the actual termination
         of the SnapRAID process may take a few seconds to complete gracefully.
 
-        Note that the pre_run_script and post_run_script are never terminated.
+        Note that the script_pre_run and script_post_run are never terminated.
       responses:
         '202':
           $ref: '#/components/responses/CommandStopped'
@@ -303,8 +312,12 @@ paths:
         including progress percentage and estimated time remaining.
 
         If the system is idle, this returns the final report of the
-        most recently completed task. Note that canceled tasks are immediately
-        cleared and not reported here.
+        most recently completed task (status 'terminated' or 'signaled').
+
+        Note that 'canceled' tasks, which occur when a task in a sequence
+        is skipped due to a prior failure or safety trigger—never appear
+        in this endpoint. Canceled tasks transition directly from the
+        queue to the persistent history.
 
         Returns 204 No Content if the daemon has not executed any tasks
         since the last restart.
@@ -1005,8 +1018,11 @@ components:
           description: >
             Threshold for deleted files. If the number of missing files exceeds
             this value, the sync operation is suspended.
-            This threshold is ignored for manual syncs triggered
-            via the API. Set to 0 for no threshold.
+
+            This threshold is strictly enforced during scheduled maintenance and
+            calls to 'maintenance'. It is BYPASSED for direct calls to 'sync',
+            allowing the user to force a sync via the API.
+            Set to 0 for no threshold.
         sync_threshold_updates:
           type: integer
           format: int32
@@ -1016,8 +1032,11 @@ components:
             Threshold for updated files. If the number of files with changed
             sizes or timestamps exceeds this value, the sync operation is
             suspended.
-            This threshold is ignored for manual syncs triggered
-            via the API. Set to 0 for no threshold.
+
+            This threshold is strictly enforced during scheduled maintenance and
+            calls to 'maintenance'. It is BYPASSED for direct calls to 'sync',
+            allowing the user to force a sync via the API.
+            Set to 0 for no threshold.
         sync_prehash:
           type: boolean
           example: true
@@ -1039,6 +1058,9 @@ components:
           description: >
             The percentage of the array verified during the scrub phase of
             scheduled maintenance. Set to 0 to skip the scrub phase.
+
+            This setting is enforced during scheduled maintenance and calls
+            to 'maintenance'. It is BYPASSED for direct calls to 'scrub'.
         scrub_older_than:
           type: integer
           minimum: 0
@@ -1047,6 +1069,9 @@ components:
           description: >
             Restricts scrubbing to data blocks not verified within the last
             N days. Set to 0 to ignore block age.
+
+            This setting is enforced during scheduled maintenance and calls
+            to 'maintenance'. It is BYPASSED for direct calls to 'scrub'.
         probe_interval_minutes:
           type: integer
           example: 15
@@ -1063,14 +1088,14 @@ components:
             physical read/write I/O. Power-state probes do not reset
             this timer but allow more frequent I/O detection.
             Set to 0 to disable.
-        pre_run_script:
+        script_pre_run:
           type: string
           example: "/usr/local/bin/pre-snapraid.sh"
           description: >
             Absolute path to an executable shell script invoked prior to
             SnapRAID tasks. Must contain a valid shebang. Compiled binaries
             are not supported.
-        post_run_script:
+        script_post_run:
           type: string
           example: "/usr/local/bin/post-snapraid.sh"
           description: >
