@@ -87,7 +87,8 @@ typedef tommy_list sl_t;
  */
 #define HEALTH_PENDING 0
 #define HEALTH_PASSED 1
-#define HEALTH_FAILING -1
+#define HEALTH_PREFAIL -1
+#define HEALTH_FAILING -2
 
 /**
  * Device info entry.

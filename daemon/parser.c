@@ -378,8 +378,10 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(tag, "flags") == 0) {
 		device->health = HEALTH_PENDING;
 		if (stru64(&device->flags, val) == 0) {
-			if (device->flags & (SMARTCTL_FLAG_FAIL | SMARTCTL_FLAG_PREFAIL))
+			if (device->flags & SMARTCTL_FLAG_FAIL)
 				device->health = HEALTH_FAILING;
+			else if (device->flags & SMARTCTL_FLAG_PREFAIL)
+				device->health = HEALTH_PREFAIL;
 			else
 				device->health = HEALTH_PASSED;
 		}

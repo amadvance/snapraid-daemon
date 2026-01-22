@@ -227,10 +227,19 @@ const char* health_name(int health)
 	switch (health) {
 	case HEALTH_PASSED : return "passed";
 	case HEALTH_FAILING : return "failing";
+	case HEALTH_PREFAIL : return "prefail";
 	case HEALTH_PENDING : return "pending";
 	}
 
 	return "-";
+}
+
+static int health_worse(int a, int b)
+{
+	if (a < b)
+		return a;
+	else
+		return b;
 }
 
 static int health_device_list(tommy_list* list)
@@ -239,10 +248,11 @@ static int health_device_list(tommy_list* list)
 
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* device = i->data;
-		if (device->health == HEALTH_FAILING)
-			return HEALTH_FAILING;
-		if (device->health == HEALTH_PENDING)
-			health = HEALTH_PENDING;
+		if (device->error_medium != 0 && device->error_medium != SMART_UNASSIGNED)
+			health = health_worse(health, HEALTH_FAILING);
+		if (device->error_protocol != 0 && device->error_protocol != SMART_UNASSIGNED)
+			health = health_worse(health, HEALTH_PREFAIL);
+		health = health_worse(health, device->health);
 	}
 
 	return health;
@@ -250,49 +260,58 @@ static int health_device_list(tommy_list* list)
 
 int health_disk(struct snapraid_disk* data)
 {
-	if (data->error_data != 0 || data->error_io != 0)
-		return HEALTH_FAILING;
-	return health_device_list(&data->device_list);
+	int health = HEALTH_PASSED;
+
+	if (data->error_data != 0)
+		health = health_worse(health, HEALTH_PREFAIL);
+
+	if (data->error_io != 0)
+		health = health_worse(health, HEALTH_FAILING);
+
+	health = health_worse(health, health_device_list(&data->device_list));
+
+	return health;
 }
 
 int health_task(struct snapraid_task* task)
 {
-	if (task->error_data != 0 || task->error_io != 0 || task->block_bad != 0)
-		return HEALTH_FAILING;
+	int health = HEALTH_PASSED;
+
+	if (task->error_data != 0)
+		health = health_worse(health, HEALTH_PREFAIL);
+
+	if (task->error_io != 0)
+		health = health_worse(health, HEALTH_FAILING);
+
+	if (task->block_bad != 0)
+		health = health_worse(health, HEALTH_PREFAIL);
+
 	switch (task->state) {
 	case PROCESS_STATE_QUEUE :
-		return HEALTH_PENDING;
-	case PROCESS_STATE_TERM :
-		if (task->exit_code != 0)
-			return HEALTH_FAILING;
+		health = health_worse(health, HEALTH_PENDING);
 		break;
-	case PROCESS_STATE_SIGNAL :
-		return HEALTH_FAILING;
 	}
-	return HEALTH_PASSED;
+
+	return health;
 }
 
 int health_array(struct snapraid_state* state)
 {
 	int health = HEALTH_PASSED;
+
 	if (state->global.block_bad != 0)
-		return HEALTH_FAILING;
+		health = health_worse(health, HEALTH_PREFAIL);
+
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		int disk_health = health_disk(disk);
-		if (disk_health == HEALTH_FAILING)
-			return HEALTH_FAILING;
-		if (disk_health == HEALTH_PENDING)
-			health = HEALTH_PENDING;
+		health = health_worse(health, health_disk(disk));
 	}
+
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		int disk_health = health_disk(disk);
-		if (disk_health == HEALTH_FAILING)
-			return HEALTH_FAILING;
-		if (disk_health == HEALTH_PENDING)
-			health = HEALTH_PENDING;
+		health = health_worse(health, health_disk(disk));
 	}
+
 	return health;
 }
 

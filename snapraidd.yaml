@@ -519,14 +519,23 @@ components:
             The command executed.
         health:
           type: string
-          enum: [passed, failing, pending]
+          enum: [passed, prefail, failing, pending]
           description: >
-            The operational health of the task. This value is dynamically
-            derived from the result of the operation done in the task.
+            The operational health of the task, dynamically derived from
+            the execution results and exit codes.
 
-            * 'passed': The task status is 'passed' if no hardware error was encountered.
-            * 'failing': The task status is 'failing' if any I/O or data errors were encountered.
-            * 'pending': The task is not yet executed.
+            * 'passed': The task completed without hardware errors. This
+              includes runs with 'soft' errors (e.g., files modified or moved
+              during execution) which do not compromise parity integrity.
+            * 'prefail': The task detected 'silent data errors'
+              (checksum mismatches). This indicates data corruption
+              that requires a 'fix' operation, but does not
+              necessarily imply physical hardware failure.
+            * 'failing': The task encountered physical I/O errors
+              (read/write failures, timeouts, or hardware rejects).
+              This indicates a critical hardware-level issue.
+            * 'pending': The task is currently queued or running and
+              has not yet produced a final health result.
         status:
           type: string
           enum: [queued, starting, processing, finalizing, stopping, terminated, signaled, canceled]
@@ -704,18 +713,22 @@ components:
             disk mount point resides on this particular hardware block device.
         health:
           type: string
-          enum: [passed, failing, pending]
+          enum: [passed, prefail, failing, pending]
           description: >
-            The aggregate SMART health status of the physical device.
+            The aggregate health status of the physical hardware.
 
-            * 'passed': The drive is currently operating within manufacturer
-              specifications.
-            * 'failing': The internal controller has detected an imminent
-              hardware fault (predictive failure). This is the primary
-              indicator for urgent disk replacement.
-            * 'pending': Health data is not yet available. This typically
-              occurs if the disk is in standby mode and the daemon has
-              refrained from spinning it up to read SMART attributes.
+            * 'passed': The drive is operating within normal
+              manufacturer specifications with no logged errors.
+            * 'prefail': SMART telemetry indicates predictive failure
+              attributes OR the device has encountered 'error_protocol'
+              events (communication/interface issues). The drive is
+              operational, but reliability is compromised.
+            * 'failing': The drive has encountered 'error_medium'
+              events (physical platter/cell damage), hardware I/O
+              timeouts, or the SMART 'failing' bit is set.
+              Immediate replacement is recommended.
+            * 'pending': Health data is unavailable or the device
+              is currently in standby and a refresh was not forced.
         power:
           type: string
           enum: [active, standby, pending]
@@ -882,19 +895,23 @@ components:
             Logical name (e.g., d1, d2, ..., parity, 2-parity, ...).
         health:
           type: string
-          enum: [passed, failing, pending]
+          enum: [passed, prefail, failing, pending]
           description: >
-            The aggregate operational health of the disk. This value is
-            dynamically derived from:
-            1. The hardware health of the underlying physical devices.
-            2. The 'error_io' counter (communication/transport failures).
-            3. The 'error_data' counter (silent corruption/checksum mismatches).
+            The aggregate operational health of the logical disk.
 
-            * 'passed': The device status is 'passed' and all error counters are zero.
-            * 'failing': The device status is 'failing' OR any unrecoverable
-              I/O or data errors have been recorded in the current session.
-            * 'pending': The underlying device health is 'pending' and no
-              runtime errors have been recorded yet.
+            * 'passed': The disk is fully synchronized and no errors
+              of any kind are detected.
+            * 'prefail': The disk has encountered 'silent data errors'
+              (checksum mismatches detected during a scrub or sync)
+              or data-level inconsistencies that do not stem from
+              physical I/O failure or any device part of disk has a prefail
+              condition.
+            * 'failing': The underlying physical device has reported
+              I/O errors, or the disk is inaccessible due to
+              hardware failure or any device part of disk has a failing
+              condition.
+            * 'pending': The health status is unknown or incomplete or the
+              disk is currently in standby.
         power:
           type: string
           enum: [active, standby, pending]
@@ -973,7 +990,7 @@ components:
       type: object
       description: Global configuration state for the SnapRAID daemon.
       properties:
-        scheduled_run:
+        maintenance_schedule:
           type: string
           example: "daily 02:00"
           description: >
@@ -1189,15 +1206,24 @@ components:
             The version of the underlying SnapRAID binary.
         health:
           type: string
-          enum: [passed, failing, pending]
+          enum: [passed, prefail, failing, pending]
           description: >
-            The operational health of the array. This value is dynamically
-            derived from the health of all disks and the bad blocks status
-            present in the content file.
+            The aggregate operational health of the array, representing
+            the collective state of all member disk integrity.
 
-            * 'passed': The status is 'passed' if no hardware error was encountered.
-            * 'failing': The status is 'failing' if any I/O or data errors were encountered.
-            * 'pending': The status is not yet established.
+            * 'passed': All member devices are nominal, and no data
+              inconsistencies are detected.
+            * 'prefail': A warning state indicating that the array requires
+              maintenance. This is triggered if any device reports protocol
+              errors, if silent data corruption is detected, a SMART prefail
+              condition is reported by a member device, or if the
+              'block_bad' counter is greater than zero.
+            * 'failing': A critical state indicating that one or more
+              underlying devices have encountered physical medium errors,
+              I/O failures, or a SMART failing condition. Immediate
+              hardware replacement and data reconstruction are
+              required.
+            * 'pending': The aggregate health has not yet been determined.
         engine_conf:
           type: string
           example: "/etc/snapraid.conf"

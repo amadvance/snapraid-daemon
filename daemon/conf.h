@@ -32,13 +32,13 @@
 int config_parse_level(const char* input, int* out);
 
 /**
- * Parse scheduled_run string.
+ * Parse maintenance_schedule string.
  * Format supported: "daily HH:MM" or "weekly <day> HH:MM"
  * @param input Input string to parse
  * @param config Configuration to update with parsed values
  * @return 0 on success, -1 on error
  */
-int config_parse_scheduled_run(const char* input, struct snapraid_config* config);
+int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config);
 
 /**
  * Get string representation of log level.

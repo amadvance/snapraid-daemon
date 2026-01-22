@@ -79,7 +79,7 @@ static int get_day_index(const char* input)
 	return -1;
 }
 
-int config_parse_scheduled_run(const char* input, struct snapraid_config* config)
+int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config)
 {
 	char day_str[10];
 	int hour, minute;
@@ -173,8 +173,8 @@ int config_load(struct snapraid_state* state)
 				sncpy(config->net_port, sizeof(config->net_port), val);
 			} else if (strcmp(key, "net_acl") == 0) {
 				sncpy(config->net_acl, sizeof(config->net_acl), val);
-			} else if (strcmp(key, "scheduled_run") == 0) {
-				if (config_parse_scheduled_run(val, config) == 0) {
+			} else if (strcmp(key, "maintenance_schedule") == 0) {
+				if (config_parse_maintenance_schedule(val, config) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}

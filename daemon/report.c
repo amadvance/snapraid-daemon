@@ -32,6 +32,7 @@ static const char* health_report(int health)
 	switch (health) {
 	case HEALTH_PASSED : return " [passed]";
 	case HEALTH_FAILING : return "[FAILING]";
+	case HEALTH_PREFAIL : return "[PREFAIL]";
 	case HEALTH_PENDING : return "[pending]";
 	}
 
@@ -45,7 +46,7 @@ static const char* smart_report(int flag)
 	else if (flag & SMARTCTL_FLAG_PREFAIL)
 		return "PREFAIL";
 	else if (flag & SMARTCTL_FLAG_PREFAIL_LOGGED)
-		return "Prefail condition in the past";
+		return "Prefail condition in the past but not now";
 	else if (flag & SMARTCTL_FLAG_ERROR_LOGGED)
 		return "Error Logged";
 	else if (flag & SMARTCTL_FLAG_SELFERROR_LOGGED)
@@ -325,7 +326,9 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 	if (array_health == HEALTH_PASSED)
 		ss_prints(ss, "  Overall Status: All systems nominal\n");
 	else if (array_health == HEALTH_FAILING)
-		ss_prints(ss, "  Overall Status: FAILURES DETECTED\n");
+		ss_prints(ss, "  Overall Status: FAILING\n");
+	else if (array_health == HEALTH_PREFAIL)
+		ss_prints(ss, "  Overall Status: PRE FAILING\n");
 	else
 		ss_prints(ss, "  Overall Status: Pending\n");
 

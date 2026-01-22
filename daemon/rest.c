@@ -366,10 +366,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		c0 = jv[j++].size;
 		while (c0-- > 0) {
 			char buf[128];
-			if (json_entry(js, &jv[j], json_const("scheduled_run")) == 0) {
+			if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_scheduled_run(buf, &state->config) == 0) {
+					&& config_parse_maintenance_schedule(buf, &state->config) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -603,7 +603,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_jsons(&s, tab, "{\n");
 	++tab;
 
-	ss_jsonf(&s, tab, "\"scheduled_run\": \"%s\",\n", json_esc(schedule_buf, esc_buf));
+	ss_jsonf(&s, tab, "\"maintenance_schedule\": \"%s\",\n", json_esc(schedule_buf, esc_buf));
 	ss_jsonf(&s, tab, "\"sync_threshold_deletes\": %d,\n", config->sync_threshold_deletes);
 	ss_jsonf(&s, tab, "\"sync_threshold_updates\": %d,\n", config->sync_threshold_updates);
 	ss_jsonf(&s, tab, "\"sync_prehash\": %s,\n", config->sync_prehash ? "true" : "false");
