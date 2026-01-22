@@ -40,7 +40,7 @@ static int runner_need_script(int cmd)
 	return 0;
 }
 
-static int runner_report(struct snapraid_state* state)
+static int runner_report_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* report_task = state->runner.latest;
 	struct snapraid_task* sync_task = 0;
@@ -75,7 +75,12 @@ static int runner_report(struct snapraid_state* state)
 
 	ss_init(&ss, 8192);
 
-	if (report(state, &ss, sync_task, scrub_task) != 0) {
+	/* if we have sync completed, use the previous diff stat */
+	struct snapraid_diff_stat* diff_stat = &state->global.diff_current;
+	if (sync_task != 0 && sync_task->state == PROCESS_STATE_TERM && sync_task->exit_code == 0)
+		diff_stat = &state->global.diff_prev;
+
+	if (report(state, &ss, sync_task, scrub_task, diff_stat) != 0) {
 		ss_done(&ss);
 		log_msg(LVL_ERROR, "failed to generate report");
 		return -1;
@@ -150,7 +155,7 @@ static void runner_go(struct snapraid_state* state)
 
 	if (cmd == CMD_SYNC || cmd == CMD_DIFF) {
 		/* these commands output a new diff list, so cleanup it */
-		tommy_list_foreach(&state->global.diff_list, diff_free);
+		diff_cleanup(&state->global.diff_current);
 	}
 
 	state_unlock();
@@ -319,11 +324,16 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-
 			/* cancel all queued tasks on failure */
-			if (task->exit_code != 0)
+			if (task->exit_code != 0) {
+				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
+			} else {
+				if (cmd == CMD_SYNC) {
+					/* move the state to the previous state as now there is no difference */
+					diff_push(&state->global.diff_current, &state->global.diff_prev);
+				}
+			}
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */
 			task->exit_sig = WTERMSIG(status);
@@ -352,14 +362,14 @@ static int runner_precondition(struct snapraid_state* state)
 
 	if (task->cmd == CMD_SYNC) {
 		if (state->config.sync_threshold_deletes) {
-			if (state->global.diff_removed >= state->config.sync_threshold_deletes) {
+			if (state->global.diff_current.diff_removed >= state->config.sync_threshold_deletes) {
 				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many deleted files");
 				return -1;
 			}
 		}
 
 		if (state->config.sync_threshold_updates) {
-			if (state->global.diff_updated >= state->config.sync_threshold_deletes) {
+			if (state->global.diff_current.diff_updated >= state->config.sync_threshold_deletes) {
 				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many updated files");
 				return -1;
 			}
@@ -392,7 +402,7 @@ static void* runner_thread(void* arg)
 			if (task->cmd == CMD_REPORT) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
-				runner_report(state);
+				runner_report_locked(state);
 				task->running = 0;
 				task->state = PROCESS_STATE_TERM;
 				task->unix_end_time = now;

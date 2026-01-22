@@ -50,6 +50,8 @@ const char* change_name(int change);
 struct snapraid_diff* diff_alloc(int reason, const char* disk, const char* path);
 struct snapraid_diff* diff_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
 void diff_free(void* void_diff);
+void diff_cleanup(struct snapraid_diff_stat* diff);
+void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre);
 
 /****************************************************************************/
 /* health */

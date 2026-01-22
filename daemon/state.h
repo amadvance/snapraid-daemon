@@ -230,6 +230,18 @@ struct snapraid_diff {
 	char str[]; /**< Allocated string */
 };
 
+struct snapraid_diff_stat {
+	/* diff counters. Updated in diff and sync */
+	int64_t diff_equal; /**< Comparison of the content state with the real state of the array */
+	int64_t diff_added;
+	int64_t diff_removed;
+	int64_t diff_updated;
+	int64_t diff_moved;
+	int64_t diff_copied;
+	int64_t diff_restored;
+	tommy_list diff_list; /**< List of snapraid_diff entries */
+};
+
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
 	int version_major;
@@ -254,16 +266,8 @@ struct snapraid_global {
 	uint64_t block_rehash; /**< Total blocks marked as rehash needed */
 	uint64_t block_total; /**< Total blocks */
 
-	/* diff counters. Updated in diff and sync */
-	int64_t diff_equal; /**< Comparison of the content state with the real state of the array */
-	int64_t diff_added;
-	int64_t diff_removed;
-	int64_t diff_updated;
-	int64_t diff_moved;
-	int64_t diff_copied;
-	int64_t diff_restored;
-
-	tommy_list diff_list; /**< List of snapraid_diff entries */
+	struct snapraid_diff_stat diff_current; /**< Current diff stats of the array */
+	struct snapraid_diff_stat diff_prev; /**< Diff stats before the latest sync */
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */

@@ -170,6 +170,44 @@ void diff_free(void* void_diff)
 	free(diff);
 }
 
+void diff_cleanup(struct snapraid_diff_stat* diff)
+{
+	diff->diff_equal = 0;
+	diff->diff_added = 0;
+	diff->diff_removed = 0;
+	diff->diff_updated = 0;
+	diff->diff_moved = 0;
+	diff->diff_copied = 0;
+	diff->diff_restored = 0;
+
+	tommy_list_foreach(&diff->diff_list, diff_free);
+}
+
+void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre)
+{
+	/* clear the previous list */
+	tommy_list_foreach(&diff_pre->diff_list, diff_free);
+
+	*diff_pre = *diff_current;
+
+	/* reset the list */
+	tommy_list_init(&diff_current->diff_list);
+
+	diff_current->diff_equal = diff_pre->diff_equal;
+	diff_current->diff_equal += diff_pre->diff_added;
+	diff_current->diff_equal -= diff_pre->diff_removed;
+	diff_current->diff_equal += diff_pre->diff_updated;
+	diff_current->diff_equal += diff_pre->diff_moved;
+	diff_current->diff_equal += diff_pre->diff_copied;
+	diff_current->diff_equal += diff_pre->diff_restored;
+	diff_current->diff_added = 0;
+	diff_current->diff_removed = 0;
+	diff_current->diff_updated = 0;
+	diff_current->diff_moved = 0;
+	diff_current->diff_copied = 0;
+	diff_current->diff_restored = 0;
+}
+
 /****************************************************************************/
 /* health */
 

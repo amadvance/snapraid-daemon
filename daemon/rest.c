@@ -1215,15 +1215,15 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_jsonf(&s, tab, "\"block_bad\": %" PRIu64 ",\n", global->block_bad);
 		ss_jsonf(&s, tab, "\"block_rehash\": %" PRIu64 ",\n", global->block_rehash);
 		ss_jsonf(&s, tab, "\"block_total\": %" PRIu64 ",\n", global->block_total);
-		ss_jsonf(&s, tab, "\"diff_equal\": %" PRIu64 ",\n", global->diff_equal);
-		ss_jsonf(&s, tab, "\"diff_added\": %" PRIu64 ",\n", global->diff_added);
-		ss_jsonf(&s, tab, "\"diff_removed\": %" PRIu64 ",\n", global->diff_removed);
-		ss_jsonf(&s, tab, "\"diff_updated\": %" PRIu64 ",\n", global->diff_updated);
-		ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_moved);
-		ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_copied);
-		ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_restored);
+		ss_jsonf(&s, tab, "\"diff_equal\": %" PRIu64 ",\n", global->diff_current.diff_equal);
+		ss_jsonf(&s, tab, "\"diff_added\": %" PRIu64 ",\n", global->diff_current.diff_added);
+		ss_jsonf(&s, tab, "\"diff_removed\": %" PRIu64 ",\n", global->diff_current.diff_removed);
+		ss_jsonf(&s, tab, "\"diff_updated\": %" PRIu64 ",\n", global->diff_current.diff_updated);
+		ss_jsonf(&s, tab, "\"diff_moved\": %" PRIu64 ",\n", global->diff_current.diff_moved);
+		ss_jsonf(&s, tab, "\"diff_copied\": %" PRIu64 ",\n", global->diff_current.diff_copied);
+		ss_jsonf(&s, tab, "\"diff_restored\": %" PRIu64 ",\n", global->diff_current.diff_restored);
 		ss_jsons(&s, tab, "\"diffs\": [\n");
-		for (tommy_node* i = tommy_list_head(&global->diff_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&global->diff_current.diff_list); i; i = i->next) {
 			struct snapraid_diff* diff = i->data;
 			++tab;
 			ss_jsons(&s, tab, "{\n");

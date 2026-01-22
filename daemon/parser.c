@@ -337,31 +337,6 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 	}
 }
 
-static void process_content_write(struct snapraid_state* state, char** map, size_t mac)
-{
-	struct snapraid_task* task = state->runner.latest;
-
-	if (!task)
-		return;
-
-	(void)map;
-	(void)mac;
-
-	if (task->cmd == CMD_SYNC) {
-		/**
-		 * When content is written in sync, it updates the content to the present state
-		 * Note that instead, a content written in scrub doesn't update its state.
-		 */
-		state->global.diff_equal = 0;
-		state->global.diff_added = 0;
-		state->global.diff_removed = 0;
-		state->global.diff_updated = 0;
-		state->global.diff_moved = 0;
-		state->global.diff_copied = 0;
-		state->global.diff_restored = 0;
-	}
-}
-
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
 	if (mac < 5)
@@ -428,22 +403,22 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(tag, "add") == 0) {
 		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_ADD, disk, path);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	} else if (strcmp(tag, "remove") == 0) {
 		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_REMOVE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	} else if (strcmp(tag, "update") == 0) {
 		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_UPDATE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
 		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_MOVE, disk, path, disk, map[4]);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
 		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_COPY, disk, path, map[4], map[5]);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	} else if (strcmp(tag, "restore") == 0) {
 		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_RESTORE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_list, &diff->node, diff);
+		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
 	}
 }
 
@@ -787,19 +762,19 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	/* diff */
 	if (task->cmd == CMD_DIFF) {
 		if (strcmp(tag, "equal") == 0)
-			stri64(&state->global.diff_equal, val);
+			stri64(&state->global.diff_current.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
-			stri64(&state->global.diff_added, val);
+			stri64(&state->global.diff_current.diff_added, val);
 		else if (strcmp(tag, "removed") == 0)
-			stri64(&state->global.diff_removed, val);
+			stri64(&state->global.diff_current.diff_removed, val);
 		else if (strcmp(tag, "updated") == 0)
-			stri64(&state->global.diff_updated, val);
+			stri64(&state->global.diff_current.diff_updated, val);
 		else if (strcmp(tag, "moved") == 0)
-			stri64(&state->global.diff_moved, val);
+			stri64(&state->global.diff_current.diff_moved, val);
 		else if (strcmp(tag, "copied") == 0)
-			stri64(&state->global.diff_copied, val);
+			stri64(&state->global.diff_current.diff_copied, val);
 		else if (strcmp(tag, "restored") == 0)
-			stri64(&state->global.diff_restored, val);
+			stri64(&state->global.diff_current.diff_restored, val);
 	}
 
 	if (strcmp(tag, "error_file") == 0)
@@ -913,10 +888,6 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "content_info") == 0) {
 		state_lock();
 		process_content_info(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "content_write") == 0) {
-		state_lock();
-		process_content_write(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "hash_summary") == 0) {
 		state_lock();

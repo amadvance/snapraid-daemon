@@ -179,19 +179,14 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 /**
  * Print differences list.
  */
-static void print_differences(ss_t* ss, struct snapraid_state* state)
+static void print_differences(ss_t* ss, struct snapraid_diff_stat* diff_stat)
 {
-	if (tommy_list_empty(&state->global.diff_list))
-		return;
-
-	ss_prints(ss, "CHANGED FILES:\n\n");
-
 	/* group by change type */
 	for (int change = DIFF_CHANGE_ADD; change <= DIFF_CHANGE_RESTORE; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(&state->global.diff_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&diff_stat->diff_list); i; i = i->next) {
 			struct snapraid_diff* diff = i->data;
 			if (diff->change == change) {
 				found = 1;
@@ -203,10 +198,10 @@ static void print_differences(ss_t* ss, struct snapraid_state* state)
 			continue;
 
 		/* print section header */
-		ss_printf(ss, "  %s:\n", change_name(change));
+		ss_printf(ss, "  list_%s:\n", change_name(change));
 
 		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(&state->global.diff_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&diff_stat->diff_list); i; i = i->next) {
 			struct snapraid_diff* diff = i->data;
 			if (diff->change != change)
 				continue;
@@ -308,7 +303,7 @@ static void print_disk_list(tommy_list* disk_list, ss_t* ss, struct disk_spacing
 /****************************************************************************/
 /* report */
 
-int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub)
+int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat)
 {
 	int array_health;
 	time_t now = time(0);
@@ -378,27 +373,22 @@ int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_
 	/* global statistics */
 	ss_prints(ss, "\n");
 	print_line_separator(ss);
-	ss_prints(ss, "GLOBAL STATISTICS\n");
-	ss_printf(ss, "  Total Files:    %" PRIu64 "\n", state->global.file_total);
-	ss_prints(ss, "\n");
-	ss_prints(ss, "DIFFERENCES:\n");
-	ss_printf(ss, "  Equal:          %" PRId64 "\n", state->global.diff_equal);
-	ss_printf(ss, "  Added:          %" PRId64 "\n", state->global.diff_added);
-	ss_printf(ss, "  Removed:        %" PRId64 "\n", state->global.diff_removed);
-	ss_printf(ss, "  Updated:        %" PRId64 "\n", state->global.diff_updated);
-	ss_printf(ss, "  Moved:          %" PRId64 "\n", state->global.diff_moved);
-	ss_printf(ss, "  Copied:         %" PRId64 "\n", state->global.diff_copied);
-	ss_printf(ss, "  Restored:       %" PRId64 "\n", state->global.diff_restored);
+	ss_prints(ss, "DIFFERENCES:\n\n");
+	ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);
+	ss_printf(ss, "  added:   %10" PRId64 "\n", diff_stat->diff_added);
+	ss_printf(ss, "  removed: %10" PRId64 "\n", diff_stat->diff_removed);
+	ss_printf(ss, "  updated: %10" PRId64 "\n", diff_stat->diff_updated);
+	ss_printf(ss, "  moved:   %10" PRId64 "\n", diff_stat->diff_moved);
+	ss_printf(ss, "  copied:  %10" PRId64 "\n", diff_stat->diff_copied);
+	ss_printf(ss, "  restored:%10" PRId64 "\n", diff_stat->diff_restored);
 
 	/* differences list if enabled */
 	if (state->config.notify_differences != 0) {
 		ss_prints(ss, "\n");
-		print_line_separator(ss);
-		print_differences(ss, state);
+		print_differences(ss, diff_stat);
 	}
 
 	/* footer */
-	ss_prints(ss, "\n");
 	print_separator(ss);
 
 	return 0;
