@@ -879,60 +879,6 @@ components:
             indicator across various SSD/NVME vendors and interface types
             by mapping diverse hardware counters into a single
             standardized scale.
-        reallocated_sector_count:
-          type: integer
-          description: >
-            The count of reallocated sectors (SMART ID 5). When the hard drive
-            finds a read/write/verification error, it marks this sector as
-            "reallocated" and transfers data to a special reserved area.
-        uncorrectable_error_cnt:
-          type: integer
-          description: >
-            The total count of uncorrectable errors when reading/writing a sector
-            (SMART ID 187). A rise in this value indicates hardware defects
-            that the drive's internal error correction (ECC) could not recover.
-        command_timeout:
-          type: integer
-          description: >
-            The count of aborted operations due to HDD timeout (SMART ID 188).
-            This can be caused by power supply issues, cable oxidation,
-            or internal drive failures.
-        current_pending_sector:
-          type: integer
-          description: >
-            The number of unstable sectors waiting to be remapped (SMART ID 197).
-            If a sector is subsequently read successfully, the count decreases;
-            if it fails again, it becomes a reallocated sector.
-        offline_uncorrectable:
-          type: integer
-          description: >
-            The total number of uncorrectable errors during offline scan
-            (SMART ID 198). This represents failures discovered during
-            the drive's internal self-tests rather than during host I/O.
-        start_stop_count:
-          type: integer
-          description: >
-            The cumulative count of spindle start/stop cycles (SMART ID 4).
-            In the context of snapraidd, this helps monitor the mechanical
-            wear caused by aggressive spindown power management policies.
-        power_on_hours:
-          type: integer
-          description: >
-            The total number of hours the drive has been powered on (SMART ID 9).
-            Used as a primary metric for determining the age and remaining
-            service life of the physical disk.
-        load_cycle_count:
-          type: integer
-          description: >
-            The number of times the heads have been parked in the landing zone
-            (SMART ID 193). High values are common in green/energy-efficient
-            drives but may indicate excessive head parking.
-        temperature_celsius:
-          type: integer
-          description: >
-            The current internal temperature of the drive in degrees Celsius
-            (SMART ID 194 or 190). Maintaining consistent temperatures
-            below 45°C is critical for long-term platter and motor reliability.
         annual_failure_rate:
           type: number
           format: double
@@ -946,6 +892,99 @@ components:
             Statistical probability of at least one disk failure within a
             one-year period, calculated using a Poisson distribution model
             based on the aggregate Annual Failure Rate.
+        smart:
+          type: object
+          description: >
+            The S.M.A.R.T. telemetry and interpreted health analysis for the
+            physical disk.
+
+            This object combines raw attribute counters with boolean flags
+            derived from smartctl exit codes (bitmask 1 << 3 to 1 << 7).
+            It is omitted if the disk is in standby.
+          properties:
+            reallocated_sector_count:
+              type: integer
+              description: >
+                The count of reallocated sectors (SMART ID 5). When the hard drive
+                finds a read/write/verification error, it marks this sector as
+                "reallocated" and transfers data to a special reserved area.
+            uncorrectable_error_cnt:
+              type: integer
+              description: >
+                The total count of uncorrectable errors when reading/writing a sector
+                (SMART ID 187). A rise in this value indicates hardware defects
+                that the drive's internal error correction (ECC) could not recover.
+            command_timeout:
+              type: integer
+              description: >
+                The count of aborted operations due to HDD timeout (SMART ID 188).
+                This can be caused by power supply issues, cable oxidation,
+                or internal drive failures.
+            current_pending_sector:
+              type: integer
+              description: >
+                The number of unstable sectors waiting to be remapped (SMART ID 197).
+                If a sector is subsequently read successfully, the count decreases;
+                if it fails again, it becomes a reallocated sector.
+            offline_uncorrectable:
+              type: integer
+              description: >
+                The total number of uncorrectable errors during offline scan
+                (SMART ID 198). This represents failures discovered during
+                the drive's internal self-tests rather than during host I/O.
+            start_stop_count:
+              type: integer
+              description: >
+                The cumulative count of spindle start/stop cycles (SMART ID 4).
+                In the context of snapraidd, this helps monitor the mechanical
+                wear caused by aggressive spindown power management policies.
+            power_on_hours:
+              type: integer
+              description: >
+                The total number of hours the drive has been powered on (SMART ID 9).
+                Used as a primary metric for determining the age and remaining
+                service life of the physical disk.
+            load_cycle_count:
+              type: integer
+              description: >
+                The number of times the heads have been parked in the landing zone
+                (SMART ID 193). High values are common in green/energy-efficient
+                drives but may indicate excessive head parking.
+            temperature_celsius:
+              type: integer
+              description: >
+                The current internal temperature of the drive in degrees Celsius
+                (SMART ID 194 or 190). Maintaining consistent temperatures
+                below 45°C is critical for long-term platter and motor reliability.
+            failing:
+              type: boolean
+              description: >
+                Corresponds to SMARTCTL_FLAG_FAIL. The drive firmware
+                explicitly reports that the disk is currently failing
+                the health status check.
+            prefail:
+              type: boolean
+              description: >
+                Corresponds to SMARTCTL_FLAG_PREFAIL. One or more
+                critical 'Prefail' attributes are currently at or
+                below the manufacturer's threshold.
+            prefail_logged:
+              type: boolean
+              description: >
+                Corresponds to SMARTCTL_FLAG_PREFAIL_LOGGED. The status
+                is 'OK', but attributes have dropped below the
+                threshold at some point in the device's history.
+            error_logged:
+              type: boolean
+              description: >
+                Corresponds to SMARTCTL_FLAG_ERROR_LOGGED. The internal
+                device error log contains records of summary errors.
+            selftest_error_logged:
+              type: boolean
+              description: >
+                Corresponds to SMARTCTL_FLAG_SELFERROR_LOGGED. The
+                self-test log contains records of failed or
+                aborted tests.
 
     Split:
       type: object

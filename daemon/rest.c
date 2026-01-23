@@ -852,6 +852,8 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_json_u64(s, tab, "error_medium", dev->error_medium, ",");
 		if (dev->wear_level != SMART_UNASSIGNED)
 			ss_json_u64(s, tab, "wear_level", dev->wear_level, ",");
+		ss_json_object_open(s, tab, "smart");
+		++tab;
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, tab, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF, ",");
 		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
@@ -872,6 +874,15 @@ static void json_device_list(ss_t* s, int tab, tommy_list* list)
 			ss_json_u64(s, tab, "temperature_celsius", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF, ",");
 		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
 			ss_json_u64(s, tab, "temperature_celsius", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF, ",");
+		if (dev->flags != SMART_UNASSIGNED) {
+			ss_json_bool(s, tab, "failing", dev->flags & SMARTCTL_FLAG_FAIL, ",");
+			ss_json_bool(s, tab, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL, ",");
+			ss_json_bool(s, tab, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED, ",");
+			ss_json_bool(s, tab, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED, ",");
+			ss_json_bool(s, tab, "selferror_logged", dev->flags & SMARTCTL_FLAG_SELFERROR_LOGGED, ",");
+		}
+		--tab;
+		ss_json_close(s, tab, ",");
 		if (dev->afr != 0)
 			ss_json_double(s, tab, "annual_failure_rate", dev->afr, ",");
 		if (dev->prob != 0)
@@ -1120,7 +1131,7 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_array_open(&s, tab, 0);
+	ss_json_list_open(&s, tab);
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
@@ -1157,7 +1168,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_array_open(&s, tab, 0);
+	ss_json_list_open(&s, tab);
 	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 

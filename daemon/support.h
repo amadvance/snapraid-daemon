@@ -154,6 +154,10 @@ static inline void ss_json_open(ss_t* s, int tab)
 {
 	ss_jsons(s, tab, "{\n");
 }
+static inline void ss_json_object_open(ss_t* s, int tab, const char* field)
+{
+	ss_jsonf(s, tab, "\"%s\": {\n", field);
+}
 
 static inline void ss_json_close(ss_t* s, int tab, const char* next)
 {
@@ -162,12 +166,14 @@ static inline void ss_json_close(ss_t* s, int tab, const char* next)
 	ss_prints(s, "\n");
 }
 
+static inline void ss_json_list_open(ss_t* s, int tab)
+{
+	ss_jsonf(s, tab, "[\n");
+}
+
 static inline void ss_json_array_open(ss_t* s, int tab, const char* field)
 {
-	if (field)
-		ss_jsonf(s, tab, "\"%s\": [\n", field);
-	else
-		ss_jsonf(s, tab, "[\n");
+	ss_jsonf(s, tab, "\"%s\": [\n", field);
 }
 
 static inline void ss_json_array_close(ss_t* s, int tab, const char* next)
