@@ -194,6 +194,7 @@ struct snapraid_task {
 	char* text_report; /**< for CMD_REPORT it's the final text report */
 
 	/* error stats */
+	int health; /**< Health of the array after the task. */
 	uint64_t hash_error_soft; /**< Total software errors during hashing phase (sync only). */
 	uint64_t error_soft; /**< Total software errors encountered (sync/scrub only). */
 	uint64_t error_io; /**< Total I/O errors encountered (sync/scrub only). */

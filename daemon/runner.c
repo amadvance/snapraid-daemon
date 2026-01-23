@@ -80,12 +80,16 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (sync_task != 0 && sync_task->state == PROCESS_STATE_TERM && sync_task->exit_code == 0)
 		diff_stat = &state->global.diff_prev;
 
-	if (report(state, &ss, sync_task, scrub_task, diff_stat) != 0) {
+	if (report_locked(state, &ss, sync_task, scrub_task, diff_stat) != 0) {
 		ss_done(&ss);
 		log_msg(LVL_ERROR, "failed to generate report");
 		return -1;
 	}
 
+	/* propagate the array health to the report task */
+	report_task->health = health_array(state);
+
+	/* store the report */
 	report_task->text_report = ss_dup(&ss);
 
 	/* TODO log the report */
@@ -308,6 +312,9 @@ bail:
 	/* the task is not running anymore */
 	task->running = 0;
 	state->runner.latest->unix_end_time = unix_end_time;
+
+	/* now with log processed, propagate the array health to the task */
+	task->health = health_array(state);
 
 	/* insert the task in the done list, but keep it in the latest pointer */
 	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);

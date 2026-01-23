@@ -304,7 +304,7 @@ static void print_disk_list(tommy_list* disk_list, ss_t* ss, struct disk_spacing
 /****************************************************************************/
 /* report */
 
-int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat)
+int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat)
 {
 	int array_health;
 	time_t now = time(0);

@@ -76,6 +76,7 @@ struct snapraid_task* task_alloc(void)
 	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
 	sl_init(&task->arg_list);
 	sl_init(&task->message_list);
+	task->health = HEALTH_PASSED;
 	return task;
 }
 
@@ -276,7 +277,7 @@ int health_disk(struct snapraid_disk* data)
 
 int health_task(struct snapraid_task* task)
 {
-	int health = HEALTH_PASSED;
+	int health = task->health;
 
 	if (task->error_data != 0)
 		health = health_worse(health, HEALTH_PREFAIL);

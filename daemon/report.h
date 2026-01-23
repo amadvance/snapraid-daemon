@@ -30,7 +30,7 @@
  * @param latest_scrub Pointer to the latest scrub task, or NULL if not available
  * @return 0 on success, -1 on error
  */
-int report(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
+int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
 
 #endif
 
