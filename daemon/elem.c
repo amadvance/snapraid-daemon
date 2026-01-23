@@ -87,6 +87,7 @@ void task_free(void* void_task)
 	sl_free(&task->arg_list);
 	sl_free(&task->message_list);
 	sl_free(&task->error_list);
+	free(task->text_report);
 	free(task);
 }
 

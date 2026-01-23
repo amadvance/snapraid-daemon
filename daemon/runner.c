@@ -86,8 +86,10 @@ static int runner_report_locked(struct snapraid_state* state)
 		return -1;
 	}
 
+	report_task->text_report = ss_dup(&ss);
+
 	/* TODO log the report */
-	printf("%s\n", ss_ptr(&ss));
+	printf("%s\n", report_task->text_report);
 
 	ss_done(&ss);
 

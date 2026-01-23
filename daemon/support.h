@@ -34,13 +34,39 @@ typedef struct ss {
  * @param s String stream to initialize
  * @param size Initial buffer size
  */
-void ss_init(struct ss* s, size_t size);
+void ss_init(ss_t* s, size_t size);
 
 /**
  * Cleanup string stream.
  * @param s String stream to cleanup
  */
-void ss_done(struct ss* s);
+void ss_done(ss_t* s);
+
+/**
+ * Reserve space in string stream buffer.
+ * @param s String stream
+ * @param needed Number of bytes needed
+ */
+void ss_reserve(ss_t* s, ssize_t needed);
+
+/**
+ * Return a pointer to the string.
+ *
+ * The string returned will remain valid until the next write.
+ * The called may decide to own the returned string, and not use anymore
+ * the ss_t object. In such case the called is responsible to free the string.
+ *
+ * @param s String stream
+ * @return The string 0 terminated.
+ */
+char* ss_extract(ss_t* s);
+
+/**
+ * Return a pointer to a duplicate of the string.
+ * @param s String stream
+ * @return The string 0 terminated. It must be deallocated by the called.
+ */
+char* ss_dup(ss_t* s);
 
 /**
  * Write data to string stream.
@@ -48,7 +74,13 @@ void ss_done(struct ss* s);
  * @param arg Data to write
  * @param len Length of data
  */
-void ss_write(struct ss* s, const char* arg, size_t len);
+static inline void ss_write(ss_t* s, const char* arg, ssize_t len)
+{
+	if (tommy_unlikely(s->len + len > s->size))
+		ss_reserve(s, len);
+	memcpy(s->ptr + s->len, arg, len);
+	s->len += len;
+}
 
 /**
  * Print string to string stream.
@@ -59,15 +91,11 @@ void ss_write(struct ss* s, const char* arg, size_t len);
 #define ss_prints(s, arg) \
 	do { \
 		const char* p_arg = (arg); \
-		ssize_t p_len; \
-		if (__builtin_constant_p(arg)) \
-		p_len = sizeof(arg) -1; \
-		else \
-		p_len = strlen(p_arg); \
+		ssize_t p_len = __builtin_constant_p(arg) ? sizeof(arg) - 1 : strlen(p_arg); \
 		ss_write(s, p_arg, p_len); \
 	} while (0)
 #else /* no __builtin_constant_p available */
-static inline void ss_prints(struct ss* s, const char* arg)
+static inline void ss_prints(ss_t* s, const char* arg)
 {
 	ss_write(s, arg, strlen(arg));
 }
@@ -80,7 +108,7 @@ static inline void ss_prints(struct ss* s, const char* arg)
  * @param ap Variable arguments
  * @return Number of characters written
  */
-ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap);
+ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap);
 
 /**
  * Print formatted string to string stream.
@@ -88,22 +116,22 @@ ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap);
  * @param fmt Format string
  * @return Number of characters written
  */
-ssize_t ss_printf(struct ss* s, const char* fmt, ...)  __attribute__((format(attribute_printf, 2, 3)));
+ssize_t ss_printf(ss_t* s, const char* fmt, ...)  __attribute__((format(attribute_printf, 2, 3)));
 
 /**
  * Write a repeated char.
  */
-ssize_t ss_printc(struct ss* s, char c, size_t pad);
+ssize_t ss_printc(ss_t* s, char c, size_t pad);
 
 /**
  * Write a string with right space padding.
  */
-ssize_t ss_printr(struct ss* s, const char* str, size_t pad);
+ssize_t ss_printr(ss_t* s, const char* str, size_t pad);
 
 /**
  * Write a string with left space padding.
  */
-ssize_t ss_printl(struct ss* s, const char* str, size_t pad);
+ssize_t ss_printl(ss_t* s, const char* str, size_t pad);
 
 /**
  * Write JSON-escaped string to string stream.
@@ -111,7 +139,7 @@ ssize_t ss_printl(struct ss* s, const char* str, size_t pad);
  * @param tab Indentation level
  * @param arg String to write
  */
-void ss_jsons(struct ss* s, int tab, const char* arg);
+void ss_jsons(ss_t* s, int tab, const char* arg);
 
 /**
  * Write formatted JSON to string stream.
@@ -120,46 +148,101 @@ void ss_jsons(struct ss* s, int tab, const char* arg);
  * @param fmt Format string
  * @return Number of characters written
  */
-int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)  __attribute__((format(attribute_printf, 3, 4)));
+int ss_jsonf(ss_t* s, int tab, const char* fmt, ...)  __attribute__((format(attribute_printf, 3, 4)));
+
+static inline void ss_json_open(ss_t* s, int tab)
+{
+	ss_jsons(s, tab, "{\n");
+}
+
+static inline void ss_json_close(ss_t* s, int tab, const char* next)
+{
+	ss_jsons(s, tab, "}");
+	ss_prints(s, next);
+	ss_prints(s, "\n");
+}
+
+static inline void ss_json_array_open(ss_t* s, int tab, const char* field)
+{
+	if (field)
+		ss_jsonf(s, tab, "\"%s\": [\n", field);
+	else
+		ss_jsonf(s, tab, "[\n");
+}
+
+static inline void ss_json_array_close(ss_t* s, int tab, const char* next)
+{
+	ss_jsons(s, tab, "]");
+	ss_prints(s, next);
+	ss_prints(s, "\n");
+}
 
 /**
- * Write ISO8601 formatted timestamp to string stream.
- * @param s String stream
- * @param tab Indentation level
- * @param format Time format string
- * @param ts Timestamp
- * @return Number of characters written
+ * Write a formatted JSON array element as string.
  */
-int ss_json_iso8601(struct ss* s, int tab, const char* format, time_t ts);
+void ss_json_elem(ss_t* s, int tab, const char* arg, const char* next);
 
-static inline ssize_t ss_len(struct ss* s)
+/**
+ * Write a formatted JSON pair.
+ */
+void ss_json_str(ss_t* s, int tab, const char* field, const char* arg, const char* next);
+
+static inline void ss_json_bool(ss_t* s, int tab, const char* field, int arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %s%s\n", field, arg ? "true" : "false", next);
+}
+
+static inline void ss_json_int(ss_t* s, int tab, const char* field, int arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %d%s\n", field, arg, next);
+}
+
+static inline void ss_json_uint(ss_t* s, int tab, const char* field, unsigned arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %u%s\n", field, arg, next);
+}
+
+static inline void ss_json_i64(ss_t* s, int tab, const char* field, int64_t arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %" PRIi64 "%s\n", field, arg, next);
+}
+
+static inline void ss_json_u64(ss_t* s, int tab, const char* field, uint64_t arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %" PRIu64 "%s\n", field, arg, next);
+}
+
+static inline void ss_json_double(ss_t* s, int tab, const char* field, double arg, const char* next)
+{
+	ss_jsonf(s, tab, "\"%s\": %g%s\n", field, arg, next);
+}
+
+/**
+ * Write a formatted JSON pair with a ISO8601 timestamp.
+ */
+void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg, const char* next);
+
+static inline ssize_t ss_len(ss_t* s)
 {
 	return s->len;
 }
 
-static inline char* ss_ptr(struct ss* s)
+static inline char* ss_ptr(ss_t* s)
 {
 	return s->ptr;
 }
 
-/**
- * Reserve space in string stream buffer.
- * @param s String stream
- * @param needed Number of bytes needed
- */
-void ss_reserve(struct ss* s, ssize_t needed);
-
-static inline char* ss_top(struct ss* s)
+static inline char* ss_top(ss_t* s)
 {
 	return s->ptr + s->len;
 }
 
-static inline void ss_forward(struct ss* s, size_t written)
+static inline void ss_forward(ss_t* s, size_t written)
 {
 	s->len += written;
 }
 
-static inline ssize_t ss_avail(struct ss* s)
+static inline ssize_t ss_avail(ss_t* s)
 {
 	return s->size - s->len;
 }

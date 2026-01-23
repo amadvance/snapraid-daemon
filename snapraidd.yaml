@@ -46,8 +46,8 @@ paths:
         waking those in standby.
 
         Subsequently, any active disk with an idle duration exceeding
-        'spindown_idle_minutes'—as defined in the daemon
-        configuration—is issued a spindown command.
+        'spindown_idle_minutes', as defined in the daemon
+        configuration, is issued a spindown command.
 
         This is an asynchronous operation. Monitor progress via the
         '/api/v1/progress' endpoint.
@@ -356,7 +356,7 @@ paths:
         most recently completed task (status 'terminated' or 'signaled').
 
         Note that 'canceled' tasks, which occur when a task in a sequence
-        is skipped due to a prior failure or safety trigger—never appear
+        is skipped due to a prior failure or safety trigger never appear
         in this endpoint. Canceled tasks transition directly from the
         queue to the persistent history.
 
@@ -708,6 +708,19 @@ components:
           description: >
             The absolute path to the log file for this specific task execution.
             This file is stored in the directory defined by 'log_directory' in the config.
+        report_output:
+          type: string
+          description: >
+            The complete text-based results of a 'report' type tasks.
+
+            For high-level maintenance macros (such as 'maintenance', 'heal',
+            or 'undelete'), the daemon automatically appends a final 'report'
+            command to the task sequence upon successful completion of the
+            primary actions.
+
+            For real-time operational tasks like 'sync' or 'scrub'
+            that are currently 'running' or 'queued', this field is
+            omitted.
         messages:
           type: array
           description: >
@@ -1151,6 +1164,10 @@ components:
 
             If this parameter is null or empty, the scripts inherit the
             process privileges of the running daemon.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         script_pre_run:
           type: string
           example: "/usr/local/bin/pre-snapraid.sh"
@@ -1158,6 +1175,10 @@ components:
             Absolute path to an executable shell script invoked prior to
             SnapRAID tasks. Must contain a valid shebang. Compiled binaries
             are not supported.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         script_post_run:
           type: string
           example: "/usr/local/bin/post-snapraid.sh"
@@ -1165,6 +1186,10 @@ components:
             Absolute path to an executable shell script invoked after
             SnapRAID tasks (on success or failure). Must contain a valid
             shebang. Compiled binaries are not supported.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         log_directory:
           type: string
           example: "/var/log/snapraid/"
@@ -1172,6 +1197,10 @@ components:
             Persistence directory for execution logs (YYYYMMDD-command.log).
             Logs are used as the primary data source to rehydrate task
             history in-memory upon daemon restart.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         log_retention_days:
           type: integer
           example: 30
@@ -1195,12 +1224,20 @@ components:
         notify_run_as_user:
           type: string
           example: "nobody"
-        description: >
-           The system user account utilized for the execution of notification
-           subprocesses, including heartbeat pings and result shell commands.
+          description: >
+            Specifies the system user account under which notification
+            subprocesses are executed.
 
-           If this parameter is null or empty, notification commands inherit
-           the process privileges of the running daemon.
+            This setting governs the execution privileges for heartbeat
+            pings, result shell commands (notify_result), and mail
+            delivery agents.
+
+            If left blank or omitted, these subprocesses inherit the
+            current privileges of the snapraidd daemon.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         notify_heartbeat:
           type: string
           example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/..."
@@ -1208,6 +1245,10 @@ components:
             Shell command executed only upon task success (exit code 0).
             Used for external 'dead man's switch' telemetry.
             Disabled if empty.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         notify_result:
           type: string
           example: "curl -fsS --data-binary @- https://ntfy.sh/topic"
@@ -1215,6 +1256,10 @@ components:
             Shell command executed after task completion. The daemon pipes
             the task report (plain-text) into the command's stdin.
             Disabled if empty.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         notify_result_level:
           type: string
           enum: [critical, error, warning, info]

@@ -22,7 +22,7 @@
 /****************************************************************************/
 /* string stream */
 
-void ss_init(struct ss* s, size_t size)
+void ss_init(ss_t* s, size_t size)
 {
 	s->len = 0;
 
@@ -35,7 +35,7 @@ void ss_init(struct ss* s, size_t size)
 	}
 }
 
-void ss_reserve(struct ss* s, ssize_t needed)
+void ss_reserve(ss_t* s, ssize_t needed)
 {
 	ssize_t new_size;
 
@@ -55,19 +55,27 @@ void ss_reserve(struct ss* s, ssize_t needed)
 	s->size = new_size;
 }
 
-void ss_done(struct ss* s)
+void ss_done(ss_t* s)
 {
 	free(s->ptr);
 }
 
-void ss_write(struct ss* s, const char* arg, size_t len)
+char* ss_extract(ss_t* s)
 {
-	ss_reserve(s, len);
-	memcpy(s->ptr + s->len, arg, len);
-	s->len += len;
+	ss_reserve(s, 1);
+	s->ptr[s->len] = 0; /* write a final 0, but don't increase the length */
+	return s->ptr;
 }
 
-ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap)
+char* ss_dup(ss_t* s)
+{
+	char* str = malloc_nofail(ss_len(s) + 1);
+	memcpy(str, ss_ptr(s), ss_len(s));
+	str[ss_len(s)] = 0;
+	return str;
+}
+
+ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap)
 {
 	size_t available;
 	ssize_t needed;
@@ -95,7 +103,7 @@ ssize_t ss_vprintf(struct ss* s, const char* fmt, va_list ap)
 	return 0;
 }
 
-ssize_t ss_printf(struct ss* s, const char* fmt, ...)
+ssize_t ss_printf(ss_t* s, const char* fmt, ...)
 {
 	va_list ap;
 	int ret;
@@ -107,7 +115,7 @@ ssize_t ss_printf(struct ss* s, const char* fmt, ...)
 	return ret;
 }
 
-ssize_t ss_printc(struct ss* s, char c, size_t pad)
+ssize_t ss_printc(ss_t* s, char c, size_t pad)
 {
 	ss_reserve(s, pad);
 	memset(ss_top(s), c, pad);
@@ -115,7 +123,7 @@ ssize_t ss_printc(struct ss* s, char c, size_t pad)
 	return pad;
 }
 
-ssize_t ss_printr(struct ss* s, const char* str, size_t pad)
+ssize_t ss_printr(ss_t* s, const char* str, size_t pad)
 {
 	size_t len = strlen(str);
 
@@ -127,7 +135,7 @@ ssize_t ss_printr(struct ss* s, const char* str, size_t pad)
 	return len < pad ? pad : len;
 }
 
-ssize_t ss_printl(struct ss* s, const char* str, size_t pad)
+ssize_t ss_printl(ss_t* s, const char* str, size_t pad)
 {
 	size_t len = strlen(str);
 
@@ -139,25 +147,57 @@ ssize_t ss_printl(struct ss* s, const char* str, size_t pad)
 	return len < pad ? pad : len;
 }
 
-void ss_jsons(struct ss* s, int tab, const char* arg)
+static void ss_json_tab(ss_t* s, int tab)
 {
 	while (tab > 0) {
 		ss_write(s, "  ", 2);
 		--tab;
 	}
+}
+
+void ss_jsons(ss_t* s, int tab, const char* arg)
+{
+	ss_json_tab(s, tab);
 
 	ss_prints(s, arg);
 }
 
-int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)
+static void ss_json_esc(ss_t* s, const char* arg)
+{
+	while (*arg) {
+		ssize_t len = strcspn(arg, "\"\\\n\r\t");
+		if (len == 0) {
+			switch (*arg) {
+			case '"' :
+				ss_write(s, "\\\"", 2);
+				break;
+			case '\\' :
+				ss_write(s, "\\\\", 2);
+				break;
+			case '\n' :
+				ss_write(s, "\\n", 2);
+				break;
+			case '\r' :
+				ss_write(s, "\\r", 2);
+				break;
+			case '\t' :
+				ss_write(s, "\\t", 2);
+				break;
+			}
+			++arg;
+		} else {
+			ss_write(s, arg, len);
+			arg += len;
+		}
+	}
+}
+
+int ss_jsonf(ss_t* s, int tab, const char* fmt, ...)
 {
 	va_list ap;
 	int ret;
 
-	while (tab > 0) {
-		ss_write(s, "  ", 2);
-		--tab;
-	}
+	ss_json_tab(s, tab);
 
 	va_start(ap, fmt);
 	ret = ss_vprintf(s, fmt, ap);
@@ -166,24 +206,42 @@ int ss_jsonf(struct ss* s, int tab, const char* fmt, ...)
 	return ret;
 }
 
-int ss_json_iso8601(struct ss* s, int tab, const char* format, time_t ts)
+void ss_json_elem(ss_t* s, int tab, const char* arg, const char* next)
 {
-	int ret;
+	ss_json_tab(s, tab);
+
+	ss_prints(s, "\"");
+	ss_prints(s, arg);
+	ss_prints(s, "\"");
+
+	ss_prints(s, next);
+	ss_prints(s, "\n");
+}
+
+void ss_json_str(ss_t* s, int tab, const char* field, const char* arg, const char* next)
+{
+	ss_json_tab(s, tab);
+
+	ss_prints(s, "\"");
+	ss_prints(s, field);
+	ss_prints(s, "\": \"");
+	ss_json_esc(s, arg);
+	ss_prints(s, "\"");
+
+	ss_prints(s, next);
+	ss_prints(s, "\n");
+}
+
+void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg, const char* next)
+{
 	struct tm tm_info;
 	char buf[32];
 
-	while (tab > 0) {
-		ss_write(s, "  ", 2);
-		--tab;
-	}
-
-	localtime_r(&ts, &tm_info);
+	localtime_r(&arg, &tm_info);
 
 	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
 
-	ret = ss_printf(s, format, buf);
-
-	return ret;
+	ss_json_str(s, tab, field, buf, next);
 }
 
 /****************************************************************************/

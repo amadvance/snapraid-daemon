@@ -187,10 +187,11 @@ struct snapraid_task {
 	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
 	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
 	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
+
 	sl_t arg_list; /**< List of arguments */
 	sl_t message_list; /**< List of messages */
-	sl_t error_list; /**< List of error messages */
-	tommy_node node;
+
+	char* text_report; /**< for CMD_REPORT it's the final text report */
 
 	/* error stats */
 	uint64_t hash_error_soft; /**< Total software errors during hashing phase (sync only). */
@@ -198,6 +199,9 @@ struct snapraid_task {
 	uint64_t error_io; /**< Total I/O errors encountered (sync/scrub only). */
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
 	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
+	sl_t error_list; /**< List of error messages */
+
+	tommy_node node;
 };
 
 struct snapraid_runner {
