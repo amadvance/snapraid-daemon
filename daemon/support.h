@@ -159,11 +159,14 @@ static inline void ss_json_object_open(ss_t* s, int tab, const char* field)
 	ss_jsonf(s, tab, "\"%s\": {\n", field);
 }
 
-static inline void ss_json_close(ss_t* s, int tab, const char* next)
+static inline void ss_json_close(ss_t* s, int tab)
 {
-	ss_jsons(s, tab, "}");
-	ss_prints(s, next);
+	s->len -= 2;
 	ss_prints(s, "\n");
+	if (tab != 0)
+		ss_jsons(s, tab, "},\n");
+	else
+		ss_jsons(s, tab, "}\n");
 }
 
 static inline void ss_json_list_open(ss_t* s, int tab)
@@ -176,57 +179,60 @@ static inline void ss_json_array_open(ss_t* s, int tab, const char* field)
 	ss_jsonf(s, tab, "\"%s\": [\n", field);
 }
 
-static inline void ss_json_array_close(ss_t* s, int tab, const char* next)
+static inline void ss_json_array_close(ss_t* s, int tab)
 {
-	ss_jsons(s, tab, "]");
-	ss_prints(s, next);
+	s->len -= 2;
 	ss_prints(s, "\n");
+	if (tab != 0)
+		ss_jsons(s, tab, "],\n");
+	else
+		ss_jsons(s, tab, "]\n");
 }
 
 /**
  * Write a formatted JSON array element as string.
  */
-void ss_json_elem(ss_t* s, int tab, const char* arg, const char* next);
+void ss_json_elem(ss_t* s, int tab, const char* arg);
 
 /**
  * Write a formatted JSON pair.
  */
-void ss_json_str(ss_t* s, int tab, const char* field, const char* arg, const char* next);
+void ss_json_str(ss_t* s, int tab, const char* field, const char* arg);
 
-static inline void ss_json_bool(ss_t* s, int tab, const char* field, int arg, const char* next)
+static inline void ss_json_bool(ss_t* s, int tab, const char* field, int arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %s%s\n", field, arg ? "true" : "false", next);
+	ss_jsonf(s, tab, "\"%s\": %s,\n", field, arg ? "true" : "false");
 }
 
-static inline void ss_json_int(ss_t* s, int tab, const char* field, int arg, const char* next)
+static inline void ss_json_int(ss_t* s, int tab, const char* field, int arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %d%s\n", field, arg, next);
+	ss_jsonf(s, tab, "\"%s\": %d,\n", field, arg);
 }
 
-static inline void ss_json_uint(ss_t* s, int tab, const char* field, unsigned arg, const char* next)
+static inline void ss_json_uint(ss_t* s, int tab, const char* field, unsigned arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %u%s\n", field, arg, next);
+	ss_jsonf(s, tab, "\"%s\": %u,\n", field, arg);
 }
 
-static inline void ss_json_i64(ss_t* s, int tab, const char* field, int64_t arg, const char* next)
+static inline void ss_json_i64(ss_t* s, int tab, const char* field, int64_t arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %" PRIi64 "%s\n", field, arg, next);
+	ss_jsonf(s, tab, "\"%s\": %" PRIi64 ",\n", field, arg);
 }
 
-static inline void ss_json_u64(ss_t* s, int tab, const char* field, uint64_t arg, const char* next)
+static inline void ss_json_u64(ss_t* s, int tab, const char* field, uint64_t arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %" PRIu64 "%s\n", field, arg, next);
+	ss_jsonf(s, tab, "\"%s\": %" PRIu64 ",\n", field, arg);
 }
 
-static inline void ss_json_double(ss_t* s, int tab, const char* field, double arg, const char* next)
+static inline void ss_json_double(ss_t* s, int tab, const char* field, double arg)
 {
-	ss_jsonf(s, tab, "\"%s\": %g%s\n", field, arg, next);
+	ss_jsonf(s, tab, "\"%s\": %g,\n", field, arg);
 }
 
 /**
  * Write a formatted JSON pair with a ISO8601 timestamp.
  */
-void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg, const char* next);
+void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg);
 
 static inline ssize_t ss_len(ss_t* s)
 {

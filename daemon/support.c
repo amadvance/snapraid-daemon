@@ -206,19 +206,16 @@ int ss_jsonf(ss_t* s, int tab, const char* fmt, ...)
 	return ret;
 }
 
-void ss_json_elem(ss_t* s, int tab, const char* arg, const char* next)
+void ss_json_elem(ss_t* s, int tab, const char* arg)
 {
 	ss_json_tab(s, tab);
 
 	ss_prints(s, "\"");
 	ss_prints(s, arg);
-	ss_prints(s, "\"");
-
-	ss_prints(s, next);
-	ss_prints(s, "\n");
+	ss_prints(s, "\",\n");
 }
 
-void ss_json_str(ss_t* s, int tab, const char* field, const char* arg, const char* next)
+void ss_json_str(ss_t* s, int tab, const char* field, const char* arg)
 {
 	ss_json_tab(s, tab);
 
@@ -226,13 +223,10 @@ void ss_json_str(ss_t* s, int tab, const char* field, const char* arg, const cha
 	ss_prints(s, field);
 	ss_prints(s, "\": \"");
 	ss_json_esc(s, arg);
-	ss_prints(s, "\"");
-
-	ss_prints(s, next);
-	ss_prints(s, "\n");
+	ss_prints(s, "\",\n");
 }
 
-void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg, const char* next)
+void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg)
 {
 	struct tm tm_info;
 	char buf[32];
@@ -241,7 +235,7 @@ void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg, const
 
 	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
 
-	ss_json_str(s, tab, field, buf, next);
+	ss_json_str(s, tab, field, buf);
 }
 
 /****************************************************************************/
