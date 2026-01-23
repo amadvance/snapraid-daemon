@@ -147,17 +147,17 @@ ssize_t ss_printl(ss_t* s, const char* str, size_t pad)
 	return len < pad ? pad : len;
 }
 
-static void ss_json_tab(ss_t* s, int tab)
+static void ss_json_tab(ss_t* s, int level)
 {
-	while (tab > 0) {
+	while (level > 0) {
 		ss_write(s, "  ", 2);
-		--tab;
+		--level;
 	}
 }
 
-void ss_jsons(ss_t* s, int tab, const char* arg)
+void ss_jsons(ss_t* s, int level, const char* arg)
 {
-	ss_json_tab(s, tab);
+	ss_json_tab(s, level);
 
 	ss_prints(s, arg);
 }
@@ -192,12 +192,12 @@ static void ss_json_esc(ss_t* s, const char* arg)
 	}
 }
 
-int ss_jsonf(ss_t* s, int tab, const char* fmt, ...)
+int ss_jsonf(ss_t* s, int level, const char* fmt, ...)
 {
 	va_list ap;
 	int ret;
 
-	ss_json_tab(s, tab);
+	ss_json_tab(s, level);
 
 	va_start(ap, fmt);
 	ret = ss_vprintf(s, fmt, ap);
@@ -206,18 +206,18 @@ int ss_jsonf(ss_t* s, int tab, const char* fmt, ...)
 	return ret;
 }
 
-void ss_json_elem(ss_t* s, int tab, const char* arg)
+void ss_json_elem(ss_t* s, int level, const char* arg)
 {
-	ss_json_tab(s, tab);
+	ss_json_tab(s, level);
 
 	ss_prints(s, "\"");
 	ss_prints(s, arg);
 	ss_prints(s, "\",\n");
 }
 
-void ss_json_str(ss_t* s, int tab, const char* field, const char* arg)
+void ss_json_str(ss_t* s, int level, const char* field, const char* arg)
 {
-	ss_json_tab(s, tab);
+	ss_json_tab(s, level);
 
 	ss_prints(s, "\"");
 	ss_prints(s, field);
@@ -226,7 +226,7 @@ void ss_json_str(ss_t* s, int tab, const char* field, const char* arg)
 	ss_prints(s, "\",\n");
 }
 
-void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg)
+void ss_json_pair_iso8601(ss_t* s, int level, const char* field, time_t arg)
 {
 	struct tm tm_info;
 	char buf[32];
@@ -235,7 +235,7 @@ void ss_json_pair_iso8601(ss_t* s, int tab, const char* field, time_t arg)
 
 	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
 
-	ss_json_str(s, tab, field, buf);
+	ss_json_str(s, level, field, buf);
 }
 
 /****************************************************************************/

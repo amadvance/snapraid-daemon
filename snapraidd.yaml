@@ -1380,11 +1380,6 @@ components:
           example: "13.1"
           description: >
             The version of the snapraidd C daemon currently running.
-        engine_version:
-          type: string
-          example: "13.1"
-          description: >
-            The version of the underlying SnapRAID binary.
         health:
           type: string
           enum: [passed, prefail, failing, pending]
@@ -1405,12 +1400,17 @@ components:
               hardware replacement and data reconstruction are
               required.
             * 'pending': The aggregate health has not yet been determined.
+        engine_version:
+          type: string
+          example: "13.1"
+          description: >
+            The version of the underlying SnapRAID binary.
         engine_conf:
           type: string
           example: "/etc/snapraid.conf"
           description: >
             Absolute path to the SnapRAID configuration file.
-        content:
+        engine_content:
           type: string
           example: "/var/snapraid/snapraid.content"
           description: >
@@ -1420,12 +1420,12 @@ components:
           example: 262144
           description: >
             Array block size in bytes (always power of 2).
-        last_time:
+        last_command_at:
           type: string
           example: "2026-01-12T08:00:00"
           description: >
             Local timestamp of the most recently concluded task.
-        last_cmd:
+        last_command:
           type: string
           enum: [probe, up, down, smart, diff, status, sync, scrub]
           description: >
@@ -1449,11 +1449,6 @@ components:
           format: int64
           description: >
             Total number of files tracked in the content file.
-        last_status_at:
-          type: string
-          example: "2026-01-12T08:00:00"
-          description: >
-            Local timestamp of the last 'status' command execution.
         block_bad:
           type: integer
           format: int64
@@ -1473,11 +1468,6 @@ components:
           description: >
             The total number of blocks as reported by the content file.
             It can be used to compute the percentage of rehash needed.
-        last_diff_at:
-          type: string
-          example: "2026-01-12T08:00:00"
-          description: >
-            Local timestamp of the last array change analysis ('diff').
         last_sync_at:
           type: string
           example: "2026-01-12T08:00:00"
@@ -1488,6 +1478,16 @@ components:
           example: "2026-01-12T08:00:00"
           description: >
             Local timestamp of the last data integrity verification ('scrub').
+        last_status_at:
+          type: string
+          example: "2026-01-12T08:00:00"
+          description: >
+            Local timestamp of the last 'status' command execution.
+        last_diff_at:
+          type: string
+          example: "2026-01-12T08:00:00"
+          description: >
+            Local timestamp of the last array change analysis ('diff').
         diff_equal:
           type: integer
           format: int64

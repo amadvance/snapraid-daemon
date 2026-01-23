@@ -597,7 +597,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	struct snapraid_config* config = &state->config;
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 	char schedule_buf[64];
 
@@ -607,42 +607,38 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
-	ss_json_open(&s, tab);
-	++tab;
+	ss_json_open(&s, &level);
+	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
+	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
+	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
+	ss_json_bool(&s, level, "sync_prehash", config->sync_prehash);
+	ss_json_bool(&s, level, "sync_force_zero", config->sync_force_zero);
+	ss_json_int(&s, level, "scrub_percentage", config->scrub_percentage);
+	ss_json_int(&s, level, "scrub_older_than", config->scrub_older_than);
 
-	ss_json_str(&s, tab, "maintenance_schedule", schedule_buf);
-	ss_json_int(&s, tab, "sync_threshold_deletes", config->sync_threshold_deletes);
-	ss_json_int(&s, tab, "sync_threshold_updates", config->sync_threshold_updates);
-	ss_json_bool(&s, tab, "sync_prehash", config->sync_prehash);
-	ss_json_bool(&s, tab, "sync_force_zero", config->sync_force_zero);
-	ss_json_int(&s, tab, "scrub_percentage", config->scrub_percentage);
-	ss_json_int(&s, tab, "scrub_older_than", config->scrub_older_than);
+	ss_json_int(&s, level, "probe_interval_minutes", config->probe_interval_minutes);
+	ss_json_int(&s, level, "spindown_idle_minutes", config->spindown_idle_minutes);
 
-	ss_json_int(&s, tab, "probe_interval_minutes", config->probe_interval_minutes);
-	ss_json_int(&s, tab, "spindown_idle_minutes", config->spindown_idle_minutes);
+	ss_json_str(&s, level, "script_run_as_user", config->script_run_as_user);
+	ss_json_str(&s, level, "script_pre_run", config->script_pre_run);
+	ss_json_str(&s, level, "script_post_run", config->script_post_run);
 
-	ss_json_str(&s, tab, "script_run_as_user", config->script_run_as_user);
-	ss_json_str(&s, tab, "script_pre_run", config->script_pre_run);
-	ss_json_str(&s, tab, "script_post_run", config->script_post_run);
+	ss_json_str(&s, level, "log_directory", config->log_directory);
+	ss_json_int(&s, level, "log_retention_days", config->log_retention_days);
 
-	ss_json_str(&s, tab, "log_directory", config->log_directory);
-	ss_json_int(&s, tab, "log_retention_days", config->log_retention_days);
+	ss_json_bool(&s, level, "notify_syslog_enabled", config->notify_syslog_enabled);
+	ss_json_str(&s, level, "notify_syslog_level", config_level_str(config->notify_syslog_level));
 
-	ss_json_bool(&s, tab, "notify_syslog_enabled", config->notify_syslog_enabled);
-	ss_json_str(&s, tab, "notify_syslog_level", config_level_str(config->notify_syslog_level));
+	ss_json_str(&s, level, "notify_run_as_user", config->notify_run_as_user);
+	ss_json_str(&s, level, "notify_heartbeat", config->notify_heartbeat);
+	ss_json_str(&s, level, "notify_result", config->notify_result);
+	ss_json_str(&s, level, "notify_result_level", config_level_str(config->notify_result_level));
 
-	ss_json_str(&s, tab, "notify_run_as_user", config->notify_run_as_user);
-	ss_json_str(&s, tab, "notify_heartbeat", config->notify_heartbeat);
-	ss_json_str(&s, tab, "notify_result", config->notify_result);
-	ss_json_str(&s, tab, "notify_result_level", config_level_str(config->notify_result_level));
+	ss_json_str(&s, level, "notify_email_recipient", config->notify_email_recipient);
+	ss_json_str(&s, level, "notify_email_level", config_level_str(config->notify_email_level));
 
-	ss_json_str(&s, tab, "notify_email_recipient", config->notify_email_recipient);
-	ss_json_str(&s, tab, "notify_email_level", config_level_str(config->notify_email_level));
-
-	ss_json_bool(&s, tab, "notify_differences", config->notify_differences);
-
-	--tab;
-	ss_json_close(&s, tab);
+	ss_json_bool(&s, level, "notify_differences", config->notify_differences);
+	ss_json_close(&s, &level);
 
 	state_unlock();
 
@@ -779,7 +775,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	int status;
 	pid_t pid = 0;
 	int number = 0;
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "POST") != 0)
@@ -790,14 +786,12 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
-	ss_json_open(&s, tab);
-	++tab;
-	ss_json_bool(&s, tab, "success", 1);
-	ss_json_str(&s, tab, "message", "Signal sent");
-	ss_json_int(&s, tab, "number", number);
-	ss_json_u64(&s, tab, "pid", pid);
-	--tab;
-	ss_json_close(&s, tab);
+	ss_json_open(&s, &level);
+	ss_json_bool(&s, level, "success", 1);
+	ss_json_str(&s, level, "message", "Signal sent");
+	ss_json_int(&s, level, "number", number);
+	ss_json_u64(&s, level, "pid", pid);
+	ss_json_close(&s, &level);
 
 	send_json_answer(conn, status, &s);
 
@@ -827,122 +821,108 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, status, msg);
 }
 
-static void json_device_list(ss_t* s, int tab, tommy_list* list)
+static void json_device_list(ss_t* s, int level, tommy_list* list)
 {
-	++tab;
+	++level;
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* dev = i->data;
-		ss_json_open(s, tab);
-		++tab;
-		ss_json_str(s, tab, "health", health_name(dev->health));
+		ss_json_open(s, &level);
+		ss_json_str(s, level, "device_node", dev->file);
+		ss_json_int(s, level, "split_index", dev->split_index);
+		ss_json_str(s, level, "health", health_name(dev->health));
 		if (*dev->family)
-			ss_json_str(s, tab, "family", dev->family);
+			ss_json_str(s, level, "family", dev->family);
 		if (*dev->model)
-			ss_json_str(s, tab, "model", dev->model);
+			ss_json_str(s, level, "model", dev->model);
 		if (*dev->serial)
-			ss_json_str(s, tab, "serial", dev->serial);
-		ss_json_str(s, tab, "power", power_name(dev->power));
+			ss_json_str(s, level, "serial", dev->serial);
+		ss_json_str(s, level, "power", power_name(dev->power));
 		if (dev->size != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "size_bytes", dev->size);
+			ss_json_u64(s, level, "size_bytes", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "rotational", dev->rotational);
+			ss_json_u64(s, level, "rotational", dev->rotational);
 		if (dev->error_protocol != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "error_protocol", dev->error_protocol);
+			ss_json_u64(s, level, "error_protocol", dev->error_protocol);
 		if (dev->error_medium != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "error_medium", dev->error_medium);
+			ss_json_u64(s, level, "error_medium", dev->error_medium);
 		if (dev->wear_level != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "wear_level", dev->wear_level);
-		ss_json_object_open(s, tab, "smart");
-		++tab;
-		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
-		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "uncorrectable_error_cnt", dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] & 0xFFFF);
-		if (dev->smart[SMART_COMMAND_TIMEOUT] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "command_timeout", dev->smart[SMART_COMMAND_TIMEOUT] & 0xFFFF);
-		if (dev->smart[SMART_CURRENT_PENDING_SECTOR] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "current_pending_sector", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
-		if (dev->smart[SMART_OFFLINE_UNCORRECTABLE] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "offline_uncorrectable", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
-		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "start_stop_count", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
-		if (dev->smart[SMART_LOAD_CYCLE_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "power_on_hours", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
-		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "load_cycle_count", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
-		if (dev->smart[SMART_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "temperature_celsius", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
-		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "temperature_celsius", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
-		if (dev->flags != SMART_UNASSIGNED) {
-			ss_json_bool(s, tab, "failing", dev->flags & SMARTCTL_FLAG_FAIL);
-			ss_json_bool(s, tab, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);
-			ss_json_bool(s, tab, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED);
-			ss_json_bool(s, tab, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED);
-			ss_json_bool(s, tab, "selferror_logged", dev->flags & SMARTCTL_FLAG_SELFERROR_LOGGED);
-		}
-		--tab;
-		ss_json_close(s, tab);
+			ss_json_u64(s, level, "wear_level", dev->wear_level);
 		if (dev->afr != 0)
-			ss_json_double(s, tab, "annual_failure_rate", dev->afr);
+			ss_json_double(s, level, "annual_failure_rate", dev->afr);
 		if (dev->prob != 0)
-			ss_json_double(s, tab, "failure_probability", dev->prob);
-		ss_json_int(s, tab, "split_index", dev->split_index);
-		ss_json_str(s, tab, "device_node", dev->file);
-		--tab;
-		ss_json_close(s, tab);
-		--tab;
+			ss_json_double(s, level, "failure_probability", dev->prob);
+		ss_json_object_open(s, &level, "smart");
+		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
+		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "uncorrectable_error_cnt", dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] & 0xFFFF);
+		if (dev->smart[SMART_COMMAND_TIMEOUT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "command_timeout", dev->smart[SMART_COMMAND_TIMEOUT] & 0xFFFF);
+		if (dev->smart[SMART_CURRENT_PENDING_SECTOR] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "current_pending_sector", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
+		if (dev->smart[SMART_OFFLINE_UNCORRECTABLE] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "offline_uncorrectable", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
+		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "start_stop_count", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
+		if (dev->smart[SMART_LOAD_CYCLE_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "power_on_hours", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
+		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "load_cycle_count", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
+		if (dev->smart[SMART_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "temperature_celsius", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "temperature_celsius", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+		if (dev->flags != SMART_UNASSIGNED) {
+			ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);
+			ss_json_bool(s, level, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);
+			ss_json_bool(s, level, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED);
+			ss_json_bool(s, level, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED);
+			ss_json_bool(s, level, "selferror_logged", dev->flags & SMARTCTL_FLAG_SELFERROR_LOGGED);
+		}
+		ss_json_close(s, &level);
+		ss_json_close(s, &level);
 	}
-	--tab;
 }
 
-static void json_disk_list(ss_t* s, int tab, tommy_list* list)
+static void json_disk_list(ss_t* s, int level, tommy_list* list)
 {
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 
-		++tab;
-		ss_json_open(s, tab);
-		++tab;
-		ss_json_str(s, tab, "name", disk->name);
-		ss_json_str(s, tab, "health", health_name(health_disk(disk)));
+		ss_json_open(s, &level);
+		ss_json_str(s, level, "name", disk->name);
+		ss_json_str(s, level, "health", health_name(health_disk(disk)));
+		// TODO power
 		if (disk->content_size != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "allocated_space_bytes", disk->content_size);
+			ss_json_u64(s, level, "allocated_space_bytes", disk->content_size);
 		if (disk->content_free != SMART_UNASSIGNED)
-			ss_json_u64(s, tab, "free_space_bytes", disk->content_free);
+			ss_json_u64(s, level, "free_space_bytes", disk->content_free);
 		if (disk->access_count != 0) {
-			ss_json_i64(s, tab, "access_count", disk->access_count);
-			ss_json_pair_iso8601(s, tab, "access_count_initial_time", disk->access_count_initial_time);
-			ss_json_i64(s, tab, "access_count_idle_duration", disk->access_count_latest_time - disk->access_count_initial_time);
+			ss_json_i64(s, level, "access_count", disk->access_count);
+			ss_json_pair_iso8601(s, level, "access_count_initial_time", disk->access_count_initial_time);
+			ss_json_i64(s, level, "access_count_idle_duration", disk->access_count_latest_time - disk->access_count_initial_time);
 		}
-		ss_json_i64(s, tab, "error_io", disk->error_io);
-		ss_json_i64(s, tab, "error_data", disk->error_data);
+		ss_json_i64(s, level, "error_io", disk->error_io);
+		ss_json_i64(s, level, "error_data", disk->error_data);
 
-		ss_json_array_open(s, tab, "devices");
-		json_device_list(s, tab, &disk->device_list);
-		ss_json_array_close(s, tab);
-
-		ss_json_array_open(s, tab, "splits");
+		ss_json_array_open(s, &level, "splits");
 		for (tommy_node* j = tommy_list_head(&disk->split_list); j; j = j->next) {
 			struct snapraid_split* split = j->data;
 
-			++tab;
-			ss_json_open(s, tab);
-			++tab;
+			ss_json_open(s, &level);
 			if (*split->uuid)
-				ss_json_str(s, tab, "uuid", split->uuid);
+				ss_json_str(s, level, "uuid", split->uuid);
 			if (*split->content_uuid)
-				ss_json_str(s, tab, "stored_uuid", split->content_uuid);
-			ss_json_str(s, tab, "path", split->path);
-			--tab;
-			ss_json_close(s, tab);
-			--tab;
+				ss_json_str(s, level, "stored_uuid", split->content_uuid);
+			ss_json_str(s, level, "path", split->path);
+			ss_json_close(s, &level);
 		}
-		ss_json_array_close(s, tab);
+		ss_json_array_close(s, &level);
 
-		--tab;
-		ss_json_close(s, tab);
-		--tab;
+		ss_json_array_open(s, &level, "devices");
+		json_device_list(s, level, &disk->device_list);
+		ss_json_array_close(s, &level);
+		ss_json_close(s, &level);
 	}
 }
 
@@ -954,7 +934,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "GET") != 0)
@@ -964,16 +944,14 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_open(&s, tab);
-	++tab;
-	ss_json_array_open(&s, tab, "data_disks");
-	json_disk_list(&s, tab, &state->data_list);
-	ss_json_array_close(&s, tab);
-	ss_json_array_open(&s, tab, "parity_disks");
-	json_disk_list(&s, tab, &state->parity_list);
-	ss_json_array_close(&s, tab);
-	--tab;
-	ss_json_close(&s, tab);
+	ss_json_open(&s, &level);
+	ss_json_array_open(&s, &level, "data_disks");
+	json_disk_list(&s, level, &state->data_list);
+	ss_json_array_close(&s, &level);
+	ss_json_array_open(&s, &level, "parity_disks");
+	json_disk_list(&s, level, &state->parity_list);
+	ss_json_array_close(&s, &level);
+	ss_json_close(&s, &level);
 
 	state_unlock();
 
@@ -984,102 +962,96 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	return 200;
 }
 
-static void json_task(ss_t* s, int tab, struct snapraid_task* task)
+static void json_task(ss_t* s, int level, struct snapraid_task* task)
 {
-	ss_json_open(s, tab);
-	++tab;
-	ss_json_int(s, tab, "number", task->number);
-	ss_json_str(s, tab, "command", command_name(task->cmd));
-	ss_json_str(s, tab, "health", health_name(health_task(task)));
+	ss_json_open(s, &level);
+	ss_json_int(s, level, "number", task->number);
+	ss_json_str(s, level, "command", command_name(task->cmd));
+	ss_json_str(s, level, "health", health_name(health_task(task)));
 	if (task->running) {
 		switch (task->state) {
-		case PROCESS_STATE_START : ss_json_str(s, tab, "status", "starting"); break;
-		case PROCESS_STATE_RUN : ss_json_str(s, tab, "status", "processing"); break;
-		case PROCESS_STATE_TERM : ss_json_str(s, tab, "status", "finalizing"); break;
-		case PROCESS_STATE_SIGNAL : ss_json_str(s, tab, "status", "stopping"); break;
+		case PROCESS_STATE_START : ss_json_str(s, level, "status", "starting"); break;
+		case PROCESS_STATE_RUN : ss_json_str(s, level, "status", "processing"); break;
+		case PROCESS_STATE_TERM : ss_json_str(s, level, "status", "finalizing"); break;
+		case PROCESS_STATE_SIGNAL : ss_json_str(s, level, "status", "stopping"); break;
 		}
 	} else {
 		switch (task->state) {
 		case PROCESS_STATE_QUEUE :
-			ss_json_str(s, tab, "status", "queued");
+			ss_json_str(s, level, "status", "queued");
 			break;
 		case PROCESS_STATE_SIGNAL :
-			ss_json_str(s, tab, "status", "signaled");
-			ss_json_int(s, tab, "exit_sig", task->exit_sig);
+			ss_json_str(s, level, "status", "signaled");
+			ss_json_int(s, level, "exit_sig", task->exit_sig);
 			break;
 		case PROCESS_STATE_CANCEL :
-			ss_json_str(s, tab, "status", "canceled");
-			ss_json_str(s, tab, "exit_msg", task->exit_msg);
+			ss_json_str(s, level, "status", "canceled");
+			ss_json_str(s, level, "exit_msg", task->exit_msg);
 			break;
 		case PROCESS_STATE_TERM :
-			ss_json_str(s, tab, "status", "terminated");
-			ss_json_int(s, tab, "exit_code", task->exit_code);
+			ss_json_str(s, level, "status", "terminated");
+			ss_json_int(s, level, "exit_code", task->exit_code);
 			break;
 		}
 	}
 	if (task->unix_queue_time)
-		ss_json_pair_iso8601(s, tab, "scheduled_at", task->unix_queue_time);
+		ss_json_pair_iso8601(s, level, "scheduled_at", task->unix_queue_time);
 	if (task->unix_start_time != 0)
-		ss_json_pair_iso8601(s, tab, "started_at", task->unix_start_time);
+		ss_json_pair_iso8601(s, level, "started_at", task->unix_start_time);
 	if (task->unix_end_time != 0)
-		ss_json_pair_iso8601(s, tab, "finished_at", task->unix_end_time);
+		ss_json_pair_iso8601(s, level, "finished_at", task->unix_end_time);
 	if (task->cmd == CMD_SYNC || task->cmd == CMD_SCRUB
 		|| task->cmd == CMD_FIX || task->cmd == CMD_CHECK) {
 		switch (task->state) {
 		case PROCESS_STATE_RUN :
 		case PROCESS_STATE_TERM :
 		case PROCESS_STATE_SIGNAL :
-			ss_json_uint(s, tab, "block_begin", task->block_begin);
-			ss_json_uint(s, tab, "block_end", task->block_end);
-			ss_json_uint(s, tab, "block_count", task->block_count);
-			ss_json_int(s, tab, "progress", task->progress);
-			ss_json_uint(s, tab, "speed_mbs", task->speed_mbs);
-			ss_json_uint(s, tab, "eta_seconds", task->eta_seconds);
-			ss_json_uint(s, tab, "cpu_usage", task->cpu_usage);
-			ss_json_uint(s, tab, "elapsed_seconds", task->elapsed_seconds);
-			ss_json_uint(s, tab, "block_idx", task->block_idx);
-			ss_json_uint(s, tab, "block_done", task->block_done);
-			ss_json_u64(s, tab, "size_done_bytes", task->size_done);
+			ss_json_int(s, level, "progress", task->progress);
+			ss_json_uint(s, level, "eta_seconds", task->eta_seconds);
+			ss_json_uint(s, level, "speed_mbs", task->speed_mbs);
+			ss_json_uint(s, level, "cpu_usage", task->cpu_usage);
+			ss_json_uint(s, level, "elapsed_seconds", task->elapsed_seconds);
+			ss_json_uint(s, level, "block_begin", task->block_begin);
+			ss_json_uint(s, level, "block_end", task->block_end);
+			ss_json_uint(s, level, "block_count", task->block_count);
+			ss_json_uint(s, level, "block_idx", task->block_idx);
+			ss_json_uint(s, level, "block_done", task->block_done);
+			ss_json_u64(s, level, "size_done_bytes", task->size_done);
 			break;
 		}
 	}
 	if (task->log_file[0])
-		ss_json_str(s, tab, "log_file", task->log_file);
+		ss_json_str(s, level, "log_file", task->log_file);
 
 	if (task->text_report)
-		ss_json_str(s, tab, "report_output", task->text_report);
+		ss_json_str(s, level, "report_output", task->text_report);
 
-	ss_json_array_open(s, tab, "messages");
+	ss_json_array_open(s, &level, "messages");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		sn_t* message = i->data;
-		++tab;
-		ss_json_elem(s, tab, message->str);
-		--tab;
+		ss_json_elem(s, level, message->str);
 	}
-	ss_json_array_close(s, tab);
+	ss_json_array_close(s, &level);
 
 	switch (task->cmd) {
 	case CMD_SYNC :
 	case CMD_SCRUB :
-		ss_json_i64(s, tab, "error_soft", task->error_soft + task->hash_error_soft);
-		ss_json_i64(s, tab, "error_io", task->error_io);
-		ss_json_i64(s, tab, "error_data", task->error_data);
-		ss_json_i64(s, tab, "block_bad", task->block_bad);
+		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
+		ss_json_i64(s, level, "error_io", task->error_io);
+		ss_json_i64(s, level, "error_data", task->error_data);
+		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
 	case CMD_STATUS :
-		ss_json_i64(s, tab, "block_bad", task->block_bad);
+		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
 	}
-	ss_json_array_open(s, tab, "errors");
+	ss_json_array_open(s, &level, "errors");
 	for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
 		sn_t* error = i->data;
-		++tab;
-		ss_json_elem(s, tab, error->str);
-		--tab;
+		ss_json_elem(s, level, error->str);
 	}
-	ss_json_array_close(s, tab);
-	--tab;
-	ss_json_close(s, tab);
+	ss_json_array_close(s, &level);
+	ss_json_close(s, &level);
 }
 
 /**
@@ -1089,7 +1061,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "GET") != 0)
@@ -1103,7 +1075,7 @@ static int handler_progress(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	json_task(&s, tab, task);
+	json_task(&s, level, task);
 
 	state_unlock();
 
@@ -1121,7 +1093,7 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "GET") != 0)
@@ -1131,16 +1103,13 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_list_open(&s, tab);
+	ss_json_list_open(&s, &level);
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
-		++tab;
-		json_task(&s, tab, task);
-		--tab;
+		json_task(&s, level, task);
 	}
-
-	ss_json_array_close(&s, tab);
+	ss_json_array_close(&s, &level);
 
 	state_unlock();
 
@@ -1158,7 +1127,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "GET") != 0)
@@ -1168,16 +1137,13 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_list_open(&s, tab);
+	ss_json_list_open(&s, &level);
 	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
-		++tab;
-		json_task(&s, tab, task);
-		--tab;
+		json_task(&s, level, task);
 	}
-
-	ss_json_array_close(&s, tab);
+	ss_json_array_close(&s, &level);
 
 	state_unlock();
 
@@ -1196,7 +1162,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	struct snapraid_state* state = cbdata;
 	struct snapraid_global* global = &state->global;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	int tab = 0;
+	int level = 0;
 	ss_t s;
 
 	if (strcmp(ri->request_method, "GET") != 0)
@@ -1206,68 +1172,61 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	ss_json_open(&s, tab);
-	++tab;
-	ss_json_str(&s, tab, "daemon_version", PACKAGE_VERSION);
+	ss_json_open(&s, &level);
+	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	if (*global->version) {
-		ss_json_str(&s, tab, "engine_version", global->version);
-		ss_json_str(&s, tab, "engine_conf", global->conf_engine);
-		ss_json_str(&s, tab, "health", health_name(health_array(state)));
-		ss_json_int(&s, tab, "block_size_bytes", global->blocksize);
+		ss_json_str(&s, level, "health", health_name(health_array(state)));
+		ss_json_str(&s, level, "engine_version", global->version);
+		ss_json_str(&s, level, "engine_conf", global->conf_engine);
 		if (*global->content)
-			ss_json_str(&s, tab, "content", global->content);
+			ss_json_str(&s, level, "engine_content", global->content);
+		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
 		if (global->last_time)
-			ss_json_pair_iso8601(&s, tab, "last_command_at", global->last_time);
+			ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
 		if (*global->last_cmd)
-			ss_json_str(&s, tab, "last_cmd", global->last_cmd);
-		if (global->diff_time)
-			ss_json_pair_iso8601(&s, tab, "last_diff_at", global->diff_time);
-		if (global->status_time)
-			ss_json_pair_iso8601(&s, tab, "last_status_at", global->status_time);
-		if (global->sync_time)
-			ss_json_pair_iso8601(&s, tab, "last_sync_at", global->sync_time);
-		if (global->scrub_time)
-			ss_json_pair_iso8601(&s, tab, "last_scrub_at", global->scrub_time);
+			ss_json_str(&s, level, "last_command", global->last_cmd);
 		if (global->afr != 0)
-			ss_json_double(&s, tab, "annual_failure_rate", global->afr);
+			ss_json_double(&s, level, "annual_failure_rate", global->afr);
 		if (global->prob != 0)
-			ss_json_double(&s, tab, "failure_probability", global->prob);
-		ss_json_u64(&s, tab, "file_total", global->file_total);
-		ss_json_u64(&s, tab, "block_bad", global->block_bad);
-		ss_json_u64(&s, tab, "block_rehash", global->block_rehash);
-		ss_json_u64(&s, tab, "block_total", global->block_total);
-		ss_json_u64(&s, tab, "diff_equal", global->diff_current.diff_equal);
-		ss_json_u64(&s, tab, "diff_added", global->diff_current.diff_added);
-		ss_json_u64(&s, tab, "diff_removed", global->diff_current.diff_removed);
-		ss_json_u64(&s, tab, "diff_updated", global->diff_current.diff_updated);
-		ss_json_u64(&s, tab, "diff_moved", global->diff_current.diff_moved);
-		ss_json_u64(&s, tab, "diff_copied", global->diff_current.diff_copied);
-		ss_json_u64(&s, tab, "diff_restored", global->diff_current.diff_restored);
-		ss_json_array_open(&s, tab, "diffs");
+			ss_json_double(&s, level, "failure_probability", global->prob);
+		ss_json_u64(&s, level, "file_count", global->file_total);
+		ss_json_u64(&s, level, "block_bad", global->block_bad);
+		ss_json_u64(&s, level, "block_rehash", global->block_rehash);
+		ss_json_u64(&s, level, "block_count", global->block_total);
+		if (global->sync_time)
+			ss_json_pair_iso8601(&s, level, "last_sync_at", global->sync_time);
+		if (global->scrub_time)
+			ss_json_pair_iso8601(&s, level, "last_scrub_at", global->scrub_time);
+		if (global->status_time)
+			ss_json_pair_iso8601(&s, level, "last_status_at", global->status_time);
+		if (global->diff_time)
+			ss_json_pair_iso8601(&s, level, "last_diff_at", global->diff_time);
+		ss_json_u64(&s, level, "diff_equal", global->diff_current.diff_equal);
+		ss_json_u64(&s, level, "diff_added", global->diff_current.diff_added);
+		ss_json_u64(&s, level, "diff_removed", global->diff_current.diff_removed);
+		ss_json_u64(&s, level, "diff_updated", global->diff_current.diff_updated);
+		ss_json_u64(&s, level, "diff_moved", global->diff_current.diff_moved);
+		ss_json_u64(&s, level, "diff_copied", global->diff_current.diff_copied);
+		ss_json_u64(&s, level, "diff_restored", global->diff_current.diff_restored);
+		ss_json_array_open(&s, &level, "diffs");
 		for (tommy_node* i = tommy_list_head(&global->diff_current.diff_list); i; i = i->next) {
 			struct snapraid_diff* diff = i->data;
-			++tab;
-			ss_json_open(&s, tab);
-			++tab;
+			ss_json_open(&s, &level);
 
-			ss_json_str(&s, tab, "change", change_name(diff->change));
+			ss_json_str(&s, level, "change", change_name(diff->change));
 			if (diff->source_disk[0])
-				ss_json_str(&s, tab, "source_disk", diff->source_disk);
+				ss_json_str(&s, level, "source_disk", diff->source_disk);
 			if (diff->source_path[0])
-				ss_json_str(&s, tab, "source_path", diff->source_path);
-			ss_json_str(&s, tab, "disk", diff->disk);
-			ss_json_str(&s, tab, "path", diff->path);
-
-			--tab;
-			ss_json_close(&s, tab);
-			--tab;
+				ss_json_str(&s, level, "source_path", diff->source_path);
+			ss_json_str(&s, level, "disk", diff->disk);
+			ss_json_str(&s, level, "path", diff->path);
+			ss_json_close(&s, &level);
 		}
-		ss_json_array_close(&s, tab);
+		ss_json_array_close(&s, &level);
 	} else {
-		ss_json_str(&s, tab, "health", health_name(HEALTH_PENDING));
+		ss_json_str(&s, level, "health", health_name(HEALTH_PENDING));
 	}
-	--tab;
-	ss_json_close(&s, tab);
+	ss_json_close(&s, &level);
 
 	state_unlock();
 
