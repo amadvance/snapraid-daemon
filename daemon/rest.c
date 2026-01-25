@@ -231,49 +231,212 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 /****************************************************************************/
 /* helper */
 
-static void send_json_answer(struct mg_connection* conn, int status, ss_t* s)
-{
-	mg_printf(conn, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
-	mg_printf(conn, "Content-Type: application/json\r\n");
-	mg_printf(conn, "Content-Length: %zd\r\n", ss_len(s));
-	mg_printf(conn, "Connection: close\r\n");
-	mg_printf(conn, "\r\n");
+#define HTTP_HEADERS_MAX 512
 
-	mg_write(conn, ss_ptr(s), ss_len(s));
+/**
+ * Generates and prints security and CORS headers into the provided string builder.
+ * These headers protect the SnapRAID daemon from cross-site attacks and ensure
+ * that only authorized web origins can communicate with the API.
+ */
+static void send_headers(struct mg_connection* conn, ss_t* s)
+{
+	int net_security_headers;
+	char net_allowed_origin[CONFIG_MAX];
+
+	/* obtain the security configuration */
+	state_lock();
+	net_security_headers = state_ptr()->config.net_security_headers;
+	sncpy(net_allowed_origin, sizeof(net_allowed_origin), state_ptr()->config.net_allowed_origin);
+	state_unlock();
+
+	ss_printf(s, "Server: %s/%s\r\n", PACKAGE_NAME, PACKAGE_VERSION);
+
+	/*
+	 * Forces the browser to always fetch fresh data from the daemon.
+	 * 'no-store' prevents the sensitive JSON status from being saved to disk.
+	 */
+	ss_prints(s, "Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0\r\n");
+
+	/* Legacy support for HTTP/1.0 proxies */
+	ss_prints(s, "Pragma: no-cache\r\n");
+
+	/* Mark as expired immediately */
+	ss_prints(s, "Expires: 0\r\n");
+
+	char date_buf[64];
+	struct tm tm_gmt;
+	time_t now = time(0);
+	gmtime_r(&now, &tm_gmt);
+
+	/* RFC 7231 / RFC 1123 format: Weekday, Day Month Year Time GMT */
+	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
+	ss_printf(s, "Date: %s\r\n", date_buf);
+
+	/*
+	 * These headers provide "Defense in Depth" against common web vulnerabilities.
+	 */
+	if (net_security_headers) {
+		/*
+		 * X-Frame-Options: SAMEORIGIN
+		 * Prevents "Clickjacking" attacks. By setting this to SAMEORIGIN, the browser
+		 * will only render this page inside an <iframe> if the parent page is
+		 * hosted on the same origin (this daemon). It blocks malicious external
+		 * sites from overlaying invisible buttons on top of your API controls.
+		 */
+		ss_prints(s, "X-Frame-Options: SAMEORIGIN\r\n");
+
+		/* * X-Content-Type-Options: nosniff
+		 * Prevents "MIME-sniffing" attacks. It forces the browser to trust the
+		 * 'Content-Type' header sent by the daemon. Without this, a browser might
+		 * guess that a .log file is actually a .js script and execute it,
+		 * leading to potential XSS vulnerabilities.
+		 */
+		ss_prints(s, "X-Content-Type-Options: nosniff\r\n");
+
+		/*
+		 * Content-Security-Policy (CSP)
+		 * The most powerful security header.
+		 * - 'default-src self': Only allow scripts, styles, and images from this daemon.
+		 * - 'frame-ancestors self': Modern version of X-Frame-Options; ensures only
+		 * this daemon can embed its own pages.
+		 */
+		ss_prints(s, "Content-Security-Policy: default-src 'self'; frame-ancestors 'self';\r\n");
+
+		/*
+		 * Referrer-Policy: no-referrer
+		 * Privacy protection. Ensures that if the user clicks a link to an external
+		 * site (like the SnapRAID manual), the browser does not send the
+		 * daemon's local IP or internal URL in the 'Referer' header.
+		 */
+		ss_prints(s, "Referrer-Policy: no-referrer\r\n");
+
+		/*
+		 * Cross-Origin-Opener-Policy: same-origin
+		 * Context Isolation. Prevents other browser tabs from maintaining a
+		 * reference to this window. This mitigates certain side-channel attacks
+		 * (like Spectre) and prevents a malicious tab from "reaching into"
+		 * the SnapRAID dashboard window via JavaScript.
+		 */
+		ss_prints(s, "Cross-Origin-Opener-Policy: same-origin\r\n");
+	}
+
+	/*
+	 * These headers allow or deny specific web applications from making
+	 * asynchronous (AJAX/Fetch) calls to the SnapRAID API.
+	 */
+	if (strcmp(net_allowed_origin, "none") != 0) {
+		/*
+		 * Access-Control-Allow-Origin
+		 * Tells the browser which website is allowed to read the API response.
+		 * - If 'self', we reflect the 'Host' header to allow local UI access.
+		 * - If a URL is provided, we whitelist only that specific dashboard.
+		 */
+		if (strcmp(net_allowed_origin, "self") == 0) {
+			const char* host = mg_get_header(conn, "Host");
+			ss_printf(s, "Access-Control-Allow-Origin: http://%s\r\n", host ? host : "null");
+		} else {
+			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
+		}
+
+		/* * Vary: Origin
+		 * Crucial for 'self' reflection. It tells intermediate caches and proxies
+		 * that the response depends on the 'Origin' header of the request,
+		 * preventing a response meant for one user from being served to another.
+		 */
+		ss_prints(s, "Vary: Origin\r\n");
+
+		/*
+		 * Access-Control-Allow-Methods & Headers
+		 * These are required for the "Pre-flight" check (OPTIONS request).
+		 * Browsers will check these before allowing a POST or DELETE request
+		 * to ensure the daemon supports those actions and the 'Content-Type' header.
+		 */
+		ss_prints(s, "Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\n");
+		ss_prints(s, "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+	}
+}
+
+static void send_json_answer(struct mg_connection* conn, int status, ss_t* body)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	int body_len = ss_len(body);
+
+	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
+	send_headers(conn, &s);
+	ss_prints(&s, "Content-Type: application/json\r\n");
+	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+	mg_write(conn, ss_ptr(body), ss_len(body));
+
+	ss_done(&s);
 }
 
 static int send_json_success(struct mg_connection* conn, int status)
 {
-	char body[256];
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
 
+	char body[256];
 	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": true\n}\n");
 
-	mg_printf(conn, "HTTP/1.1 %d %s\r\n"
-		"Content-Type: application/json\r\n"
-		"Content-Length: %d\r\n"
-		"Connection: close\r\n\r\n",
-		status, mg_get_response_code_text(conn, status), body_len);
+	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
+	send_headers(conn, &s);
+	ss_prints(&s, "Content-Type: application/json\r\n");
+	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
 
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
 	mg_write(conn, body, body_len);
+
+	ss_done(&s);
 
 	return status;
 }
 
 static int send_json_error(struct mg_connection* conn, int status, const char* message)
 {
-	char body[256];
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
 
+	char body[256];
 	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
 
-	mg_printf(conn, "HTTP/1.1 %d %s\r\n"
-		"Content-Type: application/json\r\n"
-		"Content-Length: %d\r\n"
-		"Connection: close\r\n\r\n",
-		status, mg_get_response_code_text(conn, status), body_len);
+	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
+	send_headers(conn, &s);
+	ss_prints(&s, "Content-Type: application/json\r\n");
+	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
 
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
 	mg_write(conn, body, body_len);
 
+	ss_done(&s);
+
 	return status;
+}
+
+static int send_options(struct mg_connection* conn)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	ss_prints(&s, "HTTP/1.1 204 No Content\r\n");
+	send_headers(conn, &s);
+	ss_prints(&s, "Content-Length: 0\r\n");
+	ss_prints(&s, "Connection: close\r\n\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+	return 204;
 }
 
 /****************************************************************************/
@@ -652,10 +815,16 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 static int handler_config(struct mg_connection* conn, void* cbdata)
 {
 	const struct mg_request_info* ri = mg_get_request_info(conn);
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
+
 	if (strcmp(ri->request_method, "GET") == 0)
 		return handler_config_get(conn, cbdata);
+
 	if (strcmp(ri->request_method, "PATCH") == 0)
 		return handler_config_patch(conn, cbdata);
+
 	return send_json_error(conn, 405, "Only GET/PATCH is allowed for this endpoint");
 }
 
@@ -677,6 +846,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	sl_t arg_list;
 
 	sl_init(&arg_list);
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
@@ -785,6 +957,9 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	int level = 0;
 	ss_t s;
 
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
+
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
@@ -816,6 +991,9 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
@@ -944,6 +1122,9 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	int level = 0;
 	ss_t s;
 
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
+
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
@@ -1070,14 +1251,17 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 }
 
 /**
- * GET /api/v1/progress
+ * GET /api/v1/activity
  */
-static int handler_progress(struct mg_connection* conn, void* cbdata)
+static int handler_activity(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -1110,6 +1294,9 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -1145,6 +1332,9 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 	int level = 0;
 	ss_t s;
 
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
+
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
@@ -1179,6 +1369,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_options(conn);
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
@@ -1321,7 +1514,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/report", handler_report, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/progress", handler_progress, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/activity", handler_activity, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/queue", handler_queue, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/history", handler_history, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);

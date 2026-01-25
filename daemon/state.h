@@ -310,6 +310,8 @@ struct snapraid_config {
 	int net_enabled;
 	char net_port[CONFIG_MAX];
 	char net_acl[CONFIG_MAX];
+	int net_security_headers;
+	char net_allowed_origin[CONFIG_MAX];
 	int net_config_full_access;
 	int maintenance_run;
 	int maintenance_hour;

@@ -173,6 +173,13 @@ int config_load(struct snapraid_state* state)
 				sncpy(config->net_port, sizeof(config->net_port), val);
 			} else if (strcmp(key, "net_acl") == 0) {
 				sncpy(config->net_acl, sizeof(config->net_acl), val);
+			} else if (strcmp(key, "net_security_headers") == 0) {
+				if (parse_int(val, 0, 1, &config->net_security_headers) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "net_allowed_origin") == 0) {
+				sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), val);
 			} else if (strcmp(key, "net_config_full_access") == 0) {
 				if (parse_int(val, 0, 1, &config->net_config_full_access) == 0) {
 				} else {
@@ -456,6 +463,8 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:8080");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
+	config->net_security_headers = 1;
+	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;
 	config->maintenance_run = RUN_DISABLED;
 	config->maintenance_hour = 0;
