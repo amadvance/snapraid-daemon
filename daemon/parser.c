@@ -25,6 +25,23 @@
 #include "parser.h"
 
 /**
+ * Clear the error accumulators of all the disks.
+ */
+static void clear_disk_accumulator(struct snapraid_state* state)
+{
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* data = i->data;
+		data->error_io = 0;
+		data->error_data = 0;
+	}
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_disk* parity = i->data;
+		parity->error_io = 0;
+		parity->error_data = 0;
+	}
+}
+
+/**
  * Check if the passed name is a parity
  * Split parities are NOT recognized.
  */
@@ -162,23 +179,6 @@ static struct snapraid_device* find_device(struct snapraid_state* state, char* n
 	} else {
 		struct snapraid_disk* data = find_disk(&state->data_list, name);
 		return find_device_from_file(&data->device_list, file, 0); /* at present data disks don't have the split index */
-	}
-}
-
-/**
- * Clear the error accumulators of all the disks.
- */
-static void clear_disk_accumulator(struct snapraid_state* state)
-{
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_disk* data = i->data;
-		data->error_io = 0;
-		data->error_data = 0;
-	}
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_disk* parity = i->data;
-		parity->error_io = 0;
-		parity->error_data = 0;
 	}
 }
 
@@ -323,11 +323,10 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 		uint64_t block_bad;
 		if (stru64(&block_bad, val) == 0) {
 			if (block_bad == 0) {
-				/* if status report has no stored error, clear the disk error accumulators */
+				/* if content has no stored error, clear the disk error accumulators */
 				clear_disk_accumulator(state);
-			} else {
-				task->block_bad = block_bad;
 			}
+			task->block_bad = block_bad;
 			state->global.block_bad = block_bad;
 		}
 	} else if (strcmp(tag, "block_rehash") == 0) {
@@ -404,23 +403,23 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[3];
 
 	if (strcmp(tag, "add") == 0) {
-		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_ADD, disk, path);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	} else if (strcmp(tag, "remove") == 0) {
-		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_REMOVE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	} else if (strcmp(tag, "update") == 0) {
-		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_UPDATE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
-		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_MOVE, disk, path, disk, map[4]);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, path, disk, map[4]);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
-		struct snapraid_diff* diff = diff_alloc_source(DIFF_CHANGE_COPY, disk, path, map[4], map[5]);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, disk, path, map[4], map[5]);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	} else if (strcmp(tag, "restore") == 0) {
-		struct snapraid_diff* diff = diff_alloc(DIFF_CHANGE_RESTORE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_current.diff_list, &diff->node, diff);
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
+		tommy_list_insert_tail(&state->global.diff_current.file_list, &file->node, file);
 	}
 }
 
@@ -496,6 +495,28 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 			++msg;
 
 		sl_insert_str(&task->message_list, msg);
+	}
+}
+
+static void process_status(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
+	if (mac < 4)
+		return;
+
+	const char* ope = map[1];
+	const char* disk = map[2];
+	const char* sub = map[3];
+
+	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERABLE, disk, sub);
+		tommy_list_insert_tail(&task->fix_list, &file->node, file);
+	} else if (strcmp(ope, "unrecoverable") == 0) {
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
+		tommy_list_insert_tail(&task->fix_list, &file->node, file);
 	}
 }
 
@@ -744,7 +765,7 @@ static void process_hash_summary(struct snapraid_state* state, char** map, size_
 	if (mac < 3)
 		return;
 
-	if (strcmp(map[1], "error_file") == 0) {
+	if (strcmp(map[1], "error_soft") == 0) {
 		stru64(&task->hash_error_soft, map[2]);
 	}
 }
@@ -779,12 +800,16 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			stri64(&state->global.diff_current.diff_restored, val);
 	}
 
-	if (strcmp(tag, "error_file") == 0)
+	if (strcmp(tag, "error_soft") == 0)
 		stru64(&task->error_soft, val);
 	else if (strcmp(tag, "error_io") == 0)
 		stru64(&task->error_io, val);
 	else if (strcmp(tag, "error_data") == 0)
 		stru64(&task->error_data, val);
+	else if (strcmp(tag, "error_recovered") == 0)
+		stru64(&task->error_recovered, val);
+	else if (strcmp(tag, "error_unrecoverable") == 0)
+		stru64(&task->error_unrecoverable, val);
 	else if (strcmp(tag, "exit") == 0) {
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
@@ -846,6 +871,10 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "msg") == 0) {
 		state_lock();
 		process_msg(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "status") == 0) {
+		state_lock();
+		process_status(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "stat") == 0) {
 		state_lock();

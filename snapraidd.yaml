@@ -14,8 +14,9 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'sync',
-        'scrub', and 'report' tasks in sequential order.
+        Initiates the automated maintenance workflow, executing 'sync'
+        followed by 'scrub'. The process is concluded by a 'report'
+        task to notify the result.
 
         This operation is subject to all safety thresholds defined in the
         daemon configuration, specifically 'sync_threshold_deletes' and
@@ -23,7 +24,7 @@ paths:
 
         If the 'sync' phase exceeds the delete threshold, the daemon will
         suspend the 'sync' task to prevent accidental data loss.
-        Anyway, the 'scrub' phase is not bypassed.
+        Regardless, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
         '/api/v1/progress' endpoint.
@@ -32,6 +33,70 @@ paths:
           $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found or execution failed.
+          $ref: '#/components/responses/CommandResult'
+
+  /api/v1/heal:
+    post:
+      summary: Execute automated silent error recovery sequence
+      description: >
+        Initiates a recovery operation to resolve data corruption by
+        executing '-e fix' followed by '-p bad scrub'. The process is
+        concluded by a 'report' task to notify the result.
+
+        The '-e fix' command utilizes parity data to reconstruct blocks
+        marked as having silent errors (checksum mismatches) and
+        restores the physical files on the data disks.
+
+        The '-p bad scrub' command performs a targeted re-verification
+        of known 'bad' blocks. If the fix was successful, it clears the
+        error entries from the content file, resetting the health
+        status of the array.
+
+        This is an asynchronous operation. Monitor progress via the
+        '/api/v1/progress' endpoint.
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          $ref: '#/components/responses/CommandResult'
+
+  /api/v1/undelete:
+    post:
+      summary: Recover missing or accidentally deleted files
+      description: >
+        Initiates a restoration process for files that are present in the
+        parity but missing from the physical data disks. The process is
+        concluded by a 'report' task to notify the result.
+
+        This operation executes a 'fix -m' (filter-missing) operation.
+        The '-m' flag ensures that only missing files are reconstructed.
+        Existing files are never overwritten or modified.
+
+        The request accepts an optional list of filters to narrow the
+        scope of restoration to specific directories or file patterns.
+        If no filter is provided, the daemon attempts to recover all
+        missing files across the entire array.
+
+        This is an asynchronous operation. Monitor progress via the
+        '/api/v1/progress' endpoint.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filters:
+                  type: array
+                  items:
+                    type: string
+                  description: >
+                    Optional filters (e.g., 'dir/', '*.txt') to limit the
+                    restoration scope. Each item corresponds to a '-f'
+                    argument in the SnapRAID CLI.
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
           $ref: '#/components/responses/CommandResult'
 
   /api/v1/down_idle:
@@ -233,7 +298,7 @@ paths:
 
         This command is not restricted by the 'scrub_percentage' or
         'scrub_older_than' settings defined in the daemon configuration.
-        Those parameters apply strictly to automated maintenance; manual API
+        Those parameters apply strictly to automated maintenance. Manual API
         calls will process the array according to the arguments provided in
         the request body.
 
@@ -381,7 +446,7 @@ paths:
 
         This includes manually triggered commands and scheduled maintenance
         tasks that are blocked by the currently running process. Tasks are
-        executed sequentially; once a task starts, it moves from this
+        executed sequentially. Once a task starts, it moves from this
         queue to the '/progress' endpoint.
       responses:
         '200':
@@ -734,10 +799,8 @@ components:
           description: >
             The count of non-fatal logical errors encountered in the task.
             This tracks transient issues that do not indicate hardware or
-            media failure, such as files being modified or moved by other
-            processes during a sync. These are skipped or retried without
-            halting the task.
-            This field is available only on the `sync` and `scrub` command.
+            media failure, such as files being modified or removed.
+            This field is available only on the `sync`, `scrub` and `fix` command.
         error_io:
           type: integer
           format: int64
@@ -746,7 +809,7 @@ components:
             The count of physical Input/Output errors encountered in the task.
             This tracks hardware-level failures (disk, cable, or controller)
             recorded across the task execution.
-            This field is available only on the `sync` and `scrub` command.
+            This field is available only on the `sync`, `scrub` and `fix` command.
         error_data:
           type: integer
           format: int64
@@ -755,14 +818,23 @@ components:
             The count of data integrity errors encountered in the task.
             This tracks 'silent' errors where a read was physically successful,
             but the data failed checksum verification, across the task execution.
-            This field is available only on the `sync` and `scrub` command.
+            This field is available only on the `sync`, `scrub` and `fix` command.
+        error_unrecoverable:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of errors that the `fix` command was unable to recover.
+            If this counter is 0 it means that everything was recovered.
+            This field is available only on the `fix` command.
         block_bad:
           type: integer
           format: int64
           example: 0
           description: >
             The count of blocks marked bad.
-            This field is available only on the `status`, `sync` and `scrub` commands.
+            This field is available only on the `status`, `sync`, `scrub` and
+            `fix` commands.
         errors:
           type: array
           description: >
@@ -924,8 +996,8 @@ components:
               type: integer
               description: >
                 The number of unstable sectors waiting to be remapped (SMART ID 197).
-                If a sector is subsequently read successfully, the count decreases;
-                if it fails again, it becomes a reallocated sector.
+                If a sector is subsequently read successfully, the count decreases.
+                If it fails again, it becomes a reallocated sector.
             offline_uncorrectable:
               type: integer
               description: >
@@ -1183,7 +1255,7 @@ components:
           example: 15
           description: >
             Interval for background health monitoring. The daemon probes
-            disk power state; SMART attributes are only queried if the
+            disk power state. SMART attributes are only queried if the
             disk is already in an active/idle state to prevent spin-up.
             Set to 0 to disable monitoring.
         spindown_idle_minutes:
@@ -1342,7 +1414,7 @@ components:
             - updated: Size, timestamp, or link target changed.
             - moved: Path changed on the same disk.
             - copied: New file is a copy from another disk.
-            - restored: Inode changed but metadata matches; likely a backup restore.
+            - restored: Inode changed but metadata matches. Likely a backup restore.
           example: "moved"
         disk:
           type: string

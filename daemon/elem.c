@@ -45,6 +45,10 @@ struct {
 	{ CMD_FIX, "fix" },
 	{ CMD_CHECK, "check" },
 	{ CMD_REPORT, "report" },
+	{ CMD_MAINTENANCE, "maintenance" },
+	{ CMD_HEAL, "heal" },
+	{ CMD_UNDELETE, "undelete" },
+	{ CMD_DOWN_IDLE, "down_idle" },
 	{ 0 }
 };
 
@@ -76,6 +80,8 @@ struct snapraid_task* task_alloc(void)
 	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
 	sl_init(&task->arg_list);
 	sl_init(&task->message_list);
+	sl_init(&task->error_list);
+	sl_init(&task->fix_list);
 	task->health = HEALTH_PASSED;
 	return task;
 }
@@ -88,6 +94,7 @@ void task_free(void* void_task)
 	sl_free(&task->arg_list);
 	sl_free(&task->message_list);
 	sl_free(&task->error_list);
+	tommy_list_foreach(&task->fix_list, file_free);
 	free(task->text_report);
 	free(task);
 }
@@ -95,31 +102,45 @@ void task_free(void* void_task)
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg)
 {
 	time_t now = time(0);
-	for (tommy_node* i = tommy_list_head(waiting_list); i != 0; i = i->next) {
+	tommy_node* i = tommy_list_head(waiting_list);
+	while (i != 0) {
+		tommy_node* i_next = i->next;
 		struct snapraid_task* task = i->data;
+
+		/* stop at the first report */
+		if (task->cmd == CMD_REPORT)
+			break;
+
+		/* remove from the waiting list */
+		tommy_list_remove_existing(waiting_list, i);
 		sncpy(task->exit_msg, sizeof(task->exit_msg), msg);
 		task->state = PROCESS_STATE_CANCEL;
 		task->unix_start_time = now;
 		task->unix_end_time = now;
 		log_msg_lock(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
+
+		/* insert in the history */
 		tommy_list_insert_tail(history_list, &task->node, task);
+
+		i = i_next;
 	}
-	tommy_list_init(waiting_list);
 }
 
 /****************************************************************************/
-/* diff */
+/* file */
 
 struct {
 	int change;
 	const char* str;
 } CHANGES[] = {
-	{ DIFF_CHANGE_ADD, "added" },
-	{ DIFF_CHANGE_REMOVE, "removed" },
-	{ DIFF_CHANGE_UPDATE, "updated" },
-	{ DIFF_CHANGE_MOVE, "moved" },
-	{ DIFF_CHANGE_COPY, "copied" },
-	{ DIFF_CHANGE_RESTORE, "restored" },
+	{ FILE_CHANGE_DIFF_ADD, "added" },
+	{ FILE_CHANGE_DIFF_REMOVE, "removed" },
+	{ FILE_CHANGE_DIFF_UPDATE, "updated" },
+	{ FILE_CHANGE_DIFF_MOVE, "moved" },
+	{ FILE_CHANGE_DIFF_COPY, "copied" },
+	{ FILE_CHANGE_DIFF_RESTORE, "restored" },
+	{ FILE_CHANGE_RECOVERABLE, "recovered" },
+	{ FILE_CHANGE_UNRECOVERABLE, "unrecoverable" },
 	{ 0 }
 };
 
@@ -133,43 +154,43 @@ const char* change_name(int change)
 	return "-";
 }
 
-struct snapraid_diff* diff_alloc(int change, const char* disk, const char* path)
+struct snapraid_file* file_alloc(int change, const char* disk, const char* path)
 {
-	return diff_alloc_source(change, disk, path, 0, 0);
+	return file_alloc_source(change, disk, path, 0, 0);
 }
 
-struct snapraid_diff* diff_alloc_source(int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
+struct snapraid_file* file_alloc_source(int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
 {
 	ssize_t disk_len = strlen(disk);
 	ssize_t path_len = strlen(path);
 	ssize_t source_disk_len = source_disk ? strlen(source_disk) : 0;
 	ssize_t source_path_len = source_path ? strlen(source_path) : 0;
 
-	struct snapraid_diff* diff = malloc_nofail(sizeof(struct snapraid_diff) + disk_len + path_len + source_disk_len + source_path_len + 4);
-	diff->change = change;
-	diff->disk = diff->str;
-	diff->path = diff->disk + disk_len + 1;
-	diff->source_disk = diff->path + path_len + 1;
-	diff->source_path = diff->source_disk + source_disk_len + 1;
+	struct snapraid_file* file = malloc_nofail(sizeof(struct snapraid_file) + disk_len + path_len + source_disk_len + source_path_len + 4);
+	file->change = change;
+	file->disk = file->str;
+	file->path = file->disk + disk_len + 1;
+	file->source_disk = file->path + path_len + 1;
+	file->source_path = file->source_disk + source_disk_len + 1;
 
-	memcpy(diff->disk, disk, disk_len + 1);
-	memcpy(diff->path, path, path_len + 1);
+	memcpy(file->disk, disk, disk_len + 1);
+	memcpy(file->path, path, path_len + 1);
 	if (source_disk)
-		memcpy(diff->source_disk, source_disk, source_disk_len + 1);
+		memcpy(file->source_disk, source_disk, source_disk_len + 1);
 	else
-		diff->source_disk[0] = 0;
+		file->source_disk[0] = 0;
 	if (source_path)
-		memcpy(diff->source_path, source_path, source_path_len + 1);
+		memcpy(file->source_path, source_path, source_path_len + 1);
 	else
-		diff->source_path[0] = 0;
+		file->source_path[0] = 0;
 
-	return diff;
+	return file;
 }
 
-void diff_free(void* void_diff)
+void file_free(void* void_file)
 {
-	struct snapraid_diff* diff = void_diff;
-	free(diff);
+	struct snapraid_filef* file = void_file;
+	free(file);
 }
 
 void diff_cleanup(struct snapraid_diff_stat* diff)
@@ -182,18 +203,21 @@ void diff_cleanup(struct snapraid_diff_stat* diff)
 	diff->diff_copied = 0;
 	diff->diff_restored = 0;
 
-	tommy_list_foreach(&diff->diff_list, diff_free);
+	tommy_list_foreach(&diff->file_list, file_free);
 }
+
+/****************************************************************************/
+/* diff */
 
 void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre)
 {
 	/* clear the previous list */
-	tommy_list_foreach(&diff_pre->diff_list, diff_free);
+	tommy_list_foreach(&diff_pre->file_list, file_free);
 
 	*diff_pre = *diff_current;
 
 	/* reset the list */
-	tommy_list_init(&diff_current->diff_list);
+	tommy_list_init(&diff_current->file_list);
 
 	diff_current->diff_equal = diff_pre->diff_equal;
 	diff_current->diff_equal += diff_pre->diff_added;
@@ -283,6 +307,9 @@ int health_task(struct snapraid_task* task)
 		health = health_worse(health, HEALTH_PREFAIL);
 
 	if (task->error_io != 0)
+		health = health_worse(health, HEALTH_FAILING);
+
+	if (task->error_unrecoverable != 0)
 		health = health_worse(health, HEALTH_FAILING);
 
 	if (task->block_bad != 0)

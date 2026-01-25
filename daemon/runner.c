@@ -43,6 +43,7 @@ static int runner_need_script(int cmd)
 static int runner_report_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* report_task = state->runner.latest;
+	struct snapraid_task* fix_task = 0;
 	struct snapraid_task* sync_task = 0;
 	struct snapraid_task* scrub_task = 0;
 	ss_t ss;
@@ -56,15 +57,14 @@ static int runner_report_locked(struct snapraid_state* state)
 		if (task->unix_queue_time != report_task->unix_queue_time)
 			break;
 
-		if (task->cmd == CMD_SYNC && !sync_task)
+		if (fix_task == 0 && task->cmd == CMD_FIX)
+			fix_task = task;
+
+		if (sync_task == 0 && task->cmd == CMD_SYNC)
 			sync_task = task;
 
-		if (task->cmd == CMD_SCRUB && !scrub_task)
+		if (scrub_task == 0 && task->cmd == CMD_SCRUB)
 			scrub_task = task;
-
-		/* stop if we found both */
-		if (sync_task != 0 && scrub_task != 0)
-			break;
 
 		/* stop if we reached the head of the circular list */
 		if (i == tommy_list_head(&state->runner.history_list))
@@ -73,14 +73,14 @@ static int runner_report_locked(struct snapraid_state* state)
 		i = i->prev;
 	}
 
-	ss_init(&ss, 8192);
+	ss_init(&ss, 16384);
 
 	/* if we have sync completed, use the previous diff stat */
 	struct snapraid_diff_stat* diff_stat = &state->global.diff_current;
 	if (sync_task != 0 && sync_task->state == PROCESS_STATE_TERM && sync_task->exit_code == 0)
 		diff_stat = &state->global.diff_prev;
 
-	if (report_locked(state, &ss, sync_task, scrub_task, diff_stat) != 0) {
+	if (report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat) != 0) {
 		ss_done(&ss);
 		log_msg(LVL_ERROR, "failed to generate report");
 		return -1;
@@ -325,7 +325,7 @@ bail:
 
 		snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 
-		/* cancel all queued tasks */
+		/* cancel queued tasks */
 		task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 	} else {
 		if (WIFEXITED(status)) {
@@ -350,7 +350,7 @@ bail:
 
 			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), signal_name(task->exit_sig), task->exit_sig);
 
-			/* cancel all queued tasks */
+			/* cancel queued tasks */
 			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		} else {
 			/* it should never happen */
@@ -359,7 +359,7 @@ bail:
 
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 
-			/* cancel all queued tasks */
+			/* cancel queued tasks */
 			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		}
 	}

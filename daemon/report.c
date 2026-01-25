@@ -119,6 +119,84 @@ static void print_line_separator(ss_t* ss)
 }
 
 /**
+ * Print differences list.
+ */
+static void print_differences(ss_t* ss, tommy_list* diff_list)
+{
+	/* group by change type */
+	for (int change = FILE_CHANGE_DIFF_ADD; change <= FILE_CHANGE_DIFF_RESTORE; ++change) {
+		int found = 0;
+
+		/* check if there are any changes of this type */
+		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
+			if (file->change == change) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found)
+			continue;
+
+		/* print section header */
+		ss_printf(ss, "  %s:\n", change_name(change));
+
+		/* print all changes of this type */
+		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
+			if (file->change != change)
+				continue;
+
+			if (file->change == FILE_CHANGE_DIFF_MOVE || file->change == FILE_CHANGE_DIFF_COPY) {
+				ss_printf(ss, "    %s: %s <- %s: %s\n",
+					file->disk, file->path,
+					file->source_disk, file->source_path);
+			} else {
+				ss_printf(ss, "    %s: %s\n", file->disk, file->path);
+			}
+		}
+		ss_prints(ss, "\n");
+	}
+}
+
+/**
+ * Print fix list.
+ */
+static void print_fix(ss_t* ss, tommy_list* fix_list)
+{
+	/* group by change type */
+	for (int change = FILE_CHANGE_RECOVERABLE; change <= FILE_CHANGE_UNRECOVERABLE; ++change) {
+		int found = 0;
+
+		/* check if there are any changes of this type */
+		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
+			if (file->change == change) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found)
+			continue;
+
+		/* print section header */
+		ss_printf(ss, "  %s:\n", change_name(change));
+
+		/* print all changes of this type */
+		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
+			if (file->change != change)
+				continue;
+
+			ss_printf(ss, "    %s: %s\n", file->disk, file->path);
+		}
+		ss_prints(ss, "\n");
+	}
+}
+
+/**
  * Print task information (sync or scrub).
  */
 static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* task)
@@ -156,16 +234,22 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 		ss_prints(ss, "Unknown state\n");
 	}
 
+	/* error statistics for both sync and scrub */
+	ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
+	ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
+	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", task->block_bad);
+	ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
+
 	/* error statistics for sync */
 	if (task->cmd == CMD_SYNC) {
 		ss_printf(ss, "  Hash Errors:    %" PRIu64 "\n", task->hash_error_soft);
 	}
 
-	/* error statistics for both sync and scrub */
-	ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
-	ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
-	ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
-	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", task->block_bad);
+	/* print recovered files */
+	if (!tommy_list_empty(&task->fix_list)) {
+		ss_prints(ss, "\nRECOVER:\n");
+		print_fix(ss, &task->fix_list);
+	}
 
 	/* print error messages if any */
 	if (!tommy_list_empty(&task->error_list)) {
@@ -174,48 +258,6 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 			sn_t* error = i->data;
 			ss_printf(ss, "  - %s\n", error->str);
 		}
-	}
-}
-
-/**
- * Print differences list.
- */
-static void print_differences(ss_t* ss, struct snapraid_diff_stat* diff_stat)
-{
-	/* group by change type */
-	for (int change = DIFF_CHANGE_ADD; change <= DIFF_CHANGE_RESTORE; ++change) {
-		int found = 0;
-
-		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(&diff_stat->diff_list); i; i = i->next) {
-			struct snapraid_diff* diff = i->data;
-			if (diff->change == change) {
-				found = 1;
-				break;
-			}
-		}
-
-		if (!found)
-			continue;
-
-		/* print section header */
-		ss_printf(ss, "  list_%s:\n", change_name(change));
-
-		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(&diff_stat->diff_list); i; i = i->next) {
-			struct snapraid_diff* diff = i->data;
-			if (diff->change != change)
-				continue;
-
-			if (diff->change == DIFF_CHANGE_MOVE || diff->change == DIFF_CHANGE_COPY) {
-				ss_printf(ss, "    %s: %s <- %s: %s\n",
-					diff->disk, diff->path,
-					diff->source_disk, diff->source_path);
-			} else {
-				ss_printf(ss, "    %s: %s\n", diff->disk, diff->path);
-			}
-		}
-		ss_prints(ss, "\n");
 	}
 }
 
@@ -304,7 +346,7 @@ static void print_disk_list(tommy_list* disk_list, ss_t* ss, struct disk_spacing
 /****************************************************************************/
 /* report */
 
-int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat)
+int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat)
 {
 	int array_health;
 	time_t now = time(0);
@@ -364,17 +406,28 @@ int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* 
 		ss_prints(ss, "\n");
 	}
 
-	/* latest Sync */
-	print_line_separator(ss);
-	print_task(ss, "SYNC", latest_sync);
+	/* latest fix */
+	if (latest_fix) {
+		print_line_separator(ss);
+		print_task(ss, "FIX", latest_fix);
+		ss_prints(ss, "\n");
+	}
 
-	/* latest Scrub */
-	ss_prints(ss, "\n");
-	print_line_separator(ss);
-	print_task(ss, "SCRUB", latest_scrub);
+	/* latest sync */
+	if (latest_sync) {
+		print_line_separator(ss);
+		print_task(ss, "SYNC", latest_sync);
+		ss_prints(ss, "\n");
+	}
+
+	/* latest scrub */
+	if (latest_scrub) {
+		print_line_separator(ss);
+		print_task(ss, "SCRUB", latest_scrub);
+		ss_prints(ss, "\n");
+	}
 
 	/* global statistics */
-	ss_prints(ss, "\n");
 	print_line_separator(ss);
 	ss_prints(ss, "DIFFERENCES:\n\n");
 	ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);
@@ -384,11 +437,12 @@ int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* 
 	ss_printf(ss, "  moved:   %10" PRId64 "\n", diff_stat->diff_moved);
 	ss_printf(ss, "  copied:  %10" PRId64 "\n", diff_stat->diff_copied);
 	ss_printf(ss, "  restored:%10" PRId64 "\n", diff_stat->diff_restored);
+	ss_prints(ss, "\n");
 
 	/* differences list if enabled */
 	if (state->config.notify_differences != 0) {
+		print_differences(ss, &diff_stat->file_list);
 		ss_prints(ss, "\n");
-		print_differences(ss, diff_stat);
 	}
 
 	/* footer */

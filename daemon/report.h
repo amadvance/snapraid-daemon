@@ -26,11 +26,12 @@
  *
  * @param state Pointer to the global snapraid state
  * @param ss String stream to write the report to
+ * @param latest_sync Pointer to the latest fix task, or NULL if not available
  * @param latest_sync Pointer to the latest sync task, or NULL if not available
  * @param latest_scrub Pointer to the latest scrub task, or NULL if not available
  * @return 0 on success, -1 on error
  */
-int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
+int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
 
 #endif
 

@@ -84,6 +84,69 @@ void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_si
 	state_unlock();
 }
 
+void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+
+	state_lock();
+
+	sl_t fix_arg_list;
+	sl_t scrub_arg_list;
+	sl_init(&fix_arg_list);
+	sl_init(&scrub_arg_list);
+	sl_insert_str(&fix_arg_list, "-e");
+	sl_insert_str(&scrub_arg_list, "-p");
+	sl_insert_str(&scrub_arg_list, "bad");
+
+	/*
+	 * Schedule all the actions, note that they are just scheduled,
+	 * the eventual failure won't be detected here.
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
+	 */
+	int ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+	if (ret == 0)
+		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	sl_free(&fix_arg_list);
+	sl_free(&scrub_arg_list);
+
+	state_unlock();
+}
+
+void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+
+	state_lock();
+
+	sl_t fix_arg_list;
+	sl_init(&fix_arg_list);
+
+	sl_insert_str(&fix_arg_list, "-m");
+	for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
+		const char* str = i->data;
+		sl_insert_str(&fix_arg_list, "-f");
+		sl_insert_str(&fix_arg_list, str);
+	}
+
+	/*
+	 * Schedule all the actions, note that they are just scheduled,
+	 * the eventual failure won't be detected here.
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
+	 */
+	runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	sl_free(&fix_arg_list);
+
+	state_unlock();
+}
+
 static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
 {
 	/*

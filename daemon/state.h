@@ -151,7 +151,11 @@ struct snapraid_disk {
 #define CMD_SCRUB 11
 #define CMD_FIX 12
 #define CMD_CHECK 13
-#define CMD_REPORT 100 /**< Generate a notification report */
+#define CMD_REPORT 100
+#define CMD_MAINTENANCE 101
+#define CMD_HEAL 102
+#define CMD_UNDELETE 103
+#define CMD_DOWN_IDLE 104
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */
@@ -190,6 +194,7 @@ struct snapraid_task {
 
 	sl_t arg_list; /**< List of arguments */
 	sl_t message_list; /**< List of messages */
+	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */
 
 	char* text_report; /**< for CMD_REPORT it's the final text report */
 
@@ -199,6 +204,8 @@ struct snapraid_task {
 	uint64_t error_soft; /**< Total software errors encountered (sync/scrub only). */
 	uint64_t error_io; /**< Total I/O errors encountered (sync/scrub only). */
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
+	uint64_t error_recovered; /**< Total error recovered (fix only). */
+	uint64_t error_unrecoverable; /**< Total error unrecoverable (fix only). */
 	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
 	sl_t error_list; /**< List of error messages */
 
@@ -219,14 +226,16 @@ struct snapraid_scheduler {
 	thread_id_t thread_id;
 };
 
-#define DIFF_CHANGE_ADD 1 /**< A new file or link was found that is not in the content file. */
-#define DIFF_CHANGE_REMOVE 2 /**< A file or link has been removed from the filesystem since the last sync. */
-#define DIFF_CHANGE_UPDATE 3 /**< A file or link has been updated (size, timestamp, or link target changed). */
-#define DIFF_CHANGE_MOVE 4 /**< A file was moved on the same disk. */
-#define DIFF_CHANGE_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
-#define DIFF_CHANGE_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
+#define FILE_CHANGE_DIFF_ADD 1 /**< A new file or link was found that is not in the content file. */
+#define FILE_CHANGE_DIFF_REMOVE 2 /**< A file or link has been removed from the filesystem since the last sync. */
+#define FILE_CHANGE_DIFF_UPDATE 3 /**< A file or link has been updated (size, timestamp, or link target changed). */
+#define FILE_CHANGE_DIFF_MOVE 4 /**< A file was moved on the same disk. */
+#define FILE_CHANGE_DIFF_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
+#define FILE_CHANGE_DIFF_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
+#define FILE_CHANGE_RECOVERABLE 7 /**< A recoverable/recovered file */
+#define FILE_CHANGE_UNRECOVERABLE 8 /**< A unrecoverable file */
 
-struct snapraid_diff {
+struct snapraid_file {
 	tommy_node node;
 	int change; /**< One of the DIFF_CHANGE_* */
 	char* path; /**< Path of the file */
@@ -245,7 +254,7 @@ struct snapraid_diff_stat {
 	int64_t diff_moved;
 	int64_t diff_copied;
 	int64_t diff_restored;
-	tommy_list diff_list; /**< List of snapraid_diff entries */
+	tommy_list file_list; /**< List of snapraid_file entries */
 };
 
 struct snapraid_global {

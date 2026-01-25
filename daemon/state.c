@@ -38,8 +38,8 @@ void state_done(void)
 
 	tommy_list_foreach(&state->runner.waiting_list, task_free);
 	tommy_list_foreach(&state->runner.history_list, task_free);
-	tommy_list_foreach(&state->global.diff_current.diff_list, diff_free);
-	tommy_list_foreach(&state->global.diff_prev.diff_list, diff_free);
+	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
+	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
 	thread_mutex_destroy(&state->lock);
 }
 

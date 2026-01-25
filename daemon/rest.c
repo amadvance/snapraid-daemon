@@ -681,6 +681,25 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
+	int cmd = 0;
+	const char* arg = 0;
+	if (strncmp(path, "/api/v1/", 8) == 0)
+		cmd = command_parse(path + 8);
+	switch (cmd) {
+	case 0 :
+		return send_json_error(conn, 404, "Resource not found");
+	case CMD_MAINTENANCE :
+	case CMD_HEAL :
+	case CMD_DOWN_IDLE :
+		break;
+	case CMD_UNDELETE :
+		arg = "filters";
+		break;
+	default :
+		arg = "args";
+		break;
+	}
+
 	status = json_read(conn, &js, &jl, msg, sizeof(msg));
 	if (status != 200)
 		return send_json_error(conn, status, msg);
@@ -701,14 +720,14 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		}
 		c0 = jv[j++].size;
 		while (c0-- > 0) {
-			if (json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
+			if (arg != 0 && json_type(js, &jv[j], json_const(arg), JSMN_ARRAY) == 0) {
 				int j1 = j;
 				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
-					char* arg;
-					if (json_string_inplace(js, &jv[j], &arg) == 0) {
-						sl_insert_str(&arg_list, arg);
+					char* val;
+					if (json_string_inplace(js, &jv[j], &val) == 0) {
+						sl_insert_str(&arg_list, val);
 					} else {
 						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
 						goto bad;
@@ -722,33 +741,21 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	if (strcmp(path, "/api/v1/sync") == 0)
-		runner(state, CMD_SYNC, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/scrub") == 0)
-		runner(state, CMD_SCRUB, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/probe") == 0)
-		runner(state, CMD_PROBE, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/up") == 0)
-		runner(state, CMD_UP, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/down") == 0)
-		runner(state, CMD_DOWN, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/smart") == 0)
-		runner(state, CMD_SMART, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/diff") == 0)
-		runner(state, CMD_DIFF, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/status") == 0)
-		runner(state, CMD_STATUS, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/check") == 0)
-		runner(state, CMD_CHECK, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/fix") == 0)
-		runner(state, CMD_FIX, 0, &arg_list, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/maintenance") == 0)
+	switch (cmd) {
+	case CMD_MAINTENANCE :
 		schedule_maintenance(state, msg, sizeof(msg), &status);
-	else if (strcmp(path, "/api/v1/down_idle") == 0)
+		break;
+	case CMD_HEAL :
+		schedule_heal(state, msg, sizeof(msg), &status);
+		break;
+	case CMD_UNDELETE :
+		schedule_undelete(state, &arg_list, msg, sizeof(msg), &status);
+		break;
+	case CMD_DOWN_IDLE :
 		schedule_down_idle(state, msg, sizeof(msg), &status);
-	else {
-		sncpy(msg, sizeof(msg), "Resource not found");
-		status = 404;
+		break;
+	default :
+		runner(state, cmd, 0, &arg_list, msg, sizeof(msg), &status);
 	}
 
 	free(js);
@@ -1041,6 +1048,14 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 		ss_json_i64(s, level, "error_data", task->error_data);
 		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
+	case CMD_FIX :
+	case CMD_CHECK :
+		ss_json_i64(s, level, "error_unrecoverable", task->error_unrecoverable);
+		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
+		ss_json_i64(s, level, "error_io", task->error_io);
+		ss_json_i64(s, level, "error_data", task->error_data);
+		ss_json_i64(s, level, "block_bad", task->block_bad);
+		break;
 	case CMD_STATUS :
 		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
@@ -1209,17 +1224,17 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_u64(&s, level, "diff_copied", global->diff_current.diff_copied);
 		ss_json_u64(&s, level, "diff_restored", global->diff_current.diff_restored);
 		ss_json_array_open(&s, &level, "diffs");
-		for (tommy_node* i = tommy_list_head(&global->diff_current.diff_list); i; i = i->next) {
-			struct snapraid_diff* diff = i->data;
+		for (tommy_node* i = tommy_list_head(&global->diff_current.file_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
 			ss_json_open(&s, &level);
 
-			ss_json_str(&s, level, "change", change_name(diff->change));
-			if (diff->source_disk[0])
-				ss_json_str(&s, level, "source_disk", diff->source_disk);
-			if (diff->source_path[0])
-				ss_json_str(&s, level, "source_path", diff->source_path);
-			ss_json_str(&s, level, "disk", diff->disk);
-			ss_json_str(&s, level, "path", diff->path);
+			ss_json_str(&s, level, "change", change_name(file->change));
+			if (file->source_disk[0])
+				ss_json_str(&s, level, "source_disk", file->source_disk);
+			if (file->source_path[0])
+				ss_json_str(&s, level, "source_path", file->source_path);
+			ss_json_str(&s, level, "disk", file->disk);
+			ss_json_str(&s, level, "path", file->path);
 			ss_json_close(&s, &level);
 		}
 		ss_json_array_close(&s, &level);
@@ -1300,6 +1315,8 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/api/v1/check", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/fix", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/maintenance", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/heal", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/api/v1/undelete", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/down_idle", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/api/v1/report", handler_report, state);

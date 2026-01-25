@@ -38,7 +38,7 @@ struct snapraid_task* task_alloc(void);
 void task_free(void* void_task);
 
 /**
- * Move all the tasks in the history list
+ * Cancel tasks and move in the history list. Stop at the first REPORT tasks
  */
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
 
@@ -47,9 +47,13 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 
 const char* change_name(int change);
 
-struct snapraid_diff* diff_alloc(int reason, const char* disk, const char* path);
-struct snapraid_diff* diff_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
-void diff_free(void* void_diff);
+struct snapraid_file* file_alloc(int reason, const char* disk, const char* path);
+struct snapraid_file* file_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
+void file_free(void* void_file);
+
+/****************************************************************************/
+/* diff */
+
 void diff_cleanup(struct snapraid_diff_stat* diff);
 void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre);
 
