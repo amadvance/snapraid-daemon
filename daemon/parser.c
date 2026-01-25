@@ -519,7 +519,7 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
-	if (strcmp(map[0], "error_io") == 0) {
+	if (strstr(map[0], "error_io:") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
 		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
 		++data->error_io;
 	} else if (strcmp(map[0], "error_data") == 0) {
@@ -899,7 +899,13 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_summary(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "error") == 0 || strcmp(cmd, "error_io") == 0 || strcmp(cmd, "error_data") == 0) {
+	} else if (
+		strcmp(cmd, "error") == 0 || strcmp(cmd, "error_io") == 0 || strcmp(cmd, "error_data") == 0
+		|| strcmp(cmd, "hardlink_error") == 0 || strcmp(cmd, "hardlink_error_io") == 0
+		|| strcmp(cmd, "symlink_error") == 0 || strcmp(cmd, "symlink_error_io") == 0
+		|| strcmp(cmd, "dir_error") == 0 || strcmp(cmd, "dir_error_io") == 0
+		|| strcmp(cmd, "empty_error") == 0 || strcmp(cmd, "empty_error_io") == 0
+	) {
 		state_lock();
 		process_error(state, map, mac);
 		state_unlock();
