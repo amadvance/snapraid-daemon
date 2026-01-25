@@ -388,6 +388,77 @@ static int runner_precondition(struct snapraid_state* state)
 	return 0;
 }
 
+static void runner_spindown_inactive_locked(struct snapraid_state* state)
+{
+	char msg[256];
+	struct snapraid_task* task = state->runner.latest;
+	int count = 0;
+
+	int spindown_idle_minutes = state->config.spindown_idle_minutes;
+	if (spindown_idle_minutes == 0)
+		return; /* nothing to do */
+
+	/* insert in the argument list the disk to spin down */
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* data = i->data;
+		int active = 0;
+
+		for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+			if (device->power == POWER_ACTIVE)
+				active = 1;
+		}
+
+		int unused_minutes = (data->access_count_latest_time - data->access_count_initial_time) / 60;
+		if (active
+			&& unused_minutes / 60 >= spindown_idle_minutes) {
+			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", data->name, unused_minutes);
+			sl_insert_str(&task->message_list, msg);
+			sl_insert_str(&task->arg_list, "-d");
+			sl_insert_str(&task->arg_list, data->name);
+			++count;
+		}
+	}
+
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_disk* parity = i->data;
+		int active = 0;
+
+		for (tommy_node* j = tommy_list_head(&parity->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+			if (device->power == POWER_ACTIVE)
+				active = 1;
+		}
+
+		int unused_minutes = (parity->access_count_latest_time - parity->access_count_initial_time) / 60;
+		if (active
+			&& unused_minutes / 60 >= spindown_idle_minutes) {
+			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", parity->name, unused_minutes);
+			sl_insert_str(&task->message_list, msg);
+			sl_insert_str(&task->arg_list, "-d");
+			sl_insert_str(&task->arg_list, parity->name);
+			++count;
+		}
+	}
+
+	/* no count, nothing to do */
+	if (count == 0) {
+		task->running = 0;
+		task->state = PROCESS_STATE_TERM;
+		task->exit_code = 0;
+		task->unix_end_time = task->unix_start_time;
+
+		/* insert the task in the done list, but keep it in the latest pointer */
+		tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
+
+		sl_insert_str(&task->message_list, "Nothing to spindown");
+	} else {
+		runner_go(state);
+	}
+}
+
 static void* runner_thread(void* arg)
 {
 	struct snapraid_state* state = arg;
@@ -418,7 +489,11 @@ static void* runner_thread(void* arg)
 			} else if (runner_precondition(state) == 0) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
-				runner_go(state);
+				if (task->cmd == CMD_DOWN_IDLE) {
+					runner_spindown_inactive_locked(state);
+				} else {
+					runner_go(state);
+				}
 			} else {
 				task->state = PROCESS_STATE_CANCEL;
 				task->unix_end_time = now;
@@ -497,8 +572,16 @@ static int runner_lock(struct snapraid_state* state, int lock, int cmd, time_t n
 	task->cmd = cmd;
 	task->unix_queue_time = now;
 
+	/* translate some commands */
+	int cmd_translate = cmd;
+	switch (cmd_translate) {
+	case CMD_DOWN_IDLE :
+		cmd_translate = CMD_DOWN;
+		break;
+	}
+
 	sl_insert_str(&task->arg_list, snapraid);
-	sl_insert_str(&task->arg_list, command_name(cmd));
+	sl_insert_str(&task->arg_list, command_name(cmd_translate));
 	sl_insert_str(&task->arg_list, "--gui");
 	sl_insert_str(&task->arg_list, "--log");
 	sl_insert_str(&task->arg_list, ">&2");
@@ -541,65 +624,6 @@ int runner_locked(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_l
 int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	return runner_lock(state, 1, cmd, now, arg_list, msg, msg_size, status);
-}
-
-int runner_spindown_inactive_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
-{
-	int ret;
-	sl_t arg_list;
-
-	sncpy(msg, msg_size, "");
-	sl_init(&arg_list);
-
-	int spindown_idle_minutes = state->config.spindown_idle_minutes;
-
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_disk* data = i->data;
-		int active = 0;
-
-		for (tommy_node* j = tommy_list_head(&data->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-			if (device->power == POWER_ACTIVE)
-				active = 1;
-		}
-
-		if (active
-			&& (data->access_count_latest_time - data->access_count_initial_time) / 60 >= spindown_idle_minutes) {
-			sl_insert_str(&arg_list, "-d");
-			sl_insert_str(&arg_list, data->name);
-		}
-	}
-
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
-		struct snapraid_disk* parity = i->data;
-		int active = 0;
-
-		for (tommy_node* j = tommy_list_head(&parity->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-			if (device->power == POWER_ACTIVE)
-				active = 1;
-		}
-
-		if (active
-			&& (parity->access_count_latest_time - parity->access_count_initial_time) / 60 >= spindown_idle_minutes) {
-			sl_insert_str(&arg_list, "-d");
-			sl_insert_str(&arg_list, parity->name);
-		}
-	}
-
-	if (tommy_list_empty(&arg_list)) {
-		sncpy(msg, msg_size, "Nothing to do");
-		*status = 200;
-		ret = 0;
-	} else {
-		ret = runner_locked(state, CMD_DOWN, 0, &arg_list, msg, msg_size, status);
-	}
-
-	sl_free(&arg_list);
-
-	return ret;
 }
 
 /**

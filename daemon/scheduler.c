@@ -106,9 +106,9 @@ void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int
 	 */
 	int ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 	if (ret == 0)
-		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 	sl_free(&scrub_arg_list);
@@ -140,7 +140,7 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 	 */
 	runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 
@@ -150,16 +150,15 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
 {
 	/*
-	 * Schedule a probe and spindown
+	 * Schedule a probe and spindown on idle
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
-	if (runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status) == 0) {
-		if (spindown_idle_minutes > 0) {
-			/* spindown inactive */
-			(void)runner_spindown_inactive_locked(state, msg, msg_size, status); /* error already logged */
-		}
-	}
+	int ret = runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status);
+	if (ret == 0 && spindown_idle_minutes > 0)
+		runner_locked(state, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
 }
 
 void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
