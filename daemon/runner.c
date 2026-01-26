@@ -587,6 +587,7 @@ static int runner_lock(struct snapraid_state* state, int lock, int cmd, time_t n
 
 	sl_insert_str(&task->arg_list, snapraid);
 	sl_insert_str(&task->arg_list, command_name(cmd_translate));
+	sl_insert_str(&task->arg_list, "--verbose");
 	sl_insert_str(&task->arg_list, "--gui");
 	sl_insert_str(&task->arg_list, "--log");
 	sl_insert_str(&task->arg_list, ">&2");

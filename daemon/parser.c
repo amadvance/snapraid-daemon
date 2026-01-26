@@ -487,14 +487,16 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
-		const char* msg = map[2];
+	const char* msg = map[2];
 
-		/* skip initial spaces */
-		while (*msg != 0 && isspace((unsigned char)*msg))
-			++msg;
+	/* skip initial spaces */
+	while (*msg != 0 && isspace((unsigned char)*msg))
+		++msg;
 
+	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0 || strcmp(map[1], "verbose") == 0) {
 		sl_insert_str(&task->message_list, msg);
+	} else if (strcmp(map[1], "error") == 0 || strcmp(map[1], "fatal") == 0 || strcmp(map[1], "expected") == 0) {
+		sl_insert_str(&task->error_list, msg);
 	}
 }
 
@@ -574,63 +576,6 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
 		++parity->error_data;
 	}
-}
-
-static void process_hardlink_error(struct snapraid_state* state, char** map, size_t mac)
-{
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
-	if (mac < 5) /* hardlink_error:<disk_name>:<link_path>:<target_path>:<msg> */
-		return;
-
-	msg = map[4]; /* error message is the last field */
-
-	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
-		++msg;
-
-	sl_insert_str(&task->error_list, msg);
-}
-
-static void process_symlink_error(struct snapraid_state* state, char** map, size_t mac)
-{
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
-	if (mac < 4) /* symlink_error:<disk_name>:<link_path>:<msg> */
-		return;
-
-	msg = map[3]; /* error message is the last field */
-
-	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
-		++msg;
-
-	sl_insert_str(&task->error_list, msg);
-}
-
-static void process_dir_error(struct snapraid_state* state, char** map, size_t mac)
-{
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
-	if (mac < 4) /* dir_error:<disk_name>:<dir_path>:<msg> */
-		return;
-
-	msg = map[3]; /* error message is the last field */
-
-	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
-		++msg;
-
-	sl_insert_str(&task->error_list, msg);
 }
 
 static void process_outofparity(struct snapraid_state* state, char** map __attribute__((unused)), size_t mac __attribute__((unused)))
@@ -941,18 +886,6 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "parity_error") == 0 || strcmp(cmd, "parity_error_io") == 0 || strcmp(cmd, "parity_error_data") == 0) {
 		state_lock();
 		process_parity_error(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "hardlink_error") == 0) {
-		state_lock();
-		process_hardlink_error(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "symlink_error") == 0) {
-		state_lock();
-		process_symlink_error(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "dir_error") == 0) {
-		state_lock();
-		process_dir_error(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "outofparity") == 0) {
 		state_lock();
