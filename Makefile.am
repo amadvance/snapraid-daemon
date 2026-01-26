@@ -1,11 +1,23 @@
 bin_PROGRAMS = snapraidd
 
+# flags
 AM_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\""
 
 snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" \
 	-DNO_SSL -DNO_SSL_DL -DNO_CGI -DNO_FILES -DNO_FILESYSTEMS -DNO_THREAD_NAME \
 	-DMG_EXTERNAL_FUNCTION_mg_cry_internal_impl \
 	-DMG_EXTERNAL_FUNCTION_log_access
+
+# init system
+if INSTALL_SYSTEMD
+systemdsystemunitdir = @systemdsystemunitdir@
+systemdsystemunit_DATA = snapraidd.service
+endif
+
+if INSTALL_BSD_INIT
+rcdir = /etc/rc.d
+rc_SCRIPTS = rc.snapraidd
+endif
 
 snapraidd_SOURCES = \
 	daemon/daemon.c \
@@ -78,7 +90,8 @@ EXTRA_DIST = \
 	acinclude.m4 \
 	tommyds/LICENSE \
 	jsmn/LICENSE \
-	civetweb/LICENSE.md
+	civetweb/LICENSE.md \
+	snapraidd.service.in rc.snapraidd.in
 
 man1_MANS = doc/snapraidd.1
 
@@ -90,20 +103,63 @@ maintainer-clean-local:
 	rm -f $(LIST_TXT)
 	rm -f $(LIST_HH)
 
-# Install localized manpages
 install-data-hook:
+# Install localized manpages
 	for lang in $(LANG_CODES); do \
 		mkdir -p $(DESTDIR)$(mandir)/$$lang/man1; \
 		$(INSTALL_DATA) $(srcdir)/doc/snapraidd-$$lang.1 $(DESTDIR)$(mandir)/$$lang/man1/snapraidd.1; \
 	done
+# Install service/rc.d
+	@echo ""
+	@echo "=================================================================="
+	@echo " $(PACKAGE_NAME) installation complete!"
+	@echo "=================================================================="
+	@if [ -z "$(DESTDIR)" ]; then \
+		if [ "x$(init_type)" = "xsystemd" ]; then \
+			echo " Detected systemd. To start the daemon now and at boot:"; \
+			echo "   sudo systemctl daemon-reload"; \
+			echo "   sudo systemctl enable --now $(PACKAGE_NAME)"; \
+			echo ""; \
+			echo " To check status:"; \
+			echo "   systemctl status $(PACKAGE_NAME)"; \
+		elif [ "x$(init_type)" = "xbsd" ]; then \
+			echo " Detected BSD-style init. To enable the daemon:"; \
+			echo "   sudo chmod +x /etc/rc.d/rc.$(PACKAGE_NAME)"; \
+			echo ""; \
+			echo " To start it now, add this to /etc/rc.d/rc.local:"; \
+			echo "   if [ -x /etc/rc.d/rc.$(PACKAGE_NAME) ]; then"; \
+			echo "     /etc/rc.d/rc.$(PACKAGE_NAME) start"; \
+			echo "   fi"; \
+			echo ""; \
+			echo " Or run manually: sudo /etc/rc.d/rc.$(PACKAGE_NAME) start"; \
+		fi; \
+	fi
+	@echo "=================================================================="
+	@echo ""
 
-# Uninstall localized manpages
 uninstall-hook:
+# Uninstall localized manpages
 	for lang in $(LANG_CODES); do \
 		rm -f $(DESTDIR)$(mandir)/$$lang/man1/snapraidd.1; \
 		rmdir --ignore-fail-on-non-empty $(DESTDIR)$(mandir)/$$lang/man1 2>/dev/null || true; \
 		rmdir --ignore-fail-on-non-empty $(DESTDIR)$(mandir)/$$lang 2>/dev/null || true; \
 	done
+# Uninstall service/rc.d
+	@if [ -z "$(DESTDIR)" ]; then \
+		if [ "x$(init_type)" = "xsystemd" ]; then \
+			echo "Stopping and disabling systemd service..."; \
+			systemctl disable --now $(PACKAGE_NAME) 2>/dev/null || true; \
+			systemctl daemon-reload 2>/dev/null || true; \
+		fi; \
+		echo "Cleaning up runtime files..."; \
+		rm -f /run/$(PACKAGE_NAME).pid; \
+	fi
+	@echo ""
+	@echo "=================================================================="
+	@echo " $(PACKAGE_NAME) has been uninstalled."
+	@echo " Note: Configuration files and logs were preserved."
+	@echo "=================================================================="
+	@echo ""
 
 # Basic dependencies
 DAEMON_PREFIX=daemon/snapraidd-

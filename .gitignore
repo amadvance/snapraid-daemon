@@ -37,6 +37,8 @@ stamp-h1
 snapraidd
 *.exe
 *.o
+snapraidd.service
+rc.snapraidd
 
 # projects
 *.dst

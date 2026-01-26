@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# rc.snapraidd: Generic BSD-style init script for the SnapRAID API daemon.
+#
+
+# Autoconf placeholders
+BIN=@bindir@/snapraidd
+CONF=@sysconfdir@/snapraidd.conf
+PIDF=/run/snapraidd.pid
+
+# Check if the binary is actually executable
+if [ ! -x "$BIN" ]; then
+    echo "Error: $BIN not found or not executable."
+    exit 1
+fi
+
+snapraidd_start() {
+    if [ -f "$PIDF" ]; then
+        # Check if the process is actually running
+        if ps -p $(cat "$PIDF") > /dev/null 2>&1; then
+            echo "snapraidd is already running (PID: $(cat "$PIDF"))."
+            return
+        fi
+        # Stale PID file found
+        rm -f "$PIDF"
+    fi
+
+    echo "Starting snapraidd..."
+    # We call it without an '&' because os_daemonize() handles the backgrounding
+    $BIN --conf "$CONF"
+}
+
+snapraidd_stop() {
+    if [ -f "$PIDF" ]; then
+        PID=$(cat "$PIDF")
+        echo "Stopping snapraidd (PID: $PID)..."
+        kill "$PID"
+        # The C code should unlink the file, but we wait and clean up to be sure
+        COUNT=0
+        while [ -f "$PIDF" ] && [ $COUNT -lt 5 ]; do
+            sleep 1
+            COUNT=$((COUNT + 1))
+        done
+        [ -f "$PIDF" ] && rm -f "$PIDF"
+    else
+        echo "snapraidd is not running."
+    fi
+}
+
+snapraidd_reload() {
+    if [ -f "$PIDF" ]; then
+        echo "Reloading snapraidd configuration (SIGHUP)..."
+        kill -HUP $(cat "$PIDF")
+    else
+        echo "Error: snapraidd is not running; cannot reload."
+    fi
+}
+
+case "$1" in
+    'start')
+        snapraidd_start
+        ;;
+    'stop')
+        snapraidd_stop
+        ;;
+    'restart')
+        snapraidd_stop
+        sleep 2
+        snapraidd_start
+        ;;
+    'reload')
+        snapraidd_reload
+        ;;
+    *)
+        echo "usage: $0 {start|stop|restart|reload}"
+        exit 1
+        ;;
+esac

@@ -114,5 +114,28 @@ AC_ARG_ENABLE([warning],
 	],
 	[])
 
-AC_CONFIG_FILES([Makefile])
+AC_ARG_WITH([init-type],
+    [AS_HELP_STRING([--with-init-type=TYPE], [Init system type: systemd, bsd, or none (default: auto)])],
+    [init_type=$withval],
+    [init_type=auto])
+
+if test "x$init_type" = "xauto"; then
+    if test -d /etc/rc.d; then
+        init_type=bsd
+    elif $PKG_CONFIG --exists systemd; then
+        init_type=systemd
+    else
+        init_type=none
+    fi
+fi
+
+# Set Automake conditionals for the Makefile
+AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
+AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
+
+# Provide feedback during ./configure
+AC_MSG_NOTICE([Selected init system: $init_type])
+
+AC_CONFIG_FILES([Makefile snapraidd.service rc.snapraidd])
+
 AC_OUTPUT

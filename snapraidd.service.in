@@ -1,0 +1,34 @@
+[Unit]
+Description=SnapRAID Daemon
+
+# Ensures the network is up and local disks are mounted before starting
+After=network-online.target local-fs.target
+Wants=network-online.target local-fs.target
+Documentation=https://github.com/amadvance/snapraidd
+
+[Service]
+Type=forking
+PIDFile=/run/snapraidd.pid
+ExecStart=@bindir@/snapraidd --conf @sysconfdir@/snapraidd.conf
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Automatically restart the daemon if it crashes
+Restart=on-failure
+RestartSec=5
+
+# Resource Management:
+# SnapRAID is I/O heavy; these ensure it doesn't lag the system
+Nice=19
+IOSchedulingClass=idle
+
+# Security Hardening
+# Runs as root (required for SnapRAID disk access) but limits capabilities
+User=root
+Group=root
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+# Start automatically when the system reaches the standard multi-user state
+WantedBy=multi-user.target
