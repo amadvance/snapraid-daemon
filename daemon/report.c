@@ -305,14 +305,20 @@ static void print_device(struct snapraid_device* device, ss_t* ss, struct disk_s
 	ss_prints(ss, "   Serial: ");
 	ss_printl(ss, device->serial[0] ? device->serial : "-", sp->serial_len);
 	ss_prints(ss, "\n");
-	if (device->error_medium != SMART_UNASSIGNED || device->error_protocol != SMART_UNASSIGNED) {
+	if (device->error_medium != SMART_UNASSIGNED && device->error_medium != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, ">> Medium Errors: %" PRIu64 ", Protocol Errors: %" PRIu64 "\n", device->error_medium, device->error_protocol);
+		ss_printf(ss, ">> Medium Errors: %" PRIu64 "\n", device->error_medium);
 	}
-	const char* smart = smart_report(device->flags);
-	if (smart) {
+	if (device->error_protocol != SMART_UNASSIGNED && device->error_protocol != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, ">> SMART reports: %s\n", smart);
+		ss_printf(ss, ">> Protocol Errors: %" PRIu64 "\n", device->error_protocol);
+	}
+	if (device->flags != SMART_UNASSIGNED) {
+		const char* smart = smart_report(device->flags);
+		if (smart) {
+			ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
+			ss_printf(ss, ">> SMART reports: %s\n", smart);
+		}
 	}
 }
 
@@ -428,21 +434,23 @@ int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* 
 	}
 
 	/* global statistics */
-	print_line_separator(ss);
-	ss_prints(ss, "DIFFERENCES:\n\n");
-	ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);
-	ss_printf(ss, "  added:   %10" PRId64 "\n", diff_stat->diff_added);
-	ss_printf(ss, "  removed: %10" PRId64 "\n", diff_stat->diff_removed);
-	ss_printf(ss, "  updated: %10" PRId64 "\n", diff_stat->diff_updated);
-	ss_printf(ss, "  moved:   %10" PRId64 "\n", diff_stat->diff_moved);
-	ss_printf(ss, "  copied:  %10" PRId64 "\n", diff_stat->diff_copied);
-	ss_printf(ss, "  restored:%10" PRId64 "\n", diff_stat->diff_restored);
-	ss_prints(ss, "\n");
-
-	/* differences list if enabled */
-	if (state->config.notify_differences != 0) {
-		print_differences(ss, &diff_stat->file_list);
+	if (state->global.diff_time) {
+		print_line_separator(ss);
+		ss_prints(ss, "DIFFERENCES:\n\n");
+		ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);
+		ss_printf(ss, "  added:   %10" PRId64 "\n", diff_stat->diff_added);
+		ss_printf(ss, "  removed: %10" PRId64 "\n", diff_stat->diff_removed);
+		ss_printf(ss, "  updated: %10" PRId64 "\n", diff_stat->diff_updated);
+		ss_printf(ss, "  moved:   %10" PRId64 "\n", diff_stat->diff_moved);
+		ss_printf(ss, "  copied:  %10" PRId64 "\n", diff_stat->diff_copied);
+		ss_printf(ss, "  restored:%10" PRId64 "\n", diff_stat->diff_restored);
 		ss_prints(ss, "\n");
+
+		/* differences list if enabled */
+		if (state->config.notify_differences != 0) {
+			print_differences(ss, &diff_stat->file_list);
+			ss_prints(ss, "\n");
+		}
 	}
 
 	/* footer */
