@@ -976,8 +976,13 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	size_t len = 0;
 	size_t mac = 0;
 	int escape = 0;
+	int disable = 0;
 
 	map[mac++] = line;
+
+	/* clear the engine version */
+	state->global.version_major = 0;
+	state->global.version_minor = 0;
 
 	while (1) {
 		ssize_t n = read(f, buf, sizeof(buf));
@@ -1024,7 +1029,19 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 					line[len] = '\0';
 					map[mac] = 0;
 
-					process_line(state, map, mac);
+					if (!disable) {
+						process_line(state, map, mac);
+
+						/* version 14 is the minimal supported one */
+						if (state->global.version_major != 0 && state->global.version_major < 14) {
+							/* don't log error in syslog if it's a past log */
+							if (log_f)
+								log_msg(LVL_ERROR, "requires SnapRAID 14.0 or newer");
+							if (state->runner.latest)
+								sl_insert_str(&state->runner.latest->error_list, "Requires SnapRAID 14.0 or newer");
+							disable = 1;
+						}
+					}
 
 					len = 0;
 					mac = 0;
