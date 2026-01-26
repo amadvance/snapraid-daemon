@@ -1,0 +1,118 @@
+SnapRAID Daemon INSTALL
+=======================
+
+To build and install SnapRAID-Daemon, download the source code from
+http://www.snapraid.it and unpack it with the following commands:
+
+    tar xf snapraidd-.tar.gz
+    cd snapraidd-*
+
+To configure and build SnapRAID-Daemon, run:
+
+    ./configure
+    make
+
+If the tests complete with "Success", install the application and documentation
+using:
+
+    sudo make install
+
+To start using SnapRAID-Daemon, modify the example configuration file
+snapraidd.conf.example to suit your needs and copy it to /etc/snapraidd.conf.
+
+For additional guidance, refer to the SnapRAID-Daemon manpage by typing:
+
+    man snapraidd
+
+
+SnapRAID Daemon INSTALL
+=======================
+
+To build and install SnapRAID-Daemon, download the source code from
+http://www.snapraid.it and unpack it with the following commands:
+
+    tar xf snapraidd-*.tar.gz
+    cd snapraidd-*
+
+To configure the build environment and compile the binary, run:
+
+    ./configure
+    make
+
+If the compilation completes without errors, install the application,
+documentation, and system service files using:
+
+   sudo make install
+
+
+Post-Installation Setup
+-----------------------
+
+After the installation completes, the build system will automatically detect
+your init system (systemd or BSD-style) and provide instructions.
+
+# Systemd (Modern Linux)
+
+If systemd is detected, the service file is installed automatically. To
+enable the daemon to start at boot and start it immediately, run:
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now snapraidd
+
+To monitor the service status and logs:
+
+    systemctl status snapraidd
+
+# BSD-style init (Slackware and Others)
+
+If a BSD-style init system is detected, the service script is placed in
+/etc/rc.d/rc.snapraidd. First, ensure the script is executable:
+
+    sudo chmod +x /etc/rc.d/rc.snapraidd
+
+To start the daemon automatically at boot, append the following to your
+/etc/rc.d/rc.local:
+
+    if [ -x /etc/rc.d/rc.snapraidd ]; then
+        /etc/rc.d/rc.snapraidd start
+    fi
+
+To start it manually:
+
+    sudo /etc/rc.d/rc.snapraidd start
+
+
+Configuration
+-------------
+
+Before the daemon can operate correctly, you must configure it to match your
+SnapRAID setup:
+
+1. Copy the example configuration to the production path:
+
+    sudo cp snapraidd.conf.example /etc/snapraidd.conf
+
+2. Edit /etc/snapraidd.conf with your preferred text editor.
+
+3. If the daemon is already running, apply changes by sending a SIGHUP signal:
+
+    sudo systemctl reload snapraidd
+
+For additional guidance, refer to the SnapRAID-Daemon manpage by typing:
+`man snapraidd`
+
+
+Uninstallation
+--------------
+
+To remove SnapRAID-Daemon from your system, run the following command from
+the source directory:
+
+    sudo make uninstall
+
+On systemd units, it automatically stops the running service and disables it
+from the boot sequence.
+
+For safety and audit purposes, configuration files in '/etc/' and historical
+log files in the 'log_directory' are NOT removed. These must be deleted
+manually if a complete purge is desired.

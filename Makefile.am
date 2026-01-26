@@ -64,8 +64,9 @@ noinst_HEADERS = \
 	daemon/elem.h \
 	daemon/report.h \
 	snapraidd.yaml \
-	snapraidd.service \
-	snapraidd.conf
+	snapraidd.service.in \
+	rc.snapraidd.in \
+	snapraidd.conf.example
 
 # Add the .version file in the distribution
 dist-hook:
@@ -83,7 +84,7 @@ LIST_HH = doc/snapraidd.hh $(patsubst %, doc/snapraidd-%.hh, $(LANG_CODES))
 
 EXTRA_DIST = \
 	autogen.sh autover.sh \
-	README COPYING HISTORY \
+	README COPYING HISTORY INSTALL \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \

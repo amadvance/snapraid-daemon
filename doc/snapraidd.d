@@ -74,8 +74,8 @@ Configuration
 	daemon is active, ensure a reload is triggered immediately to
 	synchronize the daemon's internal memory state with the disk.
 
-	For complete technical documentation, please refer to the snapraidd.conf
-	example file.
+	For complete technical documentation, please refer to the
+	`snapraidd.conf.example` file.
 
   Network & REST API
 	These settings control the network interface. These options are not
@@ -109,8 +109,8 @@ Configuration
 
   Automation & Maintenance
 	These settings control the automation and maintenance tasks run by
-	the SnapRAID daemon. 
-    
+	the SnapRAID daemon.
+
 	For security reasons some of them can be set from the REST API only if the
 	net_config_full_access option is set.
 
