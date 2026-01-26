@@ -20,6 +20,7 @@
 #include "state.h"
 #include "log.h"
 #include "support.h"
+#include "daemon.h"
 
 /****************************************************************************/
 /* exec */
@@ -234,7 +235,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 /**
  * Executes a script directly via its file descriptor.
  */
-int os_script(const char* script_path, const char* run_as_user)
+int daemon_script(const char* script_path, const char* run_as_user)
 {
 	int fd;
 	struct stat st;
@@ -431,7 +432,7 @@ int os_script(const char* script_path, const char* run_as_user)
 #endif
 
 		/* restore and unblock signals */
-		os_signal_restore_after_fork();
+		daemon_signal_restore_after_fork();
 
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
@@ -488,7 +489,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	}
 }
 
-int os_command(const char* command, const char* target_user, const char* stdin_text)
+int daemon_command(const char* command, const char* target_user, const char* stdin_text)
 {
 	pid_t pid;
 	int ret;
@@ -584,7 +585,7 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 #endif
 
 		/* restore and unblock signals */
-		os_signal_restore_after_fork();
+		daemon_signal_restore_after_fork();
 
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
@@ -671,7 +672,7 @@ bail:
 #endif
 }
 
-pid_t os_spawn(char** argv, int* stderr_fd)
+pid_t daemon_spawn(char** argv, int* stderr_fd)
 {
 	int err_pipe[2];
 	pid_t pid;
@@ -718,7 +719,7 @@ pid_t os_spawn(char** argv, int* stderr_fd)
 			close(null_fd);
 
 		/* restore and unblock signals */
-		os_signal_restore_after_fork();
+		daemon_signal_restore_after_fork();
 
 		execve(argv[0], (char* const*)argv, envp_scrubbed);
 		_exit(127);
@@ -747,7 +748,7 @@ static void signal_handler_hup(int sig)
 	state_ptr()->daemon_running = DAEMON_RELOAD;
 }
 
-void os_signal_restore_after_fork(void)
+void daemon_signal_restore_after_fork(void)
 {
 	struct sigaction sa;
 
@@ -768,7 +769,7 @@ void os_signal_restore_after_fork(void)
 	sigprocmask(SIG_SETMASK, &mask, NULL); /* cannot use pthread_sigmask after fork */
 }
 
-void os_signal_set(int enable)
+void daemon_signal_set(int enable)
 {
 	sigset_t set;
 
@@ -781,7 +782,7 @@ void os_signal_set(int enable)
 	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
 }
 
-void os_signal_init(void)
+void daemon_signal_init(void)
 {
 	struct sigaction sa;
 
@@ -806,7 +807,7 @@ void os_signal_init(void)
 	sigaction(SIGPIPE, &sa, 0);
 }
 
-static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+static int daemon_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
 {
 	/* determine the path if not explicitly provided */
 	if (pidfile_arg) {
@@ -874,7 +875,7 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
  * Detaches the process from the controlling terminal and runs it in the background.
  * Follows the "double-fork" method to ensure the daemon cannot re-acquire a TTY.
  */
-int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
 {
 	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
@@ -902,7 +903,7 @@ int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_ar
 	 * We do this BEFORE closing I/O so we can still report errors to stderr
 	 * if another instance is already running.
 	 */
-	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
+	int pidfd = daemon_pidfile(pidfile_path, pidfile_size, pidfile_arg);
 	if (pidfd < 0)
 		return -1;
 

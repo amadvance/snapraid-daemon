@@ -252,57 +252,5 @@ static inline int close_range_impl(unsigned int first, unsigned int last, unsign
 #define HAVE_CLOSE_RANGE 1
 #endif
 
-/**
- * OS specific
- */
-
-/**
- * Spawn a new process with the specified argument vector.
- * @param argv Array of command line arguments
- * @param stderr_fd Pointer to store file descriptor for stderr
- * @return Process ID of spawned process
- */
-pid_t os_spawn(char** argv, int* stderr_fd);
-
-/**
- * Execute a system command with optional user context and input.
- * @param command Command to execute
- * @param target_user User to run command as (NULL for current user)
- * @param stdin_text Text to provide as stdin (NULL for no input)
- * @return Exit status of command
- */
-int os_command(const char* command, const char* target_user, const char* stdin_text);
-
-/**
- * Execute a script file with specified user context.
- * @param script_path Path to script file
- * @param run_as_user User to run script as (NULL for current user)
- * @return Exit status of script
- */
-int os_script(const char* script_path, const char* run_as_user);
-
-/**
- * Initialize signal handling for the daemon.
- */
-void os_signal_init(void);
-
-/**
- * Enable or disable signal handling.
- * @param enable 1 to enable signals, 0 to disable
- */
-void os_signal_set(int enable);
-
-/**
- * Daemonize the current process.
- * @return The PID file descriptor on success, -1 on error
- */
-int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg);
-
-/**
- * Restore signal handlers after fork in child process.
- * This resets signals to default handling for the daemon.
- */
-void os_signal_restore_after_fork(void);
-
 #endif
 

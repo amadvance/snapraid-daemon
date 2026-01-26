@@ -192,7 +192,7 @@ static void runner_go(struct snapraid_state* state)
 		log_msg(LVL_INFO, "task %d run %s", number, script_pre_run);
 		if (log_f != 0)
 			fprintf(log_f, "daemon:pre:%s\n", script_pre_run);
-		script_ret = os_script(script_pre_run, script_run_as_user);
+		script_ret = daemon_script(script_pre_run, script_run_as_user);
 		if (script_ret < 0) {
 			log_msg(LVL_INFO, "task %d end %s with failed run", number, script_pre_run);
 			if (log_f != 0)
@@ -218,7 +218,7 @@ static void runner_go(struct snapraid_state* state)
 		}
 	}
 
-	pid = os_spawn(argv, &f);
+	pid = daemon_spawn(argv, &f);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to start task %d run %s due to failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		ret = -1;
@@ -267,7 +267,7 @@ static void runner_go(struct snapraid_state* state)
 		if (log_f != 0)
 			fprintf(log_f, "daemon:post:%s\n", script_post_run);
 
-		script_ret = os_script(script_post_run, script_run_as_user);
+		script_ret = daemon_script(script_post_run, script_run_as_user);
 		if (script_ret < 0) {
 			log_msg(LVL_INFO, "task %d end %s with failed run", number, script_post_run);
 			if (log_f != 0)

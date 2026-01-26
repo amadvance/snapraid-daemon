@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
 	int pidfd = -1;
 	if (!foreground) {
-		pidfd = os_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
+		pidfd = daemon_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
 		if (pidfd == -1)
 			exit(EXIT_FAILURE);
 	}
@@ -170,12 +170,12 @@ int main(int argc, char *argv[])
 	/*
 	 * Install signal handlers
 	 */
-	os_signal_init();
+	daemon_signal_init();
 
 	/*
 	 * Block signals in the main thread
 	 */
-	os_signal_set(0);
+	daemon_signal_set(0);
 
 	/**
 	 * Create worker threads while signals are still BLOCKED
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
 	 * Unblock signals ONLY in main thread
 	 * Worker threads keep them blocked forever.
 	 */
-	os_signal_set(1);
+	daemon_signal_set(1);
 
 	/*
 	 * Main loop
