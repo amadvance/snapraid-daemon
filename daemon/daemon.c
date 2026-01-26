@@ -27,8 +27,6 @@
 #include "parser.h"
 #include "daemon.h"
 
-#define PID_FILE "/var/run/snapraidd.pid"
-
 /****************************************************************************/
 
 static void version(void)
@@ -45,6 +43,10 @@ static void usage(const char* conf)
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
 	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");
+	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
+	printf("  " SWITCH_GETOPT_LONG("-H, --help            ", "-H") "  Show this help message\n");
+	printf("  " SWITCH_GETOPT_LONG("-V, --version         ", "-V") "  Show version and exit\n");
+
 	printf("\n");
 	printf("Configuration file: %s\n", conf);
 	printf("\n");
@@ -96,6 +98,7 @@ static void run(struct snapraid_state* state)
 struct option long_options[] = {
 	{ "foreground", 0, 0, 'f' },
 	{ "conf", 1, 0, 'c' },
+	{ "pidfile", 1, 0, 'p' },
 	{ "help", 0, 0, 'H' },
 	{ "version", 0, 0, 'V' },
 
@@ -103,7 +106,7 @@ struct option long_options[] = {
 };
 #endif
 
-#define OPTIONS "fc:HV"
+#define OPTIONS "fc:p:HV"
 
 int main(int argc, char *argv[])
 {
@@ -111,6 +114,8 @@ int main(int argc, char *argv[])
 	int foreground = 1; // TODO
 	char msg[128];
 	int status;
+	const char* arg_pidfile = 0;
+	char pidfile[PATH_MAX];
 
 	state_init();
 
@@ -130,7 +135,10 @@ int main(int argc, char *argv[])
 		case 'c' :
 			sncpy(state_ptr()->config.conf, sizeof(state_ptr()->config.conf), optarg);
 			break;
-		case 'H' :
+		case 'p' :
+			arg_pidfile = optarg;
+			break;
+		case 'h' :
 			usage(state_ptr()->config.conf);
 			exit(EXIT_SUCCESS);
 		case 'V' :
@@ -142,17 +150,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	log_init(PACKAGE);
-
-	log_msg(LVL_INFO, "daemon starting");
-
+	int pidfd = -1;
 	if (!foreground) {
-		if (os_daemonize() < 0) {
-			log_msg(LVL_ERROR, "failed to daemonize");
+		pidfd = os_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
+		if (pidfd == -1)
 			exit(EXIT_FAILURE);
-		}
 	}
 
+	log_init(PACKAGE);
+	log_msg(LVL_INFO, "daemon starting");
 	log_msg(LVL_INFO, "version=%s", VERSION);
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
 
@@ -213,13 +219,16 @@ int main(int argc, char *argv[])
 	scheduler_done(state_ptr());
 	runner_done(state_ptr());
 
-	if (!foreground)
-		unlink(PID_FILE);
-
 	log_msg(LVL_INFO, "daemon stopped");
 
 	log_done();
 	state_done();
+
+	if (pidfd != -1) {
+		/* first delete then close */
+		unlink(pidfile);
+		close(pidfd);
+	}
 
 	return 0;
 }

@@ -294,9 +294,9 @@ void os_signal_set(int enable);
 
 /**
  * Daemonize the current process.
- * @return 0 on success, -1 on error
+ * @return The PID file descriptor on success, -1 on error
  */
-int os_daemonize(void);
+int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg);
 
 /**
  * Restore signal handlers after fork in child process.

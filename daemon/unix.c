@@ -806,11 +806,75 @@ void os_signal_init(void)
 	sigaction(SIGPIPE, &sa, 0);
 }
 
+static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+{
+	/* determine the path if not explicitly provided */
+	if (pidfile_arg) {
+		sncpy(pidfile_path, pidfile_size, pidfile_arg);
+	} else {
+		if (geteuid() == 0) {
+			/* standard for root-level daemons */
+			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", PACKAGE_NAME);
+		} else {
+			/* standard for user-level processes */
+			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", PACKAGE_NAME);
+		}
+	}
+
+	/* open the file, create if missing, open for reading/writing */
+	int fd = open(pidfile_path, O_RDWR | O_CREAT, 0644);
+	if (fd == -1) {
+		fprintf(stderr, "Error: Could not open PID file %s: %s\n", pidfile_path, strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Apply a lock to the file (Mandatory for reliability)
+	 * This ensures that even if a stale PID file exists,
+	 * a second instance cannot start if the first one holds the lock.
+	 */
+	struct flock fl;
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+
+	if (fcntl(fd, F_SETLK, &fl) == -1) {
+		if (errno == EACCES || errno == EAGAIN) {
+			fprintf(stderr, "%s is already running.\n", PACKAGE_NAME);
+		} else {
+			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
+		}
+		close(fd);
+		return -1;
+	}
+
+	/* clear any previous content, but after obtaining the lock */
+	if (ftruncate(fd, 0) == -1) {
+		fprintf(stderr, "Error truncating PID file: %s\n", strerror(errno));
+		unlink(pidfile_path);
+		close(fd);
+		return -1;
+	}
+
+	/* write the current PID to the file */
+	char buf[32];
+	int buf_len = snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
+	if (write(fd, buf, buf_len) != buf_len) {
+		fprintf(stderr, "Error writing to PID file: %s\n", strerror(errno));
+		unlink(pidfile_path);
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
 /**
  * Detaches the process from the controlling terminal and runs it in the background.
  * Follows the "double-fork" method to ensure the daemon cannot re-acquire a TTY.
  */
-int os_daemonize(void)
+int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
 {
 	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
@@ -833,6 +897,15 @@ int os_daemonize(void)
 	if (pid > 0)
 		exit(EXIT_SUCCESS);
 
+	/*
+	 * PID File Management
+	 * We do this BEFORE closing I/O so we can still report errors to stderr
+	 * if another instance is already running.
+	 */
+	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
+	if (pidfd < 0)
+		return -1;
+
 	/* allow daemon total control over its files */
 	umask(0);
 
@@ -854,6 +927,6 @@ int os_daemonize(void)
 			close(fd);
 	}
 
-	return 0;
+	return pidfd;
 }
 
