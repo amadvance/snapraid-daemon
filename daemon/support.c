@@ -206,6 +206,60 @@ int ss_jsonf(ss_t* s, int level, const char* fmt, ...)
 	return ret;
 }
 
+static void ss_json_munge_separator(ss_t* s)
+{
+	if (s->len >= 2
+		&& s->ptr[s->len - 1] == '\n'
+		&& s->ptr[s->len - 2] == ',') {
+		s->len -= 2;
+		ss_prints(s, "\n");
+	}
+}
+
+void ss_json_open(ss_t* s, int* level)
+{
+	ss_jsons(s, *level, "{\n");
+	++*level;
+}
+
+void ss_json_object_open(ss_t* s, int* level, const char* field)
+{
+	ss_jsonf(s, *level, "\"%s\": {\n", field);
+	++*level;
+}
+
+void ss_json_close(ss_t* s, int* level)
+{
+	--*level;
+	ss_json_munge_separator(s);
+	if (*level != 0)
+		ss_jsons(s, *level, "},\n");
+	else
+		ss_jsons(s, *level, "}\n");
+}
+
+void ss_json_list_open(ss_t* s, int* level)
+{
+	ss_jsonf(s, *level, "[\n");
+	++*level;
+}
+
+void ss_json_array_open(ss_t* s, int* level, const char* field)
+{
+	ss_jsonf(s, *level, "\"%s\": [\n", field);
+	++*level;
+}
+
+void ss_json_array_close(ss_t* s, int* level)
+{
+	--*level;
+	ss_json_munge_separator(s);
+	if (*level != 0)
+		ss_jsons(s, *level, "],\n");
+	else
+		ss_jsons(s, *level, "]\n");
+}
+
 void ss_json_elem(ss_t* s, int level, const char* arg)
 {
 	ss_json_tab(s, level);

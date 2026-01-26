@@ -150,55 +150,12 @@ void ss_jsons(ss_t* s, int level, const char* arg);
  */
 int ss_jsonf(ss_t* s, int level, const char* fmt, ...)  __attribute__((format(attribute_printf, 3, 4)));
 
-static inline void ss_json_open(ss_t* s, int* level)
-{
-	ss_jsons(s, *level, "{\n");
-	++*level;
-}
-
-static inline void ss_json_object_open(ss_t* s, int* level, const char* field)
-{
-	ss_jsonf(s, *level, "\"%s\": {\n", field);
-	++*level;
-}
-
-static inline void ss_json_close(ss_t* s, int* level)
-{
-	--*level;
-	if (s->ptr[s->len - 1] == ',') {
-		s->len -= 2;
-		ss_prints(s, "\n");
-	}
-	if (*level != 0)
-		ss_jsons(s, *level, "},\n");
-	else
-		ss_jsons(s, *level, "}\n");
-}
-
-static inline void ss_json_list_open(ss_t* s, int* level)
-{
-	ss_jsonf(s, *level, "[\n");
-	++*level;
-}
-
-static inline void ss_json_array_open(ss_t* s, int* level, const char* field)
-{
-	ss_jsonf(s, *level, "\"%s\": [\n", field);
-	++*level;
-}
-
-static inline void ss_json_array_close(ss_t* s, int* level)
-{
-	--*level;
-	if (s->ptr[s->len - 1] == ',') {
-		s->len -= 2;
-		ss_prints(s, "\n");
-	}
-	if (*level != 0)
-		ss_jsons(s, *level, "],\n");
-	else
-		ss_jsons(s, *level, "]\n");
-}
+void ss_json_open(ss_t* s, int* level);
+void ss_json_object_open(ss_t* s, int* level, const char* field);
+void ss_json_close(ss_t* s, int* level);
+void ss_json_list_open(ss_t* s, int* level);
+void ss_json_array_open(ss_t* s, int* level, const char* field);
+void ss_json_array_close(ss_t* s, int* level);
 
 /**
  * Write a formatted JSON array element as string.
