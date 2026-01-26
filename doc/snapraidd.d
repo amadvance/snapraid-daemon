@@ -164,7 +164,7 @@ Configuration
 
     log_directory
 	Path where individual SnapRAID command outputs are stored as `.log`
-	files.
+	files (default: `/var/log/snapraid`).
 
     log_retention_days
 	Number of days to keep log files before they are purged.
@@ -374,7 +374,7 @@ Copyright
 Files
 	/etc/snapraidd.conf - Default configuration file.
 	/run/snapraidd.pid - PID file.
-	/var/log/snapraid/ - Default directory for command execution logs.
+	/var/log/snapraid - Default directory for command execution logs.
 
 See Also
 	snapraid(1)

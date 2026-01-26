@@ -1305,7 +1305,7 @@ components:
             enabled in the static configuration file.
         log_directory:
           type: string
-          example: "/var/log/snapraid/"
+          default: "/var/log/snapraid"
           description: >
             Persistence directory for execution logs (YYYYMMDD-command.log).
             Logs are used as the primary data source to rehydrate task

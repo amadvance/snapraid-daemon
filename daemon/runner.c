@@ -140,23 +140,28 @@ static void runner_go(struct snapraid_state* state)
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
 	if (log_directory[0] != 0) {
-		time_t now = unix_start_time;
-		struct tm* local = localtime(&now);
-		if (local) {
-			snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", log_directory,
-				local->tm_year + 1900,
-				local->tm_mon + 1,
-				local->tm_mday,
-				local->tm_hour,
-				local->tm_min,
-				local->tm_sec,
-				command_name(cmd)
-			);
+		int mkdir_ret = mkdir(log_directory, 0755);
+		if (mkdir_ret != 0 && errno != EEXIST) {
+			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", log_directory, strerror(errno), errno);
 		} else {
-			snprintf(log_path, sizeof(log_path), "%s/%s.log", log_directory, command_name(cmd));
-		}
+			time_t now = unix_start_time;
+			struct tm* local = localtime(&now);
+			if (local) {
+				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", log_directory,
+					local->tm_year + 1900,
+					local->tm_mon + 1,
+					local->tm_mday,
+					local->tm_hour,
+					local->tm_min,
+					local->tm_sec,
+					command_name(cmd)
+				);
+			} else {
+				snprintf(log_path, sizeof(log_path), "%s/%s.log", log_directory, command_name(cmd));
+			}
 
-		sncpy(task->log_file, sizeof(task->log_file), log_path);
+			sncpy(task->log_file, sizeof(task->log_file), log_path);
+		}
 	}
 
 	if (cmd == CMD_SYNC || cmd == CMD_DIFF) {

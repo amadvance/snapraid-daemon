@@ -150,7 +150,7 @@ These settings control the logging and notification operations done
 by the SnapRAID daemon.
 .SS log_directory 
 Path where individual SnapRAID command outputs are stored as \`.log\`
-files.
+files (default: \`/var/log/snapraid\`).
 .SS log_retention_days 
 Number of days to keep log files before they are purged.
 .SS notify_syslog_enabled 
@@ -430,7 +430,7 @@ Default configuration file.
 .I /run/snapraidd.pid
 PID file.
 .HP 4
-.I /var/log/snapraid/
+.I /var/log/snapraid
 Default directory for command execution logs.
 .PD
 .RE

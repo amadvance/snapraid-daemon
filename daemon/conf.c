@@ -481,7 +481,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->script_run_as_user[0] = 0;
 	config->script_pre_run[0] = 0;
 	config->script_post_run[0] = 0;
-	config->log_directory[0] = 0;
+	sncpy(config->log_directory, sizeof(config->log_directory), "/var/log/snapraid");
 	config->log_retention_days = 0;
 	config->notify_syslog_enabled = 0;
 	config->notify_syslog_level = LVL_CRITICAL;
