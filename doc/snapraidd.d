@@ -1,12 +1,380 @@
 Name{number}
-	snapraidd - SnapRAID Daemon
+	snapraidd - A background companion daemon for SnapRAID.
 
 Synopsis
+	:snapraidd [-c, --conf CONFIG] [-f, --foreground] [-p, --pidfile FILE]
+
+	:snapraidd [-V, --version] [-H, --help]
 
 Description
+	SnapRAID-Daemon is a specialized companion service designed to move SnapRAID
+	from a manual, command-line interface (CLI) workflow to an 'always-on'
+	background service.
+
+	Under the hood, the daemon uses the same SnapRAID CLI binary, providing the
+	same level of reliability.
+
+	The daemon automates critical maintenance tasks, including the scheduling of
+	sync and scrub operations. It further enhances array reliability by monitoring
+	SMART values and providing a robust notification engine for real-time health
+	updates. For energy efficiency, it manages automatic disk spindown during
+	periods of inactivity.
+
+	The daemon also provides a modern REST API interface. This API provides a
+	programmatic gateway to monitor array health and trigger maintenance tasks,
+	serving as a powerful foundation that can be used to build a WebUI or other
+	remote integrations.
+
+Options
+	The SnapRAID Daemon provides the following options:
+
+	-c, --conf CONFIG
+		Specifies the path to the configuration file (default:
+		`/etc/snapraidd.conf`).
+
+	-f, --foreground
+		Runs the process in the foreground. This prevents the daemon
+		from detaching from the terminal (daemonizing).
+
+	-p, --pidfile FILE
+		Overrides the default location for the PID file (default:
+		`/run/snapraidd.pid`).
+
+	-H, --help
+		Prints a short help screen.
+
+	-V, --version
+		Prints the program version.
+
+Configuration
+	The SnapRAID Daemon is configured via a plain-text .conf file
+	(defaulting to /etc/snapraidd.conf). This file governs the behavior
+	of the automation engine, network accessibility, safety interlocks,
+	and hardware monitoring parameters.
+
+	The configuration system is designed with a "hybrid" management
+	philosophy to balance convenience with system security:
+
+	Static Parameters - Critical security and networking settings, such
+		as the listening port (net_port) and the system user for
+		scripts (script_run_as_user), are immutable via the REST API.
+		These require manual file edits followed by a SIGHUP signal
+		(e.g., systemctl reload snapraidd) to take effect.
+
+	Dynamic Parameters - Operational settings, like the maintenance
+		schedule or scrub percentages, can be modified in real-time
+		via the PATCH /api/v1/config endpoint. Changes made through
+		the API are instantly applied to the running process and
+		persisted back to the configuration file, preserving any
+		manual comments.
+
+	To prevent race conditions, users should avoid editing the
+	configuration file manually while simultaneously issuing configuration
+	updates via the REST API. If a manual edit is performed while the
+	daemon is active, ensure a reload is triggered immediately to
+	synchronize the daemon's internal memory state with the disk.
+
+	For complete technical documentation, please refer to the snapraidd.conf
+	example file.
+
+  Network & REST API
+	These settings control the network interface. These options are not
+	visible from the REST API and can be set only in the snapraidd.conf
+	file.
+
+    net_enabled
+	Master toggle for the HTTP interface.
+	Set to 1 to enable the REST API; otherwise, the daemon operates in
+	local-only mode.
+
+    net_port
+	Defines the IP address and port the daemon binds to (e.g., `127.0.0.1:8080`).
+	Supports IPv4, IPv6, and multiple ports.
+
+    net_acl
+	Restricts API access to specific client IPs using a comma-separated
+	list of allow (+) or deny (-) rules.
+
+    net_security_headers
+	When enabled (1), injects security headers like CSP and X-Frame-Options
+	to harden the API against browser-based attacks.
+
+    net_allowed_origin
+	Configures CORS. Use `self` for standard setups, `none` to block
+	browser access, or a specific URL for custom dashboards.
+
+    net_config_full_access
+	Determines if restricted parameters (like scripts and log paths) can
+	be modified via the REST API. Defaults to 0 (Read-only).
+
+  Automation & Maintenance
+	These settings control the automation and maintenance tasks run by
+	the SnapRAID daemon. 
+    
+	For security reasons some of them can be set from the REST API only if the
+	net_config_full_access option is set.
+
+    maintenance_schedule
+	Defines when the automated sync, scrub, and report sequence occurs
+	(e.g., `daily 02:00` or `weekly Mon 03:00`).
+
+    sync_threshold_deletes
+	Maximum number of deleted/missing files allowed before a scheduled
+	sync is aborted to prevent accidental parity loss.
+
+    sync_threshold_updates
+	Maximum number of modified files allowed before a scheduled sync is
+	suspended.
+
+    sync_prehash
+	Enables the SnapRAID prehash option to verify files before updating
+	parity, protecting against faulty RAM or cables.
+
+    sync_force_zero
+	Permits synchronization even if protected files have unexpectedly
+	shrunk to zero bytes.
+
+    scrub_percentage
+	The percentage of the array verified during the scrub phase of
+	automated maintenance.
+
+    scrub_older_than
+	Restricts scrubbing to blocks that have not been verified within the
+	specified number of days.
+
+    probe_interval_minutes
+	Interval for background health checks. SMART attributes are only
+	queried if disks are already active to avoid waking them.
+
+    spindown_idle_minutes
+	Inactivity threshold (in minutes) after which the daemon will issue a
+	spindown command to the disks.
+
+    script_run_as_user
+	The system user account utilized for the execution of pre- and
+	post-run hooks.
+
+    script_pre_run/script_post_run
+	Absolute paths to executable shell scripts triggered before or after
+	SnapRAID activity.
+
+  Logging & Notifications
+	These settings control the logging and notification operations done
+	by the SnapRAID daemon.
+
+    log_directory
+	Path where individual SnapRAID command outputs are stored as `.log`
+	files.
+
+    log_retention_days
+	Number of days to keep log files before they are purged.
+
+    notify_syslog_enabled
+	Enables logging of daemon activity to the OS system log (syslog/journald).
+
+    notify_heartbeat
+	A shell command (e.g., `curl`) executed only upon task success, ideal
+	for "dead man's switch" monitoring.
+
+    notify_result
+	A shell command triggered after task completion; it receives the task
+	report via stdin.
+
+    notify_email_recipient
+	Local system email address for receiving health reports.
+
+    notify_differences
+	If enabled, includes a detailed list of file changes (added/removed/modified)
+	in the notification reports.
+
+Rest API
+	The SnapRAID Daemon provides a comprehensive RESTful JSON interface
+	for monitoring and controlling the parity array.
+
+	For complete technical documentation, including request schemas and
+	specific error codes, please refer to the snapraidd.yaml OpenAPI
+	specification file.
+
+  Maintenance & Recovery
+	The API prioritizes orchestrated workflows over raw command execution.
+	These high-level endpoints encapsulate complex SnapRAID logic into
+	single, automated tasks that manage the lifecycle of the array and the
+	recovery of data.
+
+    /api/v1/maintenance
+	Triggers the complete automated maintenance sequence. It orchestrates
+	a parity synchronization, followed by a data integrity scrub, and
+	concludes by issuing a system-wide health report.
+	This is the primary endpoint for routine array upkeep.
+	This task is subject to the 'sync_threshold_deletes' and
+	'sync_threshold_update' safety checks defined in the configuration.
+	The percentage of the array checked and the age filter are determined
+	by the 'scrub_percentage' and 'scrub_older_than' settings.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/maintenance
+
+    /api/v1/heal
+	Executes a specialized silent error recovery workflow. The daemon
+	automatically runs a targeted fix operation to repair detected corruption
+	and immediately follows up with a verification scrub of the affected
+	blocks to ensure the recovery was successful.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/heal
+
+    /api/v1/undelete
+	Invokes the SnapRAID restoration engine to recover files that have been
+	deleted from data disks but still exist in the parity information.
+	This is used to roll back accidental deletions to the state of the
+	last successful synchronization.
+
+	Example:
+		:curl -s -X POST http://localhost:8080/api/v1/undelete \
+		:	-H "Content-Type: application/json" \
+		:	-d '{ "filters": [ "*.txt" ] }'
+
+  Monitoring & Inventory
+	These endpoints provide high-level visibility into the global state of
+	the storage stack and the health of the underlying physical hardware.
+
+    /api/v1/array
+	Provides a high-level telemetry summary of the entire parity array.
+	This includes global metadata such as total capacity across all disks,
+	aggregate space utilization, the current state of parity protection,
+	and the timestamp of the last successful maintenance.
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/array | jq
+
+    /api/v1/disks
+	Returns a comprehensive inventory of every physical disk associated
+	with the SnapRAID configuration. It reports real-time hardware
+	metrics including SMART health status, temperature, and the current
+	power state (Active/Spin-up vs. Standby/Spin-down).
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/disks | jq
+
+  Configuration
+	Provides a programmatic interface to retrieve and modify the
+	operational parameters of the daemon in real-time.
+
+    /api/v1/config
+	Retrieves and updates the current runtime configuration parameters of
+	the snapraidd service. Changes are applied instantly to memory and
+	persisted to the configuration file.
+	Note that certain networking and security settings are read-only and
+	require a manual edit and SIGHUP.
+
+	Example:
+		:curl -X GET http://localhost:8080/api/v1/config | jq
+		:curl -X PATCH http://localhost:8080/api/v1/config -H "Content-Type: application/json" -d '{ "probe_interval_minutes": 10 }'
+
+  Activity Control
+	All operations that modify the array state are asynchronous, they
+	return an HTTP 202 Accepted status and queue a task for background
+	execution.
+
+	Because tasks run in the background, these endpoints are used to
+	monitor progress and manage the execution lifecycle.
+
+    /api/v1/activity
+	Provides real-time telemetry for the currently executing task,
+	including a progress percentage, estimated time of completion (ETA),
+	and a live stream of the process log output.
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/activity | jq
+
+    /api/v1/stop
+	Terminates the currently running SnapRAID task (such as maintenance or
+	heal) by sending a SIGTERM signal to the background process.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/stop
+
+    /api/v1/history
+	Lists the execution history, final results, and exit codes for all
+	previously completed daemon tasks, rehydrated from the physical log
+	files.
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/history | jq
+
+    /api/v1/queue
+	Retrieves the list of SnapRAID operations currently waiting in the
+	background execution queue. Tasks are processed sequentially in the
+	order they were received.
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/queue | jq
+
+  Low Level Commands
+	These endpoints provide direct access to the underlying SnapRAID CLI
+	functions. Unlike the orchestrated workflows, these commands perform
+	singular actions without additional logic, verification or report
+	phases.
+
+  /api/v1/sync
+	Queues a standard SnapRAID sync operation to update parity based on
+	modified or new files.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/sync
+
+  /api/v1/scrub
+	Initiates a manual scrub of the array to verify data integrity.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/scrub
+
+  /api/v1/diff
+	Triggers a SnapRAID diff to identify file system changes since the
+	last synchronization. The results can be viewed via the
+	'/api/v1/array' endpoint.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/diff
+
+  /api/v1/up
+	Issues a command to wake all physical disks in the array from standby.
+	This is used to prepare the array for heavy access or manual
+	maintenance.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/up
+
+  /api/v1/down
+	Issues an immediate spindown command to all disks in the array that
+	are currently in an idle state.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/down
+
+  /api/v1/down_idle
+	Executes a conditional spindown operation. The daemon will only issue
+	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
+	threshold.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/down_idle
+
+  /api/v1/probe
+	Forces an active health check of all disks. This updates the cached
+	SMART attributes and internal temperature readings by querying the
+	hardware directly.
+
+	Example:
+		:curl -X POST http://localhost:8080/api/v1/probe
 
 Copyright
-	This file is Copyright (C) 2025 Andrea Mazzoleni
+	This file is Copyright (C) 2026 Andrea Mazzoleni
+
+Files
+	/etc/snapraidd.conf - Default configuration file.
+	/run/snapraidd.pid - PID file.
+	/var/log/snapraid/ - Default directory for command execution logs.
 
 See Also
 	snapraid(1)
