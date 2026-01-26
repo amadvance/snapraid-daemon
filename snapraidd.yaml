@@ -27,7 +27,7 @@ paths:
         Regardless, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -53,7 +53,7 @@ paths:
         status of the array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -78,7 +78,7 @@ paths:
         missing files across the entire array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
       requestBody:
         content:
           application/json:
@@ -115,7 +115,7 @@ paths:
         configuration, is issued a spindown command.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -231,7 +231,7 @@ paths:
 
         Unlike 'sync', this is a read-only operation and does not modify
         the parity disks. Real-time progress is available via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
@@ -277,7 +277,7 @@ paths:
 
         This is a resource-intensive, asynchronous operation. Real-time
         progress, including percentage completion and estimated time
-        remaining, is available via the '/api/v1/progress' endpoint.
+        remaining, is available via the '/api/v1/activity' endpoint.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -305,7 +305,7 @@ paths:
         This is a resource-intensive, asynchronous operation that
         validates the oldest parts of the array first. Real-time
         progress and detected errors are available via the
-        '/api/v1/progress' endpoint.
+        '/api/v1/activity' endpoint.
 
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
@@ -410,32 +410,34 @@ paths:
                     items:
                       $ref: '#/components/schemas/Disk'
 
-  /api/v1/progress:
+  /api/v1/activity:
     get:
-      summary: Get active or recent task telemetry
+      summary: Get active or latest task telemetry
       description: >
         Retrieves the real-time status of the currently executing task,
-        including progress percentage and estimated time remaining.
+        including progress percentage, throughput, and estimated time
+        remaining.
 
-        If the system is idle, this returns the final report of the
-        most recently completed task (status 'terminated' or 'signaled').
+        If the system is idle, this endpoint returns the final telemetry
+        report of the most recently completed task (specifically those
+        with a 'terminated' or 'signaled' status).
 
-        Note that 'canceled' tasks, which occur when a task in a sequence
-        is skipped due to a prior failure or safety trigger never appear
-        in this endpoint. Canceled tasks transition directly from the
-        queue to the persistent history.
+        Note that 'cancelled' tasks—which occur when a task in a sequence
+        is skipped due to a prior failure or safety threshold trigger—never
+        appear in this endpoint. Such tasks transition directly from the
+        queue to the persistent history without becoming 'active'.
 
-        Returns 204 No Content if the daemon has not executed any tasks
-        since the last restart.
+        Returns 204 No Content if the daemon has not initiated any tasks
+        since the last service restart.
       responses:
         '200':
-          description: Active or historic task state retrieved.
+          description: Active or latest task state retrieved.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
         '204':
-          description: No task history available (system idle since startup).
+          description: No task available (system idle since startup).
 
   /api/v1/queue:
     get:
@@ -447,7 +449,7 @@ paths:
         This includes manually triggered commands and scheduled maintenance
         tasks that are blocked by the currently running process. Tasks are
         executed sequentially. Once a task starts, it moves from this
-        queue to the '/progress' endpoint.
+        queue to the '/api/v1/activity' endpoint.
       responses:
         '200':
           description: A list of pending tasks retrieved successfully.
