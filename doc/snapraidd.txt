@@ -122,6 +122,11 @@ browser access, or a specific URL for custom dashboards.
 Determines if restricted parameters (like scripts and log paths) can
 be modified via the REST API. Defaults to 0 (Read-only).
 
+---- 4.1.7 net_web_root ----
+Specifies the local directory where the web dashboard assets are installed.
+If this path is not defined or is inaccessible, the built-in HTTP server
+will not be able to serve the web interface.
+
 4.2 Automation & Maintenance
 ----------------------------
 

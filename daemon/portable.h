@@ -227,6 +227,7 @@ typedef void* windows_key_t;
 typedef pthread_t thread_id_t;
 typedef pthread_mutex_t thread_mutex_t;
 typedef pthread_cond_t thread_cond_t;
+typedef pthread_rwlock_t thread_rwlock_t;
 #endif
 #endif
 

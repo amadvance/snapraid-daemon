@@ -66,5 +66,20 @@ int health_disk(struct snapraid_disk* disk);
 int health_task(struct snapraid_task* task);
 int health_array(struct snapraid_state* state);
 
+/****************************************************************************/
+/* page */
+
+struct snapraid_page {
+	tommy_node node;
+	char* path; /**< The URL path (e.g., /index.html) */
+	char* content; /**< File buffer */
+	ssize_t size; /**< File size */
+	const char* mime_type; /**< MIME type */
+	char str[];
+};
+
+struct snapraid_page* page_alloc(const char* path, size_t content_size);
+void page_free(void* void_page);
+
 #endif
 

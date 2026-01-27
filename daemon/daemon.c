@@ -25,6 +25,7 @@
 #include "conf.h"
 #include "log.h"
 #include "parser.h"
+#include "web.h"
 #include "daemon.h"
 
 /****************************************************************************/
@@ -71,9 +72,14 @@ static void run(struct snapraid_state* state)
 				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
 			}
 
+			char net_web_root[PATH_MAX];
+			sncpy(net_web_root, sizeof(net_web_root), state->config.net_web_root);
+
 			state_unlock();
 
-
+			if (web_reload(state, net_web_root) != 0) {
+				log_msg(LVL_ERROR, "failed to reload web pages from %s", net_web_root);
+			}
 		}
 
 		scheduler(state);
@@ -198,6 +204,11 @@ int main(int argc, char *argv[])
 	scheduler_init(state_ptr());
 
 	if (rest_init(state_ptr()) != 0) {
+		log_msg(LVL_ERROR, "failed to start the rest api");
+		exit(EXIT_FAILURE);
+	}
+
+	if (web_init(state_ptr()) != 0) {
 		log_msg(LVL_ERROR, "failed to start the web server");
 		exit(EXIT_FAILURE);
 	}
@@ -215,6 +226,7 @@ int main(int argc, char *argv[])
 	 */
 	run(state_ptr());
 
+	web_done(state_ptr());
 	rest_done(state_ptr());
 	scheduler_done(state_ptr());
 	runner_done(state_ptr());

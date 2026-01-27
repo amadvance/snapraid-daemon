@@ -18,7 +18,7 @@
 #ifndef __SUPPORT_H
 #define __SUPPORT_H
 
-#include "tommyds/tommylist.h"
+#include "state.h"
 
 /****************************************************************************/
 /* string stream */
@@ -335,9 +335,25 @@ void thread_cond_destroy(thread_cond_t* cond);
 void thread_cond_signal(thread_cond_t* cond);
 void thread_cond_broadcast(thread_cond_t* cond);
 void thread_cond_wait(thread_cond_t* cond, thread_mutex_t* mutex);
+void thread_rwlock_init(thread_rwlock_t* rwlock);
+void thread_rwlock_destroy(thread_rwlock_t* rwlock);
+void thread_rwlock_rdlock(thread_rwlock_t* rwlock);
+void thread_rwlock_wrlock(thread_rwlock_t* rwlock);
+void thread_rwlock_unlock(thread_rwlock_t* rwlock);
 void thread_create(thread_id_t* thread, void* (*func)(void *), void *arg);
 void thread_join(thread_id_t thread, void** retval);
 void thread_yield(void);
+
+/****************************************************************************/
+/* compression */
+
+#define Z_NONE 0
+#define Z_ZLIB 1
+#define Z_ZSTD 2
+
+int mg_accept_z(struct mg_connection* conn);
+int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size);
+int mg_write_zstd(struct mg_connection* conn, const char *src, size_t src_size);
 
 #endif
 

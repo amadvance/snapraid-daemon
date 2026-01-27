@@ -204,6 +204,7 @@ void diff_cleanup(struct snapraid_diff_stat* diff)
 	diff->diff_restored = 0;
 
 	tommy_list_foreach(&diff->file_list, file_free);
+	tommy_list_init(&diff->file_list);
 }
 
 /****************************************************************************/
@@ -342,5 +343,28 @@ int health_array(struct snapraid_state* state)
 	}
 
 	return health;
+}
+
+/****************************************************************************/
+/* page */
+
+struct snapraid_page* page_alloc(const char* path, size_t content_size)
+{
+	ssize_t path_len = strlen(path);
+
+	struct snapraid_page* page = malloc_nofail(sizeof(struct snapraid_page) + path_len + 1 + content_size);
+	page->path = page->str;
+	page->size = content_size;
+	page->content = page->path + path_len + 1;
+
+	memcpy(page->path, path, path_len + 1);
+
+	return page;
+}
+
+void page_free(void* void_page)
+{
+	struct snapraid_page* page = void_page;
+	free(page);
 }
 

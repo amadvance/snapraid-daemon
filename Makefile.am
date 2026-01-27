@@ -30,6 +30,7 @@ snapraidd_SOURCES = \
 	daemon/scheduler.c \
 	daemon/support.c \
 	daemon/rest.c \
+	daemon/web.c \
 	daemon/conf.c \
 	daemon/log.c \
 	daemon/elem.c \
@@ -62,6 +63,7 @@ noinst_HEADERS = \
 	daemon/scheduler.h \
 	daemon/support.h \
 	daemon/rest.h \
+	daemon/web.h \
 	daemon/conf.h \
 	daemon/log.h \
 	daemon/elem.h \
@@ -175,6 +177,7 @@ $(DAEMON_PREFIX)log.$(OBJEXT): $(srcdir)/daemon/log.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)parser.$(OBJEXT): $(srcdir)/daemon/parser.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)report.$(OBJEXT): $(srcdir)/daemon/report.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)rest.$(OBJEXT): $(srcdir)/daemon/rest.h $(srcdir)/daemon/state.h
+$(DAEMON_PREFIX)web.$(OBJEXT): $(srcdir)/daemon/rest.h $(srcdir)/daemon/web.h
 $(DAEMON_PREFIX)runner.$(OBJEXT): $(srcdir)/daemon/runner.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)scheduler.$(OBJEXT):$(srcdir)/daemon/scheduler.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)support.$(OBJEXT): $(srcdir)/daemon/support.h $(srcdir)/daemon/state.h

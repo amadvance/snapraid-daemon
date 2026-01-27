@@ -107,6 +107,11 @@ Configuration
 	Determines if restricted parameters (like scripts and log paths) can
 	be modified via the REST API. Defaults to 0 (Read-only).
 
+    net_web_root
+	Specifies the local directory where the web dashboard assets are installed.
+	If this path is not defined or is inaccessible, the built-in HTTP server
+	will not be able to serve the web interface.
+
   Automation & Maintenance
 	These settings control the automation and maintenance tasks run by
 	the SnapRAID daemon.

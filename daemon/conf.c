@@ -185,6 +185,8 @@ int config_load(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "net_web_root") == 0) {
+				sncpy(config->net_web_root, sizeof(config->net_web_root), val);
 			} else if (strcmp(key, "maintenance_schedule") == 0) {
 				if (config_parse_maintenance_schedule(val, config) == 0) {
 				} else {
@@ -466,6 +468,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->net_security_headers = 1;
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;
+	config->net_web_root[0] = 0;
 	config->maintenance_run = RUN_DISABLED;
 	config->maintenance_hour = 0;
 	config->maintenance_minute = 0;

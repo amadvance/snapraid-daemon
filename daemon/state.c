@@ -40,6 +40,7 @@ void state_done(void)
 	tommy_list_foreach(&state->runner.history_list, task_free);
 	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
+	tommy_list_foreach(&state->page_list, page_free);
 	thread_mutex_destroy(&state->lock);
 }
 
@@ -56,5 +57,20 @@ void state_lock(void)
 void state_unlock(void)
 {
 	thread_mutex_unlock(&STATE.lock);
+}
+
+void page_rdlock(void)
+{
+	thread_rwlock_rdlock(&STATE.page_lock);
+}
+
+void page_wrlock(void)
+{
+	thread_rwlock_wrlock(&STATE.page_lock);
+}
+
+void page_unlock(void)
+{
+	thread_rwlock_unlock(&STATE.page_lock);
 }
 

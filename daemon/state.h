@@ -313,6 +313,7 @@ struct snapraid_config {
 	int net_security_headers;
 	char net_allowed_origin[CONFIG_MAX];
 	int net_config_full_access;
+	char net_web_root[PATH_MAX]; /**< Web pages directory */
 	int maintenance_run;
 	int maintenance_hour;
 	int maintenance_minute;
@@ -357,6 +358,9 @@ struct snapraid_state {
 	struct snapraid_config config;
 	tommy_list data_list;
 	tommy_list parity_list;
+	thread_rwlock_t page_lock;
+	tommy_list page_list; /**< List of web pages */
+	time_t page_time; /**< Time of the pages loaded from disk */
 };
 
 /**
@@ -384,6 +388,21 @@ void state_lock(void);
  * Release lock for accessing the state.
  */
 void state_unlock(void);
+
+/**
+ * Acquire lock for accessing the web.
+ */
+void page_rdlock(void);
+
+/**
+ * Acquire lock for accessing the web.
+ */
+void page_wrlock(void);
+
+/**
+ * Release lock for accessing the web.
+ */
+void page_unlock(void);
 
 #endif
 

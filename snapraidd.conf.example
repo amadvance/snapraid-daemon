@@ -97,6 +97,20 @@ net_allowed_origin = self
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 net_config_full_access = 0
 
+# Specifies the local directory containing the dashboard's web assets
+# (HTML, JS, CSS, SVG, etc.).
+#
+# You should set this to the specific directory where you have installed
+# the web dashboard of your choosing. The daemon recursively crawls this
+# path at startup and loads the files into an internal memory cache
+# to provide high-performance, compressed delivery of the UI.
+#
+# If left unset or empty, the built-in web dashboard will be unavailable.
+#
+# This option is not accessible from the REST API.
+# It requires a manual edit and a configuration reload (SIGHUP) to apply.
+#net_web_root = /var/www-snapraid
+
 ### Automation & Maintenance
 # Use maintenance_schedule to define when the automated maintenance
 # sequence—consisting of a sync, a scrub, and a report—should occur.
@@ -130,13 +144,13 @@ sync_threshold_updates = 500
 # If set to 1 run sync with the prehash option to prevent silent errors due
 # faulty memory on files not yet hashed.
 # If this is missing or set to 0, no prehash is used.
-sync_prehash = 1
+#sync_prehash = 1
 
 # If set to 1 run sync also in presence of files with zero size that were no
 # zero before
 # If this is missing or set to 0, the sync doesn't run in presence of such
 # files.
-sync_force_zero = 1
+#sync_force_zero = 1
 
 # After a sync completes, the scrub_percentage determines how much of the
 # array is verified.
