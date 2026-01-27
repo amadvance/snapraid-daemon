@@ -78,6 +78,23 @@ AC_CHECK_FUNCS([fexecve pipe2])
 dnl Checks for architecture
 AC_C_BIGENDIAN
 
+dnl Checks for libraries
+PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.11], [
+    AC_DEFINE([HAVE_ZLIB], [1], [Define if you have zlib])
+    AC_SUBST([ZLIB_CFLAGS])
+    AC_SUBST([ZLIB_LIBS])
+], [
+    AC_MSG_WARN([zlib not found. Gzip support will be disabled.])
+])
+
+PKG_CHECK_MODULES([ZSTD], [libzstd >= 1.4.0], [
+    AC_DEFINE([HAVE_ZSTD], [1], [Define if you have libzstd])
+    AC_SUBST([ZSTD_CFLAGS])
+    AC_SUBST([ZSTD_LIBS])
+], [
+    AC_MSG_WARN([libzstd not found. Zstd support will be disabled.])
+])
+
 dnl Checks for compiler
 AC_CHECK_CC_OPT([-Wall], CFLAGS="$CFLAGS -Wall", [])
 AC_CHECK_CC_OPT([-Wextra], CFLAGS="$CFLAGS -Wextra", [])

@@ -186,6 +186,14 @@
 #include <pwd.h>
 #endif
 
+#if HAVE_ZLIB
+#include <zlib.h>
+#endif
+
+#if HAVE_ZSTD
+#include <zstd.h>
+#endif
+
 /**
  * Enable thread use.
  */

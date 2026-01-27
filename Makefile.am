@@ -8,6 +8,9 @@ snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" \
 	-DMG_EXTERNAL_FUNCTION_mg_cry_internal_impl \
 	-DMG_EXTERNAL_FUNCTION_log_access
 
+snapraidd_CFLAGS = $(ZLIB_CFLAGS) $(ZSTD_CFLAGS)
+snapraidd_LDADD = $(ZLIB_LIBS) $(ZSTD_LIBS)
+
 # init system
 if INSTALL_SYSTEMD
 systemdsystemunitdir = @systemdsystemunitdir@

@@ -229,6 +229,192 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 }
 
 /****************************************************************************/
+/* compression */
+
+#define Z_NONE 0
+#define Z_ZLIB 1
+#define Z_ZSTD 2
+
+#if HAVE_ZLIB || HAVE_ZSTD
+static int mg_accept_z(struct mg_connection* conn)
+{
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+
+	/*
+	 * ONLY use compressed chunking if we are on HTTP/1.1
+	 * HTTP/1.0 can't do it. HTTP/2+ does it differently at the library level.
+	 */
+	if (!ri->http_version || strcmp(ri->http_version, "1.1") != 0)
+		return Z_NONE;
+
+	const char* i = mg_get_header(conn, "Accept-Encoding");
+	if (!i)
+		return Z_NONE;  /* no header */
+
+	int best = Z_NONE;
+	while (*i) {
+		/* skip separators */
+		while (*i == ' ' || *i == ',')
+			++i;
+
+#if HAVE_ZLIB
+		/* check if we have GZIP */
+		if ((i[0] == 'g' || i[0] == 'G')
+			&& (i[1] == 'z' || i[1] == 'Z')
+			&& (i[2] == 'i' || i[2] == 'I')
+			&& (i[3] == 'p' || i[3] == 'P')
+			&& (i[4] == ';' || i[4] == ' ' || i[4] == ',' || i[4] == 0)) {
+			best = Z_ZLIB;
+		}
+#endif
+
+#if HAVE_ZSTD
+		/* check if we have ZSTD */
+		if ((i[0] == 'z' || i[0] == 'Z')
+			&& (i[1] == 's' || i[1] == 'S')
+			&& (i[2] == 't' || i[2] == 'T')
+			&& (i[3] == 'd' || i[3] == 'D')
+			&& (i[4] == ';' || i[4] == ' ' || i[4] == ',' || i[4] == 0)) {
+			return Z_ZSTD; /* no better than this */
+		}
+#endif
+
+		/* skip until the next token */
+		while (*i && *i != ',')
+			++i;
+	}
+
+	return best;
+}
+#endif
+
+#define Z_CHUNK_DATA_SIZE 8192
+#define Z_HEADER_RESERVE 16 /* extra to keep following CHUNK aligned */
+#define Z_FOOTER_RESERVE 7
+
+#if HAVE_ZLIB
+int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size)
+{
+	z_stream strm;
+	char buf[Z_HEADER_RESERVE + Z_CHUNK_DATA_SIZE + Z_FOOTER_RESERVE];
+	int res;
+
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
+
+	if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 16 + 15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+		return -1;
+	}
+
+	/*
+	 * Determine if we can do this in one single burst
+	 * deflateBound provides the absolute maximum size zlib might need
+	 */
+	int can_finish_immediately = (deflateBound(&strm, src_size) <= Z_CHUNK_DATA_SIZE);
+
+	strm.next_in = (Bytef*)src;
+	strm.avail_in = (uInt)src_size;
+
+	do {
+		/* use Z_FINISH immediately if we know it fits, otherwise use Z_NO_FLUSH */
+		int flush = (can_finish_immediately || strm.avail_in == 0) ? Z_FINISH : Z_NO_FLUSH;
+
+		strm.next_out = (Bytef*)(buf + Z_HEADER_RESERVE);
+		strm.avail_out = Z_CHUNK_DATA_SIZE;
+
+		res = deflate(&strm, flush);
+
+		size_t compressed_len = Z_CHUNK_DATA_SIZE - strm.avail_out;
+
+		if (compressed_len > 0 || res == Z_STREAM_END) {
+			char hex[Z_HEADER_RESERVE + 1];
+			int hex_len = snprintf(hex, sizeof(hex), "%zX\r\n", compressed_len);
+
+			char* send_start = (buf + Z_HEADER_RESERVE) - hex_len;
+			memcpy(send_start, hex, hex_len);
+
+			char* footer_ptr = buf + Z_HEADER_RESERVE + compressed_len;
+			memcpy(footer_ptr, "\r\n", 2);
+
+			size_t total_to_send = hex_len + compressed_len + 2;
+
+			if (res == Z_STREAM_END) {
+				memcpy(footer_ptr + 2, "0\r\n\r\n", 5);
+				total_to_send += 5;
+			}
+
+			if (mg_write(conn, send_start, total_to_send) <= 0) {
+				deflateEnd(&strm);
+				return -1;
+			}
+		}
+	} while (res != Z_STREAM_END);
+
+	deflateEnd(&strm);
+	return 0;
+}
+#endif
+
+#if HAVE_ZSTD
+int mg_write_zstd(struct mg_connection* conn, const char *src, size_t src_size)
+{
+	ZSTD_CCtx* cctx = ZSTD_createCCtx();
+	if (!cctx)
+		return -1;
+
+	char buf[Z_HEADER_RESERVE + Z_CHUNK_DATA_SIZE + Z_FOOTER_RESERVE];
+
+	ZSTD_inBuffer input = { src, src_size, 0 };
+	int finished = 0;
+
+	do {
+		/* prepare output buffer starting after the reserved header space */
+		ZSTD_outBuffer output = { buf + Z_HEADER_RESERVE, Z_CHUNK_DATA_SIZE, 0 };
+
+		/* determine if we are on the last bit of input */
+		ZSTD_EndDirective mode = (input.pos < input.size) ? ZSTD_e_continue : ZSTD_e_end;
+
+		size_t remaining = ZSTD_compressStream2(cctx, &output, &input, mode);
+
+		if (ZSTD_isError(remaining)) {
+			ZSTD_freeCCtx(cctx);
+			return -1;
+		}
+
+		size_t compressed_len = output.pos;
+
+		/* only send a chunk if we have data OR if we just finished the stream */
+		if (compressed_len > 0 || (mode == ZSTD_e_end && remaining == 0)) {
+			finished = (mode == ZSTD_e_end && remaining == 0);
+
+			char hex[Z_HEADER_RESERVE + 1];
+			int hex_len = snprintf(hex, sizeof(hex), "%zX\r\n", compressed_len);
+			char* send_start = (buf + Z_HEADER_RESERVE) - hex_len;
+			memcpy(send_start, hex, hex_len);
+
+			char* footer_ptr = (char*)output.dst + compressed_len;
+			memcpy(footer_ptr, "\r\n", 2);
+			size_t total_to_send = hex_len + compressed_len + 2;
+
+			if (finished) {
+				memcpy(footer_ptr + 2, "0\r\n\r\n", 5);
+				total_to_send += 5;
+			}
+
+			if (mg_write(conn, send_start, total_to_send) <= 0) {
+				ZSTD_freeCCtx(cctx);
+				return -1;
+			}
+		}
+	} while (!finished);
+
+	ZSTD_freeCCtx(cctx);
+	return 0;
+}
+#endif
+
+/****************************************************************************/
 /* helper */
 
 #define HTTP_HEADERS_MAX 512
@@ -251,18 +437,6 @@ static void send_headers(struct mg_connection* conn, ss_t* s)
 
 	ss_printf(s, "Server: %s/%s\r\n", PACKAGE_NAME, PACKAGE_VERSION);
 
-	/*
-	 * Forces the browser to always fetch fresh data from the daemon.
-	 * 'no-store' prevents the sensitive JSON status from being saved to disk.
-	 */
-	ss_prints(s, "Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0\r\n");
-
-	/* Legacy support for HTTP/1.0 proxies */
-	ss_prints(s, "Pragma: no-cache\r\n");
-
-	/* Mark as expired immediately */
-	ss_prints(s, "Expires: 0\r\n");
-
 	char date_buf[64];
 	struct tm tm_gmt;
 	time_t now = time(0);
@@ -271,6 +445,29 @@ static void send_headers(struct mg_connection* conn, ss_t* s)
 	/* RFC 7231 / RFC 1123 format: Weekday, Day Month Year Time GMT */
 	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
 	ss_printf(s, "Date: %s\r\n", date_buf);
+
+	/*
+	 * Forces the browser to always fetch fresh data from the daemon.
+	 * 'no-store' prevents the sensitive JSON status from being saved to disk.
+	 */
+	ss_prints(s, "Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0\r\n");
+
+	/* Legacy (HTTP/1.0): Support for HTTP/1.0 proxies */
+	ss_prints(s, "Pragma: no-cache\r\n");
+
+	/* Legacy (HTTP/1.0): Mark as expired immediately */
+	ss_prints(s, "Expires: 0\r\n");
+
+	/*
+	 * Vary: Origin
+	 * Crucial for 'self' reflection. It tells intermediate caches and proxies
+	 * that the response depends on the 'Origin' header of the request,
+	 * preventing a response meant for one user from being served to another.
+	 *
+	 * Vary: Accept-Encoding
+	 * Compression depends on the Accept-Encoding
+	 */
+	ss_prints(s, "Vary: Origin, Accept-Encoding\r\n");
 
 	/*
 	 * These headers provide "Defense in Depth" against common web vulnerabilities.
@@ -338,13 +535,6 @@ static void send_headers(struct mg_connection* conn, ss_t* s)
 			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
 		}
 
-		/* * Vary: Origin
-		 * Crucial for 'self' reflection. It tells intermediate caches and proxies
-		 * that the response depends on the 'Origin' header of the request,
-		 * preventing a response meant for one user from being served to another.
-		 */
-		ss_prints(s, "Vary: Origin\r\n");
-
 		/*
 		 * Access-Control-Allow-Methods & Headers
 		 * These are required for the "Pre-flight" check (OPTIONS request).
@@ -361,17 +551,55 @@ static void send_json_answer(struct mg_connection* conn, int status, ss_t* body)
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
 
-	int body_len = ss_len(body);
+	size_t body_len = ss_len(body);
+
+	int z = 0;
+#if HAVE_ZLIB || HAVE_ZSTD
+	z = mg_accept_z(conn);
+#endif
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
 	send_headers(conn, &s);
 	ss_prints(&s, "Content-Type: application/json\r\n");
-	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	if (z != Z_NONE) {
+		switch (z) {
+		case Z_ZLIB :
+			ss_printf(&s, "Content-Encoding: gzip\r\n");
+			break;
+		case Z_ZSTD :
+			ss_printf(&s, "Content-Encoding: zstd\r\n");
+			break;
+		}
+		ss_prints(&s, "Transfer-Encoding: chunked\r\n");
+	} else {
+		ss_printf(&s, "Content-Length: %zd\r\n", body_len);
+	}
 	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
 	mg_write(conn, ss_ptr(&s), ss_len(&s));
-	mg_write(conn, ss_ptr(body), ss_len(body));
+
+	switch (z) {
+#if HAVE_ZLIB
+	case Z_ZLIB :
+		mg_write_gzip(conn, ss_ptr(body), ss_len(body));
+		break;
+#endif
+#if HAVE_ZSTD
+	case Z_ZSTD :
+		mg_write_zstd(conn, ss_ptr(body), ss_len(body));
+		break;
+#endif
+	default :
+		mg_write(conn, ss_ptr(body), ss_len(body));
+	}
+
+	/*
+	 * If mg_write_* fails we just proceed to close the socket
+	 * We already sent 200 OK headers, so we can't send a 500 now.
+	 * We simply stop here. Do NOT send the "0\r\n\r\n".
+	 * By exiting the handler, the connection will close.
+	 */
 
 	ss_done(&s);
 }
