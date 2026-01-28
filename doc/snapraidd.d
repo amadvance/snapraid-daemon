@@ -3,6 +3,7 @@ Name{number}
 
 Synopsis
 	:snapraidd [-c, --conf CONFIG] [-f, --foreground] [-p, --pidfile FILE]
+		[-N, --no-cache]
 
 	:snapraidd [-V, --version] [-H, --help]
 
@@ -39,6 +40,16 @@ Options
 	-p, --pidfile FILE
 		Overrides the default location for the PID file (default:
 		`/run/snapraidd.pid`).
+
+	-N, --no-cache
+		Forces the daemon to load web interface assets directly from the
+		filesystem for every request, bypassing internal memory caching.
+		This is intended for development environments to allow real-time
+		testing of UI changes.
+		This option is not recommended for production use due to the
+		increased I/O overhead and for security reasons, as it could
+		potentially expose the system to directory traversal
+		vulnerabilities if not properly isolated.
 
 	-H, --help
 		Prints a short help screen.
