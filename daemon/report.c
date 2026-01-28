@@ -223,7 +223,7 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 	ss_prints(ss, "  Status:         ");
 	if (task->state == PROCESS_STATE_TERM) {
 		if (task->exit_code == 0)
-			ss_prints(ss, "Completed successfully (exit code 0)\n");
+			ss_prints(ss, "Completed successfully\n");
 		else
 			ss_printf(ss, "Failed (exit code %d)\n", task->exit_code);
 	} else if (task->state == PROCESS_STATE_SIGNAL) {
@@ -235,14 +235,16 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 	}
 
 	/* error statistics for both sync and scrub */
-	ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
-	ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
-	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", task->block_bad);
-	ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
+	if (task->state != PROCESS_STATE_CANCEL) {
+		ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
+		ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
+		ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", task->block_bad);
+		ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
 
-	/* error statistics for sync */
-	if (task->cmd == CMD_SYNC) {
-		ss_printf(ss, "  Hash Errors:    %" PRIu64 "\n", task->hash_error_soft);
+		/* error statistics for sync */
+		if (task->cmd == CMD_SYNC) {
+			ss_printf(ss, "  Hash Errors:    %" PRIu64 "\n", task->hash_error_soft);
+		}
 	}
 
 	/* print recovered files */
