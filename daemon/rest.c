@@ -489,7 +489,7 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * PATCH /api/v1/config
+ * PATCH /snapraid/v1/config
  */
 static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 {
@@ -794,7 +794,7 @@ forbidden:
 }
 
 /**
- * GET /api/v1/config
+ * GET /snapraid/v1/config
  */
 static int handler_config_get(struct mg_connection* conn, void* cbdata)
 {
@@ -869,7 +869,7 @@ static int handler_config(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * POST /api/v1/COMMAND
+ * POST /snapraid/v1/COMMAND
  */
 static int handler_action(struct mg_connection* conn, void* cbdata)
 {
@@ -895,8 +895,8 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	int cmd = 0;
 	const char* arg = 0;
-	if (strncmp(path, "/api/v1/", 8) == 0)
-		cmd = command_parse(path + 8);
+	if (strncmp(path, "/snapraid/v1/", 13) == 0)
+		cmd = command_parse(path + 13);
 	switch (cmd) {
 	case 0 :
 		return send_json_error(conn, 404, "Resource not found");
@@ -984,7 +984,7 @@ bad:
 }
 
 /**
- * POST /api/v1/stop
+ * POST /snapraid/v1/stop
  */
 static int handler_stop(struct mg_connection* conn, void* cbdata)
 {
@@ -1023,7 +1023,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * POST /api/v1/report
+ * POST /snapraid/v1/report
  */
 static int handler_report(struct mg_connection* conn, void* cbdata)
 {
@@ -1152,7 +1152,7 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list)
 }
 
 /**
- * GET /api/v1/disks
+ * GET /snapraid/v1/disks
  * Returns detailed disk status lists
  */
 static int handler_disks(struct mg_connection* conn, void* cbdata)
@@ -1291,7 +1291,7 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 }
 
 /**
- * GET /api/v1/activity
+ * GET /snapraid/v1/activity
  */
 static int handler_activity(struct mg_connection* conn, void* cbdata)
 {
@@ -1326,7 +1326,7 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * GET /api/v1/queue
+ * GET /snapraid/v1/queue
  */
 static int handler_queue(struct mg_connection* conn, void* cbdata)
 {
@@ -1363,7 +1363,7 @@ static int handler_queue(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * GET /api/v1/history
+ * GET /snapraid/v1/history
  */
 static int handler_history(struct mg_connection* conn, void* cbdata)
 {
@@ -1400,7 +1400,7 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 }
 
 /**
- * GET /api/v1/array
+ * GET /snapraid/v1/array
  */
 static int handler_array(struct mg_connection* conn, void* cbdata)
 {
@@ -1537,29 +1537,29 @@ int rest_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	mg_set_request_handler(state->rest_context, "/api/v1/sync", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/scrub", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/probe", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/up", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/down", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/smart", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/diff", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/status", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/check", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/fix", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/maintenance", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/heal", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/undelete", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/down_idle", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/stop", handler_stop, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/report", handler_report, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/disks", handler_disks, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/activity", handler_activity, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/queue", handler_queue, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/history", handler_history, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/config", handler_config, state);
-	mg_set_request_handler(state->rest_context, "/api/v1/array", handler_array, state);
-	mg_set_request_handler(state->rest_context, "/api", handler_not_found, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/sync", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/scrub", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/probe", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/up", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/down", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/smart", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/diff", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/status", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/check", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/fix", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/undelete", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/down_idle", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop", handler_stop, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/report", handler_report, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks", handler_disks, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity", handler_activity, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/queue", handler_queue, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/history", handler_history, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
+	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");
 

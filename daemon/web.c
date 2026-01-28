@@ -120,7 +120,7 @@ static void crawl_directory(tommy_list* page_list, size_t skip, const char* curr
 		if (S_ISDIR(st.st_mode)) {
 			crawl_directory(page_list, skip, path);
 		} else if (S_ISLNK(st.st_mode)) {
-			log_msg(LVL_WARNING, "crawler ignore link %s, errno=%s(%d)", path, strerror(errno), errno);
+			log_msg(LVL_WARNING, "crawler ignore link %s", path);
 		} else if (S_ISREG(st.st_mode)) {
 			int f = open(path, O_RDONLY);
 			if (f == -1) {
@@ -236,17 +236,19 @@ static int send_error(struct mg_connection* conn, int status)
 	return status;
 }
 
-static int send_virtual_file(struct mg_connection* conn, struct snapraid_page* page, time_t page_time)
+static int send_file(struct mg_connection* conn, time_t page_time, const char* body, size_t body_len, const char* mime)
 {
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
 
-	size_t body_len = page->size;
 	int z = mg_accept_z(conn);
+
+	// TODO
+	z = Z_NONE;
 
 	ss_printf(&s, "HTTP/1.1 200 OK\r\n");
 	send_headers(conn, &s, page_time);
-	ss_printf(&s, "Content-Type: %s\r\n", page->mime_type);
+	ss_printf(&s, "Content-Type: %s\r\n", mime);
 	switch (z) {
 #if HAVE_ZLIB
 	case Z_ZLIB :
@@ -273,16 +275,16 @@ static int send_virtual_file(struct mg_connection* conn, struct snapraid_page* p
 	switch (z) {
 #if HAVE_ZLIB
 	case Z_ZLIB :
-		mg_write_gzip(conn, page->content, page->size);
+		mg_write_gzip(conn, body, body_len);
 		break;
 #endif
 #if HAVE_ZSTD
 	case Z_ZSTD :
-		mg_write_zstd(conn, page->content, page->size);
+		mg_write_zstd(conn, body, body_len);
 		break;
 #endif
 	default :
-		mg_write(conn, page->content, page->size);
+		mg_write(conn, body, body_len);
 	}
 
 	/*
@@ -344,7 +346,7 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 				return send_error(conn, 304);
 			}
 
-			int status = send_virtual_file(conn, page, page_time);
+			int status = send_file(conn, page_time, page->content, page->size, page->mime_type);
 			page_unlock();
 			return status;
 		}
@@ -357,12 +359,107 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 	return 0;
 }
 
+static int stat_file(const char* path, struct stat* st)
+{
+	if (lstat(path, st) == -1) {
+		return -1;
+	}
+
+	if (S_ISDIR(st->st_mode)) {
+		log_msg(LVL_WARNING, "crawler ignore dir %s", path);
+		return -1;
+	}
+
+	if (S_ISLNK(st->st_mode)) {
+		log_msg(LVL_WARNING, "crawler ignore link %s", path);
+		return -1;
+	}
+
+	if (!S_ISREG(st->st_mode)) {
+		log_msg(LVL_WARNING, "crawler ignore not regular file %s", path);
+		return -1;
+	}
+
+	return 0;
+}
+
+static ssize_t read_file(const char* path, struct stat* st, char** body)
+{
+	int f = open(path, O_RDONLY);
+	if (f == -1) {
+		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
+		return -1;
+	}
+
+	*body = malloc_nofail(st->st_size);
+
+	if (read(f, *body, st->st_size) != st->st_size) {
+		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
+		free(*body);
+		close(f);
+		return -1;
+	}
+
+	close(f);
+	return st->st_size;
+}
+
+
+static int handler_real_file(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+
+	const char* target_uri = ri->local_uri;
+	if (strcmp(target_uri, "/") == 0) {
+		target_uri = "/index.html";
+	}
+
+	state_lock();
+	char path[PATH_MAX + 13];
+	snprintf(path, sizeof(path), "%s/%s", state->config.net_web_root, target_uri);
+	state_unlock();
+
+	struct stat st;
+	if (stat_file(path, &st) == -1) {
+		return 0;
+	}
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0) {
+		return send_no_content(conn);
+	}
+
+	if (strcmp(ri->request_method, "GET") != 0) {
+		return send_error(conn, 405);
+	}
+
+	/* check if browser already has the latest version */
+	if (is_not_modified(conn, st.st_mtime)) {
+		return send_error(conn, 304);
+	}
+
+	char* body = 0;
+	ssize_t body_len = read_file(path, &st, &body);
+	if (body_len == -1) {
+		return send_error(conn, 500);
+	}
+
+	const char* mime = get_mime_type(path);
+
+	int status = send_file(conn, st.st_mtime, body, body_len, mime);
+
+	free(body);
+
+	return status;
+}
+
 int web_init(struct snapraid_state* state)
 {
 	if (web_reload(state, state->config.net_web_root) != 0)
 		return -1;
 
-	mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
+	//mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
+	mg_set_request_handler(state->rest_context, "**", handler_real_file, state);
 
 	return 0;
 }

@@ -10,7 +10,7 @@ servers:
   - url: /
 
 paths:
-  /api/v1/maintenance:
+  /snapraid/v1/maintenance:
     post:
       summary: Trigger full maintenance sequence
       description: >
@@ -27,7 +27,7 @@ paths:
         Regardless, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -35,7 +35,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/heal:
+  /snapraid/v1/heal:
     post:
       summary: Execute automated silent error recovery sequence
       description: >
@@ -53,14 +53,14 @@ paths:
         status of the array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
         '500':
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/undelete:
+  /snapraid/v1/undelete:
     post:
       summary: Recover missing or accidentally deleted files
       description: >
@@ -78,7 +78,7 @@ paths:
         missing files across the entire array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
       requestBody:
         content:
           application/json:
@@ -99,7 +99,7 @@ paths:
         '500':
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/down_idle:
+  /snapraid/v1/down_idle:
     post:
       summary: Conditional spindown of idle disks
       description: >
@@ -115,7 +115,7 @@ paths:
         configuration, is issued a spindown command.
 
         This is an asynchronous operation. Monitor progress via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -123,7 +123,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/probe:
+  /snapraid/v1/probe:
     post:
       summary: Non-intrusive disk state discovery
       description: >
@@ -137,7 +137,7 @@ paths:
 
         This is automatically executed at daemon startup.
         This is an asynchronous operation. The updated metrics will be
-        reflected in the '/api/v1/disks' endpoint upon completion.
+        reflected in the '/snapraid/v1/disks' endpoint upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -148,7 +148,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/smart:
+  /snapraid/v1/smart:
     post:
       summary: Forced SMART attribute refresh
       description: >
@@ -160,7 +160,7 @@ paths:
         diagnostics are captured for every device in the array.
 
         This is an asynchronous operation. The updated metrics will be
-        reflected in the '/api/v1/disks' endpoint upon completion.
+        reflected in the '/snapraid/v1/disks' endpoint upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -171,7 +171,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/up:
+  /snapraid/v1/up:
     post:
       summary: Bulk spin-up disk array
       description: >
@@ -182,7 +182,7 @@ paths:
         avoid sequential spin-up delays.
 
         This is an asynchronous operation. Final power states will be
-        reflected in '/api/v1/disks' upon completion.
+        reflected in '/snapraid/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -193,7 +193,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/down:
+  /snapraid/v1/down:
     post:
       summary: Bulk spin-down disk array
       description: >
@@ -206,7 +206,7 @@ paths:
         maintenance.
 
         This is an asynchronous operation. Final power states will be
-        reflected in '/api/v1/disks' upon completion.
+        reflected in '/snapraid/v1/disks' upon completion.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -217,7 +217,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/diff:
+  /snapraid/v1/diff:
     post:
       summary: Analyze array drift (Diff)
       description: >
@@ -226,12 +226,12 @@ paths:
 
         This command compares the current file system state against the
         existing parity metadata. It populates the 'diff_*' statistics
-        in the '/api/v1/array' endpoint, such as added, removed, moved,
+        in the '/snapraid/v1/array' endpoint, such as added, removed, moved,
         and copied files.
 
         Unlike 'sync', this is a read-only operation and does not modify
         the parity disks. Real-time progress is available via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
       responses:
@@ -241,7 +241,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/status:
+  /snapraid/v1/status:
     post:
       summary: Audit array metadata and health
       description: >
@@ -262,7 +262,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/sync:
+  /snapraid/v1/sync:
     post:
       summary: Synchronize array parity
       description: >
@@ -277,7 +277,7 @@ paths:
 
         This is a resource-intensive, asynchronous operation. Real-time
         progress, including percentage completion and estimated time
-        remaining, is available via the '/api/v1/activity' endpoint.
+        remaining, is available via the '/snapraid/v1/activity' endpoint.
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
         $ref: '#/components/requestBodies/CommandRequest'
@@ -288,7 +288,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/scrub:
+  /snapraid/v1/scrub:
     post:
       summary: Verify data integrity
       description: >
@@ -305,7 +305,7 @@ paths:
         This is a resource-intensive, asynchronous operation that
         validates the oldest parts of the array first. Real-time
         progress and detected errors are available via the
-        '/api/v1/activity' endpoint.
+        '/snapraid/v1/activity' endpoint.
 
         Returns 202 Accepted to acknowledge the task has been queued.
       requestBody:
@@ -317,7 +317,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/check:
+  /snapraid/v1/check:
     post:
       summary: Initiate array integrity check
       description: >
@@ -337,7 +337,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/fix:
+  /snapraid/v1/fix:
     post:
       summary: Initiate data restoration from parity
       description: >
@@ -358,7 +358,7 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/stop:
+  /snapraid/v1/stop:
     post:
       summary: Stop active task
       description: >
@@ -380,7 +380,7 @@ paths:
           description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/disks:
+  /snapraid/v1/disks:
     get:
       summary: Get cached disk inventory and status
       description: >
@@ -410,7 +410,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Disk'
 
-  /api/v1/activity:
+  /snapraid/v1/activity:
     get:
       summary: Get active or latest task telemetry
       description: >
@@ -439,7 +439,7 @@ paths:
         '204':
           description: No task available (system idle since startup).
 
-  /api/v1/queue:
+  /snapraid/v1/queue:
     get:
       summary: List pending tasks
       description: >
@@ -449,7 +449,7 @@ paths:
         This includes manually triggered commands and scheduled maintenance
         tasks that are blocked by the currently running process. Tasks are
         executed sequentially. Once a task starts, it moves from this
-        queue to the '/api/v1/activity' endpoint.
+        queue to the '/snapraid/v1/activity' endpoint.
       responses:
         '200':
           description: A list of pending tasks retrieved successfully.
@@ -460,7 +460,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Task'
 
-  /api/v1/history:
+  /snapraid/v1/history:
     get:
       summary: List recent task history
       description: >
@@ -487,7 +487,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Task'
 
-  /api/v1/config:
+  /snapraid/v1/config:
     get:
       summary: Retrieve active daemon configuration
       description: >
@@ -538,7 +538,7 @@ paths:
             appearing after the failing field are not processed and remain unchanged.
           $ref: '#/components/responses/CommandResult'
 
-  /api/v1/array:
+  /snapraid/v1/array:
     get:
       summary: Get array metadata and delta statistics
       description: >
