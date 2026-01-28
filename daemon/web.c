@@ -72,10 +72,12 @@ static const mime_entry MIME[] =
 	{ 0 }
 };
 
+#define MIME_BINARY "application/octet-stream"
+
 static const char* get_mime_type(const char* path)
 {
 	if (!path)
-		return "application/octet-stream";
+		return 0;
 
 	for (int i = 0; MIME[i].extension != 0; ++i) {
 		if (strstr(path, MIME[i].extension)) {
@@ -83,7 +85,7 @@ static const char* get_mime_type(const char* path)
 		}
 	}
 
-	return "application/octet-stream";
+	return 0;
 }
 
 static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
@@ -141,6 +143,8 @@ static void crawl_directory(tommy_list* page_list, size_t skip, const char* curr
 			close(f);
 
 			page->mime_type = get_mime_type(relative);
+			if (!page->mime_type)
+				page->mime_type = MIME_BINARY;
 
 			tommy_list_insert_tail(page_list, &page->node, page);
 		}
@@ -359,30 +363,6 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 	return 0;
 }
 
-static int stat_file(const char* path, struct stat* st)
-{
-	if (lstat(path, st) == -1) {
-		return -1;
-	}
-
-	if (S_ISDIR(st->st_mode)) {
-		log_msg(LVL_WARNING, "crawler ignore dir %s", path);
-		return -1;
-	}
-
-	if (S_ISLNK(st->st_mode)) {
-		log_msg(LVL_WARNING, "crawler ignore link %s", path);
-		return -1;
-	}
-
-	if (!S_ISREG(st->st_mode)) {
-		log_msg(LVL_WARNING, "crawler ignore not regular file %s", path);
-		return -1;
-	}
-
-	return 0;
-}
-
 static ssize_t read_file(const char* path, struct stat* st, char** body)
 {
 	int f = open(path, O_RDONLY);
@@ -404,47 +384,64 @@ static ssize_t read_file(const char* path, struct stat* st, char** body)
 	return st->st_size;
 }
 
-
 static int handler_real_file(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 
 	const char* target_uri = ri->local_uri;
-	if (strcmp(target_uri, "/") == 0) {
+
+	if (strstr(target_uri, "..") != 0)
+		return send_error(conn, 403);
+
+	if (strcmp(target_uri, "/") == 0)
 		target_uri = "/index.html";
-	}
+
+	const char* mime = get_mime_type(target_uri);
+	if (mime == 0)
+		return send_error(conn, 403);
 
 	state_lock();
-	char path[PATH_MAX + 13];
-	snprintf(path, sizeof(path), "%s/%s", state->config.net_web_root, target_uri);
+	char root[PATH_MAX];
+	sncpy(root, sizeof(root), state->config.net_web_root);
 	state_unlock();
 
+	char physical_path[PATH_MAX + 13];
+	snprintf(physical_path, sizeof(physical_path), "%s/%s", root, target_uri);
+
+	char resolved_path[PATH_MAX];
+	if (realpath(physical_path, resolved_path) == 0)
+		return 0; /* not a page, follow other handlers */
+
+	size_t root_len = strlen(root);
+	if (strncmp(resolved_path, root, root_len) != 0 || (resolved_path[root_len] != '\0' && resolved_path[root_len] != '/'))
+		return send_error(conn, 403);
+
+	if (strncmp(resolved_path, root, strlen(root)) != 0)
+		return send_error(conn, 403);
+
 	struct stat st;
-	if (stat_file(path, &st) == -1) {
-		return 0;
-	}
+	if (lstat(resolved_path, &st) == -1)
+		return 0; /* not a page, follow other handlers */
 
-	if (strcmp(ri->request_method, "OPTIONS") == 0) {
+	if (!S_ISREG(st.st_mode))
+		return send_error(conn, 403);
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
 		return send_no_content(conn);
-	}
 
-	if (strcmp(ri->request_method, "GET") != 0) {
+	if (strcmp(ri->request_method, "GET") != 0)
 		return send_error(conn, 405);
-	}
 
 	/* check if browser already has the latest version */
-	if (is_not_modified(conn, st.st_mtime)) {
+	if (is_not_modified(conn, st.st_mtime))
 		return send_error(conn, 304);
-	}
 
 	char* body = 0;
-	ssize_t body_len = read_file(path, &st, &body);
+	ssize_t body_len = read_file(resolved_path, &st, &body);
 	if (body_len == -1) {
 		return send_error(conn, 500);
 	}
-
-	const char* mime = get_mime_type(path);
 
 	int status = send_file(conn, st.st_mtime, body, body_len, mime);
 
@@ -453,13 +450,17 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	return status;
 }
 
-int web_init(struct snapraid_state* state)
+int web_init(struct snapraid_state* state, int nocache)
 {
-	if (web_reload(state, state->config.net_web_root) != 0)
-		return -1;
+	state->page_cache = !nocache;
 
-	//mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
-	mg_set_request_handler(state->rest_context, "**", handler_real_file, state);
+	if (state->page_cache) {
+		if (web_reload(state, state->config.net_web_root) != 0)
+			return -1;
+		mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
+	} else {
+		mg_set_request_handler(state->rest_context, "**", handler_real_file, state);
+	}
 
 	return 0;
 }

@@ -44,6 +44,7 @@ static void usage(const char* conf)
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
 	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");
+	printf("  " SWITCH_GETOPT_LONG("-N, --no-cache        ", "-N") "  Load web pages at runtime without caching them\n");
 	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
 	printf("  " SWITCH_GETOPT_LONG("-H, --help            ", "-H") "  Show this help message\n");
 	printf("  " SWITCH_GETOPT_LONG("-V, --version         ", "-V") "  Show version and exit\n");
@@ -104,6 +105,7 @@ static void run(struct snapraid_state* state)
 struct option long_options[] = {
 	{ "foreground", 0, 0, 'f' },
 	{ "conf", 1, 0, 'c' },
+	{ "no-cache", 1, 0, 'N' },
 	{ "pidfile", 1, 0, 'p' },
 	{ "help", 0, 0, 'H' },
 	{ "version", 0, 0, 'V' },
@@ -112,12 +114,13 @@ struct option long_options[] = {
 };
 #endif
 
-#define OPTIONS "fc:p:HV"
+#define OPTIONS "fc:Np:HV"
 
 int main(int argc, char *argv[])
 {
 	int c;
 	int foreground = 1; // TODO
+	int nocache = 1; // TODO
 	char msg[128];
 	int status;
 	const char* arg_pidfile = 0;
@@ -140,6 +143,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'c' :
 			sncpy(state_ptr()->config.conf, sizeof(state_ptr()->config.conf), optarg);
+			break;
+		case 'N' :
+			nocache = 1;
 			break;
 		case 'p' :
 			arg_pidfile = optarg;
@@ -208,7 +214,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (web_init(state_ptr()) != 0) {
+	if (web_init(state_ptr(), nocache) != 0) {
 		log_msg(LVL_ERROR, "failed to start the web server");
 		exit(EXIT_FAILURE);
 	}

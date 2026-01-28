@@ -28,7 +28,7 @@
  * @param state Current snapraid state
  * @return 0 on success, -1 on error
  */
-int web_init(struct snapraid_state* state);
+int web_init(struct snapraid_state* state, int nocache);
 
 /**
  * Cleanup WEB server.

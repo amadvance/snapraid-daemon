@@ -358,6 +358,7 @@ struct snapraid_state {
 	struct snapraid_config config;
 	tommy_list data_list;
 	tommy_list parity_list;
+	int page_cache; /**< If pages are cached */
 	thread_rwlock_t page_lock;
 	tommy_list page_list; /**< List of web pages */
 	time_t page_time; /**< Time of the pages loaded from disk */
