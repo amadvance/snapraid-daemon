@@ -119,8 +119,8 @@ struct option long_options[] = {
 int main(int argc, char *argv[])
 {
 	int c;
-	int foreground = 1; // TODO
-	int nocache = 1; // TODO
+	int foreground = 0;
+	int nocache = 0;
 	char msg[128];
 	int status;
 	const char* arg_pidfile = 0;
