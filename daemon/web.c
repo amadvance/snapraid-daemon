@@ -413,11 +413,12 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	if (realpath(physical_path, resolved_path) == 0)
 		return 0; /* not a page, follow other handlers */
 
-	size_t root_len = strlen(root);
-	if (strncmp(resolved_path, root, root_len) != 0 || (resolved_path[root_len] != '\0' && resolved_path[root_len] != '/'))
-		return send_error(conn, 403);
+	char resolved_root[PATH_MAX];
+	if (realpath(root, resolved_root) == 0)
+		return 0; /* not a page, follow other handlers */
 
-	if (strncmp(resolved_path, root, strlen(root)) != 0)
+	size_t root_len = strlen(resolved_root);
+	if (strncmp(resolved_path, resolved_root, root_len) != 0 || (resolved_path[root_len] != '\0' && resolved_path[root_len] != '/'))
 		return send_error(conn, 403);
 
 	struct stat st;
