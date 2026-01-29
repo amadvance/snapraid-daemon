@@ -658,6 +658,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("log_retention_days")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_value(js, &jv[j], 0, 10000, &state->config.log_retention_days) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.log_retention_days);
@@ -725,6 +729,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_result_level")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
 					&& config_parse_level(buf, &state->config.notify_result_level) == 0) {

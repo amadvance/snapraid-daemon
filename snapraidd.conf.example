@@ -89,9 +89,11 @@ net_allowed_origin = self
 #   - script_pre_run
 #   - script_post_run
 #   - log_directory
+#   - log_retention_days
 #   - notify_run_as_user
 #   - notify_heartbeat
 #   - notify_result
+#   - notify_result_level
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
@@ -208,6 +210,9 @@ log_directory = /var/log/snapraid
 # To prevent your storage from filling up, log_retention_days sets the
 # age at which old command logs are deleted. Logs are kept indefinitely
 # if this is set to 0 or left unset.
+#
+# This option can only be modified via the REST API if 'net_config_full_access'
+# is set to 1. Otherwise, it remains read-only for security reasons.
 log_retention_days = 30
 
 ### Notifications
@@ -242,6 +247,9 @@ notify_syslog_level = info
 # Values: info (always), warning, error, critical (default).
 # Example: If set to 'error', notifications are sent for errors and
 # critical failures, but NOT for successful 'info' runs.
+#
+# This option can only be modified via the REST API if 'net_config_full_access'
+# is set to 1. Otherwise, it remains read-only for security reasons.
 notify_result_level = error
 
 # Use notify_email_recipient to send reports to a local system email address.

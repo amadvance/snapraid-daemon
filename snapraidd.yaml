@@ -1196,9 +1196,11 @@ components:
             - script_pre_run
             - script_post_run
             - log_directory
+            - log_retention_days
             - notify_run_as_user
             - notify_heartbeat
             - notify_result
+            - notify_result_level
 
             Note that this flag itself is immutable via the API and can only be changed by
             manually editing the 'snapraidd.conf' file and reloading the daemon.
