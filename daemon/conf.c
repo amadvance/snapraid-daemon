@@ -424,7 +424,7 @@ int config_save(struct snapraid_config* config)
 
 	FILE *fp = fopen(config->conf, "wte");
 	if (!fp) {
-		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg_locked(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
 
@@ -432,7 +432,7 @@ int config_save(struct snapraid_config* config)
 	while (i) {
 		line = i->data;
 		if (fputs(line->text, fp) == EOF) {
-			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+			log_msg_locked(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 			fclose(fp);
 			return -1;
 		}
@@ -446,11 +446,11 @@ int config_save(struct snapraid_config* config)
 	}
 
 	if (fclose(fp) != 0) {
-		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg_locked(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
 
-	log_msg(LVL_INFO, "config saved successfully");
+	log_msg_locked(LVL_INFO, "config saved successfully");
 
 	return 0;
 }

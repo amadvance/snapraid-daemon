@@ -528,8 +528,12 @@ void runner_done(struct snapraid_state* state)
 {
 	void* retval;
 
+	state_lock(); /* locking makes helgrind happy in the signal */
+
 	/* signal the condition to allow the thread to stop */
 	thread_cond_signal(&state->runner.cond);
+
+	state_unlock();
 
 	/* wait for the thread termination */
 	thread_join(state->runner.thread_id, &retval);

@@ -36,10 +36,10 @@ void scheduler_init(struct snapraid_state* state);
 void scheduler_done(struct snapraid_state* state);
 
 /**
- * Main scheduler loop to manage timed tasks.
+ * Trigger a scheduler check.
  * @param state Current snapraid state
  */
-void scheduler(struct snapraid_state* state);
+void scheduler_pulse(struct snapraid_state* state);
 
 /**
  * Schedule a maintenance

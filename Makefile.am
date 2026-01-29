@@ -197,6 +197,30 @@ if HAVE_ADVD2
 	advd2 frame < $(srcdir)/$< > $@
 endif
 
+MANUAL=./snapraidd -f -N
+
+valgrind:
+	valgrind \
+		--tool=memcheck \
+		--suppressions=valgrind.supp \
+		--track-origins=yes \
+		--read-var-info=yes \
+		--leak-check=full \
+		-v $(MANUAL) \
+		2> valgrind.log
+		tail valgrind.log
+
+helgrind:
+	valgrind \
+		--tool=helgrind \
+		--fair-sched=try \
+		--suppressions=valgrind.supp \
+		--gen-suppressions=all \
+		-v $(MANUAL) \
+		2> helgrind.log
+		tail helgrind.log
+
+
 # Web distribution
 
 web: $(LIST_HH)

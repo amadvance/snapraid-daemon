@@ -55,7 +55,7 @@ void log_msg(int level, const char *fmt, ...)
 	va_end(ap);
 }
 
-void log_msg_lock(int level, const char *fmt, ...)
+void log_msg_locked(int level, const char *fmt, ...)
 {
 	int syslog;
 	struct snapraid_state* state;

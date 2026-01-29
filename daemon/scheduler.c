@@ -272,7 +272,7 @@ void scheduler_init(struct snapraid_state* state)
 	thread_create(&state->scheduler.thread_id, scheduler_thread, state);
 }
 
-void scheduler(struct snapraid_state* state)
+void scheduler_pulse(struct snapraid_state* state)
 {
 	thread_cond_signal(&state->scheduler.cond);
 }
@@ -281,8 +281,12 @@ void scheduler_done(struct snapraid_state* state)
 {
 	void* retval;
 
+	state_lock(); /* locking makes helgrind happy in the signal */
+
 	/* signal the condition to allow the thread to stop */
 	thread_cond_signal(&state->scheduler.cond);
+
+	state_unlock();
 
 	/* wait for the thread termination */
 	thread_join(state->scheduler.thread_id, &retval);

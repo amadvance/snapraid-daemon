@@ -83,7 +83,11 @@ static void run(struct snapraid_state* state)
 			}
 		}
 
-		scheduler(state);
+		state_lock();
+
+		scheduler_pulse(state);
+
+		state_unlock();
 
 		/*
 		 * The sleep call is interrupted by signals even with SA_RESTART.
@@ -190,14 +194,14 @@ int main(int argc, char *argv[])
 	daemon_signal_set(0);
 
 	/**
-	 * Create worker threads while signals are still BLOCKED
-	 */
-	runner_init(state_ptr());
-
-	/**
 	 * Parse existing log files
 	 */
 	parse_past_log(state_ptr());
+
+	/**
+	 * Create worker threads while signals are still BLOCKED
+	 */
+	runner_init(state_ptr());
 
 	/*
 	 * Load initial info into the state

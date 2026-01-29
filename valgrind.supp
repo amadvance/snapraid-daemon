@@ -1,0 +1,25 @@
+{
+   Unprotected write from the signal handler
+   Helgrind:Race
+   fun:signal_handler_term
+}
+
+{
+   CivetWEB
+   Helgrind:Race
+   fun:consume_socket
+}
+
+{
+   CivetWEB
+   Helgrind:Race
+   fun:mg_stop
+   fun:rest_done
+   fun:main
+}
+
+{
+   CivetWEB
+   Helgrind:Race
+   fun:master_thread_run
+}
