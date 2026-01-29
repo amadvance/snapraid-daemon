@@ -1183,6 +1183,25 @@ components:
       type: object
       description: Global configuration state for the SnapRAID daemon.
       properties:
+        config_full_access:
+          type: boolean
+          example: true
+          description: >
+            Indicates whether security-sensitive configuration parameters can be modified
+            dynamically.
+
+            If set to false, the following restricted options are forced into a
+            read-only state for all API requests:
+            - script_run_as_user
+            - script_pre_run
+            - script_post_run
+            - log_directory
+            - notify_run_as_user
+            - notify_heartbeat
+            - notify_result
+
+            Note that this flag itself is immutable via the API and can only be changed by
+            manually editing the 'snapraidd.conf' file and reloading the daemon.
         maintenance_schedule:
           type: string
           example: "daily 02:00"

@@ -811,6 +811,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
 	ss_json_open(&s, &level);
+	ss_json_bool(&s, level, "config_full_access", config->net_config_full_access);
 	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
 	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
