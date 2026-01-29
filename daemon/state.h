@@ -350,6 +350,7 @@ struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
 	thread_mutex_t lock; /**< Main lock for accessing the state */
+	int foreground; /**< Daemon running in foreground */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;
@@ -358,7 +359,7 @@ struct snapraid_state {
 	struct snapraid_config config;
 	tommy_list data_list;
 	tommy_list parity_list;
-	int page_cache; /**< If pages are cached */
+	int page_nocache; /**< If pages are not cached but read at runtime */
 	thread_rwlock_t page_lock;
 	tommy_list page_list; /**< List of web pages */
 	time_t page_time; /**< Time of the pages loaded from disk */
@@ -367,12 +368,12 @@ struct snapraid_state {
 /**
  * Initialize the global state system.
  */
-void state_init(void);
+struct snapraid_state* state_init(void);
 
 /**
  * Cleanup the global state system.
  */
-void state_done(void);
+void state_done(struct snapraid_state* state);
 
 /**
  * Get pointer to the global snapraid state.

@@ -24,7 +24,7 @@
 /* log */
 
 static int level_map[] = {
-	0,
+	LOG_CRIT,
 	LOG_ERR,
 	LOG_WARNING,
 	LOG_INFO
@@ -36,21 +36,55 @@ int log_init(const char* ident)
 	return 0;
 }
 
-void log_msg(int level, const char *fmt, ...)
+
+static void log_out(int level, int syslog, int termlog, const char* fmt, va_list ap)
 {
-	int syslog;
-	struct snapraid_state* state;
+	va_list ap2;
 
-	va_list ap;
-	va_start(ap, fmt);
-
-	state_lock();
-	state = state_ptr();
-	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
-	state_unlock();
+	va_copy(ap2, ap);
 
 	if (syslog)
 		vsyslog(level_map[level], fmt, ap);
+
+	if (termlog) {
+		char buf[2048];
+		vsnprintf(buf, sizeof(buf), fmt, ap2);
+		switch (level) {
+		case LVL_CRITICAL :
+			fprintf(stderr, PACKAGE "[%" PRIu64 "]:critical: %s\n", (uint64_t)getpid(), buf);
+			break;
+		case LVL_ERROR :
+			fprintf(stderr, PACKAGE "[%" PRIu64 "]:error: %s\n", (uint64_t)getpid(), buf);
+			break;
+		case LVL_WARNING :
+			fprintf(stdout, PACKAGE "[%" PRIu64 "]:warning: %s\n", (uint64_t)getpid(), buf);
+			fflush(stdout);
+			break;
+		case LVL_INFO :
+			fprintf(stdout, PACKAGE "[%" PRIu64 "]:info: %s\n", (uint64_t)getpid(), buf);
+			fflush(stdout);
+			break;
+		}
+	}
+
+	va_end(ap2);
+}
+
+void log_msg(int level, const char *fmt, ...)
+{
+	int syslog;
+	int termlog;
+	va_list ap;
+
+	va_start(ap, fmt);
+
+	state_lock();
+	struct snapraid_state* state = state_ptr();
+	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
+	termlog = state->foreground;
+	state_unlock();
+
+	log_out(level, syslog, termlog, fmt, ap);
 
 	va_end(ap);
 }
@@ -58,16 +92,16 @@ void log_msg(int level, const char *fmt, ...)
 void log_msg_locked(int level, const char *fmt, ...)
 {
 	int syslog;
-	struct snapraid_state* state;
-
+	int termlog;
 	va_list ap;
+
 	va_start(ap, fmt);
 
-	state = state_ptr();
+	struct snapraid_state* state = state_ptr();
 	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
+	termlog = state->foreground;
 
-	if (syslog)
-		vsyslog(level_map[level], fmt, ap);
+	log_out(level, syslog, termlog, fmt, ap);
 
 	va_end(ap);
 }

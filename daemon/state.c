@@ -23,18 +23,20 @@
 
 struct snapraid_state STATE;
 
-void state_init(void)
+struct snapraid_state* state_init(void)
 {
 	memset(&STATE, 0, sizeof(STATE));
 	struct snapraid_state* state = &STATE;
 
 	thread_mutex_init(&state->lock);
 	state->daemon_running = 1;
+
+	return state;
 }
 
-void state_done(void)
+void state_done(struct snapraid_state* state)
 {
-	struct snapraid_state* state = &STATE;
+	assert(state == &STATE);
 
 	tommy_list_foreach(&state->runner.waiting_list, task_free);
 	tommy_list_foreach(&state->runner.history_list, task_free);

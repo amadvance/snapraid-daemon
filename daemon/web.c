@@ -451,11 +451,9 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	return status;
 }
 
-int web_init(struct snapraid_state* state, int nocache)
+int web_init(struct snapraid_state* state)
 {
-	state->page_cache = !nocache;
-
-	if (state->page_cache) {
+	if (!state->page_nocache) {
 		if (web_reload(state, state->config.net_web_root) != 0)
 			return -1;
 		mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);

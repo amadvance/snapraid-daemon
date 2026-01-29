@@ -123,16 +123,14 @@ struct option long_options[] = {
 int main(int argc, char *argv[])
 {
 	int c;
-	int foreground = 0;
-	int nocache = 0;
 	char msg[128];
 	int status;
 	const char* arg_pidfile = 0;
 	char pidfile[PATH_MAX];
 
-	state_init();
+	struct snapraid_state* state = state_init();
 
-	config_init(&state_ptr()->config, argv[0]);
+	config_init(&state->config, argv[0]);
 
 	while ((c =
 #if HAVE_GETOPT_LONG
@@ -143,31 +141,31 @@ int main(int argc, char *argv[])
 		!= EOF) {
 		switch (c) {
 		case 'f' :
-			foreground = 1;
+			state->foreground = 1;
 			break;
 		case 'c' :
-			sncpy(state_ptr()->config.conf, sizeof(state_ptr()->config.conf), optarg);
+			sncpy(state->config.conf, sizeof(state->config.conf), optarg);
 			break;
 		case 'N' :
-			nocache = 1;
+			state->page_nocache = 1;
 			break;
 		case 'p' :
 			arg_pidfile = optarg;
 			break;
 		case 'h' :
-			usage(state_ptr()->config.conf);
+			usage(state->config.conf);
 			exit(EXIT_SUCCESS);
 		case 'V' :
 			version();
 			exit(EXIT_SUCCESS);
 		default :
-			usage(state_ptr()->config.conf);
+			usage(state->config.conf);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	int pidfd = -1;
-	if (!foreground) {
+	if (!state->foreground) {
 		pidfd = daemon_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
 		if (pidfd == -1)
 			exit(EXIT_FAILURE);
@@ -178,8 +176,8 @@ int main(int argc, char *argv[])
 	log_msg(LVL_INFO, "version=%s", VERSION);
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
 
-	if (config_load(state_ptr()) != 0) {
-		log_msg(LVL_ERROR, "failed to load config from %s", state_ptr()->config.conf);
+	if (config_load(state) != 0) {
+		log_msg(LVL_ERROR, "failed to load config from %s", state->config.conf);
 		exit(EXIT_FAILURE);
 	}
 
@@ -196,29 +194,29 @@ int main(int argc, char *argv[])
 	/**
 	 * Parse existing log files
 	 */
-	parse_past_log(state_ptr());
+	parse_past_log(state);
 
 	/**
 	 * Create worker threads while signals are still BLOCKED
 	 */
-	runner_init(state_ptr());
+	runner_init(state);
 
 	/*
 	 * Load initial info into the state
 	 */
-	if (runner(state_ptr(), CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
+	if (runner(state, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the first probe command");
 		exit(EXIT_FAILURE);
 	}
 
-	scheduler_init(state_ptr());
+	scheduler_init(state);
 
-	if (rest_init(state_ptr()) != 0) {
+	if (rest_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to start the rest api");
 		exit(EXIT_FAILURE);
 	}
 
-	if (web_init(state_ptr(), nocache) != 0) {
+	if (web_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to start the web server");
 		exit(EXIT_FAILURE);
 	}
@@ -234,17 +232,17 @@ int main(int argc, char *argv[])
 	 *
 	 * It's stopped by signals
 	 */
-	run(state_ptr());
+	run(state);
 
-	web_done(state_ptr());
-	rest_done(state_ptr());
-	scheduler_done(state_ptr());
-	runner_done(state_ptr());
+	web_done(state);
+	rest_done(state);
+	scheduler_done(state);
+	runner_done(state);
 
 	log_msg(LVL_INFO, "daemon stopped");
 
 	log_done();
-	state_done();
+	state_done(state);
 
 	if (pidfd != -1) {
 		/* first delete then close */
