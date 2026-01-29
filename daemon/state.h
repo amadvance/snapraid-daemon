@@ -98,6 +98,7 @@ struct snapraid_device {
 	char serial[SMART_MAX]; /**< Serial number. */
 	char family[SMART_MAX]; /**< Vendor and model family. */
 	char model[SMART_MAX]; /**< Model. */
+	char interf[SMART_MAX]; /**< Interface. */
 	uint64_t smart[SMART_COUNT]; /**< SMART attributes. */
 	uint64_t size;
 	uint64_t rotational;

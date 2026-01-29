@@ -269,6 +269,7 @@ struct disk_spacing {
 	int health_len;
 	int model_len;
 	int serial_len;
+	int interf_len;
 };
 
 static void spacing_disk_list(tommy_list* disk_list, struct disk_spacing* sp)
@@ -286,6 +287,9 @@ static void spacing_disk_list(tommy_list* disk_list, struct disk_spacing* sp)
 			len = strlen(device->serial);
 			if (sp->serial_len < len)
 				sp->serial_len = len;
+			len = strlen(device->interf);
+			if (sp->interf_len < len)
+				sp->interf_len = len;
 		}
 	}
 }
@@ -306,6 +310,8 @@ static void print_device(struct snapraid_device* device, ss_t* ss, struct disk_s
 	ss_printl(ss, device->model[0] ? device->model : "-", sp->model_len);
 	ss_prints(ss, "   Serial: ");
 	ss_printl(ss, device->serial[0] ? device->serial : "-", sp->serial_len);
+	ss_prints(ss, "   Interface: ");
+	ss_printl(ss, device->interf[0] ? device->interf : "-", sp->interf_len);
 	ss_prints(ss, "\n");
 	if (device->error_medium != SMART_UNASSIGNED && device->error_medium != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
@@ -389,8 +395,9 @@ int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* 
 
 	struct disk_spacing sp;
 	sp.name_len = 0;
-	sp.serial_len = 0;
 	sp.model_len = 0;
+	sp.serial_len = 0;
+	sp.interf_len = 0;
 	sp.tab_len = 2;
 	sp.health_len = 9;
 

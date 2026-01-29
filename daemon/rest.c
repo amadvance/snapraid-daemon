@@ -1070,6 +1070,8 @@ static void json_device_list(ss_t* s, int level, tommy_list* list)
 			ss_json_str(s, level, "model", dev->model);
 		if (*dev->serial)
 			ss_json_str(s, level, "serial", dev->serial);
+		if (*dev->interf)
+			ss_json_str(s, level, "interface", dev->interf);
 		ss_json_str(s, level, "power", power_name(dev->power));
 		if (dev->size != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "size_bytes", dev->size);

@@ -354,6 +354,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		sncpy(device->model, sizeof(device->model), val);
 	else if (strcmp(tag, "family") == 0)
 		sncpy(device->family, sizeof(device->family), val);
+	else if (strcmp(tag, "interface") == 0)
+		sncpy(device->interf, sizeof(device->interf), val);
 	else if (strcmp(tag, "size") == 0)
 		stru64(&device->size, val);
 	else if (strcmp(tag, "rotationrate") == 0)

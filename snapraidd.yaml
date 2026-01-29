@@ -911,6 +911,11 @@ components:
           example: "WD-WCC7K1XN2L3P"
           description: >
             Serial of the disk.
+        interface:
+          type: string
+          example: "USB"
+          description: >
+            Interface of the disk. Typical values are SATA, SCSI, USB, NVMe.
         size_bytes:
           type: integer
           format: int64
