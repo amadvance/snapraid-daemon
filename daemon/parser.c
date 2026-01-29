@@ -494,9 +494,19 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		++msg;
 
 	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0 || strcmp(map[1], "verbose") == 0) {
-		sl_insert_str(&task->message_list, msg);
+		if (task->message_list_count <= MESSAGES_MAX) {
+			sl_insert_str(&task->message_list, msg);
+			if (task->message_list_count == MESSAGES_MAX)
+				sl_insert_str(&task->message_list, "...and many more");
+		}
+		++task->message_list_count;
 	} else if (strcmp(map[1], "error") == 0 || strcmp(map[1], "fatal") == 0 || strcmp(map[1], "expected") == 0) {
-		sl_insert_str(&task->error_list, msg);
+		if (task->error_list_count <= MESSAGES_MAX) {
+			sl_insert_str(&task->error_list, msg);
+			if (task->error_list_count == MESSAGES_MAX)
+				sl_insert_str(&task->error_list, "...and many more");
+		}
+		++task->error_list_count;
 	}
 }
 
@@ -524,21 +534,8 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_error(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
-
-	msg = map[4]; /* error message is the last field */
-
-	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
-		++msg;
-
-	sl_insert_str(&task->error_list, msg);
 
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
@@ -553,21 +550,10 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_parity_error(struct snapraid_state* state, char** map, size_t mac)
 {
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	msg = map[3]; /* error message is the last field */
-
-	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
-		++msg;
-
-	sl_insert_str(&task->error_list, msg);
+	/* the task error_io and error_data will be gathered by the final summary tag */
 
 	if (strcmp(map[0], "parity_error_io") == 0) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
@@ -576,22 +562,6 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
 		++parity->error_data;
 	}
-}
-
-static void process_outofparity(struct snapraid_state* state, char** map __attribute__((unused)), size_t mac __attribute__((unused)))
-{
-	struct snapraid_task* task = state->runner.latest;
-	const char* msg;
-
-	if (!task)
-		return;
-	if (mac < 3) /* outofparity:<disk_name>:<file_path> */
-		return;
-
-	/* For outofparity, we create a meaningful error message */
-	msg = "File extends beyond available parity space";
-
-	sl_insert_str(&task->error_list, msg);
 }
 
 static void process_conf(struct snapraid_state* state, char** map, size_t mac)
@@ -886,10 +856,6 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "parity_error") == 0 || strcmp(cmd, "parity_error_io") == 0 || strcmp(cmd, "parity_error_data") == 0) {
 		state_lock();
 		process_parity_error(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "outofparity") == 0) {
-		state_lock();
-		process_outofparity(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "daemon") == 0) {
 		state_lock();

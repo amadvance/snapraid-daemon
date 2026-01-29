@@ -80,7 +80,9 @@ struct snapraid_task* task_alloc(void)
 	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
 	sl_init(&task->arg_list);
 	sl_init(&task->message_list);
+	task->message_list_count = 0;
 	sl_init(&task->error_list);
+	task->error_list_count = 0;
 	sl_init(&task->fix_list);
 	task->health = HEALTH_PASSED;
 	return task;

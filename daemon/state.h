@@ -167,6 +167,8 @@ struct snapraid_disk {
 #define HISTORY_PAST_DAYS 30 /**< Number of days the history is kept */
 #define SECONDS_IN_A_DAY (24 * 3600)
 
+#define MESSAGES_MAX 250 /**< Max number of messages and errors before stop colleting messages */
+
 struct snapraid_task {
 	char log_file[PATH_MAX]; /**< Log file of the task. */
 	int cmd; /**< The command running */
@@ -194,6 +196,7 @@ struct snapraid_task {
 
 	sl_t arg_list; /**< List of arguments */
 	sl_t message_list; /**< List of messages */
+	int message_list_count; /**< Count of messages, just to limit the number. */
 	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */
 
 	char* text_report; /**< for CMD_REPORT it's the final text report */
@@ -208,6 +211,7 @@ struct snapraid_task {
 	uint64_t error_unrecoverable; /**< Total error unrecoverable (fix only). */
 	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
 	sl_t error_list; /**< List of error messages */
+	int error_list_count; /**< Count of messages, just to limit the number. */
 
 	tommy_node node;
 };
