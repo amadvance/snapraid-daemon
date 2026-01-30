@@ -1133,12 +1133,18 @@ components:
             * 'pending': The power state is currently unknown. The daemon
               is waiting for the next probe or array command to verify if
               the disk is spinning.
-        allocated_space_bytes:
+        total_space_bytes:
           type: integer
           format: int64
+          description: >
+            The size in bytes of the filesystem. In case of parity splitted in
+            multiple filesystems, this is the cumulative size.
         free_space_bytes:
           type: integer
           format: int64
+          description: >
+            The free space in bytes in the filesystem. In case of parity splitted
+            multiple filesystems, this is the cumulative size.
         access_count:
           type: integer
           format: int64

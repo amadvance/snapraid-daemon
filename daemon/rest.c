@@ -1130,7 +1130,7 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list)
 		ss_json_str(s, level, "health", health_name(health_disk(disk)));
 		// TODO power
 		if (disk->content_size != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "allocated_space_bytes", disk->content_size);
+			ss_json_u64(s, level, "total_space_bytes", disk->content_size);
 		if (disk->content_free != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "free_space_bytes", disk->content_free);
 		if (disk->access_count != 0) {
