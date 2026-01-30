@@ -1437,8 +1437,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	ss_json_open(&s, &level);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
+	ss_json_str(&s, level, "daemon_conf", state->config.conf);
+	ss_json_str(&s, level, "health", health_name(health_array(state)));
 	if (*global->version) {
-		ss_json_str(&s, level, "health", health_name(health_array(state)));
 		ss_json_str(&s, level, "engine_version", global->version);
 		ss_json_str(&s, level, "engine_conf", global->conf_engine);
 		if (*global->content)

@@ -1488,13 +1488,19 @@ components:
         Comprehensive state of array configuration, health metrics, and execution metadata.
       required:
         - daemon_version
+        - daemon_conf
         - health
       properties:
         daemon_version:
           type: string
           example: "13.1"
           description: >
-            The version of the snapraidd C daemon currently running.
+            The version of the SnapRAID-Daemon currently running.
+        daemon_conf:
+          type: string
+          example: "/etc/snapraid.conf"
+          description: >
+            Absolute path to the SnapRAID-Daemon configuration file.
         health:
           type: string
           enum: [passed, prefail, failing, pending]
