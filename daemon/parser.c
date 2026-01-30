@@ -227,20 +227,6 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	sncpy(split->uuid, sizeof(split->uuid), uuid);
 }
 
-static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
-{
-	if (mac < 3)
-		return;
-
-	const char* name = map[1];
-	const char* uuid = map[2];
-
-	struct snapraid_disk* disk = find_disk(&state->data_list, name);
-	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
-
-	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
-}
-
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 {
 	int index;
@@ -262,7 +248,49 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	sncpy(split->uuid, sizeof(split->uuid), uuid);
 }
 
+static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 4)
+		return;
+
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+
+	struct snapraid_disk* data = find_disk(&state->data_list, name);
+	stru64(&data->content_size, size_alloc);
+	stru64(&data->content_free, size_free);
+}
+
 static void process_content_parity(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 4)
+		return;
+
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+
+	struct snapraid_disk* parity = find_disk(&state->parity_list, name);
+	stru64(&parity->content_size, size_alloc);
+	stru64(&parity->content_free, size_free);
+}
+
+static void process_content_data_split(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 3)
+		return;
+
+	const char* name = map[1];
+	const char* uuid = map[2];
+
+	struct snapraid_disk* data = find_disk(&state->data_list, name);
+	struct snapraid_split* split = find_split(&data->split_list, 0); /* at present data disks don't have the split index */
+
+	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
+}
+
+static void process_content_parity_split(struct snapraid_state* state, char** map, size_t mac)
 {
 	int index;
 
@@ -272,7 +300,7 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 	char* name = map[1];
 	const char* uuid = map[2];
 	const char* path = map[3];
-	const char* size_alloc = map[4];
+	/* const char* size = map[4]; */ /* unused */
 
 	if (!is_split_parity(name, &index))
 		return;
@@ -280,29 +308,8 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
-	sncpy(split->content_path, sizeof(split->content_path), path);
-	stru64(&split->content_size, size_alloc);
-}
-
-static void process_content_allocation(struct snapraid_state* state, char** map, size_t mac)
-{
-	if (mac < 4)
-		return;
-
-	const char* name = map[1];
-	const char* size_alloc = map[2];
-	const char* size_free = map[3];
-
-	if (is_parity(name)) {
-		struct snapraid_disk* parity = find_disk(&state->parity_list, name);
-		stru64(&parity->content_size, size_alloc);
-		stru64(&parity->content_free, size_free);
-	} else {
-		struct snapraid_disk* data = find_disk(&state->data_list, name);
-		stru64(&data->content_size, size_alloc);
-		stru64(&data->content_free, size_free);
-	}
+	sncpy(split->path, sizeof(split->path), path);
+	sncpy(split->content_uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_content_info(struct snapraid_state* state, char** map, size_t mac)
@@ -334,6 +341,79 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 	} else if (strcmp(tag, "block") == 0) {
 		stru64(&state->global.block_total, val);
 	}
+}
+
+static void process_fsinfo_data(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 4)
+		return;
+
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+
+	struct snapraid_disk* data = find_disk(&state->data_list, name);
+	stru64(&data->content_size, size_alloc);
+	stru64(&data->content_free, size_free);
+}
+
+static void process_fsinfo_parity(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 4)
+		return;
+
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+
+	struct snapraid_disk* parity = find_disk(&state->parity_list, name);
+	stru64(&parity->content_size, size_alloc);
+	stru64(&parity->content_free, size_free);
+}
+
+static void process_fsinfo_data_split(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 6)
+		return;
+
+	const char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+	const char* type = map[4];
+	const char* label = map[5];
+
+	struct snapraid_disk* data = find_disk(&state->data_list, name);
+	struct snapraid_split* split = find_split(&data->split_list, 0); /* at present data disks don't have the split index */
+
+	stru64(&split->fssize, size_alloc);
+	stru64(&split->fsfree, size_free);
+	sncpy(split->fstype, sizeof(split->fstype), type);
+	sncpy(split->fslabel, sizeof(split->fslabel), label);
+}
+
+static void process_fsinfo_parity_split(struct snapraid_state* state, char** map, size_t mac)
+{
+	int index;
+
+	if (mac < 6)
+		return;
+
+	char* name = map[1];
+	const char* size_alloc = map[2];
+	const char* size_free = map[3];
+	const char* type = map[4];
+	const char* label = map[5];
+
+	if (!is_split_parity(name, &index))
+		return;
+
+	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
+	struct snapraid_split* split = find_split(&disk->split_list, index);
+
+	stru64(&split->fssize, size_alloc);
+	stru64(&split->fsfree, size_free);
+	sncpy(split->fstype, sizeof(split->fstype), type);
+	sncpy(split->fslabel, sizeof(split->fslabel), label);
 }
 
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
@@ -829,13 +909,33 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_content_parity(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "content_allocation") == 0) {
+	} else if (strcmp(cmd, "content_data_split") == 0) {
 		state_lock();
-		process_content_allocation(state, map, mac);
+		process_content_data_split(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "content_parity_split") == 0) {
+		state_lock();
+		process_content_parity_split(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "content_info") == 0) {
 		state_lock();
 		process_content_info(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "fsinfo_data") == 0) {
+		state_lock();
+		process_fsinfo_data(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "fsinfo_parity") == 0) {
+		state_lock();
+		process_fsinfo_parity(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "fsinfo_data_split") == 0) {
+		state_lock();
+		process_fsinfo_data_split(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "fsinfo_parity_split") == 0) {
+		state_lock();
+		process_fsinfo_parity_split(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "hash_summary") == 0) {
 		state_lock();

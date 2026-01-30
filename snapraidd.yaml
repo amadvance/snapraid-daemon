@@ -1077,11 +1077,20 @@ components:
         uuid:
           type: string
           description: >
-            Actual UUID of the filesystem containing the parity file/mount dir.
+            The UUID of the filesystem.
         stored_uuid:
           type: string
           description: >
-            Stored UUID of the filesystem containing the parity file/mount dir.
+            Stored UUID of the filesystem in the content file.
+            This can be used to detect when the disk was replaced.
+        label:
+          type: string
+          description: >
+            The label of the filesystem.
+        type:
+          type: string
+          description: >
+            The type of the filesystem. Like ext4, ntfs.
 
     Disk:
       type: object

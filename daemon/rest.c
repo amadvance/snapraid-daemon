@@ -1146,11 +1146,15 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list)
 			struct snapraid_split* split = j->data;
 
 			ss_json_open(s, &level);
+			ss_json_str(s, level, "path", split->path);
 			if (*split->uuid)
 				ss_json_str(s, level, "uuid", split->uuid);
 			if (*split->content_uuid)
 				ss_json_str(s, level, "stored_uuid", split->content_uuid);
-			ss_json_str(s, level, "path", split->path);
+			if (split->fslabel[0])
+				ss_json_str(s, level, "label", split->fslabel);
+			if (split->fstype[0])
+				ss_json_str(s, level, "type", split->fstype);
 			ss_json_close(s, &level);
 		}
 		ss_json_array_close(s, &level);

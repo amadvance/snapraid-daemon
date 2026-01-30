@@ -35,6 +35,12 @@ typedef tommy_list sl_t;
 #define UUID_MAX 128
 
 /**
+ * Max filesystem type/label length
+ */
+
+#define FSINFO_MAX 64
+
+/**
  * Standard SMART attributes.
  */
 #define SMART_REALLOCATED_SECTOR_COUNT 5
@@ -121,6 +127,10 @@ struct snapraid_split {
 	char content_path[PATH_MAX]; /**< Parity file stored in the content file. */
 	char content_uuid[UUID_MAX]; /**< UUID stored in the content file. */
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
+	char fstype[FSINFO_MAX]; /**< Filesystem type */
+	char fslabel[FSINFO_MAX]; /**< Filesystem label */
+	uint64_t fssize; /**< Filesystem allocated size */
+	uint64_t fsfree; /**< Filesystem free size */
 	tommy_node node;
 };
 
