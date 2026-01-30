@@ -1174,6 +1174,7 @@ int parse_past_log(struct snapraid_state* state)
 		struct snapraid_task* task = task_alloc();
 		task->number = ++state->runner.number_allocator;
 		state->runner.latest = task;
+		sncpy(task->log_file, sizeof(task->log_file), path);
 
 		parse_log(state, f, 0, 0);
 		++count;
