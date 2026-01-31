@@ -1321,13 +1321,15 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
+	state_lock();
+
 	struct snapraid_task* task = state->runner.latest;
-	if (!task)
+	if (!task) {
+		state_unlock();
 		return send_no_content(conn);
+	}
 
 	ss_init(&s, JSON_INITIAL_SIZE);
-
-	state_lock();
 
 	json_task(&s, level, task);
 

@@ -723,13 +723,15 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 	tommy_node* i = tommy_list_head(&state->runner.history_list);
 	while (i) {
 		struct snapraid_task* task = i->data;
-
-		i = i->next; /* go to next before removal */
+		tommy_node* i_next = i->next;
 
 		if (task->unix_start_time < cutoff_seconds) {
 			/* remove and free */
-			task_free(tommy_list_remove_existing(&state->runner.history_list, i));
+			tommy_list_remove_existing(&state->runner.history_list, &task->node);
+			task_free(task);
 		}
+
+		i = i_next;
 	}
 
 	state_unlock();
