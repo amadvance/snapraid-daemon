@@ -19,6 +19,7 @@
 
 #include "support.h"
 #include "elem.h"
+#include "conf.h"
 #include "state.h"
 
 struct snapraid_state STATE;
@@ -39,11 +40,18 @@ void state_done(struct snapraid_state* state)
 	assert(state == &STATE);
 
 	tommy_list_foreach(&state->runner.waiting_list, task_free);
+	if (state->runner.latest->running) /* if running it isn't in the lists */
+		task_free(state->runner.latest);
 	tommy_list_foreach(&state->runner.history_list, task_free);
 	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
+	tommy_list_foreach(&state->data_list, disk_free);
+	tommy_list_foreach(&state->parity_list, disk_free);
 	tommy_list_foreach(&state->page_list, page_free);
+	tommy_list_foreach(&state->config.line_list, config_line_free);
 	thread_mutex_destroy(&state->lock);
+
+	memset(&STATE, 0, sizeof(STATE)); /* clear to have leaks reported */
 }
 
 struct snapraid_state* state_ptr(void)

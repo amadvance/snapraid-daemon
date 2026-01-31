@@ -23,6 +23,9 @@
 /****************************************************************************/
 /* config */
 
+struct snapraid_config_line* config_line_alloc(void);
+void config_line_free(void* void_line);
+
 /**
  * Parse log level string to numeric value.
  * @param input Input string to parse ("critical", "error", "warning", "info")

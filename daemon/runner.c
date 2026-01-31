@@ -562,7 +562,7 @@ const char* find_snapraid(void)
 	return 0;
 }
 
-static int runner_lock(struct snapraid_state* state, int lock, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
@@ -628,12 +628,12 @@ static int runner_lock(struct snapraid_state* state, int lock, int cmd, time_t n
 
 int runner_locked(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	return runner_lock(state, 0, cmd, now, arg_list, msg, msg_size, status);
+	return runner_with_lock(state, 0, cmd, now, arg_list, msg, msg_size, status);
 }
 
 int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	return runner_lock(state, 1, cmd, now, arg_list, msg, msg_size, status);
+	return runner_with_lock(state, 1, cmd, now, arg_list, msg, msg_size, status);
 }
 
 /**

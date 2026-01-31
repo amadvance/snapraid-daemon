@@ -73,6 +73,29 @@ const char* command_name(int cmd)
 }
 
 /****************************************************************************/
+/* disk/split/device */
+
+void disk_free(void* void_disk)
+{
+	struct snapraid_disk* disk = void_disk;
+	if (!disk)
+		return;
+	tommy_list_foreach(&disk->device_list, device_free);
+	tommy_list_foreach(&disk->split_list, split_free);
+	free(disk);
+}
+
+void device_free(void* void_device)
+{
+	free(void_device);
+}
+
+void split_free(void* void_split)
+{
+	free(void_split);
+}
+
+/****************************************************************************/
 /* task */
 
 struct snapraid_task* task_alloc(void)

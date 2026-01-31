@@ -23,6 +23,17 @@
 #include "rest.h"
 #include "conf.h"
 
+struct snapraid_config_line* config_line_alloc(void)
+{
+	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
+	return line;
+}
+
+void config_line_free(void* void_line)
+{
+	free(void_line);
+}
+
 static int parse_int(const char* input, int low, int high, int* out)
 {
 	long v;
@@ -143,6 +154,10 @@ int config_load(struct snapraid_state* state)
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
+
+	/* free the existing line list */
+	tommy_list_foreach(&config->line_list, config_line_free);
+	tommy_list_init(&config->line_list);
 
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		char key[CONFIG_MAX], val[CONFIG_MAX];

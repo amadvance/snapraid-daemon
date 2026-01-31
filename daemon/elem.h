@@ -32,6 +32,13 @@ int command_parse(const char* str);
 const char* command_name(int cmd);
 
 /****************************************************************************/
+/* disk/split/device */
+
+void disk_free(void* void_disk);
+void device_free(void* void_device);
+void split_free(void* void_split);
+
+/****************************************************************************/
 /* task */
 
 struct snapraid_task* task_alloc(void);
@@ -43,7 +50,7 @@ void task_free(void* void_task);
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
 
 /****************************************************************************/
-/* diff */
+/* file */
 
 const char* change_name(int change);
 
