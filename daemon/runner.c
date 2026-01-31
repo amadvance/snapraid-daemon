@@ -47,6 +47,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	struct snapraid_task* fix_task = 0;
 	struct snapraid_task* sync_task = 0;
 	struct snapraid_task* scrub_task = 0;
+	struct snapraid_task* latest_not_canceled_task = 0;
 	ss_t ss;
 
 	/* find the latest sync and scrub tasks from history */
@@ -69,6 +70,9 @@ static int runner_report_locked(struct snapraid_state* state)
 
 		if (scrub_task == 0 && task->cmd == CMD_SCRUB)
 			scrub_task = task;
+
+		if (latest_not_canceled_task == 0 && task->state != PROCESS_STATE_CANCEL)
+			latest_not_canceled_task = task;
 
 		/* stop if we reached the head of the circular list */
 		if (i == tommy_list_head(&state->runner.history_list))
@@ -105,6 +109,17 @@ static int runner_report_locked(struct snapraid_state* state)
 	printf("%s\n", report_task->text_report);
 
 	ss_done(&ss);
+
+	report_task->running = 0;
+	report_task->state = PROCESS_STATE_TERM;
+	report_task->unix_end_time = report_task->unix_start_time;
+
+	/* insert the task in the done list */
+	tommy_list_insert_tail(&state->runner.history_list, &report_task->node, report_task);
+
+	/* set the latest pointer to the real executed task and not to the report */
+	if (latest_not_canceled_task != 0)
+		state->runner.latest = latest_not_canceled_task;
 
 	return 0;
 }
@@ -504,9 +519,6 @@ static void* runner_thread(void* arg)
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
 				runner_report_locked(state);
-				task->running = 0;
-				task->state = PROCESS_STATE_TERM;
-				task->unix_end_time = now;
 			} else if (runner_precondition(state) == 0) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
