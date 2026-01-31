@@ -25,6 +25,11 @@
 typedef tommy_list sl_t;
 
 /**
+ * Exit code of the engine if differences are detected
+ **/
+#define EXIT_NEED_SYNC 2
+
+/**
  * Max disk name length
  */
 #define DISK_MAX 128
@@ -296,8 +301,9 @@ struct snapraid_global {
 	uint64_t block_rehash; /**< Total blocks marked as rehash needed */
 	uint64_t block_total; /**< Total blocks */
 
-	struct snapraid_diff_stat diff_current; /**< Current diff stats of the array */
-	struct snapraid_diff_stat diff_prev; /**< Diff stats before the latest sync */
+	struct snapraid_diff_stat diff_parse; /**< Working diff stat while parsing */
+	struct snapraid_diff_stat diff_prev; /**< Previous diff stat (used by report after a sync) */
+	struct snapraid_diff_stat diff_current; /**< Latest complete diff stat */
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */

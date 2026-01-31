@@ -43,6 +43,7 @@ static int runner_need_script(int cmd)
 static int runner_report_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* report_task = state->runner.latest;
+	struct snapraid_task* diff_task = 0;
 	struct snapraid_task* fix_task = 0;
 	struct snapraid_task* sync_task = 0;
 	struct snapraid_task* scrub_task = 0;
@@ -56,6 +57,9 @@ static int runner_report_locked(struct snapraid_state* state)
 		/* they should have the same queue time */
 		if (task->unix_queue_time != report_task->unix_queue_time)
 			break;
+
+		if (diff_task == 0 && task->cmd == CMD_DIFF)
+			diff_task = task;
 
 		if (fix_task == 0 && task->cmd == CMD_FIX)
 			fix_task = task;
@@ -75,9 +79,14 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	ss_init(&ss, 16384);
 
+	struct snapraid_diff_stat* diff_stat = 0;
+
+	/* if we run a diff completed, use its result as diff (note that its exit_code is 2 on differences) */
+	if (diff_task != 0 && task_success(diff_task))
+		diff_stat = &state->global.diff_current;
+
 	/* if we have sync completed, use the previous diff stat */
-	struct snapraid_diff_stat* diff_stat = &state->global.diff_current;
-	if (sync_task != 0 && sync_task->state == PROCESS_STATE_TERM && sync_task->exit_code == 0)
+	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->global.diff_prev;
 
 	if (report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat) != 0) {
@@ -165,8 +174,8 @@ static void runner_go(struct snapraid_state* state)
 	}
 
 	if (cmd == CMD_SYNC || cmd == CMD_DIFF) {
-		/* these commands output a new diff list, so cleanup it */
-		diff_cleanup(&state->global.diff_current);
+		/* diff and sync generate a new diff list, so cleanup it */
+		diff_cleanup(&state->global.diff_parse);
 	}
 
 	state_unlock();
@@ -338,15 +347,22 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			/* cancel all queued tasks on failure */
-			if (task->exit_code != 0) {
-				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
-			} else {
+			if (task_success(task)) {
 				if (cmd == CMD_SYNC) {
-					/* move the state to the previous state as now there is no difference */
-					diff_push(&state->global.diff_current, &state->global.diff_prev);
+					/* move the parsed diff to the previous state */
+					diff_move(&state->global.diff_parse, &state->global.diff_prev);
+					/* cleanup the current state, because after sync there is no difference anymore */
+					diff_cleanup(&state->global.diff_current);
 				}
+				if (cmd == CMD_DIFF) {
+					/* move the parsing diff to the current state */
+					diff_move(&state->global.diff_parse, &state->global.diff_current);
+				}
+			} else {
+				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
+
+				/* cancel all queued tasks on failure */
+				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 			}
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */

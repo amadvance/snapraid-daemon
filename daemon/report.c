@@ -443,7 +443,7 @@ int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* 
 	}
 
 	/* global statistics */
-	if (state->global.diff_time) {
+	if (diff_stat) {
 		print_line_separator(ss);
 		ss_prints(ss, "DIFFERENCES:\n\n");
 		ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);

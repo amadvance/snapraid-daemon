@@ -124,6 +124,17 @@ void task_free(void* void_task)
 	free(task);
 }
 
+int task_success(struct snapraid_task* task)
+{
+	if (task->state != PROCESS_STATE_TERM)
+		return 0;
+
+	if (task->cmd == CMD_DIFF)
+		return task->exit_code == 0 || task->exit_code == EXIT_NEED_SYNC; /* detecting differences are not a failure */
+
+	return task->exit_code == 0;
+}
+
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg)
 {
 	time_t now = time(0);
@@ -218,6 +229,10 @@ void file_free(void* void_file)
 	free(file);
 }
 
+/****************************************************************************/
+/* diff */
+
+
 void diff_cleanup(struct snapraid_diff_stat* diff)
 {
 	diff->diff_equal = 0;
@@ -232,32 +247,29 @@ void diff_cleanup(struct snapraid_diff_stat* diff)
 	tommy_list_init(&diff->file_list);
 }
 
-/****************************************************************************/
-/* diff */
-
-void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre)
+void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest)
 {
-	/* clear the previous list */
-	tommy_list_foreach(&diff_pre->file_list, file_free);
+	/* clear the destination list */
+	tommy_list_foreach(&diff_dest->file_list, file_free);
 
-	*diff_pre = *diff_current;
+	*diff_dest = *diff_src;
 
 	/* reset the list */
-	tommy_list_init(&diff_current->file_list);
+	tommy_list_init(&diff_src->file_list);
 
-	diff_current->diff_equal = diff_pre->diff_equal;
-	diff_current->diff_equal += diff_pre->diff_added;
-	diff_current->diff_equal -= diff_pre->diff_removed;
-	diff_current->diff_equal += diff_pre->diff_updated;
-	diff_current->diff_equal += diff_pre->diff_moved;
-	diff_current->diff_equal += diff_pre->diff_copied;
-	diff_current->diff_equal += diff_pre->diff_restored;
-	diff_current->diff_added = 0;
-	diff_current->diff_removed = 0;
-	diff_current->diff_updated = 0;
-	diff_current->diff_moved = 0;
-	diff_current->diff_copied = 0;
-	diff_current->diff_restored = 0;
+	diff_src->diff_equal = diff_dest->diff_equal;
+	diff_src->diff_equal += diff_dest->diff_added;
+	diff_src->diff_equal -= diff_dest->diff_removed;
+	diff_src->diff_equal += diff_dest->diff_updated;
+	diff_src->diff_equal += diff_dest->diff_moved;
+	diff_src->diff_equal += diff_dest->diff_copied;
+	diff_src->diff_equal += diff_dest->diff_restored;
+	diff_src->diff_added = 0;
+	diff_src->diff_removed = 0;
+	diff_src->diff_updated = 0;
+	diff_src->diff_moved = 0;
+	diff_src->diff_copied = 0;
+	diff_src->diff_restored = 0;
 }
 
 /****************************************************************************/

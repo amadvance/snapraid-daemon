@@ -43,6 +43,7 @@ void state_done(struct snapraid_state* state)
 	if (state->runner.latest->running) /* if running it isn't in the lists */
 		task_free(state->runner.latest);
 	tommy_list_foreach(&state->runner.history_list, task_free);
+	tommy_list_foreach(&state->global.diff_parse.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
 	tommy_list_foreach(&state->data_list, disk_free);

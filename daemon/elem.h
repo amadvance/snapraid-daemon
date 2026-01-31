@@ -45,6 +45,11 @@ struct snapraid_task* task_alloc(void);
 void task_free(void* void_task);
 
 /**
+ * Check if the task failed.
+ */
+int task_success(struct snapraid_task* task);
+
+/**
  * Cancel tasks and move in the history list. Stop at the first REPORT tasks
  */
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
@@ -62,7 +67,7 @@ void file_free(void* void_file);
 /* diff */
 
 void diff_cleanup(struct snapraid_diff_stat* diff);
-void diff_push(struct snapraid_diff_stat* diff_current, struct snapraid_diff_stat* diff_pre);
+void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
 
 /****************************************************************************/
 /* health */
