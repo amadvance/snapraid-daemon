@@ -1565,6 +1565,16 @@ components:
             Statistical probability of at least one disk failure within a
             one-year period, calculated using a Poisson distribution model
             based on the aggregate Annual Failure Rate.
+        total_space_bytes:
+          type: integer
+          format: int64
+          description: >
+            The size in bytes of all the data disks (not counting parity disks).
+        free_space_bytes:
+          type: integer
+          format: int64
+          description: >
+            The free space in bytes of all the data disks (not counting parity disks).
         file_count:
           type: integer
           format: int64

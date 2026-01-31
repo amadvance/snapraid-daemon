@@ -129,15 +129,15 @@ struct snapraid_split {
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
 	char fstype[FSINFO_MAX]; /**< Filesystem type */
 	char fslabel[FSINFO_MAX]; /**< Filesystem label */
-	uint64_t fssize; /**< Filesystem allocated size */
+	uint64_t fssize; /**< Filesystem total size */
 	uint64_t fsfree; /**< Filesystem free size */
 	tommy_node node;
 };
 
 struct snapraid_disk {
 	char name[DISK_MAX]; /**< Name of the disk. */
-	uint64_t content_size; /**< Size of the disk stored in the content file. */
-	uint64_t content_free; /**< Free size of the disk stored in the content file. */
+	uint64_t total_space_bytes; /**< Size of the disk stored in the content file or obtained from the filesystem. */
+	uint64_t free_space_bytes; /**< Free size of the disk stored in the content file or obtained from the filesystem. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
 	int64_t access_count_initial_time; /**< Time of the first access_count to this value. */
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */

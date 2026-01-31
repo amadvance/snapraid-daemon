@@ -95,8 +95,8 @@ static struct snapraid_disk* find_disk(tommy_list* list, const char* name)
 	}
 
 	disk = calloc_nofail(1, sizeof(struct snapraid_disk));
-	disk->content_size = SMART_UNASSIGNED;
-	disk->content_free = SMART_UNASSIGNED;
+	disk->total_space_bytes = 0;
+	disk->free_space_bytes = 0;
 	sncpy(disk->name, sizeof(disk->name), name);
 	tommy_list_insert_tail(list, &disk->node, disk);
 
@@ -258,8 +258,8 @@ static void process_content_data(struct snapraid_state* state, char** map, size_
 	const char* size_free = map[3];
 
 	struct snapraid_disk* data = find_disk(&state->data_list, name);
-	stru64(&data->content_size, size_alloc);
-	stru64(&data->content_free, size_free);
+	stru64(&data->total_space_bytes, size_alloc);
+	stru64(&data->free_space_bytes, size_free);
 }
 
 static void process_content_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -272,8 +272,8 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 	const char* size_free = map[3];
 
 	struct snapraid_disk* parity = find_disk(&state->parity_list, name);
-	stru64(&parity->content_size, size_alloc);
-	stru64(&parity->content_free, size_free);
+	stru64(&parity->total_space_bytes, size_alloc);
+	stru64(&parity->free_space_bytes, size_free);
 }
 
 static void process_content_data_split(struct snapraid_state* state, char** map, size_t mac)
@@ -300,7 +300,7 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	char* name = map[1];
 	const char* uuid = map[2];
 	const char* path = map[3];
-	/* const char* size = map[4]; */ /* unused */
+	const char* size = map[4];
 
 	if (!is_split_parity(name, &index))
 		return;
@@ -310,6 +310,7 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 
 	sncpy(split->path, sizeof(split->path), path);
 	sncpy(split->content_uuid, sizeof(split->uuid), uuid);
+	stru64(&split->content_size, size);
 }
 
 static void process_content_info(struct snapraid_state* state, char** map, size_t mac)
@@ -353,8 +354,8 @@ static void process_fsinfo_data(struct snapraid_state* state, char** map, size_t
 	const char* size_free = map[3];
 
 	struct snapraid_disk* data = find_disk(&state->data_list, name);
-	stru64(&data->content_size, size_alloc);
-	stru64(&data->content_free, size_free);
+	stru64(&data->total_space_bytes, size_alloc);
+	stru64(&data->free_space_bytes, size_free);
 }
 
 static void process_fsinfo_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -367,8 +368,8 @@ static void process_fsinfo_parity(struct snapraid_state* state, char** map, size
 	const char* size_free = map[3];
 
 	struct snapraid_disk* parity = find_disk(&state->parity_list, name);
-	stru64(&parity->content_size, size_alloc);
-	stru64(&parity->content_free, size_free);
+	stru64(&parity->total_space_bytes, size_alloc);
+	stru64(&parity->free_space_bytes, size_free);
 }
 
 static void process_fsinfo_data_split(struct snapraid_state* state, char** map, size_t mac)

@@ -1129,10 +1129,10 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list)
 		ss_json_str(s, level, "name", disk->name);
 		ss_json_str(s, level, "health", health_name(health_disk(disk)));
 		// TODO power
-		if (disk->content_size != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "total_space_bytes", disk->content_size);
-		if (disk->content_free != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "free_space_bytes", disk->content_free);
+		if (disk->total_space_bytes != 0)
+			ss_json_u64(s, level, "total_space_bytes", disk->total_space_bytes);
+		if (disk->free_space_bytes != 0)
+			ss_json_u64(s, level, "free_space_bytes", disk->free_space_bytes);
 		if (disk->access_count != 0) {
 			ss_json_i64(s, level, "access_count", disk->access_count);
 			ss_json_pair_iso8601(s, level, "access_count_initial_time", disk->access_count_initial_time);
@@ -1437,6 +1437,17 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
+	uint64_t total_space_bytes = 0;
+	uint64_t free_space_bytes = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		if (disk->total_space_bytes != 0)
+			total_space_bytes += disk->total_space_bytes;
+		if (disk->free_space_bytes != 0)
+			free_space_bytes += disk->free_space_bytes;
+	}
+
 	ss_json_open(&s, &level);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
@@ -1451,6 +1462,10 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
 		if (*global->last_cmd)
 			ss_json_str(&s, level, "last_command", global->last_cmd);
+		if (total_space_bytes != 0)
+			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
+		if (free_space_bytes != 0)
+			ss_json_u64(&s, level, "free_space_bytes", free_space_bytes);
 		if (global->afr != 0)
 			ss_json_double(&s, level, "annual_failure_rate", global->afr);
 		if (global->prob != 0)
