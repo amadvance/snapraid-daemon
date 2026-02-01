@@ -788,6 +788,8 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pid = task->pid;
 	number = task->number;
 
+	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Sent SIGTERM signal from STOP command");
+
 	state_unlock();
 
 	*stop_pid = pid;
