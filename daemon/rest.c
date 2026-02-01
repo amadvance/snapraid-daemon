@@ -1417,6 +1417,58 @@ static int handler_history(struct mg_connection* conn, void* cbdata)
 }
 
 /**
+ * GET /snapraid/v1/tasks
+ */
+static int handler_tasks(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int level = 0;
+	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "GET") != 0)
+		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	state_lock();
+
+	ss_json_open(&s, &level);
+	ss_json_array_open(&s, &level, "pending");
+	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
+		struct snapraid_task* task = i->data;
+
+		json_task(&s, level, task);
+	}
+	ss_json_array_close(&s, &level);
+
+	ss_json_array_open(&s, &level, "active");
+	if (state->runner.latest->running)
+		json_task(&s, level, state->runner.latest);
+	ss_json_array_close(&s, &level);
+
+	ss_json_array_open(&s, &level, "history");
+	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
+		struct snapraid_task* task = i->data;
+
+		json_task(&s, level, task);
+	}
+	ss_json_array_close(&s, &level);
+	ss_json_close(&s, &level);
+
+	state_unlock();
+
+	send_json_answer(conn, 200, &s);
+
+	ss_done(&s);
+
+	return 200;
+}
+
+/**
  * GET /snapraid/v1/array
  */
 static int handler_array(struct mg_connection* conn, void* cbdata)
@@ -1590,6 +1642,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity", handler_activity, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/queue", handler_queue, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/history", handler_history, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);

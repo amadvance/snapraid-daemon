@@ -487,6 +487,45 @@ paths:
                 items:
                   $ref: '#/components/schemas/Task'
 
+  /snapraid/v1/tasks:
+    get:
+      summary: Retrieve global task lifecycle state
+      description: >
+        Provides a holistic, unified view of the SnapRAID-Daemon workload.
+        Tasks are categorized by their current state in the execution pipeline.
+
+        The 'active' field is returned as an array. In the current version of the
+        daemon, this array will contain at most one task. If no task is
+        currently executing, the array will be empty.
+      responses:
+        '200':
+          description: Successfully retrieved the global task collection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pending:
+                    type: array
+                    description: >
+                      Tasks waiting in the sequential queue.
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  active:
+                    type: array
+                    description: >
+                      The task(s) currently being processed. Returns an empty
+                      list if the system is idle.
+                    maxItems: 1
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  history:
+                    type: array
+                    description: >
+                      Chronological record of completed tasks.
+                    items:
+                      $ref: '#/components/schemas/Task'
+
   /snapraid/v1/config:
     get:
       summary: Retrieve active daemon configuration
