@@ -96,16 +96,38 @@ void split_free(void* void_split)
 }
 
 /****************************************************************************/
+/* message */
+
+struct snapraid_message* message_alloc(int level, int type, const char* msg)
+{
+	size_t len = strlen(msg);
+	struct snapraid_message* message = malloc_nofail(sizeof(struct snapraid_message) + len + 1);
+	message->level = level;
+	message->type = type;
+	memcpy(message->msg, msg, len + 1);
+	return message;
+}
+
+void message_free(void* void_message)
+{
+	free(void_message);
+}
+
+void message_insert(tommy_list* list, int level, int type, const char* msg)
+{
+	struct snapraid_message* message = message_alloc(level, type, msg);
+	tommy_list_insert_tail(list, &message->node, message);
+}
+
+/****************************************************************************/
 /* task */
 
 struct snapraid_task* task_alloc(void)
 {
 	struct snapraid_task* task = calloc_nofail(1, sizeof(struct snapraid_task));
 	sl_init(&task->arg_list);
-	sl_init(&task->message_list);
+	tommy_list_init(&task->message_list);
 	task->message_list_count = 0;
-	sl_init(&task->error_list);
-	task->error_list_count = 0;
 	sl_init(&task->fix_list);
 	task->health = HEALTH_PASSED;
 	return task;
@@ -117,8 +139,7 @@ void task_free(void* void_task)
 	if (!task)
 		return;
 	sl_free(&task->arg_list);
-	sl_free(&task->message_list);
-	sl_free(&task->error_list);
+	tommy_list_foreach(&task->message_list, message_free);
 	tommy_list_foreach(&task->fix_list, file_free);
 	free(task->text_report);
 	free(task);

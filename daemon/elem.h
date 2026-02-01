@@ -39,6 +39,13 @@ void device_free(void* void_device);
 void split_free(void* void_split);
 
 /****************************************************************************/
+/* message */
+
+struct snapraid_message* message_alloc(int level, int type, const char* msg);
+void message_free(void* void_message);
+void message_insert(tommy_list* list, int level, int type, const char* msg);
+
+/****************************************************************************/
 /* task */
 
 struct snapraid_task* task_alloc(void);

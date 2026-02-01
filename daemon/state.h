@@ -183,7 +183,22 @@ struct snapraid_disk {
 #define HISTORY_PAST_DAYS 30 /**< Number of days the history is kept */
 #define SECONDS_IN_A_DAY (24 * 3600)
 
-#define MESSAGES_MAX 250 /**< Max number of messages and errors before stop colleting messages */
+#define MESSAGES_MAX 1000 /**< Max number of messages and errors before stop colleting messages */
+
+#define MESSAGE_LEVEL_FATAL 0
+#define MESSAGE_LEVEL_ERROR 1
+#define MESSAGE_LEVEL_INFO 2
+
+#define MESSAGE_TYPE_NONE 0
+#define MESSAGE_TYPE_HARDWARE 1
+#define MESSAGE_TYPE_SOFTWARE 2
+
+struct snapraid_message {
+	tommy_node node;
+	int level; /**< One of MESSAGE_LEVEL_* */
+	int type; /**< One of MESSAGE_TYPE_* */
+	char msg[]; /**< The text message */
+};
 
 struct snapraid_task {
 	char log_file[PATH_MAX]; /**< Log file of the task. */
@@ -211,7 +226,7 @@ struct snapraid_task {
 	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
 
 	sl_t arg_list; /**< List of arguments */
-	sl_t message_list; /**< List of messages */
+	tommy_list message_list; /**< List of snapraid_message */
 	int message_list_count; /**< Count of messages, just to limit the number. */
 	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */
 
@@ -226,8 +241,6 @@ struct snapraid_task {
 	uint64_t error_recovered; /**< Total error recovered (fix only). */
 	uint64_t error_unrecoverable; /**< Total error unrecoverable (fix only). */
 	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
-	sl_t error_list; /**< List of error messages */
-	int error_list_count; /**< Count of messages, just to limit the number. */
 
 	tommy_node node;
 };

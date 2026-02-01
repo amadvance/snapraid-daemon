@@ -254,11 +254,19 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 	}
 
 	/* print error messages if any */
-	if (!tommy_list_empty(&task->error_list)) {
+	if (!tommy_list_empty(&task->message_list)) {
 		ss_prints(ss, "\nERROR MESSAGES:\n");
-		for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
-			sn_t* error = i->data;
-			ss_printf(ss, "  - %s\n", error->str);
+		for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
+			struct snapraid_message* message = i->data;
+			switch (message->level) {
+			case MESSAGE_LEVEL_FATAL :
+			case MESSAGE_LEVEL_ERROR :
+				if (message->type == MESSAGE_TYPE_HARDWARE)
+					ss_printf(ss, "  - %s\n", message->msg);
+				else
+					ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
+				break;
+			}
 		}
 	}
 }

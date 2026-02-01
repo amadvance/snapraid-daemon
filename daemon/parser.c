@@ -576,20 +576,41 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 	while (*msg != 0 && isspace((unsigned char)*msg))
 		++msg;
 
-	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0 || strcmp(map[1], "verbose") == 0) {
+	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
+		/* don't limit the number of these messages */
+		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
+		tommy_list_insert_tail(&task->message_list, &message->node, message);
+		++task->message_list_count;
+	} else if (strcmp(map[1], "verbose") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
-			sl_insert_str(&task->message_list, msg);
-			if (task->message_list_count == MESSAGES_MAX)
-				sl_insert_str(&task->message_list, "...and many more");
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
 		}
 		++task->message_list_count;
-	} else if (strcmp(map[1], "error") == 0 || strcmp(map[1], "fatal") == 0 || strcmp(map[1], "expected") == 0) {
-		if (task->error_list_count <= MESSAGES_MAX) {
-			sl_insert_str(&task->error_list, msg);
-			if (task->error_list_count == MESSAGES_MAX)
-				sl_insert_str(&task->error_list, "...and many more");
+	} else if (strcmp(map[1], "error") == 0 || strcmp(map[1], "expected") == 0) {
+		if (task->message_list_count <= MESSAGES_MAX) {
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
 		}
-		++task->error_list_count;
+		++task->message_list_count;
+	} else if (strcmp(map[1], "fatal") == 0) {
+		if (task->message_list_count <= MESSAGES_MAX) {
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		}
+		++task->message_list_count;
+	} else if (strcmp(map[1], "error_hardware") == 0) {
+		if (task->message_list_count <= MESSAGES_MAX) {
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_HARDWARE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		}
+		++task->message_list_count;
+	} else if (strcmp(map[1], "fatal_hardware") == 0) {
+		if (task->message_list_count <= MESSAGES_MAX) {
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		}
+		++task->message_list_count;
 	}
 }
 
@@ -1040,7 +1061,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 							if (log_f)
 								log_msg(LVL_ERROR, "requires SnapRAID 14.0 or newer");
 							if (state->runner.latest)
-								sl_insert_str(&state->runner.latest->error_list, "Requires SnapRAID 14.0 or newer");
+								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
 							disable = 1;
 						}
 					}

@@ -669,6 +669,36 @@ components:
                   Process ID of the task stopped.
 
   schemas:
+    Message:
+      type: object
+      description: >
+        A structured log message emitted during task execution,
+        categorized by both severity and the nature of the event.
+      required:
+        - level
+        - text
+      properties:
+        level:
+          type: string
+          enum: [fatal, error, info]
+          description: >
+            Defines the impact on the current process:
+            - **fatal**: Fatal error, the task stopped immediately.
+            - **error**: Significant issue, but the task attempted to continue.
+            - **info**: General telemetry and progress updates.
+        type:
+          type: string
+          enum: [hardware, soft]
+          description: >
+            Categorizes the root cause of the message.
+            This field is **optional** and is only present for 'fatal' and 'error' levels:
+            - **hardware**: Physical failures (disk Input/Output failure, silent data error).
+            - **soft**: Logic-based anomalies (modified files during sync).
+        text:
+          type: string
+          description: >
+            The human-readable description of the event.
+
     Task:
       type: object
       description: >
@@ -679,7 +709,6 @@ components:
         - health
         - status
         - messages
-        - errors
       properties:
         number:
           type: integer
@@ -830,9 +859,10 @@ components:
         messages:
           type: array
           description: >
-            List of messages.
+            A chronological collection of messages generated
+            during this task's execution.
           items:
-            type: string
+            $ref: '#/components/schemas/Message'
         error_soft:
           type: integer
           format: int64
@@ -876,14 +906,6 @@ components:
             The count of blocks marked bad.
             This field is available only on the `status`, `sync`, `scrub` and
             `fix` commands.
-        errors:
-          type: array
-          description: >
-            List of all errors encountered during the task. This includes also
-            `soft` errors not caused by hardware failures. For example if
-            during a sync a file is modified.
-          items:
-            type: string
 
     Device:
       type: object

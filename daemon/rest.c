@@ -1271,8 +1271,25 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 
 	ss_json_array_open(s, &level, "messages");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
-		sn_t* message = i->data;
-		ss_json_elem(s, level, message->str);
+		struct snapraid_message* message = i->data;
+		ss_json_open(s, &level);
+		switch (message->level) {
+		case MESSAGE_LEVEL_FATAL :
+			ss_json_str(s, level, "level", "fatal");
+			ss_json_str(s, level, "type", message->type == MESSAGE_TYPE_HARDWARE ? "hardware" : "soft");
+			ss_json_str(s, level, "text", message->msg);
+			break;
+		case MESSAGE_LEVEL_ERROR :
+			ss_json_str(s, level, "level", "error");
+			ss_json_str(s, level, "type", message->type == MESSAGE_TYPE_HARDWARE ? "hardware" : "soft");
+			ss_json_str(s, level, "text", message->msg);
+			break;
+		case MESSAGE_LEVEL_INFO :
+			ss_json_str(s, level, "level", "info");
+			ss_json_str(s, level, "text", message->msg);
+			break;
+		}
+		ss_json_close(s, &level);
 	}
 	ss_json_array_close(s, &level);
 
@@ -1296,12 +1313,6 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
 	}
-	ss_json_array_open(s, &level, "errors");
-	for (tommy_node* i = tommy_list_head(&task->error_list); i; i = i->next) {
-		sn_t* error = i->data;
-		ss_json_elem(s, level, error->str);
-	}
-	ss_json_array_close(s, &level);
 	ss_json_close(s, &level);
 }
 
