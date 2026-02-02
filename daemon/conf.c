@@ -155,6 +155,8 @@ int config_load(struct snapraid_state* state)
 		return -1;
 	}
 
+	pulse(state, PULSE_CONFIG);
+
 	/* free the existing line list */
 	tommy_list_foreach(&config->line_list, config_line_free);
 	tommy_list_init(&config->line_list);

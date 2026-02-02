@@ -102,6 +102,25 @@ typedef tommy_list sl_t;
 #define HEALTH_FAILING -2
 
 /**
+ * Pulse masks
+ */
+#define PULSE_ARRAY 1
+#define PULSE_CONFIG 2
+#define PULSE_DISKS 4
+#define PULSE_TASKS 8
+#define PULSE_ALL (PULSE_ARRAY | PULSE_CONFIG | PULSE_DISKS | PULSE_TASKS)
+
+/**
+ * Pulse
+ */
+struct snapraid_pulse {
+	uint64_t array; /**< State counter for the "array" entry point */
+	uint64_t config; /**< State counter for the "config" entry point */
+	uint64_t disks; /**< State counter for the "disks" entry point */
+	uint64_t tasks; /**< State counter for the "tasks" entry point */
+};
+
+/**
  * Device info entry.
  */
 struct snapraid_device {
@@ -134,8 +153,8 @@ struct snapraid_split {
 	uint64_t content_size; /**< Size of the parity file stored in the content file. */
 	char fstype[FSINFO_MAX]; /**< Filesystem type */
 	char fslabel[FSINFO_MAX]; /**< Filesystem label */
-	uint64_t fssize; /**< Filesystem total size */
-	uint64_t fsfree; /**< Filesystem free size */
+	uint64_t fssize; /**< Filesystem total size. At present unused. */
+	uint64_t fsfree; /**< Filesystem free size. At present unused. */
 	tommy_node node;
 };
 
@@ -386,6 +405,7 @@ struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
 	thread_mutex_t lock; /**< Main lock for accessing the state */
+	struct snapraid_pulse pulse; /**< Pulse counters. */
 	int foreground; /**< Daemon running in foreground */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
@@ -400,6 +420,9 @@ struct snapraid_state {
 	tommy_list page_list; /**< List of web pages */
 	time_t page_time; /**< Time of the pages loaded from disk */
 };
+
+/****************************************************************************/
+/* state */
 
 /**
  * Initialize the global state system.
@@ -427,6 +450,9 @@ void state_lock(void);
  */
 void state_unlock(void);
 
+/****************************************************************************/
+/* page */
+
 /**
  * Acquire lock for accessing the web.
  */
@@ -441,6 +467,13 @@ void page_wrlock(void);
  * Release lock for accessing the web.
  */
 void page_unlock(void);
+
+/****************************************************************************/
+/* pulse */
+
+void pulse(struct snapraid_state* state, unsigned pulse);
+
+void pulse_stru64(struct snapraid_state* state, unsigned pulse, uint64_t* out, const char* s);
 
 #endif
 

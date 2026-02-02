@@ -488,6 +488,42 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 	return send_json_error(conn, 404, "Resource not found");
 }
 
+static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
+{
+	ss_json_object_open(s, &level, "pulse");
+	ss_json_i64(s, level, "array", pulse->array);
+	ss_json_i64(s, level, "config", pulse->config);
+	ss_json_i64(s, level, "disks", pulse->disks);
+	ss_json_i64(s, level, "tasks", pulse->tasks);
+	ss_json_close(s, &level);
+}
+
+/**
+ * GET /snapraid/v1/pulse
+ */
+static int handler_pulse(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	int level = 0;
+	ss_t s;
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	state_lock();
+
+	ss_json_open(&s, &level);
+	json_pulse(&s, level, &state->pulse);
+	ss_json_close(&s, &level);
+
+	state_unlock();
+
+	send_json_answer(conn, 200, &s);
+
+	ss_done(&s);
+
+	return 200;
+}
+
 /**
  * PATCH /snapraid/v1/config
  */
@@ -507,6 +543,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, status, msg);
 
 	state_lock();
+
+	pulse(state, PULSE_CONFIG);
 
 	jsmn_init(&jp);
 	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
@@ -812,13 +850,14 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_t s;
 	char schedule_buf[64];
 
-	state_lock();
-
 	ss_init(&s, JSON_INITIAL_SIZE);
+
+	state_lock();
 
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
 	ss_json_open(&s, &level);
+	json_pulse(&s, level, &state->pulse);
 	ss_json_bool(&s, level, "config_full_access", config->net_config_full_access);
 	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
@@ -1188,6 +1227,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
+	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
 	json_disk_list(&s, level, &state->data_list);
 	ss_json_array_close(&s, &level);
@@ -1332,16 +1372,18 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
+	ss_init(&s, JSON_INITIAL_SIZE);
+
 	state_lock();
 
 	struct snapraid_task* task = state->runner.latest;
 	if (!task) {
 		state_unlock();
+		ss_done(&s);
 		return send_no_content(conn);
 	}
 
-	ss_init(&s, JSON_INITIAL_SIZE);
-
+	json_pulse(&s, level, &state->pulse);
 	json_task(&s, level, task);
 
 	state_unlock();
@@ -1374,6 +1416,7 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
+	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "pending");
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
@@ -1438,6 +1481,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_open(&s, &level);
+	json_pulse(&s, level, &state->pulse);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(health_array(state)));
@@ -1582,6 +1626,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/pulse", handler_pulse, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");

@@ -50,6 +50,8 @@ static int runner_report_locked(struct snapraid_state* state)
 	struct snapraid_task* latest_not_canceled_task = 0;
 	ss_t ss;
 
+	pulse(state, PULSE_TASKS);
+
 	/* find the latest sync and scrub tasks from history */
 	tommy_node* i = tommy_list_tail(&state->runner.history_list);
 	while (i != 0) {
@@ -492,6 +494,8 @@ static void* runner_thread(void* arg)
 
 			time_t now = time(0);
 
+			pulse(state, PULSE_TASKS);
+
 			/* setup a new task to run */
 			struct snapraid_task* task = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
 			task->unix_start_time = now;
@@ -613,6 +617,8 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, tim
 	if (lock)
 		state_lock();
 
+	pulse(state, PULSE_TASKS);
+
 	if (!state->daemon_running) {
 		if (lock)
 			state_unlock();
@@ -732,6 +738,8 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 
 	state_lock();
 
+	pulse(state, PULSE_TASKS);
+
 	tommy_node* i = tommy_list_head(&state->runner.history_list);
 	while (i) {
 		struct snapraid_task* task = i->data;
@@ -760,6 +768,8 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	sncpy(msg, msg_size, "");
 
 	state_lock();
+
+	pulse(state, PULSE_TASKS);
 
 	struct snapraid_task* task = state->runner.latest;
 	if (!task || !task->running || task->pid <= 0) {

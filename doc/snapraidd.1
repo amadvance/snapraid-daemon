@@ -339,7 +339,29 @@ curl \-X POST http://localhost:8080/api/v1/stop
 .PD 0
 .PD
 .RE
-.SS Low Level Commands 
+.SS Cache Handling 
+To optimize performance and reduce network overhead, the daemon
+implements a mechanism for state synchronization. This allows clients
+to determine if local data is stale without downloading full datasets.
+.SS /api/v1/pulse 
+The pulse consists of a collection of monotonic sequence counters used
+for state change detection. Each field corresponds directly to an API
+entry point of the same name.
+.PP
+If a specific counter has not changed since the last request, the
+corresponding entry point is guaranteed to return the same data.
+If a counter increments, it indicates that the underlying subsystem
+state has evolved and the entry point will potentially return updated
+information.
+.PP
+Example:
+.PP
+.RS 4
+curl \-X GET http://localhost:8080/api/v1/pulse | jq
+.PD 0
+.PD
+.RE
+.SS Commands 
 These endpoints provide direct access to the underlying SnapRAID CLI
 functions. Unlike the orchestrated workflows, these commands perform
 singular actions without additional logic, verification or report

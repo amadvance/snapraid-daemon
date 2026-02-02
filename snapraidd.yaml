@@ -380,6 +380,26 @@ paths:
           description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
+  /snapraid/v1/pulse:
+    get:
+      summary: Lightweight state change detection
+      description: >
+        Returns the current monotonic sequence counters for all
+        major daemon subsystems.
+
+        This is the fastest entry point in the API and should be
+        used by clients to poll for state changes. If a counter
+        has not incremented, the client can safely assume that
+        the corresponding data-heavy endpoint (e.g., /tasks)
+        will return the same information as the previous request.
+      responses:
+        '200':
+          description: "Current subsystem pulse counters."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pulse'
+
   /snapraid/v1/disks:
     get:
       summary: Get cached disk inventory and status
@@ -399,6 +419,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
                   data_disks:
                     type: array
                     description: "Ordered list of data disks (d1, d2, ...)"
@@ -435,7 +457,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                type: object
+                properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
+                allOf:
+                  - $ref: '#/components/schemas/Task'
         '204':
           description: No task available (system idle since startup).
 
@@ -457,6 +484,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
                   pending:
                     type: array
                     description: >
@@ -491,7 +520,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Config'
+                type: object
+                properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
+                allOf:
+                  - $ref: '#/components/schemas/Config'
 
     patch:
       summary: Update configuration (Permanent)
@@ -546,7 +580,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Array'
+                type: object
+                properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
+                allOf:
+                  - $ref: '#/components/schemas/Array'
 
 components:
   requestBodies:
@@ -621,6 +660,53 @@ components:
                   Process ID of the task stopped.
 
   schemas:
+    Pulse:
+      type: object
+      description: >
+        A collection of monotonic sequence counters used for state change detection.
+        Each field corresponds directly to the API entry point of the same name.
+
+        If a specific pulse field increments, the corresponding endpoint will
+        potentially return different data. Clients should use these counters
+        to trigger selective cache invalidation.
+      properties:
+        array:
+          type: integer
+          format: int64
+          description: >
+            Related to the /array entry point.
+
+            Increments when the physical state of the data array changes.
+            A change here indicates that the data returned by /array
+            has potentially been updated.
+        config:
+          type: integer
+          format: int64
+          description: >
+            Related to the /config entry point.
+
+            Increments when the daemon or SnapRAID configuration is altered.
+            A change here indicates that the data returned by /config
+            has potentially been updated.
+        disks:
+          type: integer
+          format: int64
+          description: >
+            Related to the /disks entry point.
+
+            Increments when the state of any disk in the array is updated.
+            A change here indicates that the data returned by /disks
+            has potentially been updated.
+        tasks:
+          type: integer
+          format: int64
+          description: >
+            Related to the /tasks entry point.
+
+            Increments whenever any background task changes its lifecycle state.
+            A change here indicates that the data returned by /tasks
+            has potentially been updated.
+
     Message:
       type: object
       description: >

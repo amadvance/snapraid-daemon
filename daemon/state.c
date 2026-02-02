@@ -85,3 +85,27 @@ void page_unlock(void)
 	thread_rwlock_unlock(&STATE.page_lock);
 }
 
+/****************************************************************************/
+/* pulse */
+
+void pulse(struct snapraid_state* state, unsigned mask)
+{
+	if ((mask & PULSE_ARRAY) != 0)
+		++state->pulse.array;
+	if ((mask & PULSE_CONFIG) != 0)
+		++state->pulse.config;
+	if ((mask & PULSE_DISKS) != 0)
+		++state->pulse.disks;
+	if ((mask & PULSE_TASKS) != 0)
+		++state->pulse.tasks;
+}
+
+void pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src)
+{
+	uint64_t prev = *out;
+	if (stru64(out, src) == 0) {
+		if (*out != prev)
+			pulse(state, mask);
+	}
+}
+

@@ -318,26 +318,45 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/stop
 
-  Low Level Commands
+  Cache Handling
+	To optimize performance and reduce network overhead, the daemon
+	implements a mechanism for state synchronization. This allows clients
+	to determine if local data is stale without downloading full datasets.
+
+  /api/v1/pulse
+	The pulse consists of a collection of monotonic sequence counters used
+	for state change detection. Each field corresponds directly to an API
+	entry point of the same name.
+
+	If a specific counter has not changed since the last request, the
+	corresponding entry point is guaranteed to return the same data.
+	If a counter increments, it indicates that the underlying subsystem
+	state has evolved and the entry point will potentially return updated
+	information.
+
+	Example:
+		:curl -X GET http://localhost:8080/api/v1/pulse | jq
+
+  Commands
 	These endpoints provide direct access to the underlying SnapRAID CLI
 	functions. Unlike the orchestrated workflows, these commands perform
 	singular actions without additional logic, verification or report
 	phases.
 
-  /api/v1/sync
+    /api/v1/sync
 	Queues a standard SnapRAID sync operation to update parity based on
 	modified or new files.
 
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/sync
 
-  /api/v1/scrub
+    /api/v1/scrub
 	Initiates a manual scrub of the array to verify data integrity.
 
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/scrub
 
-  /api/v1/diff
+    /api/v1/diff
 	Triggers a SnapRAID diff to identify file system changes since the
 	last synchronization. The results can be viewed via the
 	'/api/v1/array' endpoint.
@@ -345,7 +364,7 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/diff
 
-  /api/v1/up
+    /api/v1/up
 	Issues a command to wake all physical disks in the array from standby.
 	This is used to prepare the array for heavy access or manual
 	maintenance.
@@ -353,14 +372,14 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/up
 
-  /api/v1/down
+    /api/v1/down
 	Issues an immediate spindown command to all disks in the array that
 	are currently in an idle state.
 
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/down
 
-  /api/v1/down_idle
+    /api/v1/down_idle
 	Executes a conditional spindown operation. The daemon will only issue
 	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
 	threshold.
@@ -368,7 +387,7 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/down_idle
 
-  /api/v1/probe
+    /api/v1/probe
 	Forces an active health check of all disks. This updates the cached
 	SMART attributes and internal temperature readings by querying the
 	hardware directly.
