@@ -188,11 +188,6 @@ static void runner_go(struct snapraid_state* state)
 		}
 	}
 
-	if (cmd == CMD_SYNC || cmd == CMD_DIFF) {
-		/* diff and sync generate a new diff list, so cleanup it */
-		diff_cleanup(&state->global.diff_parse);
-	}
-
 	state_unlock();
 
 	int f = -1;
@@ -362,18 +357,7 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			if (task_success(task)) {
-				if (cmd == CMD_SYNC) {
-					/* move the parsed diff to the previous state */
-					diff_move(&state->global.diff_parse, &state->global.diff_prev);
-					/* cleanup the current state, because after sync there is no difference anymore */
-					diff_cleanup(&state->global.diff_current);
-				}
-				if (cmd == CMD_DIFF) {
-					/* move the parsing diff to the current state */
-					diff_move(&state->global.diff_parse, &state->global.diff_current);
-				}
-			} else {
+			if (!task_success(task)) {
 				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 
 				/* cancel all queued tasks on failure */

@@ -743,7 +743,14 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 	if (mac < 2)
 		return;
 
-	sncpy(state->global.last_cmd, sizeof(state->global.last_cmd), map[1]);
+	const char* cmd = map[1];
+
+	sncpy(state->global.last_cmd, sizeof(state->global.last_cmd), cmd);
+
+	if (strcmp(cmd, "sync") == 0 || strcmp(cmd, "diff") == 0) {
+		/* diff and sync generate a new diff list, so cleanup it */
+		diff_cleanup(&state->global.diff_parse);
+	}
 }
 
 static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
@@ -834,12 +841,21 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		switch (task->cmd) {
 		case CMD_SYNC :
 			state->global.sync_time = state->global.last_time;
+
+			/* move the parsed diff to the previous state */
+			diff_move(&state->global.diff_parse, &state->global.diff_prev);
+
+			/* cleanup the current state, because after sync there is no difference anymore */
+			diff_cleanup(&state->global.diff_current);
 			break;
 		case CMD_SCRUB :
 			state->global.scrub_time = state->global.last_time;
 			break;
 		case CMD_DIFF :
 			state->global.diff_time = state->global.last_time;
+
+			/* move the parsing diff to the current state */
+			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
 		case CMD_STATUS :
 			state->global.status_time = state->global.last_time;
