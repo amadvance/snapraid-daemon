@@ -299,32 +299,24 @@ Rest API
 	Provides real-time telemetry for the currently executing task,
 	including a progress percentage, estimated time of completion (ETA),
 	and a live stream of the process log output.
+	If no tasks is in execution it returns the last completed task.
 
 	Example:
 		:curl -s http://localhost:8080/api/v1/activity | jq
 
+    /api/v1/tasks
+	Lists all the tasks waiting, the task currently active, and the tasks
+	execution history.
+
+	Example:
+		:curl -s http://localhost:8080/api/v1/tasks | jq
+
     /api/v1/stop
-	Terminates the currently running SnapRAID task (such as maintenance or
-	heal) by sending a SIGTERM signal to the background process.
+	Terminates the currently running task (such as sync or scrub) by
+	sending a SIGTERM signal to the background process.
 
 	Example:
 		:curl -X POST http://localhost:8080/api/v1/stop
-
-    /api/v1/history
-	Lists the execution history, final results, and exit codes for all
-	previously completed daemon tasks, rehydrated from the physical log
-	files.
-
-	Example:
-		:curl -s http://localhost:8080/api/v1/history | jq
-
-    /api/v1/queue
-	Retrieves the list of SnapRAID operations currently waiting in the
-	background execution queue. Tasks are processed sequentially in the
-	order they were received.
-
-	Example:
-		:curl -s http://localhost:8080/api/v1/queue | jq
 
   Low Level Commands
 	These endpoints provide direct access to the underlying SnapRAID CLI
