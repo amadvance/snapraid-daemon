@@ -820,18 +820,18 @@ components:
           type: integer
           format: int64
           description: >
-            Number of blocks to process.
+            The number of blocks to process.
             It may be less than block_end - block_begin + 1 if some blocks are going to be skipped
         block_idx:
           type: integer
           format: int64
           description: >
             Current block index position processed. Only in 'processing'.
-        block_done:
+        blocks_done:
           type: integer
           format: int64
           description: >
-            Number of blocks processed.
+            The count of blocks processed.
         size_done_bytes:
           type: integer
           format: int64
@@ -1636,30 +1636,50 @@ components:
           format: int64
           description: >
             The free space in bytes of all the data disks (not counting parity disks).
-        file_count:
+        files_count:
           type: integer
           format: int64
           description: >
-            Total number of files tracked in the content file.
-        block_bad:
-          type: integer
-          format: int64
-          example: 0
-          description: >
-            Count of blocks flagged as 'bad' in the content file.
-        block_rehash:
+            The number of files currently tracked within the content file
+            across all data drives.
+        blocks_bad:
           type: integer
           format: int64
           example: 0
           description: >
-            Count of blocks requiring a rehash for parity consistency.
-        block_count:
+            The count of blocks flagged as corrupted. These blocks require a
+            'fix' operation to restore data integrity.
+        blocks_rehash:
           type: integer
           format: int64
           example: 0
           description: >
-            The total number of blocks as reported by the content file.
-            It can be used to compute the percentage of rehash needed.
+            The count of blocks scheduled for a rehash. This occurs when
+            upgrading the hash algorithm.
+        blocks_unscrubbed:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of blocks that have never been scrubbed.
+            Newly added files are reported as unscrubbed immediately
+            following a successful sync until a scrub task is performed.
+        blocks_unsynced:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of blocks that currently require a parity sync.
+            These are typically present only after a sync task has
+            been interrupted or failed to complete.
+        blocks_count:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The total number of data blocks tracked in the content file.
+            This value serves as the denominator for calculating the
+            percentage of the array that is unsynced, unscrubbed, or bad.
         last_sync_at:
           type: string
           example: "2026-01-12T08:00:00"

@@ -1256,9 +1256,9 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task)
 			ss_json_uint(s, level, "elapsed_seconds", task->elapsed_seconds);
 			ss_json_uint(s, level, "block_begin", task->block_begin);
 			ss_json_uint(s, level, "block_end", task->block_end);
-			ss_json_uint(s, level, "block_count", task->block_count);
+			ss_json_uint(s, level, "blocks_count", task->block_count);
 			ss_json_uint(s, level, "block_idx", task->block_idx);
-			ss_json_uint(s, level, "block_done", task->block_done);
+			ss_json_uint(s, level, "blocks_done", task->block_done);
 			ss_json_u64(s, level, "size_done_bytes", task->size_done);
 			break;
 		}
@@ -1459,10 +1459,12 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_double(&s, level, "annual_failure_rate", global->afr);
 		if (global->prob != 0)
 			ss_json_double(&s, level, "failure_probability", global->prob);
-		ss_json_u64(&s, level, "file_count", global->file_total);
-		ss_json_u64(&s, level, "block_bad", global->block_bad);
-		ss_json_u64(&s, level, "block_rehash", global->block_rehash);
-		ss_json_u64(&s, level, "block_count", global->block_total);
+		ss_json_u64(&s, level, "files_count", global->file_total);
+		ss_json_u64(&s, level, "blocks_bad", global->block_bad);
+		ss_json_u64(&s, level, "blocks_rehash", global->block_rehash);
+		ss_json_u64(&s, level, "blocks_unsynced", global->block_unsynced);
+		ss_json_u64(&s, level, "blocks_unscrubbed", global->block_unscrubbed);
+		ss_json_u64(&s, level, "blocks_count", global->block_total);
 		if (global->sync_time)
 			ss_json_pair_iso8601(&s, level, "last_sync_at", global->sync_time);
 		if (global->scrub_time)

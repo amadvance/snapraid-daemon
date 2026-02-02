@@ -312,6 +312,8 @@ struct snapraid_global {
 	uint64_t file_total; /**< Total file count in the array as stored in the content file */
 	uint64_t block_bad; /**< Total blocks marked as bad */
 	uint64_t block_rehash; /**< Total blocks marked as rehash needed */
+	uint64_t block_unscrubbed; /**< Total blocks marked as scrub needed */
+	uint64_t block_unsynced; /**< Total blocks marked as sync needed */
 	uint64_t block_total; /**< Total blocks */
 
 	struct snapraid_diff_stat diff_parse; /**< Working diff stat while parsing */
