@@ -380,25 +380,46 @@ paths:
           description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
-  /snapraid/v1/pulse:
+  /snapraid/v1/state:
     get:
       summary: Lightweight state change detection
       description: >
-        Returns the current monotonic sequence counters for all
-        major daemon subsystems.
+        Returns the current high-level state of the daemon, including health
+        status, the currently active command, and monotonic pulse counters.
 
-        This is the fastest entry point in the API and should be
-        used by clients to poll for state changes. If a counter
-        has not incremented, the client can safely assume that
-        the corresponding data-heavy endpoint (e.g., /tasks)
-        will return the same information as the previous request.
+        This endpoint is designed for high-frequency polling by lightweight
+        clients, such as desktop status bars or system monitors. It provides
+        enough information to display a "live" summary without fetching heavy
+        datasets.
+
+        The 'pulse' object serves as a cache invalidation signal. If a counter
+        has not incremented since the last request, the client can safely
+        assume that the corresponding data-heavy endpoint (e.g., /v1/tasks
+        or /v1/disks) will return identical data.
       responses:
         '200':
           description: "Current subsystem pulse counters."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Pulse'
+                type: object
+                required:
+                  - pulse
+                  - health
+                properties:
+                  pulse:
+                    $ref: '#/components/schemas/Pulse'
+                  health:
+                    type: string
+                    enum: [passed, prefail, failing, pending]
+                    description: >
+                      The aggregate health of the entire array.
+                  active_command:
+                    type: string
+                    enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
+                    description: >
+                      The name of the currently running command.
+                      Omitted from the response if the daemon is idle.
 
   /snapraid/v1/disks:
     get:

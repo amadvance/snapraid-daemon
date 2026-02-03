@@ -77,7 +77,7 @@ Configuration
 
 	Dynamic Parameters - Operational settings, like the maintenance
 		schedule or scrub percentages, can be modified in real-time
-		via the PATCH /api/v1/config endpoint. Changes made through
+		via the PATCH /snapraid/v1/config endpoint. Changes made through
 		the API are instantly applied to the running process and
 		persisted back to the configuration file, preserving any
 		manual comments.
@@ -220,7 +220,7 @@ Rest API
 	single, automated tasks that manage the lifecycle of the array and the
 	recovery of data.
 
-    /api/v1/maintenance
+    /snapraid/v1/maintenance
 	Triggers the complete automated maintenance sequence. It orchestrates
 	a parity synchronization, followed by a data integrity scrub, and
 	concludes by issuing a system-wide health report.
@@ -231,25 +231,25 @@ Rest API
 	by the 'scrub_percentage' and 'scrub_older_than' settings.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/maintenance
+		:curl -X POST http://localhost:8080/snapraid/v1/maintenance
 
-    /api/v1/heal
+    /snapraid/v1/heal
 	Executes a specialized silent error recovery workflow. The daemon
 	automatically runs a targeted fix operation to repair detected corruption
 	and immediately follows up with a verification scrub of the affected
 	blocks to ensure the recovery was successful.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/heal
+		:curl -X POST http://localhost:8080/snapraid/v1/heal
 
-    /api/v1/undelete
+    /snapraid/v1/undelete
 	Invokes the SnapRAID restoration engine to recover files that have been
 	deleted from data disks but still exist in the parity information.
 	This is used to roll back accidental deletions to the state of the
 	last successful synchronization.
 
 	Example:
-		:curl -s -X POST http://localhost:8080/api/v1/undelete \
+		:curl -s -X POST http://localhost:8080/snapraid/v1/undelete \
 		:	-H "Content-Type: application/json" \
 		:	-d '{ "filters": [ "*.txt" ] }'
 
@@ -257,29 +257,29 @@ Rest API
 	These endpoints provide high-level visibility into the global state of
 	the storage stack and the health of the underlying physical hardware.
 
-    /api/v1/array
+    /snapraid/v1/array
 	Provides a high-level telemetry summary of the entire parity array.
 	This includes global metadata such as total capacity across all disks,
 	aggregate space utilization, the current state of parity protection,
 	and the timestamp of the last successful maintenance.
 
 	Example:
-		:curl -s http://localhost:8080/api/v1/array | jq
+		:curl -s http://localhost:8080/snapraid/v1/array | jq
 
-    /api/v1/disks
+    /snapraid/v1/disks
 	Returns a comprehensive inventory of every physical disk associated
 	with the SnapRAID configuration. It reports real-time hardware
 	metrics including SMART health status, temperature, and the current
 	power state (Active/Spin-up vs. Standby/Spin-down).
 
 	Example:
-		:curl -s http://localhost:8080/api/v1/disks | jq
+		:curl -s http://localhost:8080/snapraid/v1/disks | jq
 
   Configuration
 	Provides a programmatic interface to retrieve and modify the
 	operational parameters of the daemon in real-time.
 
-    /api/v1/config
+    /snapraid/v1/config
 	Retrieves and updates the current runtime configuration parameters of
 	the snapraidd service. Changes are applied instantly to memory and
 	persisted to the configuration file.
@@ -287,8 +287,8 @@ Rest API
 	require a manual edit and SIGHUP.
 
 	Example:
-		:curl -X GET http://localhost:8080/api/v1/config | jq
-		:curl -X PATCH http://localhost:8080/api/v1/config -H "Content-Type: application/json" -d '{ "probe_interval_minutes": 10 }'
+		:curl -X GET http://localhost:8080/snapraid/v1/config | jq
+		:curl -X PATCH http://localhost:8080/snapraid/v1/config -H "Content-Type: application/json" -d '{ "probe_interval_minutes": 10 }'
 
   Activity Control
 	All operations that modify the array state are asynchronous, they
@@ -298,47 +298,49 @@ Rest API
 	Because tasks run in the background, these endpoints are used to
 	monitor progress and manage the execution lifecycle.
 
-    /api/v1/activity
+    /snapraid/v1/activity
 	Provides real-time telemetry for the currently executing task,
 	including a progress percentage, estimated time of completion (ETA),
 	and a live stream of the process log output.
 	If no tasks is in execution it returns the last completed task.
 
 	Example:
-		:curl -s http://localhost:8080/api/v1/activity | jq
+		:curl -s http://localhost:8080/snapraid/v1/activity | jq
 
-    /api/v1/tasks
+    /snapraid/v1/tasks
 	Lists all the tasks waiting, the task currently active, and the tasks
 	execution history.
 
 	Example:
-		:curl -s http://localhost:8080/api/v1/tasks | jq
+		:curl -s http://localhost:8080/snapraid/v1/tasks | jq
 
-    /api/v1/stop
+    /snapraid/v1/stop
 	Terminates the currently running task (such as sync or scrub) by
 	sending a SIGTERM signal to the background process.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/stop
+		:curl -X POST http://localhost:8080/snapraid/v1/stop
 
-  Cache Handling
-	To optimize performance and reduce network overhead, the daemon
-	implements a mechanism for state synchronization. This allows clients
-	to determine if local data is stale without downloading full datasets.
 
-  /api/v1/pulse
-	The pulse consists of a collection of monotonic sequence counters used
-	for state change detection. Each field corresponds directly to an API
-	entry point of the same name.
+  State and Cache Management
+	To optimize performance and support lightweight monitoring (such as
+	desktop status bars), the daemon implements a state synchronization
+	mechanism via the /v1/state endpoint.
 
-	If a specific counter has not changed since the last request, the
+    /snapraid/v1/state
+	The response provides a high-level summary of the daemon's current
+	operation and health, alongside a pulse object containing monotonic
+	sequence counters.
+
+	The pulse object contains counters used for cache invalidation. Each
+	field corresponds directly to a data-heavy API entry point.
+	If a counter has not incremented since the last request, the
 	corresponding entry point is guaranteed to return the same data.
-	If a counter increments, it indicates that the underlying subsystem
-	state has evolved and the entry point will potentially return updated
-	information.
+	If a counter increases, the underlying subsystem state has evolved and
+	the entry point will potentially return updated information.
 
 	Example:
-		:curl -X GET http://localhost:8080/api/v1/pulse | jq
+		:curl -X GET http://localhost:8080/snapraid/v1/state | jq
 
   Commands
 	These endpoints provide direct access to the underlying SnapRAID CLI
@@ -346,57 +348,57 @@ Rest API
 	singular actions without additional logic, verification or report
 	phases.
 
-    /api/v1/sync
+    /snapraid/v1/sync
 	Queues a standard SnapRAID sync operation to update parity based on
 	modified or new files.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/sync
+		:curl -X POST http://localhost:8080/snapraid/v1/sync
 
-    /api/v1/scrub
+    /snapraid/v1/scrub
 	Initiates a manual scrub of the array to verify data integrity.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/scrub
+		:curl -X POST http://localhost:8080/snapraid/v1/scrub
 
-    /api/v1/diff
+    /snapraid/v1/diff
 	Triggers a SnapRAID diff to identify file system changes since the
 	last synchronization. The results can be viewed via the
-	'/api/v1/array' endpoint.
+	'/snapraid/v1/array' endpoint.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/diff
+		:curl -X POST http://localhost:8080/snapraid/v1/diff
 
-    /api/v1/up
+    /snapraid/v1/up
 	Issues a command to wake all physical disks in the array from standby.
 	This is used to prepare the array for heavy access or manual
 	maintenance.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/up
+		:curl -X POST http://localhost:8080/snapraid/v1/up
 
-    /api/v1/down
+    /snapraid/v1/down
 	Issues an immediate spindown command to all disks in the array that
 	are currently in an idle state.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/down
+		:curl -X POST http://localhost:8080/snapraid/v1/down
 
-    /api/v1/down_idle
+    /snapraid/v1/down_idle
 	Executes a conditional spindown operation. The daemon will only issue
 	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
 	threshold.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/down_idle
+		:curl -X POST http://localhost:8080/snapraid/v1/down_idle
 
-    /api/v1/probe
+    /snapraid/v1/probe
 	Forces an active health check of all disks. This updates the cached
 	SMART attributes and internal temperature readings by querying the
 	hardware directly.
 
 	Example:
-		:curl -X POST http://localhost:8080/api/v1/probe
+		:curl -X POST http://localhost:8080/snapraid/v1/probe
 
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni

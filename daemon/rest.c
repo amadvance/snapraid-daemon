@@ -490,17 +490,19 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 
 static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
 {
+	ss_json_object_open(s, &level, "pulse");
 	ss_json_i64(s, level, "array", pulse->array);
 	ss_json_i64(s, level, "config", pulse->config);
 	ss_json_i64(s, level, "disks", pulse->disks);
 	ss_json_i64(s, level, "tasks", pulse->tasks);
 	ss_json_i64(s, level, "activity", pulse->activity);
+	ss_json_close(s, &level);
 }
 
 /**
- * GET /snapraid/v1/pulse
+ * GET /snapraid/v1/state
  */
-static int handler_pulse(struct mg_connection* conn, void* cbdata)
+static int handler_state(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	int level = 0;
@@ -512,6 +514,9 @@ static int handler_pulse(struct mg_connection* conn, void* cbdata)
 
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
+	if (state->runner.latest && state->runner.latest->running)
+		ss_json_str(s, level, "active_command", command_name(state->runner.latest->cmd));
+	ss_json_str(&s, level, "health", health_name(health_array(state)));
 	ss_json_close(&s, &level);
 
 	state_unlock();
@@ -856,9 +861,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
 	ss_json_open(&s, &level);
-	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
-	ss_json_close(&s, &level);
 	ss_json_bool(&s, level, "config_full_access", config->net_config_full_access);
 	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
@@ -1228,9 +1231,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
-	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
-	ss_json_close(&s, &level);
 	ss_json_array_open(&s, &level, "data_disks");
 	json_disk_list(&s, level, &state->data_list);
 	ss_json_array_close(&s, &level);
@@ -1251,11 +1252,8 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 static void json_task(ss_t* s, int level, struct snapraid_task* task, struct snapraid_pulse* pulse)
 {
 	ss_json_open(s, &level);
-	if (pulse) {
-		ss_json_object_open(s, &level, "pulse");
+	if (pulse)
 		json_pulse(s, level, pulse);
-		ss_json_close(s, &level);
-	}
 	ss_json_int(s, level, "number", task->number);
 	ss_json_str(s, level, "command", command_name(task->cmd));
 	ss_json_str(s, level, "health", health_name(health_task(task)));
@@ -1423,9 +1421,7 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
-	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
-	ss_json_close(&s, &level);
 	ss_json_array_open(&s, &level, "pending");
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
@@ -1490,9 +1486,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_open(&s, &level);
-	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
-	ss_json_close(&s, &level);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(health_array(state)));
@@ -1677,7 +1671,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/pulse", handler_pulse, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");

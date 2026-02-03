@@ -86,7 +86,7 @@ Dynamic Parameters \- Operational settings, like the maintenance
 .PP
 .RS 4
 schedule or scrub percentages, can be modified in real\-time
-via the PATCH /api/v1/config endpoint. Changes made through
+via the PATCH /snapraid/v1/config endpoint. Changes made through
 the API are instantly applied to the running process and
 persisted back to the configuration file, preserving any
 manual comments.
@@ -199,7 +199,7 @@ The API prioritizes orchestrated workflows over raw command execution.
 These high\-level endpoints encapsulate complex SnapRAID logic into
 single, automated tasks that manage the lifecycle of the array and the
 recovery of data.
-.SS /api/v1/maintenance 
+.SS /snapraid/v1/maintenance 
 Triggers the complete automated maintenance sequence. It orchestrates
 a parity synchronization, followed by a data integrity scrub, and
 concludes by issuing a system\-wide health report.
@@ -212,11 +212,11 @@ by the \'scrub_percentage\' and \'scrub_older_than\' settings.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/maintenance
+curl \-X POST http://localhost:8080/snapraid/v1/maintenance
 .PD 0
 .PD
 .RE
-.SS /api/v1/heal 
+.SS /snapraid/v1/heal 
 Executes a specialized silent error recovery workflow. The daemon
 automatically runs a targeted fix operation to repair detected corruption
 and immediately follows up with a verification scrub of the affected
@@ -225,11 +225,11 @@ blocks to ensure the recovery was successful.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/heal
+curl \-X POST http://localhost:8080/snapraid/v1/heal
 .PD 0
 .PD
 .RE
-.SS /api/v1/undelete 
+.SS /snapraid/v1/undelete 
 Invokes the SnapRAID restoration engine to recover files that have been
 deleted from data disks but still exist in the parity information.
 This is used to roll back accidental deletions to the state of the
@@ -238,7 +238,7 @@ last successful synchronization.
 Example:
 .PP
 .RS 4
-curl \-s \-X POST http://localhost:8080/api/v1/undelete \\
+curl \-s \-X POST http://localhost:8080/snapraid/v1/undelete \\
 .PD 0
 .PP
 .PD
@@ -253,7 +253,7 @@ curl \-s \-X POST http://localhost:8080/api/v1/undelete \\
 .SS Monitoring & Inventory 
 These endpoints provide high\-level visibility into the global state of
 the storage stack and the health of the underlying physical hardware.
-.SS /api/v1/array 
+.SS /snapraid/v1/array 
 Provides a high\-level telemetry summary of the entire parity array.
 This includes global metadata such as total capacity across all disks,
 aggregate space utilization, the current state of parity protection,
@@ -262,11 +262,11 @@ and the timestamp of the last successful maintenance.
 Example:
 .PP
 .RS 4
-curl \-s http://localhost:8080/api/v1/array | jq
+curl \-s http://localhost:8080/snapraid/v1/array | jq
 .PD 0
 .PD
 .RE
-.SS /api/v1/disks 
+.SS /snapraid/v1/disks 
 Returns a comprehensive inventory of every physical disk associated
 with the SnapRAID configuration. It reports real\-time hardware
 metrics including SMART health status, temperature, and the current
@@ -275,14 +275,14 @@ power state (Active/Spin\-up vs. Standby/Spin\-down).
 Example:
 .PP
 .RS 4
-curl \-s http://localhost:8080/api/v1/disks | jq
+curl \-s http://localhost:8080/snapraid/v1/disks | jq
 .PD 0
 .PD
 .RE
 .SS Configuration 
 Provides a programmatic interface to retrieve and modify the
 operational parameters of the daemon in real\-time.
-.SS /api/v1/config 
+.SS /snapraid/v1/config 
 Retrieves and updates the current runtime configuration parameters of
 the snapraidd service. Changes are applied instantly to memory and
 persisted to the configuration file.
@@ -292,11 +292,11 @@ require a manual edit and SIGHUP.
 Example:
 .PP
 .RS 4
-curl \-X GET http://localhost:8080/api/v1/config | jq
+curl \-X GET http://localhost:8080/snapraid/v1/config | jq
 .PD 0
 .PP
 .PD
-curl \-X PATCH http://localhost:8080/api/v1/config \-H \[dq]Content\-Type: application/json\[dq] \-d \'{ \[dq]probe_interval_minutes\[dq]: 10 }\'
+curl \-X PATCH http://localhost:8080/snapraid/v1/config \-H \[dq]Content\-Type: application/json\[dq] \-d \'{ \[dq]probe_interval_minutes\[dq]: 10 }\'
 .PD 0
 .PD
 .RE
@@ -307,7 +307,7 @@ execution.
 .PP
 Because tasks run in the background, these endpoints are used to
 monitor progress and manage the execution lifecycle.
-.SS /api/v1/activity 
+.SS /snapraid/v1/activity 
 Provides real\-time telemetry for the currently executing task,
 including a progress percentage, estimated time of completion (ETA),
 and a live stream of the process log output.
@@ -316,51 +316,52 @@ If no tasks is in execution it returns the last completed task.
 Example:
 .PP
 .RS 4
-curl \-s http://localhost:8080/api/v1/activity | jq
+curl \-s http://localhost:8080/snapraid/v1/activity | jq
 .PD 0
 .PD
 .RE
-.SS /api/v1/tasks 
+.SS /snapraid/v1/tasks 
 Lists all the tasks waiting, the task currently active, and the tasks
 execution history.
 .PP
 Example:
 .PP
 .RS 4
-curl \-s http://localhost:8080/api/v1/tasks | jq
+curl \-s http://localhost:8080/snapraid/v1/tasks | jq
 .PD 0
 .PD
 .RE
-.SS /api/v1/stop 
+.SS /snapraid/v1/stop 
 Terminates the currently running task (such as sync or scrub) by
 sending a SIGTERM signal to the background process.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/stop
+curl \-X POST http://localhost:8080/snapraid/v1/stop
 .PD 0
 .PD
 .RE
-.SS Cache Handling 
-To optimize performance and reduce network overhead, the daemon
-implements a mechanism for state synchronization. This allows clients
-to determine if local data is stale without downloading full datasets.
-.SS /api/v1/pulse 
-The pulse consists of a collection of monotonic sequence counters used
-for state change detection. Each field corresponds directly to an API
-entry point of the same name.
+.SS State and Cache Management 
+To optimize performance and support lightweight monitoring (such as
+desktop status bars), the daemon implements a state synchronization
+mechanism via the /v1/state endpoint.
+.SS /snapraid/v1/state 
+The response provides a high\-level summary of the daemon\'s current
+operation and health, alongside a pulse object containing monotonic
+sequence counters.
 .PP
-If a specific counter has not changed since the last request, the
+The pulse object contains counters used for cache invalidation. Each
+field corresponds directly to a data\-heavy API entry point.
+If a counter has not incremented since the last request, the
 corresponding entry point is guaranteed to return the same data.
-If a counter increments, it indicates that the underlying subsystem
-state has evolved and the entry point will potentially return updated
-information.
+If a counter increases, the underlying subsystem state has evolved and
+the entry point will potentially return updated information.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X GET http://localhost:8080/api/v1/pulse | jq
+curl \-X GET http://localhost:8080/snapraid/v1/state | jq
 .PD 0
 .PD
 .RE
@@ -369,40 +370,40 @@ These endpoints provide direct access to the underlying SnapRAID CLI
 functions. Unlike the orchestrated workflows, these commands perform
 singular actions without additional logic, verification or report
 phases.
-.SS /api/v1/sync 
+.SS /snapraid/v1/sync 
 Queues a standard SnapRAID sync operation to update parity based on
 modified or new files.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/sync
+curl \-X POST http://localhost:8080/snapraid/v1/sync
 .PD 0
 .PD
 .RE
-.SS /api/v1/scrub 
+.SS /snapraid/v1/scrub 
 Initiates a manual scrub of the array to verify data integrity.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/scrub
+curl \-X POST http://localhost:8080/snapraid/v1/scrub
 .PD 0
 .PD
 .RE
-.SS /api/v1/diff 
+.SS /snapraid/v1/diff 
 Triggers a SnapRAID diff to identify file system changes since the
 last synchronization. The results can be viewed via the
-\'/api/v1/array\' endpoint.
+\'/snapraid/v1/array\' endpoint.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/diff
+curl \-X POST http://localhost:8080/snapraid/v1/diff
 .PD 0
 .PD
 .RE
-.SS /api/v1/up 
+.SS /snapraid/v1/up 
 Issues a command to wake all physical disks in the array from standby.
 This is used to prepare the array for heavy access or manual
 maintenance.
@@ -410,22 +411,22 @@ maintenance.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/up
+curl \-X POST http://localhost:8080/snapraid/v1/up
 .PD 0
 .PD
 .RE
-.SS /api/v1/down 
+.SS /snapraid/v1/down 
 Issues an immediate spindown command to all disks in the array that
 are currently in an idle state.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/down
+curl \-X POST http://localhost:8080/snapraid/v1/down
 .PD 0
 .PD
 .RE
-.SS /api/v1/down_idle 
+.SS /snapraid/v1/down_idle 
 Executes a conditional spindown operation. The daemon will only issue
 the spindown command to disks that have exceeded the \'spindown_idle_minutes\'
 threshold.
@@ -433,11 +434,11 @@ threshold.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/down_idle
+curl \-X POST http://localhost:8080/snapraid/v1/down_idle
 .PD 0
 .PD
 .RE
-.SS /api/v1/probe 
+.SS /snapraid/v1/probe 
 Forces an active health check of all disks. This updates the cached
 SMART attributes and internal temperature readings by querying the
 hardware directly.
@@ -445,7 +446,7 @@ hardware directly.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/api/v1/probe
+curl \-X POST http://localhost:8080/snapraid/v1/probe
 .PD 0
 .PD
 .RE
