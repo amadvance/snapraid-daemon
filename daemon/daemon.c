@@ -46,6 +46,7 @@ static void usage(const char* conf)
 	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");
 	printf("  " SWITCH_GETOPT_LONG("-N, --no-cache        ", "-N") "  Load web pages at runtime without caching them\n");
 	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
+	printf("  " SWITCH_GETOPT_LONG("-v, --verbose         ", "-v") "  Verbose output\n");
 	printf("  " SWITCH_GETOPT_LONG("-H, --help            ", "-H") "  Show this help message\n");
 	printf("  " SWITCH_GETOPT_LONG("-V, --version         ", "-V") "  Show version and exit\n");
 
@@ -111,6 +112,7 @@ struct option long_options[] = {
 	{ "conf", 1, 0, 'c' },
 	{ "no-cache", 1, 0, 'N' },
 	{ "pidfile", 1, 0, 'p' },
+	{ "verbose", 0, 0, 'v' },
 	{ "help", 0, 0, 'H' },
 	{ "version", 0, 0, 'V' },
 
@@ -118,7 +120,7 @@ struct option long_options[] = {
 };
 #endif
 
-#define OPTIONS "fc:Np:HV"
+#define OPTIONS "fc:Np:vHV"
 
 int main(int argc, char *argv[])
 {
@@ -151,6 +153,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'p' :
 			arg_pidfile = optarg;
+			break;
+		case 'v' :
+			state->verbose = 1;
 			break;
 		case 'h' :
 			usage(state->config.conf);

@@ -1575,6 +1575,48 @@ static int log_internal_callback(const struct mg_connection* conn, const char* m
 	return 1;
 }
 
+/**
+ * Internal hook of CivetWeb
+ */
+void civetweb_log_access(const struct mg_connection* conn, int status_code, int num_bytes_sent)
+{
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	char date[64];
+	time_t curtime = time(0);
+	struct tm* timeptr = gmtime(&curtime);
+
+	/* format timestamp: [day/month/year:hour:minute:second +0000] */
+	strftime(date, sizeof(date), "%d/%b/%Y:%H:%M:%S +0000", timeptr);
+
+	/* get specific headers (Referer and User-Agent) */
+	const char* referer = mg_get_header(conn, "Referer");
+	const char* user_agent = mg_get_header(conn, "User-Agent");
+
+	/*
+	 * Print in Apache Combined Log Format:
+	 * 127.0.0.1 - - [10/Oct/2000:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326 "http://www.example.com/main.html" "Mozilla/4.08 [en] (Win98; I ;Nav)"
+	 */
+	log_msg(LVL_DEBUG,
+		"%s - - [%s] \"%s %s HTTP/%s\" %d %d \"%s\" \"%s\"",
+		ri->remote_addr ? ri->remote_addr : "-",
+		date,
+		ri->request_method ? ri->request_method : "-",
+		ri->local_uri ? ri->local_uri : "-",
+		ri->http_version ? ri->http_version : "-",
+		status_code,
+		num_bytes_sent,
+		referer ? referer : "-",
+		user_agent ? user_agent : "-");
+}
+
+/**
+ * Internal hook of CivetWeb
+ */
+void civetweb_log_message(const struct mg_connection *conn, const char* str)
+{
+	log_internal_callback(conn, str);
+}
+
 int rest_init(struct snapraid_state* state)
 {
 	const char* options[20];

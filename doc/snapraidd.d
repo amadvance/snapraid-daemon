@@ -3,7 +3,7 @@ Name{number}
 
 Synopsis
 	:snapraidd [-c, --conf CONFIG] [-f, --foreground] [-p, --pidfile FILE]
-		[-N, --no-cache]
+		[-N, --no-cache] [-v, --verbose]
 
 	:snapraidd [-V, --version] [-H, --help]
 
@@ -50,6 +50,9 @@ Options
 		increased I/O overhead and for security reasons, as it could
 		potentially expose the system to directory traversal
 		vulnerabilities if not properly isolated.
+
+	-v, --verbose
+		Verbose logging including all the HTTP requests.
 
 	-H, --help
 		Prints a short help screen.

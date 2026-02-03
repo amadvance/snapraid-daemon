@@ -7,7 +7,7 @@ snapraidd [\-c, \-\-conf CONFIG] [\-f, \-\-foreground] [\-p, \-\-pidfile FILE]
 .PD
 .PP
 .RS 4
-[\-N, \-\-no\-cache]
+[\-N, \-\-no\-cache] [\-v, \-\-verbose]
 .RE
 .PP
 snapraidd [\-V, \-\-version] [\-H, \-\-help]
@@ -55,6 +55,9 @@ This option is not recommended for production use due to the
 increased I/O overhead and for security reasons, as it could
 potentially expose the system to directory traversal
 vulnerabilities if not properly isolated.
+.TP
+.B \-v, \-\-verbose
+Verbose logging including all the HTTP requests.
 .TP
 .B \-H, \-\-help
 Prints a short help screen.

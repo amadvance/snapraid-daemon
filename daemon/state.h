@@ -349,6 +349,7 @@ struct snapraid_global {
 #define LVL_ERROR 1
 #define LVL_WARNING 2
 #define LVL_INFO 3
+#define LVL_DEBUG 4
 
 #define CONFIG_LINE_MAX 1024
 
@@ -406,6 +407,7 @@ struct snapraid_state {
 	thread_mutex_t lock; /**< Main lock for accessing the state */
 	struct snapraid_pulse pulse; /**< Pulse counters. */
 	int foreground; /**< Daemon running in foreground */
+	int verbose; /**< Verbose output */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;

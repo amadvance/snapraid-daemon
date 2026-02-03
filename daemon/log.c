@@ -27,7 +27,8 @@ static int level_map[] = {
 	LOG_CRIT,
 	LOG_ERR,
 	LOG_WARNING,
-	LOG_INFO
+	LOG_INFO,
+	LOG_DEBUG
 };
 
 int log_init(const char* ident)
@@ -47,24 +48,9 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 		vsyslog(level_map[level], fmt, ap);
 
 	if (termlog) {
-		char buf[2048];
-		vsnprintf(buf, sizeof(buf), fmt, ap2);
-		switch (level) {
-		case LVL_CRITICAL :
-			fprintf(stderr, PACKAGE "[%" PRIu64 "]:critical: %s\n", (uint64_t)getpid(), buf);
-			break;
-		case LVL_ERROR :
-			fprintf(stderr, PACKAGE "[%" PRIu64 "]:error: %s\n", (uint64_t)getpid(), buf);
-			break;
-		case LVL_WARNING :
-			fprintf(stdout, PACKAGE "[%" PRIu64 "]:warning: %s\n", (uint64_t)getpid(), buf);
-			fflush(stdout);
-			break;
-		case LVL_INFO :
-			fprintf(stdout, PACKAGE "[%" PRIu64 "]:info: %s\n", (uint64_t)getpid(), buf);
-			fflush(stdout);
-			break;
-		}
+		vfprintf(stdout, fmt, ap2);
+		fprintf(stdout, "\n");
+		fflush(stdout);
 	}
 
 	va_end(ap2);
@@ -74,6 +60,7 @@ void log_msg(int level, const char *fmt, ...)
 {
 	int syslog;
 	int termlog;
+	int verboselog;
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -82,7 +69,11 @@ void log_msg(int level, const char *fmt, ...)
 	struct snapraid_state* state = state_ptr();
 	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
 	termlog = state->foreground;
+	verboselog = state->verbose;
 	state_unlock();
+
+	if (level == LVL_DEBUG && !verboselog)
+		return;
 
 	log_out(level, syslog, termlog, fmt, ap);
 
@@ -93,6 +84,7 @@ void log_msg_locked(int level, const char *fmt, ...)
 {
 	int syslog;
 	int termlog;
+	int verboselog;
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -100,6 +92,10 @@ void log_msg_locked(int level, const char *fmt, ...)
 	struct snapraid_state* state = state_ptr();
 	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
 	termlog = state->foreground;
+	verboselog = state->verbose;
+
+	if (level == LVL_DEBUG && !verboselog)
+		return;
 
 	log_out(level, syslog, termlog, fmt, ap);
 
