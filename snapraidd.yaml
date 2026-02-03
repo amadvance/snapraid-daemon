@@ -420,6 +420,24 @@ paths:
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
+                  progress:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                    description: >
+                      The completion percentage of the active command (0-100).
+
+                      This field is omitted if the daemon is idle, or if the
+                      currently running command does not provide granular
+                      progress telemetry (e.g., 'up' or 'smart').
+                  eta_seconds:
+                    type: integer
+                    format: int64
+                    description: >
+                      Estimated seconds remaining until the active command completes.
+
+                      This field is omitted if the daemon is idle, or if an
+                      estimate is not yet available/supported for the current task.
 
   /snapraid/v1/disks:
     get:
