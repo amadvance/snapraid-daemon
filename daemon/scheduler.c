@@ -241,11 +241,11 @@ void* scheduler_thread(void* arg)
 			if (state->runner.latest && state->runner.latest->running)
 				break;
 
-			/* probe and spindown */
+			/* probe and spindown, use the lowest interval */
 			int64_t interval_minutes = 0;
-			if (state->config.probe_interval_minutes > 0 && interval_minutes > state->config.probe_interval_minutes)
+			if (state->config.probe_interval_minutes > 0 && (interval_minutes == 0 || interval_minutes > state->config.probe_interval_minutes))
 				interval_minutes = state->config.probe_interval_minutes;
-			if (state->config.spindown_idle_minutes > 0 && interval_minutes > state->config.spindown_idle_minutes)
+			if (state->config.spindown_idle_minutes > 0 && (interval_minutes == 0 || interval_minutes > state->config.spindown_idle_minutes))
 				interval_minutes = state->config.spindown_idle_minutes;
 
 			if (interval_minutes > 0
