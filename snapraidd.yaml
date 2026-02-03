@@ -706,6 +706,15 @@ components:
             Increments whenever any background task changes its lifecycle state.
             A change here indicates that the data returned by /tasks
             has potentially been updated.
+        activity:
+          type: integer
+          format: int64
+          description: >
+            Related to the /activity entry point.
+
+            Increments whenever the running task changes its attributes.
+            A change here indicates that the data returned by /activity
+            has potentially been updated.
 
     Message:
       type: object

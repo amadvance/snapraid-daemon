@@ -490,12 +490,11 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 
 static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
 {
-	ss_json_object_open(s, &level, "pulse");
 	ss_json_i64(s, level, "array", pulse->array);
 	ss_json_i64(s, level, "config", pulse->config);
 	ss_json_i64(s, level, "disks", pulse->disks);
 	ss_json_i64(s, level, "tasks", pulse->tasks);
-	ss_json_close(s, &level);
+	ss_json_i64(s, level, "activity", pulse->activity);
 }
 
 /**
@@ -857,7 +856,9 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	config_schedule_str(config, schedule_buf, sizeof(schedule_buf));
 
 	ss_json_open(&s, &level);
+	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
+	ss_json_close(&s, &level);
 	ss_json_bool(&s, level, "config_full_access", config->net_config_full_access);
 	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
@@ -1227,7 +1228,9 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
+	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
+	ss_json_close(&s, &level);
 	ss_json_array_open(&s, &level, "data_disks");
 	json_disk_list(&s, level, &state->data_list);
 	ss_json_array_close(&s, &level);
@@ -1245,9 +1248,14 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	return 200;
 }
 
-static void json_task(ss_t* s, int level, struct snapraid_task* task)
+static void json_task(ss_t* s, int level, struct snapraid_task* task, struct snapraid_pulse* pulse)
 {
 	ss_json_open(s, &level);
+	if (pulse) {
+		ss_json_object_open(s, &level, "pulse");
+		json_pulse(s, level, pulse);
+		ss_json_close(s, &level);
+	}
 	ss_json_int(s, level, "number", task->number);
 	ss_json_str(s, level, "command", command_name(task->cmd));
 	ss_json_str(s, level, "health", health_name(health_task(task)));
@@ -1383,8 +1391,7 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 		return send_no_content(conn);
 	}
 
-	json_pulse(&s, level, &state->pulse);
-	json_task(&s, level, task);
+	json_task(&s, level, task, &state->pulse);
 
 	state_unlock();
 
@@ -1416,25 +1423,27 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	state_lock();
 
 	ss_json_open(&s, &level);
+	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
+	ss_json_close(&s, &level);
 	ss_json_array_open(&s, &level, "pending");
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
-		json_task(&s, level, task);
+		json_task(&s, level, task, 0);
 	}
 	ss_json_array_close(&s, &level);
 
 	ss_json_array_open(&s, &level, "active");
 	if (state->runner.latest->running)
-		json_task(&s, level, state->runner.latest);
+		json_task(&s, level, state->runner.latest, 0);
 	ss_json_array_close(&s, &level);
 
 	ss_json_array_open(&s, &level, "history");
 	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
 		struct snapraid_task* task = i->data;
 
-		json_task(&s, level, task);
+		json_task(&s, level, task, 0);
 	}
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
@@ -1481,7 +1490,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_open(&s, &level);
+	ss_json_object_open(&s, &level, "pulse");
 	json_pulse(&s, level, &state->pulse);
+	ss_json_close(&s, &level);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(health_array(state)));
@@ -1499,10 +1510,8 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
 		if (free_space_bytes != 0)
 			ss_json_u64(&s, level, "free_space_bytes", free_space_bytes);
-		if (global->afr != 0)
-			ss_json_double(&s, level, "annual_failure_rate", global->afr);
-		if (global->prob != 0)
-			ss_json_double(&s, level, "failure_probability", global->prob);
+		ss_json_double(&s, level, "annual_failure_rate", afr_array(state));
+		ss_json_double(&s, level, "failure_probability", fp_array(state));
 		ss_json_u64(&s, level, "files_count", global->file_total);
 		ss_json_u64(&s, level, "blocks_bad", global->block_bad);
 		ss_json_u64(&s, level, "blocks_rehash", global->block_rehash);

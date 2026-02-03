@@ -108,7 +108,8 @@ typedef tommy_list sl_t;
 #define PULSE_CONFIG 2
 #define PULSE_DISKS 4
 #define PULSE_TASKS 8
-#define PULSE_ALL (PULSE_ARRAY | PULSE_CONFIG | PULSE_DISKS | PULSE_TASKS)
+#define PULSE_ACTIVITY 16
+#define PULSE_ALL (PULSE_ARRAY | PULSE_CONFIG | PULSE_DISKS | PULSE_TASKS | PULSE_ACTIVITY)
 
 /**
  * Pulse
@@ -118,6 +119,7 @@ struct snapraid_pulse {
 	uint64_t config; /**< State counter for the "config" entry point */
 	uint64_t disks; /**< State counter for the "disks" entry point */
 	uint64_t tasks; /**< State counter for the "tasks" entry point */
+	uint64_t activity; /**< State counter for the "activity" entry point */
 };
 
 /**
@@ -319,9 +321,6 @@ struct snapraid_global {
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
 
-	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
-	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
-
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */
 	int64_t diff_time; /**< Time of the last diff run. If 0 never run. */
@@ -467,13 +466,6 @@ void page_wrlock(void);
  * Release lock for accessing the web.
  */
 void page_unlock(void);
-
-/****************************************************************************/
-/* pulse */
-
-void pulse(struct snapraid_state* state, unsigned pulse);
-
-void pulse_stru64(struct snapraid_state* state, unsigned pulse, uint64_t* out, const char* s);
 
 #endif
 

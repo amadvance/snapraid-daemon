@@ -403,6 +403,46 @@ int health_array(struct snapraid_state* state)
 	return health;
 }
 
+double afr_array(struct snapraid_state* state)
+{
+	double afr = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			afr += device->afr;
+		}
+	}
+
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			afr += device->afr;
+		}
+	}
+
+	return afr;
+}
+
+/**
+ * Calculates the probability of at least one failure occurring
+ * within a year using a Poisson distribution.
+ *
+ * @param afr The aggregate Annual Failure Rate (lambda).
+ * @return The probability as a double between 0 and 1.
+ */
+static double poisson_prob_at_least_one_failure(double rate)
+{
+	return 1.0 - exp(-rate);
+}
+
+double fp_array(struct snapraid_state* state)
+{
+	return poisson_prob_at_least_one_failure(afr_array(state));
+}
+
 /****************************************************************************/
 /* page */
 

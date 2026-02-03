@@ -31,13 +31,21 @@ static void clear_disk_accumulator(struct snapraid_state* state)
 {
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_disk* data = i->data;
-		data->error_io = 0;
-		data->error_data = 0;
+		if (data->error_io != 0 || data->error_data != 0) {
+			/* PULSE_ARRAY use the disk error as health */
+			pulse(state, PULSE_ARRAY | PULSE_DISKS);
+			data->error_io = 0;
+			data->error_data = 0;
+		}
 	}
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_disk* parity = i->data;
-		parity->error_io = 0;
-		parity->error_data = 0;
+		if (parity->error_io != 0 || parity->error_data != 0) {
+			/* PULSE_ARRAY use the disk error as health */
+			pulse(state, PULSE_ARRAY | PULSE_DISKS);
+			parity->error_io = 0;
+			parity->error_data = 0;
+		}
 	}
 }
 
@@ -192,23 +200,27 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 	if (stru64(&access_count, map[2]) != 0)
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	if (is_parity(map[1])) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[1]);
 		/* if the value is the same, doesn't update the first time */
 		if (parity->access_count != access_count) {
+			pulse(state, PULSE_DISKS);
 			parity->access_count = access_count;
 			parity->access_count_initial_time = state->global.last_time;
 		}
+
+		/* this is the current time, no need to pulse */
 		parity->access_count_latest_time = state->global.last_time;
 	} else {
 		struct snapraid_disk* data = find_disk(&state->data_list, map[1]);
 		/* if the value is the same, doesn't update the first time */
 		if (data->access_count != access_count) {
+			pulse(state, PULSE_DISKS);
 			data->access_count = access_count;
 			data->access_count_initial_time = state->global.last_time;
 		}
+
+		/* this is the current time, no need to pulse */
 		data->access_count_latest_time = state->global.last_time;
 	}
 }
@@ -222,13 +234,11 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	const char* dir = map[2];
 	const char* uuid = map[3];
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* disk = find_disk(&state->data_list, name);
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
-	sncpy(split->path, sizeof(split->path), dir);
-	sncpy(split->uuid, sizeof(split->uuid), uuid);
+	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), dir);
+	pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -245,13 +255,11 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	if (!is_split_parity(name, &index))
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	sncpy(split->path, sizeof(split->path), path);
-	sncpy(split->uuid, sizeof(split->uuid), uuid);
+	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
+	pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
@@ -294,12 +302,10 @@ static void process_content_data_split(struct snapraid_state* state, char** map,
 	const char* name = map[1];
 	const char* uuid = map[2];
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* data = find_disk(&state->data_list, name);
 	struct snapraid_split* split = find_split(&data->split_list, 0); /* at present data disks don't have the split index */
 
-	sncpy(split->content_uuid, sizeof(split->content_uuid), uuid);
+	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid);
 }
 
 static void process_content_parity_split(struct snapraid_state* state, char** map, size_t mac)
@@ -317,14 +323,12 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	if (!is_split_parity(name, &index))
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	sncpy(split->path, sizeof(split->path), path);
-	sncpy(split->content_uuid, sizeof(split->uuid), uuid);
-	stru64(&split->content_size, size);
+	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
+	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->uuid), uuid);
+	pulse_stru64(state, PULSE_DISKS, &split->content_size, size);
 }
 
 static void process_content_info(struct snapraid_state* state, char** map, size_t mac)
@@ -339,30 +343,24 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 	const char* tag = map[1];
 	const char* val = map[2];
 
-	pulse(state, PULSE_ARRAY);
-
 	if (strcmp(tag, "file") == 0) {
-		stru64(&state->global.file_total, val);
+		pulse_stru64(state, PULSE_ARRAY, &state->global.file_total, val);
 	} else if (strcmp(tag, "block_bad") == 0) {
-		uint64_t block_bad;
-		if (stru64(&block_bad, val) == 0) {
-			pulse(state, PULSE_TASKS);
-			if (block_bad == 0) {
-				/* if content has no stored error, clear the disk error accumulators */
-				pulse(state, PULSE_DISKS);
-				clear_disk_accumulator(state);
-			}
-			task->block_bad = block_bad;
-			state->global.block_bad = block_bad;
+		pulse_stru64(state, PULSE_ARRAY, &state->global.block_bad, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->block_bad, val);
+
+		if (state->global.block_bad == 0) {
+			/* if content has no stored error, clear the disk error accumulators */
+			clear_disk_accumulator(state);
 		}
 	} else if (strcmp(tag, "block_rehash") == 0) {
-		stru64(&state->global.block_rehash, val);
+		pulse_stru64(state, PULSE_ARRAY, &state->global.block_rehash, val);
 	} else if (strcmp(tag, "block_unscrubbed") == 0) {
-		stru64(&state->global.block_unscrubbed, val);
+		pulse_stru64(state, PULSE_ARRAY, &state->global.block_unscrubbed, val);
 	} else if (strcmp(tag, "block_unsynced") == 0) {
-		stru64(&state->global.block_unsynced, val);
+		pulse_stru64(state, PULSE_ARRAY, &state->global.block_unsynced, val);
 	} else if (strcmp(tag, "block") == 0) {
-		stru64(&state->global.block_total, val);
+		pulse_stru64(state, PULSE_ARRAY, &state->global.block_total, val);
 	}
 }
 
@@ -409,15 +407,13 @@ static void process_fsinfo_data_split(struct snapraid_state* state, char** map, 
 	const char* type = map[4];
 	const char* label = map[5];
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* data = find_disk(&state->data_list, name);
 	struct snapraid_split* split = find_split(&data->split_list, 0); /* at present data disks don't have the split index */
 
-	stru64(&split->fssize, size_alloc);
-	stru64(&split->fsfree, size_free);
-	sncpy(split->fstype, sizeof(split->fstype), type);
-	sncpy(split->fslabel, sizeof(split->fslabel), label);
+	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
+	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
+	pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type);
+	pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label);
 }
 
 static void process_fsinfo_parity_split(struct snapraid_state* state, char** map, size_t mac)
@@ -436,15 +432,13 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 	if (!is_split_parity(name, &index))
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	struct snapraid_disk* disk = find_disk(&state->parity_list, name);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	stru64(&split->fssize, size_alloc);
-	stru64(&split->fsfree, size_free);
-	sncpy(split->fstype, sizeof(split->fstype), type);
-	sncpy(split->fslabel, sizeof(split->fslabel), label);
+	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
+	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
+	pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type);
+	pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label);
 }
 
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
@@ -459,51 +453,78 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	const char* tag = map[3];
 	const char* val = map[4];
 
-	pulse(state, PULSE_DISKS);
-
 	if (strcmp(tag, "serial") == 0)
-		sncpy(device->serial, sizeof(device->serial), val);
+		pulse_str(state, PULSE_DISKS, device->serial, sizeof(device->serial), val);
 	else if (strcmp(tag, "model") == 0)
-		sncpy(device->model, sizeof(device->model), val);
+		pulse_str(state, PULSE_DISKS, device->model, sizeof(device->model), val);
 	else if (strcmp(tag, "family") == 0)
-		sncpy(device->family, sizeof(device->family), val);
+		pulse_str(state, PULSE_DISKS, device->family, sizeof(device->family), val);
 	else if (strcmp(tag, "interface") == 0)
-		sncpy(device->interf, sizeof(device->interf), val);
+		pulse_str(state, PULSE_DISKS, device->interf, sizeof(device->interf), val);
 	else if (strcmp(tag, "size") == 0)
-		stru64(&device->size, val);
+		pulse_stru64(state, PULSE_DISKS, &device->size, val);
 	else if (strcmp(tag, "rotationrate") == 0)
-		stru64(&device->rotational, val);
+		pulse_stru64(state, PULSE_DISKS, &device->rotational, val);
 	else if (strcmp(tag, "afr") == 0) {
-		strdouble(&device->afr, val);
+		pulse_double(state, PULSE_DISKS, &device->afr, val);
 		if (mac >= 6)
-			strdouble(&device->prob, map[5]);
+			pulse_double(state, PULSE_DISKS, &device->prob, map[5]);
 	} else if (strcmp(tag, "error_protocol") == 0)
-		stru64(&device->error_protocol, val);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse_stru64(state, PULSE_ARRAY | PULSE_DISKS, &device->error_protocol, val);
 	else if (strcmp(tag, "error_medium") == 0)
-		stru64(&device->error_medium, val);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse_stru64(state, PULSE_ARRAY | PULSE_DISKS, &device->error_medium, val);
 	else if (strcmp(tag, "wear_level") == 0)
-		stru64(&device->wear_level, val);
+		pulse_stru64(state, PULSE_DISKS, &device->wear_level, val);
 	else if (strcmp(tag, "power") == 0) {
-		device->power = POWER_PENDING;
-		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0)
-			device->power = POWER_STANDBY;
-		else if (strcmp(val, "active") == 0 || strcmp(val, "up") == 0)
-			device->power = POWER_ACTIVE;
+		int power = POWER_PENDING;
+		if (strcmp(val, "standby") == 0 || strcmp(val, "down") == 0) {
+			power = POWER_STANDBY;
+		} else if (strcmp(val, "active") == 0 || strcmp(val, "up") == 0) {
+			power = POWER_ACTIVE;
+		}
+		if (device->power != power) {
+			pulse(state, PULSE_DISKS);
+			device->power = power;
+		}
 	} else if (strcmp(tag, "flags") == 0) {
-		device->health = HEALTH_PENDING;
-		if (stru64(&device->flags, val) == 0) {
-			if (device->flags & SMARTCTL_FLAG_FAIL)
-				device->health = HEALTH_FAILING;
-			else if (device->flags & SMARTCTL_FLAG_PREFAIL)
-				device->health = HEALTH_PREFAIL;
+		int health = HEALTH_PENDING;
+		uint64_t flags;
+		if (stru64(&flags, val) == 0) {
+			if (flags & SMARTCTL_FLAG_FAIL)
+				health = HEALTH_FAILING;
+			else if (flags & SMARTCTL_FLAG_PREFAIL)
+				health = HEALTH_PREFAIL;
 			else
-				device->health = HEALTH_PASSED;
+				health = HEALTH_PASSED;
+		}
+		if (device->health != health || device->flags != flags) {
+			pulse(state, PULSE_DISKS);
+			device->health = health;
+			device->flags = flags;
 		}
 	} else {
 		int index;
 		if (strint(&index, tag) == 0) {
-			if (index >= 0 && index < 256)
-				stru64(&device->smart[index], val);
+			switch (index) {
+			case SMART_REALLOCATED_SECTOR_COUNT :
+			case SMART_UNCORRECTABLE_ERROR_CNT :
+			case SMART_COMMAND_TIMEOUT :
+			case SMART_CURRENT_PENDING_SECTOR :
+			case SMART_OFFLINE_UNCORRECTABLE :
+			case SMART_START_STOP_COUNT :
+			case SMART_POWER_ON_HOURS :
+			case SMART_AIRFLOW_TEMPERATURE_CELSIUS :
+			case SMART_LOAD_CYCLE_COUNT :
+			case SMART_TEMPERATURE_CELSIUS :
+				pulse_stru64(state, PULSE_DISKS, &device->smart[index], val);
+				break;
+			default :
+				/* these values are not reported */
+				if (index >= 0 && index < 256)
+					stru64(&device->smart[index], val);
+			}
 		}
 	}
 }
@@ -517,24 +538,28 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 	const char* disk = map[2];
 	const char* path = map[3];
 
-	pulse(state, PULSE_ARRAY);
-
 	if (strcmp(tag, "add") == 0) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "remove") == 0) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "update") == 0) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, path, disk, map[4]);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, disk, path, map[4], map[5]);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "restore") == 0) {
+		pulse(state, PULSE_ARRAY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	}
@@ -549,13 +574,12 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_TASKS);
-
 	if (strcmp(map[1], "begin") == 0) {
 		if (mac < 5)
 			return;
 
 		/* keep the state as starting */
+		pulse(state, PULSE_ACTIVITY);
 		struint(&task->block_begin, map[2]);
 		struint(&task->block_end, map[3]);
 		struint(&task->block_count, map[4]);
@@ -563,6 +587,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		if (mac < 10)
 			return;
 
+		pulse(state, PULSE_ACTIVITY);
 		task->state = PROCESS_STATE_RUN;
 		struint(&task->block_idx, map[2]);
 		struint(&task->block_done, map[3]);
@@ -575,6 +600,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(map[1], "end") == 0) {
 		/* if stopping, ignore the end, and it's reported anyway */
 		if (task->state != PROCESS_STATE_SIGNAL) {
+			pulse(state, PULSE_ACTIVITY);
 			task->state = PROCESS_STATE_TERM;
 			task->progress = 100;
 			task->eta_seconds = 0;
@@ -593,7 +619,7 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_TASKS);
+	pulse(state, PULSE_ACTIVITY);
 
 	task->state = PROCESS_STATE_SIGNAL;
 	struint(&task->block_idx, map[1]);
@@ -608,7 +634,7 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	pulse(state, PULSE_TASKS);
+	pulse(state, PULSE_ACTIVITY);
 
 	const char* msg = map[2];
 
@@ -667,12 +693,12 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 	const char* disk = map[2];
 	const char* sub = map[3];
 
-	pulse(state, PULSE_TASKS);
-
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
+		pulse(state, PULSE_ACTIVITY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERABLE, disk, sub);
 		tommy_list_insert_tail(&task->fix_list, &file->node, file);
 	} else if (strcmp(ope, "unrecoverable") == 0) {
+		pulse(state, PULSE_ACTIVITY);
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
 		tommy_list_insert_tail(&task->fix_list, &file->node, file);
 	}
@@ -683,15 +709,17 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
 	if (strstr(map[0], "error_io:") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
 		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse(state, PULSE_ARRAY | PULSE_DISKS);
 		++data->error_io;
 	} else if (strcmp(map[0], "error_data") == 0) {
 		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse(state, PULSE_ARRAY | PULSE_DISKS);
 		++data->error_data;
 	}
 }
@@ -701,15 +729,17 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	pulse(state, PULSE_DISKS);
-
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
 	if (strcmp(map[0], "parity_error_io") == 0) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse(state, PULSE_ARRAY | PULSE_DISKS);
 		++parity->error_io;
 	} else if (strcmp(map[0], "parity_error_data") == 0) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
+		/* PULSE_ARRAY use the disk error as health */
+		pulse(state, PULSE_ARRAY | PULSE_DISKS);
 		++parity->error_data;
 	}
 }
@@ -719,10 +749,9 @@ static void process_conf(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	pulse(state, PULSE_ARRAY);
-
-	if (strcmp(map[1], "file") == 0)
-		sncpy(state->global.conf_engine, sizeof(state->global.conf_engine), map[2]);
+	if (strcmp(map[1], "file") == 0) {
+		pulse_str(state, PULSE_ARRAY, state->global.conf_engine, sizeof(state->global.conf_engine), map[2]);
+	}
 }
 
 static void process_content(struct snapraid_state* state, char** map, size_t mac)
@@ -730,9 +759,7 @@ static void process_content(struct snapraid_state* state, char** map, size_t mac
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_ARRAY);
-
-	sncpy(state->global.content, sizeof(state->global.content), map[1]);
+	pulse_str(state, PULSE_ARRAY, state->global.content, sizeof(state->global.content), map[1]);
 }
 
 static void process_version(struct snapraid_state* state, char** map, size_t mac)
@@ -745,12 +772,10 @@ static void process_version(struct snapraid_state* state, char** map, size_t mac
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_ARRAY);
-
 	s = map[1];
 
 	/* full version text */
-	sncpy(state->global.version, sizeof(state->global.version), s);
+	pulse_str(state, PULSE_ARRAY, state->global.version, sizeof(state->global.version), s);
 
 	/* parse major */
 	if (!isdigit((unsigned char)*s))
@@ -778,9 +803,7 @@ static void process_blocksize(struct snapraid_state* state, char** map, size_t m
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_ARRAY);
-
-	struint(&state->global.blocksize, map[1]);
+	pulse_struint(state, PULSE_ARRAY, &state->global.blocksize, map[1]);
 }
 
 static void process_unixtime(struct snapraid_state* state, char** map, size_t mac)
@@ -788,10 +811,8 @@ static void process_unixtime(struct snapraid_state* state, char** map, size_t ma
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_ARRAY);
-
-	if (stri64(&state->global.last_time, map[1]) != 0)
-		return;
+	/* this is the current time, no need to pulse */
+	stri64(&state->global.last_time, map[1]);
 }
 
 static void process_command(struct snapraid_state* state, char** map, size_t mac)
@@ -801,12 +822,11 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 
 	const char* cmd = map[1];
 
-	pulse(state, PULSE_ARRAY);
-
-	sncpy(state->global.last_cmd, sizeof(state->global.last_cmd), cmd);
+	pulse_str(state, PULSE_ARRAY, state->global.last_cmd, sizeof(state->global.last_cmd), cmd);
 
 	if (strcmp(cmd, "sync") == 0 || strcmp(cmd, "diff") == 0) {
 		/* diff and sync generate a new diff list, so cleanup it */
+		pulse(state, PULSE_ARRAY);
 		diff_cleanup(&state->global.diff_parse);
 	}
 }
@@ -820,10 +840,11 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return;
 
-	pulse(state, PULSE_TASKS);
-
 	const char* tag = map[1];
 	const char* val = map[2];
+
+	/* these are always unique and always changing something */
+	pulse(state, PULSE_ACTIVITY);
 
 	if (strcmp(tag, "start") == 0) {
 		stri64(&task->unix_start_time, val);
@@ -851,10 +872,8 @@ static void process_hash_summary(struct snapraid_state* state, char** map, size_
 	if (mac < 3)
 		return;
 
-	pulse(state, PULSE_TASKS);
-
 	if (strcmp(map[1], "error_soft") == 0) {
-		stru64(&task->hash_error_soft, map[2]);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->hash_error_soft, map[2]);
 	}
 }
 
@@ -872,43 +891,37 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 
 	/* diff */
 	if (task->cmd == CMD_DIFF) {
-		pulse(state, PULSE_ARRAY);
 		if (strcmp(tag, "equal") == 0)
-			stri64(&state->global.diff_parse.diff_equal, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
-			stri64(&state->global.diff_parse.diff_added, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_added, val);
 		else if (strcmp(tag, "removed") == 0)
-			stri64(&state->global.diff_parse.diff_removed, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_removed, val);
 		else if (strcmp(tag, "updated") == 0)
-			stri64(&state->global.diff_parse.diff_updated, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_updated, val);
 		else if (strcmp(tag, "moved") == 0)
-			stri64(&state->global.diff_parse.diff_moved, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_moved, val);
 		else if (strcmp(tag, "copied") == 0)
-			stri64(&state->global.diff_parse.diff_copied, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_copied, val);
 		else if (strcmp(tag, "restored") == 0)
-			stri64(&state->global.diff_parse.diff_restored, val);
+			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_restored, val);
 	}
 
 	if (strcmp(tag, "error_soft") == 0) {
-		pulse(state, PULSE_TASKS);
-		stru64(&task->error_soft, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->error_soft, val);
 	} else if (strcmp(tag, "error_io") == 0) {
-		pulse(state, PULSE_TASKS);
-		stru64(&task->error_io, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->error_io, val);
 	} else if (strcmp(tag, "error_data") == 0) {
-		pulse(state, PULSE_TASKS);
-		stru64(&task->error_data, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->error_data, val);
 	} else if (strcmp(tag, "error_recovered") == 0) {
-		pulse(state, PULSE_TASKS);
-		stru64(&task->error_recovered, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->error_recovered, val);
 	} else if (strcmp(tag, "error_unrecoverable") == 0) {
-		pulse(state, PULSE_TASKS);
-		stru64(&task->error_unrecoverable, val);
+		pulse_stru64(state, PULSE_ACTIVITY, &task->error_unrecoverable, val);
 	} else if (strcmp(tag, "exit") == 0) {
-		pulse(state, PULSE_ARRAY);
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
+			pulse(state, PULSE_ARRAY);
 			state->global.sync_time = state->global.last_time;
 
 			/* move the parsed diff to the previous state */
@@ -918,23 +931,21 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			diff_cleanup(&state->global.diff_current);
 			break;
 		case CMD_SCRUB :
+			pulse(state, PULSE_ARRAY);
 			state->global.scrub_time = state->global.last_time;
 			break;
 		case CMD_DIFF :
+			pulse(state, PULSE_ARRAY);
 			state->global.diff_time = state->global.last_time;
 
 			/* move the parsing diff to the current state */
 			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
 		case CMD_STATUS :
+			pulse(state, PULSE_ARRAY);
 			state->global.status_time = state->global.last_time;
 			break;
 		}
-	} else if (strcmp(tag, "array_failure") == 0) {
-		pulse(state, PULSE_ARRAY);
-		strdouble(&state->global.afr, val);
-		if (mac >= 4)
-			strdouble(&state->global.prob, map[3]);
 	}
 }
 

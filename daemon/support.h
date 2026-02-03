@@ -294,6 +294,18 @@ int strdouble(double* out, const char* src);
 char* strtrim(char* str);
 
 /****************************************************************************/
+/* pulse */
+
+void pulse(struct snapraid_state* state, unsigned mask);
+
+int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const char* src);
+int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, const char* src);
+int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, const char* src);
+int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src);
+int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const char* src);
+void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src);
+
+/****************************************************************************/
 /* memory */
 
 /**

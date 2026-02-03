@@ -74,6 +74,7 @@ AC_CHECK_FUNCS([getopt getopt_long snprintf vsnprintf sigaction])
 AC_CHECK_CC_OPT([-pthread], CFLAGS="$CFLAGS -pthread", CFLAGS="$CFLAGS -D_REENTRANT")
 AC_CHECK_FUNCS([pthread_create])
 AC_CHECK_FUNCS([fexecve pipe2])
+AC_SEARCH_LIBS([exp], [m])
 
 dnl Checks for architecture
 AC_C_BIGENDIAN

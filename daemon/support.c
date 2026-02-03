@@ -469,6 +469,90 @@ char* strtrim(char* str)
 	return str;
 }
 
+/****************************************************************************/
+/* pulse */
+
+void pulse(struct snapraid_state* state, unsigned mask)
+{
+	if ((mask & PULSE_ARRAY) != 0)
+		++state->pulse.array;
+	if ((mask & PULSE_CONFIG) != 0)
+		++state->pulse.config;
+	if ((mask & PULSE_DISKS) != 0)
+		++state->pulse.disks;
+	if ((mask & PULSE_TASKS) != 0)
+		++state->pulse.tasks;
+	if ((mask & PULSE_ACTIVITY) != 0)
+		++state->pulse.activity;
+}
+
+int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const char* src)
+{
+	int val;
+	if (strint(&val, src) != 0)
+		return -1;
+	if (*out == val)
+		return 0;
+	pulse(state, mask);
+	*out = val;
+	return 0;
+}
+
+int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, const char* src)
+{
+	unsigned val;
+	if (struint(&val, src) != 0)
+		return -1;
+	if (*out == val)
+		return 0;
+	pulse(state, mask);
+	*out = val;
+	return 0;
+}
+
+int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, const char* src)
+{
+	int64_t val;
+	if (stri64(&val, src) != 0)
+		return -1;
+	if (*out == val)
+		return 0;
+	pulse(state, mask);
+	*out = val;
+	return 0;
+}
+
+int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src)
+{
+	uint64_t val;
+	if (stru64(&val, src) != 0)
+		return -1;
+	if (*out == val)
+		return 0;
+	pulse(state, mask);
+	*out = val;
+	return 0;
+}
+
+int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const char* src)
+{
+	double val;
+	if (strdouble(&val, src) != 0)
+		return -1;
+	if (*out == val)
+		return 0;
+	pulse(state, mask);
+	*out = val;
+	return 0;
+}
+
+void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src)
+{
+	if (strcmp(out, src) == 0)
+		return;
+	pulse(state, mask);
+	sncpy(out, out_size, src);
+}
 
 /****************************************************************************/
 /* memory */
