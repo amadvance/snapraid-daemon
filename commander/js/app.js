@@ -1,6 +1,6 @@
 
 import { API } from './api.js';
-import { Icons, showToast, formatSeconds } from './utils.js';
+import { Icons, showToast, showConfirm, formatSeconds } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings } from './ui.js';
 
 const app = {
@@ -327,7 +327,7 @@ const app = {
     /* --- Actions --- */
 
     triggerMaintenance: async () => {
-        if (confirm('Start full maintenance sequence?')) {
+        if (await showConfirm('Start full maintenance sequence?')) {
             await API.startMaintenance();
             showToast('Maintenance Triggered', 'success');
             setTimeout(app.loadDashboard, 500);
@@ -335,7 +335,7 @@ const app = {
     },
 
     triggerStop: async () => {
-        if (confirm('Are you sure you want to STOP the running task?')) {
+        if (await showConfirm('Are you sure you want to STOP the running task?', 'Stop Task')) {
             await API.stopTask();
             showToast('Stop Signal Sent', 'info');
         }
@@ -353,7 +353,7 @@ const app = {
     },
 
     triggerHeal: async () => {
-        if (confirm('Start healing sequence for silent errors?')) {
+        if (await showConfirm('Start healing sequence for silent errors?', 'Heal Errors')) {
             await API.startHeal();
             showToast('Heal Command Triggered', 'success');
         }
@@ -371,7 +371,7 @@ const app = {
 
         const filters = text.split('\n').map(l => l.trim()).filter(l => l);
 
-        if (confirm(`Recover files matching ${filters.length} patterns?`)) {
+        if (await showConfirm(`Recover files matching ${filters.length} patterns?`, 'Undelete Files')) {
             try {
                 await API.undelete(filters);
                 showToast(`Undelete queued for ${filters.length} patterns`, 'success');
@@ -383,7 +383,7 @@ const app = {
     },
 
     triggerUndelete: async (path) => {
-        if (confirm(`Recover missing file?\n${path}`)) {
+        if (await showConfirm(`Recover missing file?\n${path}`, 'Undelete File')) {
             try {
                 await API.undelete([path]);
                 showToast('Undelete Task Queued', 'success');

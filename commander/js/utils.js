@@ -73,3 +73,43 @@ export const showToast = (message, type = 'info') => {
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 };
+
+export const showConfirm = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-container">
+                <div class="modal-title">${title}</div>
+                <div class="modal-body">${message}</div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                    <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Force reflow for animation
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+
+        const cleanup = (result) => {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                overlay.remove();
+                resolve(result);
+            }, 200);
+        };
+
+        overlay.querySelector('#modal-cancel').addEventListener('click', () => cleanup(false));
+        overlay.querySelector('#modal-confirm').addEventListener('click', () => cleanup(true));
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(false);
+        });
+    });
+};
+
