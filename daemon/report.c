@@ -201,6 +201,8 @@ static void print_fix(ss_t* ss, tommy_list* fix_list)
  */
 static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* task)
 {
+	tommy_node* i;
+
 	if (!task) {
 		ss_printf(ss, "%s: Not run\n", task_name);
 		return;
@@ -211,6 +213,7 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 	ss_prints(ss, ")\n");
 
 	/* duration */
+	ss_prints(ss, "\n");
 	ss_prints(ss, "  Duration:       ");
 	if (task->unix_end_time > 0 && task->unix_start_time > 0) {
 		format_duration(ss, task->unix_end_time - task->unix_start_time);
@@ -218,6 +221,21 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 		ss_prints(ss, "N/A");
 	}
 	ss_prints(ss, "\n");
+
+	if (task->arg_custom) {
+		int j = 0;
+		ss_prints(ss, "  Arguments:      ");
+		for (i = tommy_list_head(&task->arg_list); i != 0; i = i->next) {
+			if (j >= task->arg_custom) {
+				sn_t* sn = i->data;
+				if (j > task->arg_custom)
+					ss_prints(ss, " ");
+				ss_printf(ss, "%s", sn->str);
+			}
+			++j;
+		}
+		ss_prints(ss, "\n");
+	}
 
 	/* exit status */
 	ss_prints(ss, "  Status:         ");
@@ -247,27 +265,29 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 		}
 	}
 
-	/* print recovered files */
+	/* print error messages if any */
+	int first = 1;
+	for (i = tommy_list_head(&task->message_list); i; i = i->next) {
+		struct snapraid_message* message = i->data;
+		switch (message->level) {
+		case MESSAGE_LEVEL_FATAL :
+		case MESSAGE_LEVEL_ERROR :
+			if (first) {
+				ss_prints(ss, "\nERROR MESSAGES:\n");
+				first = 0;
+			}
+			if (message->type == MESSAGE_TYPE_HARDWARE)
+				ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
+			else
+				ss_printf(ss, "  - %s\n", message->msg);
+			break;
+		}
+	}
+
+	/* print recovered files if any */
 	if (!tommy_list_empty(&task->fix_list)) {
 		ss_prints(ss, "\nRECOVER:\n");
 		print_fix(ss, &task->fix_list);
-	}
-
-	/* print error messages if any */
-	if (!tommy_list_empty(&task->message_list)) {
-		ss_prints(ss, "\nERROR MESSAGES:\n");
-		for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
-			struct snapraid_message* message = i->data;
-			switch (message->level) {
-			case MESSAGE_LEVEL_FATAL :
-			case MESSAGE_LEVEL_ERROR :
-				if (message->type == MESSAGE_TYPE_HARDWARE)
-					ss_printf(ss, "  - %s\n", message->msg);
-				else
-					ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
-				break;
-			}
-		}
 	}
 }
 

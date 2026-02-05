@@ -174,7 +174,6 @@ static void json_error_parse(char* str, size_t str_size, int jc)
 	case JSMN_ERROR_PART : snprintf(str, str_size, "Partial JSON"); break;
 	default : snprintf(str, str_size, "Unknown JSON error"); break;
 	}
-	;
 }
 
 static void json_error_arg(char* str, size_t str_size, char* js, jsmntok_t* je, jsmntok_t* ja)
@@ -959,7 +958,8 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
 	int cmd = 0;
-	const char* arg = 0;
+	int has_args = 0;
+	int has_filters = 0;
 	if (strncmp(path, "/snapraid/v1/", 13) == 0)
 		cmd = command_parse(path + 13);
 	switch (cmd) {
@@ -970,10 +970,10 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	case CMD_DOWN_IDLE :
 		break;
 	case CMD_UNDELETE :
-		arg = "filters";
+		has_filters = 1;
 		break;
 	default :
-		arg = "args";
+		has_args = 1;
 		break;
 	}
 
@@ -997,7 +997,21 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		}
 		c0 = jv[j++].size;
 		while (c0-- > 0) {
-			if (arg != 0 && json_type(js, &jv[j], json_const(arg), JSMN_ARRAY) == 0) {
+			if (has_args && json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
+				int j1 = j;
+				int c1 = jv[++j].size;
+				++j;
+				while (c1-- > 0) {
+					char* val;
+					if (json_string_inplace(js, &jv[j], &val) == 0) {
+						sl_insert_str(&arg_list, val);
+					} else {
+						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
+						goto bad;
+					}
+					++j;
+				}
+			} else if (has_filters && json_type(js, &jv[j], json_const("filters"), JSMN_ARRAY) == 0) {
 				int j1 = j;
 				int c1 = jv[++j].size;
 				++j;

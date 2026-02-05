@@ -127,9 +127,9 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 
 	sl_insert_str(&fix_arg_list, "-m");
 	for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
-		const char* str = i->data;
+		sn_t* sn = i->data;
 		sl_insert_str(&fix_arg_list, "-f");
-		sl_insert_str(&fix_arg_list, str);
+		sl_insert_str(&fix_arg_list, sn->str);
 	}
 
 	/*
@@ -138,7 +138,10 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 	 *
 	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
-	runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+	int ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+
+	if (ret == 0)
+		runner_locked(state, CMD_DIFF, now, 0, msg, msg_size, status);
 
 	runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 

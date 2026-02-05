@@ -206,6 +206,8 @@ static void runner_go(struct snapraid_state* state)
 		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
 		fprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
 		fprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
+		for (i = 0; i < argc; ++i)
+			fprintf(log_f, "daemon:argv:%d:%s\n", i, argv[i]);
 	}
 
 	if (script_pre_run[0] != 0 && runner_need_script(cmd)) {
@@ -611,8 +613,10 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, tim
 	sl_insert_str(&task->arg_list, "--gui");
 	sl_insert_str(&task->arg_list, "--log");
 	sl_insert_str(&task->arg_list, ">&2");
-	if (arg_list)
+	if (arg_list) {
+		task->arg_custom = tommy_list_count(&task->arg_list);
 		sl_insert_list(&task->arg_list, arg_list);
+	}
 
 	if (lock)
 		state_lock();

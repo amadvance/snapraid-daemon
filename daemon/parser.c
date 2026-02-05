@@ -653,9 +653,15 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 		}
 		++task->message_list_count;
-	} else if (strcmp(map[1], "error") == 0 || strcmp(map[1], "expected") == 0) {
+	} else if (strcmp(map[1], "error") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
+			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		}
+		++task->message_list_count;
+	} else if (strcmp(map[1], "expected") == 0) {
+		if (task->message_list_count <= MESSAGES_MAX) {
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_SOFTWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 		}
 		++task->message_list_count;

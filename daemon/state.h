@@ -211,8 +211,8 @@ struct snapraid_disk {
 #define MESSAGE_LEVEL_INFO 2
 
 #define MESSAGE_TYPE_NONE 0
-#define MESSAGE_TYPE_HARDWARE 1
-#define MESSAGE_TYPE_SOFTWARE 2
+#define MESSAGE_TYPE_SOFTWARE 1
+#define MESSAGE_TYPE_HARDWARE 2
 
 struct snapraid_message {
 	tommy_node node;
@@ -247,6 +247,7 @@ struct snapraid_task {
 	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
 
 	sl_t arg_list; /**< List of arguments */
+	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument */
 	tommy_list message_list; /**< List of snapraid_message */
 	int message_list_count; /**< Count of messages, just to limit the number. */
 	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */
