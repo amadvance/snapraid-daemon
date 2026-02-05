@@ -1547,6 +1547,8 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_pair_iso8601(&s, level, "last_status_at", global->status_time);
 		if (global->diff_time)
 			ss_json_pair_iso8601(&s, level, "last_diff_at", global->diff_time);
+		if (global->fix_time)
+			ss_json_pair_iso8601(&s, level, "last_fix_at", global->fix_time);
 		ss_json_u64(&s, level, "diff_equal", global->diff_current.diff_equal);
 		ss_json_u64(&s, level, "diff_added", global->diff_current.diff_added);
 		ss_json_u64(&s, level, "diff_removed", global->diff_current.diff_removed);
@@ -1564,6 +1566,19 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 				ss_json_str(&s, level, "source_disk", file->source_disk);
 			if (file->source_path[0])
 				ss_json_str(&s, level, "source_path", file->source_path);
+			ss_json_str(&s, level, "disk", file->disk);
+			ss_json_str(&s, level, "path", file->path);
+			ss_json_close(&s, &level);
+		}
+		ss_json_array_close(&s, &level);
+		ss_json_u64(&s, level, "fix_recovered", global->fix_current.fix_recovered);
+		ss_json_u64(&s, level, "fix_unrecoverable", global->fix_current.fix_unrecoverable);
+		ss_json_array_open(&s, &level, "fixes");
+		for (tommy_node* i = tommy_list_head(&global->fix_current.file_list); i; i = i->next) {
+			struct snapraid_file* file = i->data;
+			ss_json_open(&s, &level);
+
+			ss_json_str(&s, level, "result", change_name(file->change));
 			ss_json_str(&s, level, "disk", file->disk);
 			ss_json_str(&s, level, "path", file->path);
 			ss_json_close(&s, &level);

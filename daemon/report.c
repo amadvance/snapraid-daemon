@@ -166,7 +166,7 @@ static void print_differences(ss_t* ss, tommy_list* diff_list)
 static void print_fix(ss_t* ss, tommy_list* fix_list)
 {
 	/* group by change type */
-	for (int change = FILE_CHANGE_RECOVERABLE; change <= FILE_CHANGE_UNRECOVERABLE; ++change) {
+	for (int change = FILE_CHANGE_RECOVERED; change <= FILE_CHANGE_UNRECOVERABLE; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */

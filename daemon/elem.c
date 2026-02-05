@@ -196,7 +196,7 @@ struct {
 	{ FILE_CHANGE_DIFF_MOVE, "moved" },
 	{ FILE_CHANGE_DIFF_COPY, "copied" },
 	{ FILE_CHANGE_DIFF_RESTORE, "restored" },
-	{ FILE_CHANGE_RECOVERABLE, "recovered" },
+	{ FILE_CHANGE_RECOVERED, "recovered" },
 	{ FILE_CHANGE_UNRECOVERABLE, "unrecoverable" },
 	{ 0 }
 };
@@ -214,6 +214,11 @@ const char* change_name(int change)
 struct snapraid_file* file_alloc(int change, const char* disk, const char* path)
 {
 	return file_alloc_source(change, disk, path, 0, 0);
+}
+
+struct snapraid_file* file_dup(struct snapraid_file* dup)
+{
+	return file_alloc_source(dup->change, dup->disk, dup->path, dup->source_disk, dup->source_path);
 }
 
 struct snapraid_file* file_alloc_source(int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
@@ -253,7 +258,6 @@ void file_free(void* void_file)
 /****************************************************************************/
 /* diff */
 
-
 void diff_cleanup(struct snapraid_diff_stat* diff)
 {
 	diff->diff_equal = 0;
@@ -291,6 +295,93 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 	diff_src->diff_moved = 0;
 	diff_src->diff_copied = 0;
 	diff_src->diff_restored = 0;
+}
+
+/****************************************************************************/
+/* diff */
+
+static int fix_compare(const void* void_a, const void* void_b)
+{
+	const struct snapraid_file* a = void_a;
+	const struct snapraid_file* b = void_b;
+	int ret = strcmp(a->disk, b->disk);
+	if (ret != 0)
+		return ret;
+	return strcmp(a->path, b->path);
+}
+
+void fix_cleanup(struct snapraid_fix_stat* fix)
+{
+	fix->fix_recovered = 0;
+	fix->fix_unrecoverable = 0;
+
+	tommy_list_foreach(&fix->file_list, file_free);
+	tommy_list_init(&fix->file_list);
+}
+
+void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
+{
+	/* assume dest is alreay sorted */
+	tommy_list_sort(fix_src, fix_compare);
+
+	fix_dest->fix_recovered = 0;
+	fix_dest->fix_unrecoverable = 0;
+
+	tommy_node* i = tommy_list_head(fix_src);
+	tommy_node* j = tommy_list_head(&fix_dest->file_list);
+	while (i) {
+		struct snapraid_file* src = i->data;
+
+		/* end of the destination list */
+		if (j == 0) {
+			/* insert at the end of the dest */
+			struct snapraid_file* dup = file_dup(src);
+			if (dup->change == FILE_CHANGE_RECOVERED)
+				++fix_dest->fix_recovered;
+			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
+				++fix_dest->fix_unrecoverable;
+			tommy_list_insert_tail(&fix_dest->file_list, &dup->node, dup);
+			i = i->next;
+			continue;
+		}
+
+		struct snapraid_file* dst = j->data;
+
+		int cmd = fix_compare(i->data, j->data);
+		if (cmd > 0) {
+			if (dst->change == FILE_CHANGE_RECOVERED)
+				++fix_dest->fix_recovered;
+			if (dst->change == FILE_CHANGE_UNRECOVERABLE)
+				++fix_dest->fix_unrecoverable;
+
+			/* next dest */
+			j = j->next;
+			continue;
+		}
+
+		if (cmd < 0) {
+			/* file is missing in dest */
+			struct snapraid_file* dup = file_dup(src);
+			if (dup->change == FILE_CHANGE_RECOVERED)
+				++fix_dest->fix_recovered;
+			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
+				++fix_dest->fix_unrecoverable;
+			tommy_list_insert_before(&fix_dest->file_list, j, &dup->node, dup);
+			i = i->next;
+			continue;
+		}
+
+		/* file is already present in dest */
+		if (src->change == FILE_CHANGE_RECOVERED && dst->change == FILE_CHANGE_UNRECOVERABLE)
+			dst->change = FILE_CHANGE_RECOVERED; /* now it's recovered */
+		if (dst->change == FILE_CHANGE_RECOVERED)
+			++fix_dest->fix_recovered;
+		if (dst->change == FILE_CHANGE_UNRECOVERABLE)
+			++fix_dest->fix_unrecoverable;
+
+		i = i->next;
+		j = j->next;
+	}
 }
 
 /****************************************************************************/

@@ -701,7 +701,7 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERABLE, disk, sub);
+		struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
 		tommy_list_insert_tail(&task->fix_list, &file->node, file);
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
@@ -934,7 +934,10 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			diff_move(&state->global.diff_parse, &state->global.diff_prev);
 
 			/* cleanup the current state, because after sync there is no difference anymore */
+			state->global.diff_time = 0;
+			state->global.fix_time = 0;
 			diff_cleanup(&state->global.diff_current);
+			fix_cleanup(&state->global.fix_current);
 			break;
 		case CMD_SCRUB :
 			pulse(state, PULSE_ARRAY);
@@ -950,6 +953,13 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		case CMD_STATUS :
 			pulse(state, PULSE_ARRAY);
 			state->global.status_time = state->global.last_time;
+			break;
+		case CMD_FIX :
+			pulse(state, PULSE_ARRAY);
+			state->global.fix_time = state->global.last_time;
+
+			/* accumulate the parsing fix to the current state */
+			fix_accumulate(&task->fix_list, &state->global.fix_current);
 			break;
 		}
 	}

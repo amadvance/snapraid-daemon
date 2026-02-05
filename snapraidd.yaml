@@ -1629,6 +1629,33 @@ components:
             reason is 'moved' or 'copied'.
           example: "downloads/file.mkv"
 
+    Fix:
+      type: object
+      required:
+        - result
+        - disk
+        - path
+      description: >
+        Represents an individual file recovery operation during a fix operation.
+      properties:
+        result:
+          type: string
+          enum: [recovered, unrecoverable]
+          description: >
+            The specific type of change detected:
+            - recovered: The file was recovered.
+            - unrecoverable: File is unrecoverable.
+        disk:
+          type: string
+          description: >
+            The name of the disk where the file currently resides.
+          example: "d1"
+        path:
+          type: string
+          description: >
+            The current relative path of the file on the disk.
+          example: "movies/file.mkv"
+
     Array:
       type: object
       description: >
@@ -1786,6 +1813,11 @@ components:
           example: "2026-01-12T08:00:00"
           description: >
             Local timestamp of the last array change analysis ('diff').
+        last_fix_at:
+          type: string
+          example: "2026-01-12T08:00:00"
+          description: >
+            Local timestamp of the last array fix ('fix').
         diff_equal:
           type: integer
           format: int64
@@ -1824,6 +1856,24 @@ components:
         diffs:
           type: array
           description: >
-            A collection of all changes detected in the array state from the latest diff.
+            A collection of all changes detected in the array state obtained from the latest diff operation.
+            These differences represent changes since the last sync.
           items:
             $ref: '#/components/schemas/Diff'
+        fix_recovered:
+          type: integer
+          format: int64
+          description: >
+            The count of files recovered in all the fix commands after the latest sync.
+        fix_unrecoverable:
+          type: integer
+          format: int64
+          description: >
+            The count of files unrecoverable in all the fix commands after the latest sync.
+        fixes:
+          type: array
+          description: >
+            A collection of all fixes done in the array.
+            These fixes represent repair operation done since the last sync.
+          items:
+            $ref: '#/components/schemas/Fix'

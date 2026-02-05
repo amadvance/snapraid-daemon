@@ -67,6 +67,7 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 const char* change_name(int change);
 
 struct snapraid_file* file_alloc(int reason, const char* disk, const char* path);
+struct snapraid_file* file_dup(struct snapraid_file* dup);
 struct snapraid_file* file_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
 void file_free(void* void_file);
 
@@ -75,6 +76,12 @@ void file_free(void* void_file);
 
 void diff_cleanup(struct snapraid_diff_stat* diff);
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
+
+/****************************************************************************/
+/* fix */
+
+void fix_cleanup(struct snapraid_fix_stat* fix);
+void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest);
 
 /****************************************************************************/
 /* health */

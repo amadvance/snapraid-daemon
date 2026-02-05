@@ -46,6 +46,7 @@ void state_done(struct snapraid_state* state)
 	tommy_list_foreach(&state->global.diff_parse.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
 	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
+	tommy_list_foreach(&state->global.fix_current.file_list, file_free);
 	tommy_list_foreach(&state->data_list, disk_free);
 	tommy_list_foreach(&state->parity_list, disk_free);
 	tommy_list_foreach(&state->page_list, page_free);

@@ -287,7 +287,7 @@ struct snapraid_scheduler {
 #define FILE_CHANGE_DIFF_MOVE 4 /**< A file was moved on the same disk. */
 #define FILE_CHANGE_DIFF_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
 #define FILE_CHANGE_DIFF_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
-#define FILE_CHANGE_RECOVERABLE 7 /**< A recoverable/recovered file */
+#define FILE_CHANGE_RECOVERED 7 /**< A recoverable/recovered file */
 #define FILE_CHANGE_UNRECOVERABLE 8 /**< A unrecoverable file */
 
 struct snapraid_file {
@@ -312,6 +312,13 @@ struct snapraid_diff_stat {
 	tommy_list file_list; /**< List of snapraid_file entries */
 };
 
+struct snapraid_fix_stat {
+	/* fix counters. Updated in fix and sync */
+	int64_t fix_recovered;
+	int64_t fix_unrecoverable;
+	tommy_list file_list; /**< List of snapraid_file entries */
+};
+
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
 	int version_major;
@@ -325,6 +332,7 @@ struct snapraid_global {
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */
 	int64_t diff_time; /**< Time of the last diff run. If 0 never run. */
+	int64_t fix_time; /**< Time of the last fix run. If 0 never run. */
 	int64_t status_time; /**< Time of the last status run. If 0 never run. */
 
 	/* info counters. Updated in sync/scrub */
@@ -338,6 +346,8 @@ struct snapraid_global {
 	struct snapraid_diff_stat diff_parse; /**< Working diff stat while parsing */
 	struct snapraid_diff_stat diff_prev; /**< Previous diff stat (used by report after a sync) */
 	struct snapraid_diff_stat diff_current; /**< Latest complete diff stat */
+
+	struct snapraid_fix_stat fix_current; /**< Latest complete fix stat */
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
