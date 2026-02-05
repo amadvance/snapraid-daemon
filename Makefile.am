@@ -115,33 +115,36 @@ install-data-hook:
 		mkdir -p $(DESTDIR)$(mandir)/$$lang/man1; \
 		$(INSTALL_DATA) $(srcdir)/doc/snapraidd-$$lang.1 $(DESTDIR)$(mandir)/$$lang/man1/snapraidd.1; \
 	done
-# Install service/rc.d
 	@echo ""
 	@echo "=================================================================="
 	@echo " $(PACKAGE_NAME) installation complete!"
 	@echo "=================================================================="
-	@if [ -z "$(DESTDIR)" ]; then \
-		if [ "x$(init_type)" = "xsystemd" ]; then \
-			echo " Detected systemd. To start the daemon now and at boot:"; \
-			echo "   sudo systemctl daemon-reload"; \
-			echo "   sudo systemctl enable --now $(PACKAGE_NAME)"; \
-			echo ""; \
-			echo " To check status:"; \
-			echo "   systemctl status $(PACKAGE_NAME)"; \
-		elif [ "x$(init_type)" = "xbsd" ]; then \
-			echo " Detected BSD-style init. To enable the daemon:"; \
-			echo "   sudo chmod +x /etc/rc.d/rc.$(PACKAGE_NAME)"; \
-			echo ""; \
-			echo " To start it now, add this to /etc/rc.d/rc.local:"; \
-			echo "   if [ -x /etc/rc.d/rc.$(PACKAGE_NAME) ]; then"; \
-			echo "     /etc/rc.d/rc.$(PACKAGE_NAME) start"; \
-			echo "   fi"; \
-			echo ""; \
-			echo " Or run manually: sudo /etc/rc.d/rc.$(PACKAGE_NAME) start"; \
-		fi; \
-	fi
+# Install service/rc.d
+if INSTALL_SYSTEMD
+	@echo ""
+	@echo " Detected systemd. To start the daemon now and at boot:"
+	@echo "   sudo systemctl daemon-reload"
+	@echo "   sudo systemctl enable --now $(PACKAGE_NAME)"
+	@echo ""
+	@echo " To check status:"
+	@echo "   systemctl status $(PACKAGE_NAME)"
 	@echo "=================================================================="
 	@echo ""
+endif
+if INSTALL_BSD_INIT
+	@echo ""
+	@echo " Detected BSD-style init. To enable the daemon:"
+	@echo "   sudo chmod +x /etc/rc.d/rc.$(PACKAGE_NAME)"
+	@echo ""
+	@echo " To start it now, add this to /etc/rc.d/rc.local:"
+	@echo "   if [ -x /etc/rc.d/rc.$(PACKAGE_NAME) ]; then"
+	@echo "     /etc/rc.d/rc.$(PACKAGE_NAME) start"
+	@echo "   fi"
+	@echo ""
+	@echo " Or run manually: sudo /etc/rc.d/rc.$(PACKAGE_NAME) start"
+	@echo "=================================================================="
+	@echo ""
+endif
 
 uninstall-hook:
 # Uninstall localized manpages
@@ -151,15 +154,15 @@ uninstall-hook:
 		rmdir --ignore-fail-on-non-empty $(DESTDIR)$(mandir)/$$lang 2>/dev/null || true; \
 	done
 # Uninstall service/rc.d
-	@if [ -z "$(DESTDIR)" ]; then \
-		if [ "x$(init_type)" = "xsystemd" ]; then \
-			echo "Stopping and disabling systemd service..."; \
-			systemctl disable --now $(PACKAGE_NAME) 2>/dev/null || true; \
-			systemctl daemon-reload 2>/dev/null || true; \
-		fi; \
-		echo "Cleaning up runtime files..."; \
-		rm -f /run/$(PACKAGE_NAME).pid; \
-	fi
+if INSTALL_SYSTEMD
+	@echo ""
+	@echo "=================================================================="
+	@echo "Stopping and disabling systemd service..."
+	systemctl disable --now $(PACKAGE_NAME) 2>/dev/null || true
+	systemctl daemon-reload 2>/dev/null || true
+	@echo "Cleaning up runtime files..."
+	rm -f /run/$(PACKAGE_NAME).pid
+endif
 	@echo ""
 	@echo "=================================================================="
 	@echo " $(PACKAGE_NAME) has been uninstalled."
