@@ -1,7 +1,7 @@
 bin_PROGRAMS = snapraidd
 
-# flags
-AM_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" -DDATADIR="\"${datadir}\""
+# Avoid the installation of BSD/SystemD script with make distcheck
+AM_DISTCHECK_CONFIGURE_FLAGS = --with-init-type=none
 
 snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" -DDATADIR="\"${datadir}\"" \
 	-DNO_SSL -DNO_SSL_DL -DNO_CGI -DNO_FILES -DNO_FILESYSTEMS -DNO_THREAD_NAME \
