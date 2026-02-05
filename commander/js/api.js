@@ -42,5 +42,6 @@ export const API = {
     spinUp: () => request('/up', { method: 'POST' }),
     spinDown: () => request('/down', { method: 'POST' }),
     spinDownIdle: () => request('/down_idle', { method: 'POST' }),
+    undelete: (filters) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters }) }),
     stopTask: () => request('/stop', { method: 'POST' })
 };

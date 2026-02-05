@@ -320,6 +320,17 @@ const app = {
         setTimeout(app.loadDifferences, 500);
     },
 
+    triggerUndelete: async (path) => {
+        if (confirm(`Recover missing file?\n${path}`)) {
+            try {
+                await API.undelete([path]);
+                showToast('Undelete Task Queued', 'success');
+            } catch (e) {
+                showToast('Failed to start undelete: ' + e.message, 'error');
+            }
+        }
+    },
+
     triggerCommand: async (cmd) => {
         await API[cmd]();
         showToast(`Command ${cmd} sent`, 'info');

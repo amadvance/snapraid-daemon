@@ -409,6 +409,11 @@ body {
     font-size: 0.8rem;
 }
 
+.btn-xs {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+}
+
 .icon-btn {
     background: none;
     border: none;

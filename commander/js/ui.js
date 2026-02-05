@@ -4,6 +4,9 @@ import { formatBytes, formatTime, formatSeconds, formatDuration, formatSignal, I
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
 
+const esc = (str) => str.replace(/'/g, "\\'");
+
+
 const healthBadge = (health) => {
     const map = { passed: 'green', prefail: 'yellow', failing: 'red', pending: 'grey' };
     return badge(health, map[health] || 'grey');
@@ -207,11 +210,17 @@ export const renderDifferences = (arrayInfo) => {
 
     const diffFilesRows = (arrayInfo.diffs || []).map(d => {
         const colorClass = diffColorMap[d.change] || 'text-muted';
+        const isRemoved = d.change === 'removed';
         return `
             <tr>
                 <td class="text-xs font-bold ${colorClass}">${d.change.toUpperCase()}</td>
                 <td class="text-xs font-mono">${d.disk}</td>
-                <td class="text-xs break-all">${d.path}</td>
+                <td class="text-xs break-all">
+                    <div class="flex justify-between items-center">
+                        <span>${d.path}</span>
+                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" onclick="app.triggerUndelete('${esc(d.path)}')">Undelete</button>` : ''}
+                    </div>
+                </td>
             </tr>
         `;
     }).join('');
