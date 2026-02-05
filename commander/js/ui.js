@@ -221,6 +221,9 @@ export const renderDifferences = (arrayInfo) => {
             <div class="card">
                 <div class="mb-4 border-b border-slate-700 pb-2">
                     <h3 class="font-bold text-cyan">Change Summary</h3>
+                    <div class="text-sm text-muted mt-2 italic">
+                        These differences represent changes since the last sync. They will be cleared once the next maintenance cycle completes.
+                    </div>
                     <div class="text-sm text-muted mt-1">Last updated: ${formatTime(arrayInfo.last_diff_at)}</div>
                 </div>
                 <div class="property-list mt-0 pt-0 border-t-0">
