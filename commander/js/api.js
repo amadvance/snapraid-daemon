@@ -38,6 +38,7 @@ export const API = {
     // Commands
     startMaintenance: () => request('/maintenance', { method: 'POST' }),
     startProbe: () => request('/probe', { method: 'POST' }),
+    startHeal: () => request('/heal', { method: 'POST' }),
     startDiff: () => request('/diff', { method: 'POST' }),
     spinUp: () => request('/up', { method: 'POST' }),
     spinDown: () => request('/down', { method: 'POST' }),

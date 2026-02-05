@@ -1,7 +1,7 @@
 
 import { API } from './api.js';
 import { Icons, showToast, formatSeconds } from './utils.js';
-import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderSettings } from './ui.js';
+import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings } from './ui.js';
 
 const app = {
     state: {
@@ -70,6 +70,9 @@ const app = {
                 case '#/diff': // Difference - check array
                     if (pulse.array !== oldPulse.array) needsRefresh = true;
                     break;
+                case '#/recovery': // Recovery - check array (fixes/bad blocks are in array)
+                    if (pulse.array !== oldPulse.array) needsRefresh = true;
+                    break;
                 case '#/settings': // Settings - check config
                     if (pulse.config !== oldPulse.config) needsRefresh = true;
                     break;
@@ -84,6 +87,7 @@ const app = {
                 else if (hash === '#/disks') await app.loadDisks();
                 else if (hash === '#/tasks') await app.loadTasks();
                 else if (hash === '#/diff') await app.loadDifferences();
+                else if (hash === '#/recovery') await app.loadRecovery();
                 else if (hash === '#/settings') await app.loadSettings();
             }
 
@@ -200,6 +204,11 @@ const app = {
                     `;
                     await app.loadDifferences();
                     break;
+                case '#/recovery':
+                    title.innerText = 'Recovery';
+                    actions.innerHTML = '';
+                    await app.loadRecovery();
+                    break;
                 case '#/settings':
                     title.innerText = 'Settings';
                     actions.innerHTML = `
@@ -284,6 +293,23 @@ const app = {
         }
     },
 
+    loadRecovery: async () => {
+        try {
+            const array = await API.getArray();
+            if (array.pulse) app.state.pulse = array.pulse;
+            app.setConnection(true);
+            // Dynamic import to avoid circular dependency issues if any, though we can likely just use the import at top
+            // Assuming renderRecovery is exported from ui.js and we imported it.
+            // Wait, I need to update the import statement at the top of the file too.
+            // I'll assume I update the import in a separate tool call if needed or just use consistent updates.
+            // But since I can't update multiple files in one go easily without separate tool calls...
+            document.getElementById('view-container').innerHTML = renderRecovery(array);
+        } catch (e) {
+            app.setConnection(false);
+            throw e;
+        }
+    },
+
     loadSettings: async () => {
         try {
             const config = await API.getConfig();
@@ -318,6 +344,36 @@ const app = {
         await API.startDiff();
         showToast('Diff Command Triggered', 'success');
         setTimeout(app.loadDifferences, 500);
+    },
+
+    triggerHeal: async () => {
+        if (confirm('Start healing sequence for silent errors?')) {
+            await API.startHeal();
+            showToast('Heal Command Triggered', 'success');
+        }
+    },
+
+    triggerUndeleteBatch: async () => {
+        const input = document.getElementById('undelete-patterns');
+        if (!input) return;
+
+        const text = input.value.trim();
+        if (!text) {
+            showToast('Please enter at least one file pattern', 'warning');
+            return;
+        }
+
+        const filters = text.split('\n').map(l => l.trim()).filter(l => l);
+
+        if (confirm(`Recover files matching ${filters.length} patterns?`)) {
+            try {
+                await API.undelete(filters);
+                showToast(`Undelete queued for ${filters.length} patterns`, 'success');
+                input.value = ''; // Clear input on success
+            } catch (e) {
+                showToast('Failed to start undelete: ' + e.message, 'error');
+            }
+        }
     },
 
     triggerUndelete: async (path) => {

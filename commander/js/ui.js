@@ -601,3 +601,101 @@ export const renderSettings = (config) => {
         </form>
     `;
 };
+
+/* --- Recovery --- */
+export const renderRecovery = (arrayInfo) => {
+    const fixes = arrayInfo.fixes || [];
+    const fixFilesRows = fixes.length ? fixes.map(f => {
+        const result = (f && f.result) ? f.result : 'unknown';
+        const isRecovered = result === 'recovered';
+        const colorClass = isRecovered ? 'text-emerald' : 'text-red';
+        return `
+            <tr>
+                <td class="text-xs font-bold ${colorClass}">${result.toUpperCase()}</td>
+                <td class="text-xs font-mono">${(f && f.disk) || ''}</td>
+                <td class="text-xs break-all">${(f && f.path) || ''}</td>
+            </tr>
+        `;
+    }).join('') : `<tr><td colspan="3" class="text-center text-muted p-4">No recent recovery history</td></tr>`;
+
+    return `
+        <div class="fade-in">
+             <div class="grid-2">
+                <!-- Undelete Card -->
+                <div class="card">
+                    <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
+                        <span class="icon-sm">${Icons.trash}</span> Undelete Files
+                    </h3>
+                    <p class="text-sm text-muted mb-4">
+                        Recover accidentally deleted files. Enter file path patterns/globbing (e.g. *.mp4), one per line.
+                    </p>
+                    <textarea id="undelete-patterns" class="form-control mb-4 font-mono text-sm bg-slate-950 border-slate-700 text-slate-200" rows="5" placeholder="*.mp4&#10;family_docs/*&#10;lost_file.txt"></textarea>
+                    <button class="btn btn-primary w-full" onclick="app.triggerUndeleteBatch()">
+                        Undelete Files
+                    </button>
+                </div>
+
+                <!-- Silent Errors Card -->
+                <div class="card">
+                     <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
+                        <span class="icon-sm">${Icons.shield}</span> Silent Data Errors
+                    </h3>
+                    <p class="text-sm text-muted mb-4">
+                        SnapRAID can detect and heal silent data corruption using parity information.
+                    </p>
+                    <div class="property-list mt-0 pt-0 border-t-0 mb-6">
+                        <div class="property-row">
+                            <div class="property-label">Bad Blocks Detected</div>
+                            <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad}</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn ${arrayInfo.blocks_bad > 0 ? 'btn-danger w-full' : 'btn-disabled w-full'}" 
+                            onclick="${arrayInfo.blocks_bad > 0 ? 'app.triggerHeal()' : ''}"
+                            ${arrayInfo.blocks_bad === 0 ? 'disabled' : ''}>
+                        Heal Silent Errors
+                    </button>
+                    ${arrayInfo.blocks_bad === 0 ? '<p class="text-xs text-center text-muted mt-2">No silent errors detected. Array is healthy.</p>' : ''}
+                </div>
+            </div>
+
+            <!-- Recovery Summary -->
+            <div class="card mt-4">
+                <div class="mb-4 border-b border-slate-700 pb-2">
+                     <h3 class="font-bold text-cyan">Recovery Summary</h3>
+                     <div class="text-sm text-muted mt-2 italic">
+                        These differences represent fixes since the last sync. They will be cleared once the next maintenance cycle completes.
+                     </div>
+                     <div class="text-sm text-muted mt-1">Last updated: ${formatTime(arrayInfo.last_fix_at)}</div>
+                </div>
+                
+                 <div class="property-list mt-0 pt-0 border-t-0">
+                    <div class="property-row">
+                        <div class="property-label">Recovered</div>
+                        <div class="property-value text-emerald">${arrayInfo.fix_recovered || 0}</div>
+                    </div>
+                    <div class="property-row">
+                        <div class="property-label">Unrecoverable</div>
+                        <div class="property-value text-red">${arrayInfo.fix_unrecoverable || 0}</div>
+                    </div>
+                </div>
+
+                <h4 class="text-xs font-bold text-muted uppercase mb-2 mt-6">Processed Files</h4>
+                <div class="overflow-x-auto">
+                    <table class="data-table dense">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px">Status</th>
+                                <th style="width: 100px">Disk</th>
+                                <th>Path</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${fixFilesRows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+};
