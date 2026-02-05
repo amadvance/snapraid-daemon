@@ -60,6 +60,9 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
 	int ret = 0;
+	if (ret == 0)
+		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
+
 	if (ret == 0 && do_diff)
 		ret = runner_locked(state, CMD_DIFF, now, &diff_arg_list, msg, msg_size, status);
 
@@ -104,11 +107,17 @@ void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int
 	 *
 	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
-	int ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+	int ret = 0;
 	if (ret == 0)
-		runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
 
-	runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+
+	if (ret == 0)
+		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 	sl_free(&scrub_arg_list);
@@ -138,12 +147,17 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 	 *
 	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
-	int ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+	int ret = 0;
+	if (ret == 0)
+		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		runner_locked(state, CMD_DIFF, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
-	runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		(void)runner_locked(state, CMD_DIFF, now, 0, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 
@@ -159,9 +173,12 @@ static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, 
 	 */
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
 
-	int ret = runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status);
+	int ret = 0;
+	if (ret == 0)
+		ret = runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status);
+
 	if (ret == 0 && spindown_idle_minutes > 0)
-		runner_locked(state, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
+		(void)runner_locked(state, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
 }
 
 void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
