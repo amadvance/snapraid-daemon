@@ -21,72 +21,8 @@
 #include "log.h"
 #include "elem.h"
 #include "support.h"
+#include "zip.h"
 #include "web.h"
-
-typedef struct {
-	const char* extension;
-	const char* mime_type;
-} mime_entry;
-
-static const mime_entry MIME[] =
-{
-	/* core */
-	{ ".html", "text/html" },
-	{ ".htm", "text/html" },
-	{ ".js", "text/javascript" },
-	{ ".mjs", "text/javascript" },
-	{ ".css", "text/css" },
-	{ ".tsx", "application/x-typescript" },
-
-	/* images */
-	{ ".svg", "image/svg+xml" },
-	{ ".png", "image/png" },
-	{ ".jpg", "image/jpeg" },
-	{ ".jpeg", "image/jpeg" },
-	{ ".ico", "image/x-icon" },
-	{ ".webp", "image/webp" },
-	{ ".avif", "image/avif" },
-	{ ".gif", "image/gif" },
-
-	/* fonts */
-	{ ".woff2", "font/woff2" },
-	{ ".woff", "font/woff" },
-	{ ".ttf", "font/ttf" },
-	{ ".otf", "font/otf" },
-	{ ".eot", "application/vnd.ms-fontobject" },
-
-	/* data */
-	{ ".json", "application/json" },
-	{ ".map", "application/json" },
-	{ ".xml", "application/xml" },
-	{ ".pdf", "application/pdf" },
-	{ ".txt", "text/plain" },
-	{ ".log", "text/plain" },
-	{ ".csv", "text/csv" },
-
-	/* archives */
-	{ ".zip", "application/zip" },
-	{ ".gz", "application/gzip" },
-	{ ".wasm", "application/wasm" },
-
-	{ 0 }
-};
-
-#define MIME_BINARY "application/octet-stream"
-
-static const char* get_mime_type(const char* path)
-{
-	if (!path)
-		return 0;
-
-	for (int i = 0; MIME[i].extension != 0; ++i) {
-		if (strstr(path, MIME[i].extension)) {
-			return MIME[i].mime_type;
-		}
-	}
-
-	return 0;
-}
 
 static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
 {
@@ -482,28 +418,49 @@ int web_reload(struct snapraid_state* state, const char* root)
 		return 0;
 	}
 
-	if (root[0] != '/') {
-		log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
-		goto bail;
-	}
-
 	if (strstr(root, "..") != 0) {
 		log_msg(LVL_ERROR, "web server cannot serve %s", root);
 		goto bail;
 	}
 
-	/* trim ending slash of net_web_root */
-	size_t len = strlen(root);
-	while (len > 0 && root[len - 1] == '/')
-		--len;
+	const char* dot = strrchr(root, '.');
+	if (dot != 0 && strcmp(dot, ".zip") == 0) {
+		char zip[PATH_MAX];
+		if (strchr(root, '/') == 0) {
+			/* if it's just the file name, search it in SYSCONFDIR */
+#ifdef DATADIR
+			snprintf(zip, sizeof(zip), DATADIR "/" PACKAGE "/%s", root);
+			if (access(zip, F_OK) != 0)
+#endif
+			/* otherwise use  /usr/share/snapraidd */
+			snprintf(zip, sizeof(zip), "/usr/share/" PACKAGE "/%s", root);
+		} else {
+			sncpy(zip, sizeof(zip), root);
+		}
 
-	if (root[0] == 0) {
-		log_msg(LVL_ERROR, "web server cannot serve root directory /");
-		goto bail;
+		state->page_time = time(0);
+		log_msg(LVL_INFO, "crawling zip %s", zip);
+		crawl_zip(&state->page_list, zip);
+	} else {
+		if (root[0] != '/') {
+			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
+			goto bail;
+		}
+
+		/* trim ending slash of net_web_root */
+		size_t len = strlen(root);
+		while (len > 0 && root[len - 1] == '/')
+			--len;
+
+		if (root[0] == 0) {
+			log_msg(LVL_ERROR, "web server cannot serve root directory /");
+			goto bail;
+		}
+
+		state->page_time = time(0);
+		log_msg(LVL_INFO, "crawling directory %s", root);
+		crawl_directory(&state->page_list, len, root);
 	}
-
-	state->page_time = time(0);
-	crawl_directory(&state->page_list, len, root);
 
 	page_unlock();
 

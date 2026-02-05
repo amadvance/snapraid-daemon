@@ -1,9 +1,9 @@
 bin_PROGRAMS = snapraidd
 
 # flags
-AM_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\""
+AM_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" -DDATADIR="\"${datadir}\""
 
-snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" \
+snapraidd_CPPFLAGS = -DSYSCONFDIR="\"${sysconfdir}\"" -DDATADIR="\"${datadir}\"" \
 	-DNO_SSL -DNO_SSL_DL -DNO_CGI -DNO_FILES -DNO_FILESYSTEMS -DNO_THREAD_NAME \
 	-DMG_EXTERNAL_FUNCTION_mg_cry_internal_impl \
 	-DMG_EXTERNAL_FUNCTION_log_access
@@ -22,6 +22,22 @@ rcdir = /etc/rc.d
 rc_SCRIPTS = rc.snapraidd
 endif
 
+# Web UI
+if HAVE_ZIP
+COMMANDER_DIST = \
+	index.html \
+	css/style.css \
+	js/api.js \
+	js/app.js \
+	js/ui.js \
+	js/utils.js
+
+pkgdata_DATA = commander.zip
+
+commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
+	cd $(srcdir)/commander && $(ZIP) -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
+endif
+
 snapraidd_SOURCES = \
 	daemon/daemon.c \
 	daemon/state.c \
@@ -31,6 +47,7 @@ snapraidd_SOURCES = \
 	daemon/support.c \
 	daemon/rest.c \
 	daemon/web.c \
+	daemon/zip.c \
 	daemon/conf.c \
 	daemon/log.c \
 	daemon/elem.c \
@@ -64,6 +81,7 @@ noinst_HEADERS = \
 	daemon/support.h \
 	daemon/rest.h \
 	daemon/web.h \
+	daemon/zip.h \
 	daemon/conf.h \
 	daemon/log.h \
 	daemon/elem.h \
@@ -71,7 +89,14 @@ noinst_HEADERS = \
 	snapraidd.yaml \
 	snapraidd.service.in \
 	rc.snapraidd.in \
-	snapraidd.conf.example
+	snapraidd.conf.example \
+	commander/index.html \
+	commander/css/style.css \
+	commander/js/ui.js \
+	commander/js/api.js \
+	commander/js/app.js \
+	commander/js/utils.js \
+	commander/metadata.json
 
 # Add the .version file in the distribution
 dist-hook:
@@ -103,6 +128,7 @@ man1_MANS = doc/snapraidd.1
 
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
+	rm -f commander.zip
 
 maintainer-clean-local:
 	rm -f $(LIST_MAN)

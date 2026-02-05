@@ -99,19 +99,30 @@ net_allowed_origin = self
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 net_config_full_access = 0
 
-# Specifies the local directory containing the dashboard's web assets
-# (HTML, JS, CSS, SVG, etc.).
+# Specifies the local directory or .zip archive containing the dashboard's
+# web assets (HTML, JS, CSS, SVG, etc.).
 #
-# You should set this to the specific directory where you have installed
-# the web dashboard of your choosing. The daemon recursively crawls this
-# path at startup and loads the files into an internal memory cache
-# to provide high-performance, compressed delivery of the UI.
+# ZIP Path Resolution:
+# 1. If a path is specified (e.g., /opt/web/ui.zip), that specific file
+#    or directory is used.
+# 2. If only a filename is specified (e.g., commander.zip), the daemon
+#    searches in the installation data directories in this order:
+#    - /usr/local/share/snapraidd/
+#    - /usr/share/snapraidd/
+#
+# Archive Support:
+# If the target is a .zip file, the daemon will treat the archive as a
+# virtual filesystem. All files contained within the zip will be extracted
+# into the internal memory cache at startup and served as web pages.
+#
+# The daemon recursively crawls the directory or archive at startup to
+# provide high-performance, compressed delivery of the UI.
 #
 # If left unset or empty, the built-in web dashboard will be unavailable.
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
-#net_web_root = /var/www-snapraid
+net_web_root = commander.zip
 
 ### Automation & Maintenance
 # Use maintenance_schedule to define when the automated maintenance

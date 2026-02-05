@@ -13,6 +13,8 @@ AC_PROG_CC
 AC_USE_SYSTEM_EXTENSIONS
 AC_CHECK_PROG([ADVD2],[advd2],[advd2],[])
 AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
+AC_CHECK_PROG([ZIP],[zip],[zip],[])
+AM_CONDITIONAL(HAVE_ZIP, [test x"$ZIP" != x])
 
 dnl Options to improve stacktrace
 AC_CHECK_CC_OPT([-fno-omit-frame-pointer], CFLAGS="$CFLAGS -fno-omit-frame-pointer", [])

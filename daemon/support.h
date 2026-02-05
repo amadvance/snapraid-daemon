@@ -21,6 +21,23 @@
 #include "state.h"
 
 /****************************************************************************/
+/* mime */
+
+#define MIME_BINARY "application/octet-stream"
+
+const char* get_mime_type(const char* path);
+
+
+/****************************************************************************/
+/* crc32 */
+
+/**
+ * Calculates CRC32 for a buffer.
+ * Initial CRC should be 0 (or 0xFFFFFFFF if you want to skip XORing in the loop).
+ */
+uint32_t calculate_crc32(const void* data, size_t length);
+
+/****************************************************************************/
 /* string stream */
 
 typedef struct ss {
