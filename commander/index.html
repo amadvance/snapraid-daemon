@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapRAID Commander</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <div class="logo-icon" id="icon-logo"></div>
+                <div class="brand-text">
+                    <h1><span class="text-cyan">SnapRAID</span><br>Commander</h1>
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <a href="#/" class="nav-item active" data-link>
+                    <span class="icon" id="icon-dashboard"></span> Dashboard
+                </a>
+                <a href="#/disks" class="nav-item" data-link>
+                    <span class="icon" id="icon-harddrive"></span> Disks
+                </a>
+                <a href="#/tasks" class="nav-item" data-link>
+                    <span class="icon" id="icon-activity"></span> Tasks
+                </a>
+                <a href="#/diff" class="nav-item" data-link>
+                    <span class="icon" id="icon-check"></span> Differences
+                </a>
+                <a href="#/settings" class="nav-item" data-link>
+                    <span class="icon" id="icon-settings"></span> Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div id="sidebar-status" class="sidebar-status">
+                    <!-- Dynamic Status -->
+                </div>
+                <div class="connection-status">
+                    <span class="pulse-dot"></span>
+                    <span id="connection-text">Connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Mobile Header -->
+            <header class="top-bar">
+                <button id="mobile-menu-btn" class="icon-btn mobile-only">
+                    <span class="icon" id="icon-menu"></span>
+                </button>
+                <h2 id="page-title">Dashboard</h2>
+                <div class="header-actions" id="header-actions">
+                    <!-- Dynamic Action Buttons injected here -->
+                </div>
+            </header>
+
+            <!-- View Container -->
+            <div id="view-container" class="view-container">
+                <!-- Views are injected here by JS -->
+                <div class="loading-spinner"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
