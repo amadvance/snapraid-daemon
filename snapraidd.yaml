@@ -123,240 +123,41 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
-  /snapraid/v1/probe:
+  /snapraid/v1/schedule:
     post:
-      summary: Non-intrusive disk state discovery
+      summary: Schedule a sequence of commands
       description: >
-        Initiates a background scan of all data and parity disks to synchronize
-        their current power and health status.
+        Queues one or more SnapRAID commands to be executed sequentially in a single session.
 
-        The probe follows a 'safe-check' logic:
-        1. It first queries the power state (standby vs. active).
-        2. SMART attributes are only collected from disks that are already spinning.
-        3. Disks in standby/idle mode are NOT woken up (spun up) during this process.
+        Execution Logic:
+        - Commands are executed in the exact order provided in the 'tasks' array.
+        - If a command fails, all subsequent tasks in the queue are automatically
+          cancelled to prevent operating on inconsistent data.
+        - Exception: The 'report' command is treated as a mandatory finalizer.
+          If 'report' is present in the sequence, it will be executed regardless
+          of the success or failure of preceding commands.
 
-        This is automatically executed at daemon startup.
-        This is an asynchronous operation. The updated metrics will be
-        reflected in the '/snapraid/v1/disks' endpoint upon completion.
-        Returns 202 Accepted to acknowledge the task has been queued.
+        Clients should monitor /v1/state to track the progress of the
+        currently active command and the overall queue status via pulse counters.
       requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tasks
+              properties:
+                tasks:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/TaskSchedule'
       responses:
         '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/smart:
-    post:
-      summary: Forced SMART attribute refresh
-      description: >
-        Triggers a comprehensive refresh of SMART telemetry for all data
-        and parity disks.
-
-        Unlike the 'probe' endpoint, this command will intentionally
-        spin up any drives currently in standby to ensure fresh
-        diagnostics are captured for every device in the array.
-
-        This is an asynchronous operation. The updated metrics will be
-        reflected in the '/snapraid/v1/disks' endpoint upon completion.
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/up:
-    post:
-      summary: Bulk spin-up disk array
-      description: >
-        Commands all data and parity disks to transition from 'standby' to
-        'active' power mode.
-
-        This is useful for pre-heating the array before a heavy workload to
-        avoid sequential spin-up delays.
-
-        This is an asynchronous operation. Final power states will be
-        reflected in '/snapraid/v1/disks' upon completion.
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/down:
-    post:
-      summary: Bulk spin-down disk array
-      description: >
-        Commands all data and parity disks to enter 'standby' (low-power) mode
-        immediately.
-
-        Any immediate system or array access following this command will
-        cause the disks to spin back up. This is primarily
-        used for manual energy management or preparing for system
-        maintenance.
-
-        This is an asynchronous operation. Final power states will be
-        reflected in '/snapraid/v1/disks' upon completion.
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/diff:
-    post:
-      summary: Analyze array drift (Diff)
-      description: >
-        Triggers an asynchronous analysis of the array to identify changes
-        made since the last synchronization.
-
-        This command compares the current file system state against the
-        existing parity metadata. It populates the 'diff_*' statistics
-        in the '/snapraid/v1/array' endpoint, such as added, removed, moved,
-        and copied files.
-
-        Unlike 'sync', this is a read-only operation and does not modify
-        the parity disks. Real-time progress is available via the
-        '/snapraid/v1/activity' endpoint.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/status:
-    post:
-      summary: Audit array metadata and health
-      description: >
-        Triggers an asynchronous analysis of the array.
-
-        While basic block counters are updated by most commands, this
-        endpoint provides a detailed analysis of disk fragmentation,
-        data distribution across drives, and the specific age of
-        scrubbed blocks.
-
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/sync:
-    post:
-      summary: Synchronize array parity
-      description: >
-        Initiates a synchronization task to update the parity information
-        across the array. This process ensures that the parity disks
-        accurately reflect the current state of all data disks.
-
-        Unlike the automated maintenance schedule, this standalone API
-        request acts as a manual override and is NOT subject to the
-        'sync_threshold_deletes' or 'sync_threshold_updates' safety
-        limits defined in the configuration.
-
-        This is a resource-intensive, asynchronous operation. Real-time
-        progress, including percentage completion and estimated time
-        remaining, is available via the '/snapraid/v1/activity' endpoint.
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/scrub:
-    post:
-      summary: Verify data integrity
-      description: >
-        Initiates an integrity check across the array to detect 'silent'
-        data corruption or bit-rot. This process reads data and parity
-        blocks to verify that the checksums still match.
-
-        This command is not restricted by the 'scrub_percentage' or
-        'scrub_older_than' settings defined in the daemon configuration.
-        Those parameters apply strictly to automated maintenance. Manual API
-        calls will process the array according to the arguments provided in
-        the request body.
-
-        This is a resource-intensive, asynchronous operation that
-        validates the oldest parts of the array first. Real-time
-        progress and detected errors are available via the
-        '/snapraid/v1/activity' endpoint.
-
-        Returns 202 Accepted to acknowledge the task has been queued.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/check:
-    post:
-      summary: Initiate array integrity check
-      description: >
-        Queues an asynchronous task to verify the integrity of the parity
-        and data files. This command performs a read-only verification
-        against the current parity state to detect silent corruption.
-
-        It is highly recommended to use the arguments to specify a filter
-        (such as a specific disk or directory) to avoid performing a
-        full-array check, which can be extremely time-consuming.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
-
-  /snapraid/v1/fix:
-    post:
-      summary: Initiate data restoration from parity
-      description: >
-        Queues an asynchronous task to repair corrupted files or restore
-        missing data using parity information. This is a write-heavy
-        operation that modifies data on the target disks.
-
-        It is highly recommended to use the arguments to specify a filter
-        (such as a specific file, directory, or disk) to restrict the scope.
-        Running a 'fix' on the entire array is usually unnecessary and
-        increases mechanical wear on the drives.
-      requestBody:
-        $ref: '#/components/requestBodies/CommandRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found or execution failed.
-          $ref: '#/components/responses/CommandResult'
+          description: "Tasks accepted and added to the execution queue."
+        '409':
+          description: "Conflict: A task is already running and the queue is locked."
 
   /snapraid/v1/stop:
     post:
@@ -627,21 +428,6 @@ paths:
                   - $ref: '#/components/schemas/Array'
 
 components:
-  requestBodies:
-    CommandRequest:
-      description: >
-        A list of raw string arguments passed directly to the
-        SnapRAID process. These must follow SnapRAID CLI syntax.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              args:
-                type: array
-                items:
-                  type: string
-
   responses:
     CommandResult:
       description: >
@@ -699,6 +485,22 @@ components:
                   Process ID of the task stopped.
 
   schemas:
+    TaskSchedule:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
+          description: "The SnapRAID command to execute."
+        args:
+          type: array
+          items:
+            type: string
+          description: >
+            Optional arguments for the command.
+
     Pulse:
       type: object
       description: >

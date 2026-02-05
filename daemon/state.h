@@ -267,6 +267,12 @@ struct snapraid_task {
 	tommy_node node;
 };
 
+struct snapraid_schedule {
+	int cmd;
+	sl_t args;
+	tommy_node node;
+};
+
 struct snapraid_runner {
 	thread_cond_t cond;
 	thread_id_t thread_id;

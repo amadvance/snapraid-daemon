@@ -216,6 +216,9 @@ curl \-X POST http://localhost:8080/snapraid/v1/maintenance
 .PD 0
 .PD
 .RE
+.PP
+It\'s implemented with the sequence of commands: up, diff, sync, scrub,
+report.
 .SS /snapraid/v1/heal 
 Executes a specialized silent error recovery workflow. The daemon
 automatically runs a targeted fix operation to repair detected corruption
@@ -229,6 +232,9 @@ curl \-X POST http://localhost:8080/snapraid/v1/heal
 .PD 0
 .PD
 .RE
+.PP
+It\'s implemented with the sequence of commands: up, fix \-e, scrub \-p bad,
+report.
 .SS /snapraid/v1/undelete 
 Invokes the SnapRAID restoration engine to recover files that have been
 deleted from data disks but still exist in the parity information.
@@ -250,6 +256,23 @@ curl \-s \-X POST http://localhost:8080/snapraid/v1/undelete \\
 .PD 0
 .PD
 .RE
+.PP
+It\'s implemented with the sequence of commands: up, fix \-m \-f ...,
+report.
+.SS /snapraid/v1/down_idle 
+Executes a conditional spindown operation. The daemon will only issue
+the spindown command to disks that have exceeded the \'spindown_idle_minutes\'
+threshold.
+.PP
+Example:
+.PP
+.RS 4
+curl \-X POST http://localhost:8080/snapraid/v1/down_idle
+.PD 0
+.PD
+.RE
+.PP
+It\'s implemented with the sequence of commands: probe, down \-d ....
 .SS Monitoring & Inventory 
 These endpoints provide high\-level visibility into the global state of
 the storage stack and the health of the underlying physical hardware.
@@ -365,88 +388,31 @@ curl \-X GET http://localhost:8080/snapraid/v1/state | jq
 .PD 0
 .PD
 .RE
-.SS Commands 
-These endpoints provide direct access to the underlying SnapRAID CLI
-functions. Unlike the orchestrated workflows, these commands perform
-singular actions without additional logic, verification or report
-phases.
-.SS /snapraid/v1/sync 
-Queues a standard SnapRAID sync operation to update parity based on
-modified or new files.
+.SS Schedule 
+The schedule entry point allows batching multiple SnapRAID commands
+into a single sequential session. Upon submission, the daemon executes
+tasks in the order provided, maintaining a single\-threaded execution
+flow.
+.PP
+To ensure data safety, the daemon employs a fail\-fast policy where any
+command failure triggers the immediate cancellation of all subsequent
+tasks in the queue. This prevents operations from running against an
+unstable or inconsistent array state.
+.PP
+The only exception is the report command, which acts as a mandatory
+finalizer. It will execute regardless of previous failures to ensure
+to get a report that reflects the final state of the system.
+.SS /snapraid/v1/schedule 
+Queues a sequence of standard SnapRAID operations.
 .PP
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/sync
+curl \-X POST http://localhost:8080/snapraid/v1/schedule
 .PD 0
+.PP
 .PD
-.RE
-.SS /snapraid/v1/scrub 
-Initiates a manual scrub of the array to verify data integrity.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/scrub
-.PD 0
-.PD
-.RE
-.SS /snapraid/v1/diff 
-Triggers a SnapRAID diff to identify file system changes since the
-last synchronization. The results can be viewed via the
-\'/snapraid/v1/array\' endpoint.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/diff
-.PD 0
-.PD
-.RE
-.SS /snapraid/v1/up 
-Issues a command to wake all physical disks in the array from standby.
-This is used to prepare the array for heavy access or manual
-maintenance.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/up
-.PD 0
-.PD
-.RE
-.SS /snapraid/v1/down 
-Issues an immediate spindown command to all disks in the array that
-are currently in an idle state.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/down
-.PD 0
-.PD
-.RE
-.SS /snapraid/v1/down_idle 
-Executes a conditional spindown operation. The daemon will only issue
-the spindown command to disks that have exceeded the \'spindown_idle_minutes\'
-threshold.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/down_idle
-.PD 0
-.PD
-.RE
-.SS /snapraid/v1/probe 
-Forces an active health check of all disks. This updates the cached
-SMART attributes and internal temperature readings by querying the
-hardware directly.
-.PP
-Example:
-.PP
-.RS 4
-curl \-X POST http://localhost:8080/snapraid/v1/probe
+	\-d \'{\[dq]tasks\[dq]: [{\[dq]command\[dq]: \[dq]diff\[dq]}, {\[dq]command\[dq]: \[dq]report\[dq]}]}\'
 .PD 0
 .PD
 .RE

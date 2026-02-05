@@ -191,6 +191,11 @@ static void json_error_forbidden(char* str, size_t str_size, char* js, jsmntok_t
 	snprintf(str, str_size, "Modification of restricted parameter '%s' is disabled by host configuration.", json_token(js, jv));
 }
 
+static void json_error_duplicate(char* str, size_t str_size, char* js, jsmntok_t* jv)
+{
+	snprintf(str, str_size, "Duplicate parameter '%s'.", json_token(js, jv));
+}
+
 static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, size_t msg_size)
 {
 	ss_t s;
@@ -568,13 +573,12 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		json_error_parse(msg, sizeof(msg), jc);
 		goto bad;
 	} else {
-		int c0;
 		int j = 0;
 		if (jv[j].type != JSMN_OBJECT) {
 			snprintf(msg, sizeof(msg), "Missing root JSON object");
 			goto bad;
 		}
-		c0 = jv[j++].size;
+		int c0 = jv[j++].size;
 		while (c0-- > 0) {
 			char buf[128];
 			if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
@@ -958,7 +962,6 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
 	int cmd = 0;
-	int has_args = 0;
 	int has_filters = 0;
 	if (strncmp(path, "/snapraid/v1/", 13) == 0)
 		cmd = command_parse(path + 13);
@@ -973,7 +976,6 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		has_filters = 1;
 		break;
 	default :
-		has_args = 1;
 		break;
 	}
 
@@ -989,29 +991,14 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	} else if (jc == 0) {
 		/* accept an empty request */
 	} else {
-		int c0;
 		int j = 0;
 		if (jv[j].type != JSMN_OBJECT) {
 			snprintf(msg, sizeof(msg), "Missing root JSON object");
 			goto bad;
 		}
-		c0 = jv[j++].size;
+		int c0 = jv[j++].size;
 		while (c0-- > 0) {
-			if (has_args && json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
-				int j1 = j;
-				int c1 = jv[++j].size;
-				++j;
-				while (c1-- > 0) {
-					char* val;
-					if (json_string_inplace(js, &jv[j], &val) == 0) {
-						sl_insert_str(&arg_list, val);
-					} else {
-						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
-						goto bad;
-					}
-					++j;
-				}
-			} else if (has_filters && json_type(js, &jv[j], json_const("filters"), JSMN_ARRAY) == 0) {
+			if (has_filters && json_type(js, &jv[j], json_const("filters"), JSMN_ARRAY) == 0) {
 				int j1 = j;
 				int c1 = jv[++j].size;
 				++j;
@@ -1045,12 +1032,136 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	case CMD_DOWN_IDLE :
 		schedule_down_idle(state, msg, sizeof(msg), &status);
 		break;
-	default :
-		runner(state, cmd, 0, &arg_list, msg, sizeof(msg), &status);
 	}
 
 	free(js);
 	sl_free(&arg_list);
+
+	if (status >= 200 && status <= 299)
+		return send_json_success(conn, status);
+	else
+		return send_json_error(conn, status, msg);
+
+bad:
+	free(js);
+	return send_json_error(conn, 400, "Unrecognized json");
+}
+
+/**
+ * POST /snapraid/v1/schedule
+ */
+static int handler_schedule(struct mg_connection* conn, void* cbdata)
+{
+	char msg[128];
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int status;
+	jsmntok_t jv[JSMN_TOKEN_MAX];
+	jsmn_parser jp;
+	ssize_t jl;
+	char* js;
+	int jc;
+	tommy_list scheds;
+
+	tommy_list_init(&scheds);
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "POST") != 0)
+		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	status = json_read(conn, &js, &jl, msg, sizeof(msg));
+	if (status != 200)
+		return send_json_error(conn, status, msg);
+
+	jsmn_init(&jp);
+	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
+	if (jc < 0) {
+		json_error_parse(msg, sizeof(msg), jc);
+		goto bad;
+	} else {
+		int j = 0;
+		if (jv[j].type != JSMN_OBJECT) {
+			snprintf(msg, sizeof(msg), "Missing root JSON object");
+			goto bad;
+		}
+		int c0 = jv[j++].size;
+		while (c0-- > 0) {
+			if (json_type(js, &jv[j], json_const("tasks"), JSMN_ARRAY) == 0) {
+				int c1 = jv[++j].size;
+				++j;
+				while (c1-- > 0) {
+					if (jv[j].type != JSMN_OBJECT) {
+						snprintf(msg, sizeof(msg), "Missing array JSON object");
+						goto bad;
+					}
+					struct snapraid_schedule* sched = schedule_alloc();
+					int c2 = jv[j++].size;
+					while (c2-- > 0) {
+						if (json_entry(js, &jv[j], json_const("command")) == 0) {
+							if (sched->cmd != 0) {
+								json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
+								schedule_free(sched);
+								goto bad;
+							}
+							++j;
+							char cmd[128];
+							if (json_string(js, &jv[j], cmd, sizeof(cmd)) == 0) {
+								sched->cmd = command_parse(cmd);
+								if (!sched->cmd) {
+									json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+									schedule_free(sched);
+									goto bad;
+								}
+							} else {
+								json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+								schedule_free(sched);
+								goto bad;
+							}
+							++j;
+						} else if (json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
+							if (!tommy_list_empty(&sched->args)) {
+								json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
+								schedule_free(sched);
+								goto bad;
+							}
+							int j3 = j;
+							int c3 = jv[++j].size;
+							++j;
+							while (c3-- > 0) {
+								char* val;
+								if (json_string_inplace(js, &jv[j], &val) == 0) {
+									sl_insert_str(&sched->args, val);
+								} else {
+									json_error_arg(msg, sizeof(msg), js, &jv[j3], &jv[j]);
+									schedule_free(sched);
+									goto bad;
+								}
+								++j;
+							}
+						} else {
+							json_error_entry(msg, sizeof(msg), js, &jv[j]);
+							schedule_free(sched);
+							goto bad;
+						}
+					}
+					tommy_list_insert_tail(&scheds, &sched->node, sched);
+				}
+			} else {
+				json_error_entry(msg, sizeof(msg), js, &jv[j]);
+				goto bad;
+			}
+		}
+	}
+
+	if (tommy_list_empty(&scheds))
+		goto bad;
+
+	schedule_commands(state, &scheds, msg, sizeof(msg), &status);
+
+	free(js);
+	tommy_list_foreach(&scheds, schedule_free);
 
 	if (status >= 200 && status <= 299)
 		return send_json_success(conn, status);
@@ -1692,20 +1803,11 @@ int rest_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/sync", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/scrub", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/probe", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/up", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/down", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/smart", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/diff", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/status", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/check", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/fix", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/undelete", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/down_idle", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/schedule", handler_schedule, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/report", handler_report, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks", handler_disks, state);

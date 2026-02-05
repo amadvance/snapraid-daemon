@@ -189,6 +189,28 @@ void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size
 	state_unlock();
 }
 
+void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+
+	state_lock();
+
+	/*
+	 * Schedule all the actions, note that they are just scheduled,
+	 * the eventual failure won't be detected here.
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
+	 */
+	int ret = 0;
+	for (tommy_node* i = tommy_list_head(scheds); i != 0; i = i->next) {
+		struct snapraid_schedule* sched = i->data;
+		if (ret == 0 || sched->cmd == CMD_REPORT)
+			ret = runner_locked(state, sched->cmd, now, &sched->args, msg, msg_size, status);
+	}
+
+	state_unlock();
+}
+
 void* scheduler_thread(void* arg)
 {
 	char msg[128];

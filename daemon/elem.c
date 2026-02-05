@@ -184,6 +184,24 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 }
 
 /****************************************************************************/
+/* schedule */
+
+struct snapraid_schedule* schedule_alloc(void)
+{
+	struct snapraid_schedule* sched = malloc_nofail(sizeof(struct snapraid_schedule));
+	sched->cmd = 0;
+	sl_init(&sched->args);
+	return sched;
+}
+
+void schedule_free(void* void_sched)
+{
+	struct snapraid_schedule* sched = void_sched;
+	sl_free(&sched->args);
+	free(sched);
+}
+
+/****************************************************************************/
 /* file */
 
 struct {

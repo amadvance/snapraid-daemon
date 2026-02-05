@@ -233,6 +233,9 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/snapraid/v1/maintenance
 
+	It's implemented with the sequence of commands: up, diff, sync, scrub,
+	report.
+
     /snapraid/v1/heal
 	Executes a specialized silent error recovery workflow. The daemon
 	automatically runs a targeted fix operation to repair detected corruption
@@ -241,6 +244,9 @@ Rest API
 
 	Example:
 		:curl -X POST http://localhost:8080/snapraid/v1/heal
+
+	It's implemented with the sequence of commands: up, fix -e, scrub -p bad,
+	report.
 
     /snapraid/v1/undelete
 	Invokes the SnapRAID restoration engine to recover files that have been
@@ -252,6 +258,19 @@ Rest API
 		:curl -s -X POST http://localhost:8080/snapraid/v1/undelete \
 		:	-H "Content-Type: application/json" \
 		:	-d '{ "filters": [ "*.txt" ] }'
+
+	It's implemented with the sequence of commands: up, fix -m -f ...,
+	report.
+
+    /snapraid/v1/down_idle
+	Executes a conditional spindown operation. The daemon will only issue
+	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
+	threshold.
+
+	Example:
+		:curl -X POST http://localhost:8080/snapraid/v1/down_idle
+
+	It's implemented with the sequence of commands: probe, down -d ....
 
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of
@@ -321,7 +340,6 @@ Rest API
 	Example:
 		:curl -X POST http://localhost:8080/snapraid/v1/stop
 
-
   State and Cache Management
 	To optimize performance and support lightweight monitoring (such as
 	desktop status bars), the daemon implements a state synchronization
@@ -342,63 +360,27 @@ Rest API
 	Example:
 		:curl -X GET http://localhost:8080/snapraid/v1/state | jq
 
-  Commands
-	These endpoints provide direct access to the underlying SnapRAID CLI
-	functions. Unlike the orchestrated workflows, these commands perform
-	singular actions without additional logic, verification or report
-	phases.
+  Schedule
+	The schedule entry point allows batching multiple SnapRAID commands
+	into a single sequential session. Upon submission, the daemon executes
+	tasks in the order provided, maintaining a single-threaded execution
+	flow.
 
-    /snapraid/v1/sync
-	Queues a standard SnapRAID sync operation to update parity based on
-	modified or new files.
+	To ensure data safety, the daemon employs a fail-fast policy where any
+	command failure triggers the immediate cancellation of all subsequent
+	tasks in the queue. This prevents operations from running against an
+	unstable or inconsistent array state.
 
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/sync
+	The only exception is the report command, which acts as a mandatory
+	finalizer. It will execute regardless of previous failures to ensure
+	to get a report that reflects the final state of the system.
 
-    /snapraid/v1/scrub
-	Initiates a manual scrub of the array to verify data integrity.
-
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/scrub
-
-    /snapraid/v1/diff
-	Triggers a SnapRAID diff to identify file system changes since the
-	last synchronization. The results can be viewed via the
-	'/snapraid/v1/array' endpoint.
+    /snapraid/v1/schedule
+	Queues a sequence of standard SnapRAID operations.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/diff
-
-    /snapraid/v1/up
-	Issues a command to wake all physical disks in the array from standby.
-	This is used to prepare the array for heavy access or manual
-	maintenance.
-
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/up
-
-    /snapraid/v1/down
-	Issues an immediate spindown command to all disks in the array that
-	are currently in an idle state.
-
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/down
-
-    /snapraid/v1/down_idle
-	Executes a conditional spindown operation. The daemon will only issue
-	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
-	threshold.
-
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/down_idle
-
-    /snapraid/v1/probe
-	Forces an active health check of all disks. This updates the cached
-	SMART attributes and internal temperature readings by querying the
-	hardware directly.
-
-	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/probe
+		:curl -X POST http://localhost:8080/snapraid/v1/schedule
+		:	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni

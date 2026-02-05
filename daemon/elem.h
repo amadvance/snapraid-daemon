@@ -62,6 +62,12 @@ int task_success(struct snapraid_task* task);
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
 
 /****************************************************************************/
+/* schedule */
+
+struct snapraid_schedule* schedule_alloc(void);
+void schedule_free(void* void_sched);
+
+/****************************************************************************/
 /* file */
 
 const char* change_name(int change);

@@ -35,13 +35,15 @@ export const API = {
     getConfig: () => request('/config'),
     updateConfig: (config) => request('/config', { method: 'PATCH', body: JSON.stringify(config) }),
 
+    schedule: (tasks) => request('/schedule', { method: 'POST', body: JSON.stringify({ tasks }) }),
+
     // Commands
     startMaintenance: () => request('/maintenance', { method: 'POST' }),
-    startProbe: () => request('/probe', { method: 'POST' }),
+    startProbe: () => API.schedule([{ command: 'probe' }]),
     startHeal: () => request('/heal', { method: 'POST' }),
-    startDiff: () => request('/diff', { method: 'POST' }),
-    spinUp: () => request('/up', { method: 'POST' }),
-    spinDown: () => request('/down', { method: 'POST' }),
+    startDiff: () => API.schedule([{ command: 'up' }, { command: 'diff' }]),
+    spinUp: () => API.schedule([{ command: 'up' }]),
+    spinDown: () => API.schedule([{ command: 'down' }]),
     spinDownIdle: () => request('/down_idle', { method: 'POST' }),
     undelete: (filters) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters }) }),
     stopTask: () => request('/stop', { method: 'POST' })
