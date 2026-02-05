@@ -389,8 +389,12 @@ export const renderDisks = (data) => {
 };
 
 /* --- Tasks --- */
-export const renderTasks = (data) => {
+export const renderTasks = (data, hidePeriodic) => {
     const { active, pending, history } = data;
+
+    const filteredHistory = hidePeriodic
+        ? history.filter(t => t.command !== 'probe' && t.command !== 'down_idle')
+        : history;
 
     const queueRows = pending.length ? pending.reverse().map(t => `
         <tr>
@@ -420,7 +424,7 @@ export const renderTasks = (data) => {
         `;
     }).join('') : `<tr><td colspan="7" class="text-center text-muted p-4">No active tasks</td></tr>`;
 
-    const historyRows = history.length ? history.reverse().map(t => {
+    const historyRows = filteredHistory.length ? filteredHistory.reverse().map(t => {
         let exitStatus = '';
         if (t.status === 'terminated' && t.exit_code !== 0) {
             exitStatus = `<div class="text-yellow mb-1">Exit Code: ${t.exit_code}</div>`;
@@ -431,13 +435,13 @@ export const renderTasks = (data) => {
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold">${t.command}</td>
+            <td class="font-bold text-cyan">${t.command}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted text-xs">${formatTime(t.started_at)}</td>
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
-                <button class="text-cyan text-xs hover:underline cursor-pointer" style="background:none; border:none;"
+                <button class="btn btn-secondary btn-xs"
                     onclick="document.getElementById('log-${t.number}').classList.toggle('hidden')">
                     Details
                 </button>
@@ -464,7 +468,7 @@ export const renderTasks = (data) => {
             </td>
         </tr>
     `;
-    }).join('') : `<tr><td colspan="4" class="text-center text-muted p-4">No tasks in history</td></tr>`;
+    }).join('') : `<tr><td colspan="7" class="text-center text-muted p-4">No tasks in history</td></tr>`;
 
     return `
         <div class="card">
@@ -494,10 +498,16 @@ export const renderTasks = (data) => {
         </div>
 
         <div class="card">
-            <h3 class="font-bold mb-4 flex items-center gap-2 text-cyan">
-                <span class="icon-sm">${Icons.activity}</span> History
-                 <span class="badge badge-grey text-xs ml-auto">${history.length}</span>
-            </h3>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold flex items-center gap-2 text-cyan">
+                    <span class="icon-sm">${Icons.activity}</span> History
+                    <span class="badge badge-grey text-xs">${filteredHistory.length}</span>
+                </h3>
+                <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" onchange="app.toggleHidePeriodic(this.checked)" ${hidePeriodic ? 'checked' : ''}>
+                    Hide periodic tasks
+                </label>
+            </div>
              <div class="overflow-x-auto">
                 <table class="data-table dense">
                     <thead><tr><th style="width:50px">ID</th><th>Cmd</th><th>Health</th><th>Result</th><th>Started</th><th>Duration</th><th style="width:60px">Details</th></tr></thead>

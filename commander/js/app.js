@@ -9,7 +9,8 @@ const app = {
 
         pulse: {},
         pollingInterval: null,
-        isConnected: true
+        isConnected: true,
+        hidePeriodic: false
     },
 
     init: () => {
@@ -274,7 +275,7 @@ const app = {
             const data = await API.getTasks();
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
-            document.getElementById('view-container').innerHTML = renderTasks(data);
+            document.getElementById('view-container').innerHTML = renderTasks(data, app.state.hidePeriodic);
         } catch (e) {
             app.setConnection(false);
             throw e;
@@ -344,6 +345,11 @@ const app = {
         await API.startDiff();
         showToast('Diff Command Triggered', 'success');
         setTimeout(app.loadDifferences, 500);
+    },
+
+    toggleHidePeriodic: (checked) => {
+        app.state.hidePeriodic = checked;
+        app.loadTasks();
     },
 
     triggerHeal: async () => {
