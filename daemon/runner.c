@@ -208,6 +208,7 @@ static void runner_go(struct snapraid_state* state)
 		fprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
 		for (i = 0; i < argc; ++i)
 			fprintf(log_f, "daemon:argv:%d:%s\n", i, argv[i]);
+		fflush(log_f);
 	}
 
 	if (script_pre_run[0] != 0 && runner_need_script(cmd)) {
@@ -239,6 +240,8 @@ static void runner_go(struct snapraid_state* state)
 			ret = -1;
 			goto bail;
 		}
+		if (log_f)
+			fflush(log_f);
 	}
 
 	pid = daemon_spawn(argv, &f);
@@ -282,6 +285,8 @@ static void runner_go(struct snapraid_state* state)
 					fprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
 		}
+		if (log_f)
+			fflush(log_f);
 	}
 
 	if (script_post_run[0] != 0 && runner_need_script(cmd)) {
@@ -314,15 +319,15 @@ static void runner_go(struct snapraid_state* state)
 			ret = -1;
 			goto bail;
 		}
+		if (log_f)
+			fflush(log_f);
 	}
 
 bail:
 	unix_end_time = time(0);
 
-	if (log_f != 0)
-		fprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
-
 	if (log_f != 0) {
+		fprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
 		if (fclose(log_f) != 0) {
 			log_msg(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
