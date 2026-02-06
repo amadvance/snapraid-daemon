@@ -47,6 +47,7 @@ export const renderDashboard = (arrayInfo, activity) => {
                     <div>${statusBadge(activity)}</div>
                 </div>
                 
+                ${activity.status === 'processing' ? `
                 <div class="progress-container">
                     <div class="progress-bar" style="width: ${activity.progress || 0}%"></div>
                 </div>
@@ -56,11 +57,12 @@ export const renderDashboard = (arrayInfo, activity) => {
                 </div>
 
                 <div class="grid-4 mb-4">
-                    <div><span class="text-muted block text-xs">Speed</span><span class="font-bold">${activity.speed_mbs || 0} MB/s</span></div>
-                    <div><span class="text-muted block text-xs">Processed</span><span class="font-bold">${formatBytes(activity.size_done_bytes || 0)}</span></div>
-                    <div><span class="text-muted block text-xs">CPU</span><span class="font-bold">${activity.cpu_usage || 0}%</span></div>
-                    <div><span class="text-muted block text-xs">Blocks</span><span class="font-bold">${activity.blocks_done} / ${activity.blocks_count}</span></div>
+                    <div><span class="text-muted block text-xs">Speed</span><span class="font-bold"> ${activity.speed_mbs || 0} MB/s</span></div>
+                    <div><span class="text-muted block text-xs">Processed</span><span class="font-bold"> ${formatBytes(activity.size_done_bytes || 0)}</span></div>
+                    <div><span class="text-muted block text-xs">CPU</span><span class="font-bold"> ${activity.cpu_usage || 0}%</span></div>
+                    <div><span class="text-muted block text-xs">Blocks</span><span class="font-bold"> ${activity.blocks_done} / ${activity.blocks_count}</span></div>
                 </div>
+                ` : ''}
 
                 <div class="log-window">
                     <div class="text-xs text-muted mb-2">LIVE MESSAGES</div>
