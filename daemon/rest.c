@@ -1745,7 +1745,7 @@ void civetweb_log_access(const struct mg_connection* conn, int status_code, int 
 	 */
 	log_msg(LVL_DEBUG,
 		"%s - - [%s] \"%s %s HTTP/%s\" %d %d \"%s\" \"%s\"",
-		ri->remote_addr ? ri->remote_addr : "-",
+		ri->remote_addr[0] ? ri->remote_addr : "-", /* ri->remote_addr is remote_addr[48]; */
 		date,
 		ri->request_method ? ri->request_method : "-",
 		ri->local_uri ? ri->local_uri : "-",
