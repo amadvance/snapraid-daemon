@@ -10,8 +10,32 @@ export const formatBytes = (bytes, decimals = 2) => {
 
 export const formatTime = (isoString) => {
     if (!isoString) return '-';
-    // Using en-GB to get DD/MM/YYYY and 24h format
-    return new Date(isoString).toLocaleString('en-GB', { hour12: false });
+    const date = new Date(isoString);
+    const now = new Date();
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    let datePart;
+    if (taskDate.getTime() === today.getTime()) {
+        datePart = 'Today at';
+    } else if (taskDate.getTime() === yesterday.getTime()) {
+        datePart = 'Yesterday at';
+    } else {
+        const day = String(date.getDate()).padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        datePart = `${day} ${month} ${year} -`;
+    }
+
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${datePart} ${hours}:${minutes}:${seconds}`;
 };
 
 export const formatDuration = (start, end) => {
