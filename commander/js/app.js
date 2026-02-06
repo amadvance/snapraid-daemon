@@ -189,7 +189,6 @@ const app = {
                     actions.innerHTML = `
                         <button class="btn btn-primary" onclick="app.triggerCommand('spinUp')">Up</button>
                         <button class="btn btn-primary" onclick="app.triggerCommand('spinDown')">Down</button>
-                        <button class="btn btn-primary" onclick="app.triggerCommand('spinDownIdle')">Down Idle</button>
                     `;
                     await app.loadDisks();
                     break;
