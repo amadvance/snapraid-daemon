@@ -382,6 +382,28 @@ Rest API
 		:curl -X POST http://localhost:8080/snapraid/v1/schedule
 		:	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
+	Supported Commands:
+	up - Spins up all drives in the array.
+	down - Spins down array drives to save power.
+	probe - Verifies the power status of all configured disks, and gather
+		smart information for the ones already spinning.
+	smart - Collects and parses SMART attributes from all drives to assess
+		physical health.
+	diff - Scans the array to identify changed, added, or deleted files
+		since the last sync.
+	status - Provides a summary of the array state, including parity
+		levels and data distribution.
+	sync - Updates the parity information to match the current state of
+		the data disks.
+	scrub - Verifies the integrity of the data and parity by recalculating
+		checksums for a portion of the array.
+	check - Performs a full verification of the array integrity without
+		modifying any data.
+	fix - Attempts to recover deleted files or repair corrupted data using
+		the parity information.
+	report - Generates a comprehensive summary of the last operations and
+		array statistics.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 

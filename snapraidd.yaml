@@ -492,8 +492,42 @@ components:
       properties:
         command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
-          description: "The SnapRAID command to execute."
+          description: "The SnapRAID action to perform."
+          oneOf:
+            - const: up
+              description: >
+                Spins up all drives in the array.
+            - const: down
+              description: >
+                Spins down array drives to save power.
+            - const: probe
+              description: >
+                Verifies the power status of all configured disks, and gather.
+                smart information for the ones already spinning."
+            - const: smart
+              description: >
+                Collects and parses SMART attributes for physical health assessment.
+            - const: diff
+              description: >
+                Identifies changed, added, or deleted files since the last sync.
+            - const: status
+              description: >
+                Summarizes array state, parity levels, and data distribution.
+            - const: sync
+              description: >
+                Updates parity to match current data disk state.
+            - const: scrub
+              description: >
+                Verifies data/parity integrity by recalculating checksums.
+            - const: check
+              description: >
+                Full verification of array integrity (read-only).
+            - const: fix
+              description: >
+                Recovers deleted files or repairs corruption using parity.
+            - const: report
+              description: >
+                Generates a full summary of last operations and statistics.
         args:
           type: array
           items:
