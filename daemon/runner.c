@@ -350,6 +350,7 @@ bail:
 	task->health = health_array(state);
 
 	/* insert the task in the done list, but keep it in the latest pointer */
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 
 	if (ret == -1) {
