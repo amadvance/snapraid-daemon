@@ -743,6 +743,7 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 {
 	time_t now = time(0);
 	time_t cutoff_seconds = now - HISTORY_PAST_DAYS * SECONDS_IN_A_DAY;
+	int count = tommy_list_count(&state->runner.history_list);
 
 	sncpy(msg, msg_size, "");
 
@@ -755,11 +756,13 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 		struct snapraid_task* task = i->data;
 		tommy_node* i_next = i->next;
 
-		if (task->unix_start_time < cutoff_seconds) {
+		if (task->unix_start_time < cutoff_seconds || count >= HISTORY_TASKS_MAX) {
 			/* remove and free */
 			tommy_list_remove_existing(&state->runner.history_list, &task->node);
 			task_free(task);
 		}
+
+		--count;
 
 		i = i_next;
 	}
