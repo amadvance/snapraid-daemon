@@ -505,7 +505,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 </h3>
                 <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" onchange="app.toggleHidePeriodic(this.checked)" ${hidePeriodic ? 'checked' : ''}>
-                    Hide periodic tasks
+                    Hide automatic tasks
                 </label>
             </div>
              <div class="overflow-x-auto">
