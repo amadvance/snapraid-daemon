@@ -1360,7 +1360,7 @@ components:
           enum: [critical, error, warning, info]
           description: >
             Minimum severity filter for task-related syslog entries.
-            Defaults to 'critical' if unset.
+            Defaults to 'error' if unset.
         notify_run_as_user:
           type: string
           example: "nobody"
@@ -1395,7 +1395,6 @@ components:
           description: >
             Shell command executed after task completion. The daemon pipes
             the task report (plain-text) into the command's stdin.
-            Disabled if empty.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly
@@ -1405,7 +1404,7 @@ components:
           enum: [critical, error, warning, info]
           description: >
             Minimum severity threshold required to trigger the 'notify_result'
-            command.
+            command. Defaults to 'error' if unset.
         notify_email_recipient:
           type: string
           format: email
@@ -1417,6 +1416,7 @@ components:
           enum: [critical, error, warning, info]
           description: >
             Minimum severity threshold for dispatching local email reports.
+            Defaults to 'error' if unset.
         notify_differences:
           type: boolean
           example: true

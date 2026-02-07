@@ -253,7 +253,7 @@ log_retention_days = 30
 notify_syslog_enabled = 1
 
 # Sets the minimum severity for syslog task entries.
-# Possible values: info, warning, error, critical. (Default: critical)
+# Possible values: info, warning, error, critical. Default: error.
 notify_syslog_level = info
 
 # Runs ONLY if the task was successful (exit code 0).
@@ -274,7 +274,7 @@ notify_syslog_level = info
 
 # Controls the filter for 'notify_result'. The notification is sent only
 # if the task result is equal to or more severe than this level.
-# Values: info (always), warning, error, critical (default).
+# Values: info (always), warning, error, critical. Default: error.
 # Example: If set to 'error', notifications are sent for errors and
 # critical failures, but NOT for successful 'info' runs.
 #
@@ -286,7 +286,7 @@ notify_result_level = error
 #notify_email_recipient = admin@example.com
 
 # Sets the minimum severity for email reports.
-# Possible values: info, warning, error, critical. (Default: critical)
+# Possible values: info, warning, error, critical. Default: error.
 notify_email_level = warning
 
 # The user account used for notify_heartbeat, notify_result and mail notifications.

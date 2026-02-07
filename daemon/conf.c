@@ -504,13 +504,13 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	sncpy(config->log_directory, sizeof(config->log_directory), "/var/log/snapraid");
 	config->log_retention_days = 0;
 	config->notify_syslog_enabled = 0;
-	config->notify_syslog_level = LVL_CRITICAL;
+	config->notify_syslog_level = LVL_ERROR;
 	config->notify_run_as_user[0] = 0;
 	config->notify_heartbeat[0] = 0;
 	config->notify_result[0] = 0;
-	config->notify_result_level = LVL_CRITICAL;
+	config->notify_result_level = LVL_ERROR;
 	config->notify_email_recipient[0] = 0;
-	config->notify_email_level = LVL_CRITICAL;
+	config->notify_email_level = LVL_ERROR;
 	config->notify_differences = 0;
 
 #ifdef SYSCONFDIR

@@ -41,8 +41,8 @@ Options
 		daemon from detaching from the terminal (daemonizing).
 
 	-p, --pidfile FILE
-		Overrides the default location for the PID file (default:
-		`/run/snapraidd.pid`).
+		Overrides the default location for the PID file. Default:
+		`/run/snapraidd.pid`.
 
 	-N, --no-cache
 		Forces the daemon to load web interface assets directly from the
@@ -213,13 +213,17 @@ Configuration
 
     log_directory
 	Path where individual SnapRAID command outputs are stored as `.log`
-	files (default: `/var/log/snapraid`).
+	files. Default: `/var/log/snapraid`.
 
     log_retention_days
 	Number of days to keep log files before they are purged.
 
     notify_syslog_enabled
 	Enables logging of daemon activity to the OS system log (syslog/journald).
+
+    notify_syslog_level
+	Sets the minimum severity for syslog task entries.
+	Possible values: info, warning, error, critical. Default: error.
 
     notify_heartbeat
 	A shell command (e.g., `curl`) executed only upon task success, ideal
@@ -229,8 +233,17 @@ Configuration
 	A shell command triggered after task completion; it receives the task
 	report via stdin.
 
+    notify_result_level
+	Controls the filter for `notify_result`. The notification is sent only
+	if the task result is equal to or more severe than this level.
+	Possible values: info, warning, error, critical. Default: error.
+
     notify_email_recipient
 	Local system email address for receiving health reports.
+
+    notify_email_level
+	Sets the minimum severity for email reports.
+	Possible values: info, warning, error, critical. Default: error.
 
     notify_differences
 	If enabled, includes a detailed list of file changes (added/removed/modified)
