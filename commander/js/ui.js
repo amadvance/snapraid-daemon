@@ -274,7 +274,7 @@ export const renderDifferences = (arrayInfo) => {
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
                         <span>${d.path}</span>
-                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" onclick="app.triggerUndelete('${esc(d.path)}')">Undelete</button>` : ''}
+                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-tooltip-pos="bottom-left" onclick="app.triggerUndelete('${esc(d.path)}')">Undelete</button>` : ''}
                     </div>
                 </td>
             </tr>
@@ -497,7 +497,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="text-muted text-xs">${formatTime(t.started_at)}</td>
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
-                <button class="btn btn-secondary btn-xs"
+                <button class="btn btn-secondary btn-xs" data-tooltip="View execution logs and exit status" data-tooltip-pos="bottom-left"
                     onclick="document.getElementById('log-${t.number}').classList.toggle('hidden')">
                     Details
                 </button>
@@ -696,7 +696,7 @@ export const renderRecovery = (arrayInfo) => {
                         Recover accidentally deleted files. Enter file path patterns/globbing (e.g. *.mp4), one per line.
                     </p>
                     <textarea id="undelete-patterns" class="form-control mb-4 font-mono text-sm bg-slate-950 border-slate-700 text-slate-200" rows="5" placeholder="*.mp4&#10;family_docs/*&#10;lost_file.txt"></textarea>
-                    <button class="btn btn-primary w-full" onclick="app.triggerUndeleteBatch()">
+                    <button class="btn btn-primary w-full" data-tooltip="Undelete the specified file patterns in all disks" data-tooltip-pos="bottom-right" onclick="app.triggerUndeleteBatch()">
                         Undelete Files
                     </button>
                 </div>
@@ -717,6 +717,8 @@ export const renderRecovery = (arrayInfo) => {
                     </div>
                     
                     <button class="btn ${arrayInfo.blocks_bad > 0 ? 'btn-danger w-full' : 'btn-disabled w-full'}" 
+                            data-tooltip="Repair silent data corruption on all data disks"
+                            data-tooltip-pos="bottom-right"
                             onclick="${arrayInfo.blocks_bad > 0 ? 'app.triggerHeal()' : ''}"
                             ${arrayInfo.blocks_bad === 0 ? 'disabled' : ''}>
                         Heal Silent Errors

@@ -297,9 +297,13 @@ body {
 }
 
 .view-container {
-    flex: 1;
-    overflow-y: auto;
     padding: var(--gap-lg);
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 80px;
+    /* Space for bottom tooltips at the end of scroll */
+    padding-top: 20px;
+    /* Space for top tooltips at the start of scroll */
 }
 
 /* --- Components --- */
@@ -311,6 +315,8 @@ body {
     border: var(--border-subtle);
     padding: var(--gap-lg);
     margin-bottom: var(--gap-lg);
+    overflow: visible;
+    /* Ensure tooltips are not clipped */
 }
 
 .card-border-blue {
@@ -377,10 +383,138 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 0.9rem;
+    position: relative;
+    /* Anchor for tooltips */
+}
+
+/* Tooltips */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background-color: #000;
+    /* Deepest black for contrast */
+    color: var(--text-primary);
+    padding: 0.6rem 0.9rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: normal;
+    /* Allow wrapping */
+    max-width: 250px;
+    /* Prevent extreme width */
+    width: max-content;
+    min-width: 120px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 100;
+    border: 1px solid var(--c-cyan-500);
+    /* Use cyan border for high visibility */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Triangle for tooltip */
+[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    border-width: 6px 6px 0 6px;
+    border-style: solid;
+    border-color: var(--c-slate-700) transparent transparent transparent;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 100;
+}
+
+[data-tooltip]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Bottom-Left Tooltips (Anchored to right, extends left) */
+[data-tooltip-pos="bottom-left"]::after {
+    bottom: auto;
+    top: calc(100% + 10px);
+    left: auto;
+    right: 0;
+    transform: translateY(-10px);
+}
+
+[data-tooltip-pos="bottom-left"]:hover::after {
+    transform: translateY(0);
+}
+
+[data-tooltip-pos="bottom-left"]::before {
+    bottom: auto;
+    top: calc(100% + 4px);
+    left: auto;
+    right: 15px;
+    /* Offset to align with button center-ish */
+    border-width: 0 6px 6px 6px;
+    border-color: transparent transparent var(--c-slate-700) transparent;
+    transform: translateY(-10px);
+}
+
+[data-tooltip-pos="bottom-left"]:hover::before {
+    transform: translateY(0);
+}
+
+/* Bottom-Right Tooltips (Anchored to left, extends right) */
+[data-tooltip-pos="bottom-right"]::after {
+    bottom: auto;
+    top: calc(100% + 10px);
+    left: 0;
+    right: auto;
+    transform: translateY(-10px);
+}
+
+[data-tooltip-pos="bottom-right"]:hover::after {
+    transform: translateY(0);
+}
+
+[data-tooltip-pos="bottom-right"]::before {
+    bottom: auto;
+    top: calc(100% + 4px);
+    left: 15px;
+    right: auto;
+    border-width: 0 6px 6px 6px;
+    border-color: transparent transparent var(--c-slate-700) transparent;
+    transform: translateY(-10px);
+}
+
+[data-tooltip-pos="bottom-right"]:hover::before {
+    transform: translateY(0);
 }
 
 .btn:hover {
     filter: brightness(0.7);
+    z-index: 110;
+    /* Bring button and its tooltip to front */
+}
+
+/* Ensure data-tooltip elements also rise on hover */
+[data-tooltip]:hover {
+    z-index: 110;
 }
 
 .btn:active {
