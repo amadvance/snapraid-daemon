@@ -193,10 +193,17 @@ paths:
         enough information to display a "live" summary without fetching heavy
         datasets.
 
-        The 'pulse' object serves as a cache invalidation signal. If a counter
-        has not incremented since the last request, the client can safely
-        assume that the corresponding data-heavy endpoint (e.g., /v1/tasks
-        or /v1/disks) will return identical data.
+        The pulse object contains counters used for cache invalidation. Each
+        field corresponds directly to a data-heavy API entry point.
+
+        If a counter has not changed since the last request, the corresponding
+        entry point is guaranteed to return the same data. If a counter is
+        different, the underlying subsystem state has evolved, and the entry
+        point will potentially return updated information.
+
+        Note that the counters are not necessarily monotonically increasing
+        because they are reset if the daemon restarts. You should compare
+        them only for equality.
       responses:
         '200':
           description: "Current subsystem pulse counters."

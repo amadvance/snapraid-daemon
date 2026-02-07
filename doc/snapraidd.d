@@ -397,15 +397,20 @@ Rest API
 
     /snapraid/v1/state
 	The response provides a high-level summary of the daemon's current
-	operation and health, alongside a pulse object containing monotonic
-	sequence counters.
+	operation and health, alongside a pulse object containing sequence
+	counters.
 
 	The pulse object contains counters used for cache invalidation. Each
 	field corresponds directly to a data-heavy API entry point.
-	If a counter has not incremented since the last request, the
-	corresponding entry point is guaranteed to return the same data.
-	If a counter increases, the underlying subsystem state has evolved and
-	the entry point will potentially return updated information.
+
+	If a counter has not changed since the last request, the corresponding
+	entry point is guaranteed to return the same data. If a counter is
+	different, the underlying subsystem state has evolved, and the entry
+	point will potentially return updated information.
+
+	Note that the counters are not necessarily monotonically increasing
+	because they are reset if the daemon restarts. You should compare
+	them only for equality.
 
 	Example:
 		:curl -X GET http://localhost:8080/snapraid/v1/state | jq
