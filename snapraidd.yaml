@@ -14,8 +14,8 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'sync'
-        followed by 'scrub'. The process is concluded by a 'report'
+        Initiates the automated maintenance workflow, executing 'up', 'diff'
+        and 'sync' followed by 'scrub'. The process is concluded by a 'report'
         task to notify the result.
 
         This operation is subject to all safety thresholds defined in the
@@ -40,8 +40,8 @@ paths:
       summary: Execute automated silent error recovery sequence
       description: >
         Initiates a recovery operation to resolve data corruption by
-        executing '-e fix' followed by '-p bad scrub'. The process is
-        concluded by a 'report' task to notify the result.
+        executing 'up', followed by 'fix -e' and followed by 'scrub -p bad'.
+        The process is concluded by a 'report' task to notify the result.
 
         The '-e fix' command utilizes parity data to reconstruct blocks
         marked as having silent errors (checksum mismatches) and
@@ -65,10 +65,10 @@ paths:
       summary: Recover missing or accidentally deleted files
       description: >
         Initiates a restoration process for files that are present in the
-        parity but missing from the physical data disks. The process is
-        concluded by a 'report' task to notify the result.
+        parity but missing from the physical data disks by executing
+        'up', followed by 'fix -m'. The process is concluded by a 'diff' and
+        'report' task to notify the result.
 
-        This operation executes a 'fix -m' (filter-missing) operation.
         The '-m' flag ensures that only missing files are reconstructed.
         Existing files are never overwritten or modified.
 
@@ -217,7 +217,7 @@ paths:
                       The aggregate health of the entire array.
                   active_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
+                    enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
@@ -248,9 +248,8 @@ paths:
         by the daemon.
 
         This is a passive operation that retrieves the most recent
-        information stored in memory (cached from the last boot or
-        manual /probe, /smart, or /up commands). Calling this endpoint
-        will NOT trigger a physical disk probe or spin up any standby disks.
+        information stored in memory. Calling this endpoint will NOT trigger
+        a physical disk probe or spin up any standby disks.
       responses:
         '200':
           description: Successfully retrieved disk state lists.
@@ -494,16 +493,16 @@ components:
           type: string
           description: "The SnapRAID action to perform."
           oneOf:
+            - const: probe
+              description: >
+                Verifies the power status of all configured disks, and gather.
+                SMART information and attributes for the ones already spinning.
             - const: up
               description: >
                 Spins up all drives in the array.
             - const: down
               description: >
                 Spins down array drives to save power.
-            - const: probe
-              description: >
-                Verifies the power status of all configured disks, and gather.
-                smart information for the ones already spinning."
             - const: smart
               description: >
                 Collects and parses SMART attributes for physical health assessment.
@@ -528,6 +527,10 @@ components:
             - const: report
               description: >
                 Generates a full summary of last operations and statistics.
+            - const: down_idle
+              description: >
+               	Executes a conditional spindown operation of the disks that
+               	have exceeded the 'spindown_idle_minutes' threshold.
         args:
           type: array
           items:
@@ -638,7 +641,7 @@ components:
             Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub, report, check, fix]
+          enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
           description: >
             The command executed.
         health:
@@ -1558,7 +1561,7 @@ components:
             Local timestamp of the most recently concluded task.
         last_command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub]
+          enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
           description: >
             Identifier of the last successfully completed command.
         annual_failure_rate:

@@ -28,10 +28,10 @@ SMART values and providing a robust notification engine for real-time health
 updates. For energy efficiency, it manages automatic disk spindown during
 periods of inactivity.
 
-The daemon also provides a modern REST API interface. This API provides a
-programmatic gateway to monitor array health and trigger maintenance tasks,
-serving as a powerful foundation that can be used to build a WebUI or other
-remote integrations.
+The daemon provides a modern REST API interface along with an integrated Web UI.
+This allows you to monitor array health, trigger maintenance tasks, and
+configure the daemon through a user-friendly browser interface or programmatically
+via the API.
 
 
 3 OPTIONS
@@ -40,12 +40,15 @@ remote integrations.
 The SnapRAID Daemon provides the following options:
 
     -c, --conf CONFIG
-        Specifies the path to the configuration file (default:
-        `/etc/snapraidd.conf`).
+        Specifies the path to the configuration file. Default:
+        `$PREFIX/etc/snapraidd.conf` and `/etc/snapraidd.conf` if
+        not found. The $PREFIX variable represents the installation
+        path chosen at build time (typically via the `--prefix`
+        argument to the configure script).
 
     -f, --foreground
-        Runs the process in the foreground. This prevents the daemon
-        from detaching from the terminal (daemonizing).
+        Runs the process in the foreground. This prevents the
+        daemon from detaching from the terminal (daemonizing).
 
     -p, --pidfile FILE
         Overrides the default location for the PID file (default:
@@ -62,7 +65,7 @@ The SnapRAID Daemon provides the following options:
         vulnerabilities if not properly isolated.
 
     -v, --verbose
-        Verbose logging including all the HTTP requests.
+        Verbose logging including all HTTP requests.
 
     -H, --help
         Prints a short help screen.
@@ -74,21 +77,25 @@ The SnapRAID Daemon provides the following options:
 4 CONFIGURATION
 ===============
 
-The SnapRAID Daemon is configured via a plain-text .conf file
-(defaulting to /etc/snapraidd.conf). This file governs the behavior
-of the automation engine, network accessibility, safety interlocks,
-and hardware monitoring parameters.
+The SnapRAID Daemon is configured via a plain-text .conf file,
+defaulting to $PREFIX/etc/snapraidd.conf and if not found to
+/etc/snapraidd.conf. The $PREFIX variable represents the installation
+path chosen at build time (typically via the `--prefix` argument to
+the configure script).
+
+This file governs the behavior of the automation engine, network
+accessibility, safety interlocks, and hardware monitoring parameters.
 
 The configuration system is designed with a "hybrid" management
 philosophy to balance convenience with system security:
 
-Static Parameters - Critical security and networking settings, such
+Static_Parameters - Critical security and networking settings, such
     as the listening port (net_port) and the system user for
     scripts (script_run_as_user), are immutable via the REST API.
     These require manual file edits followed by a SIGHUP signal
     (e.g., systemctl reload snapraidd) to take effect.
 
-Dynamic Parameters - Operational settings, like the maintenance
+Dynamic_Parameters - Operational settings, like the maintenance
     schedule or scrub percentages, can be modified in real-time
     via the PATCH /snapraid/v1/config endpoint. Changes made through
     the API are instantly applied to the running process and
@@ -113,7 +120,7 @@ file.
 
 ---- 4.1.1 net_enabled ----
 Master toggle for the HTTP interface.
-Set to 1 to enable the REST API; otherwise, the daemon operates in
+Set to 1 to enable the REST API, otherwise, the daemon operates in
 local-only mode.
 
 ---- 4.1.2 net_port ----
@@ -143,19 +150,16 @@ ZIP file. If a ZIP file is provided, the internal HTTP server will
 serve assets directly from the archive without requiring extraction to
 the disk.
 
-The daemon resolves the location of the assets based on the following rules:
+The daemon resolves the location of the assets based on the following
+rules:
 
-ZIP Filename - If only a filename is provided (e.g., commander.zip),
+ZIP_Filename - If only a filename is provided (e.g., commander.zip),
     the daemon initiates a search within the standard installation
     data directories. It first checks the directory associated
     with the configured installation prefix, located at
     $PREFIX/share/snapraidd/, and then the system-wide data
     directory at /usr/share/snapraidd/.
-ZIP Path - If an absolute path to a ZIP file is provided (e.g.,
-    /opt/web/ui.zip), the daemon will attempt to use that specific
-    file exclusively and will not perform a search in the system
-    data directories.
-ZIP Path -  If a path to a ZIP file is provided, it must be absolute
+ZIP_Path - If a path to a ZIP file is provided, it must be absolute
     (e.g., /opt/snapraid/ui.zip). The daemon will attempt to use
     this specific file exclusively and will not perform a search
     in system directories.
@@ -173,8 +177,8 @@ interface.
 These settings control the automation and maintenance tasks run by
 the SnapRAID daemon.
 
-For security reasons some of them can be set from the REST API only if the
-net_config_full_access option is set.
+For security reasons, some of them can be set via the REST API only if the
+net_config_full_access option is enabled.
 
 ---- 4.2.1 maintenance_schedule ----
 Defines when the automated sync, scrub, and report sequence occurs
@@ -223,7 +227,7 @@ SnapRAID activity.
 4.3 Logging & Notifications
 ---------------------------
 
-These settings control the logging and notification operations done
+These settings control the logging and notification operations performed
 by the SnapRAID daemon.
 
 ---- 4.3.1 log_directory ----
@@ -269,6 +273,8 @@ The API prioritizes orchestrated workflows over raw command execution.
 These high-level endpoints encapsulate complex SnapRAID logic into
 single, automated tasks that manage the lifecycle of the array and the
 recovery of data.
+They typically end with a `report` command that generates a notification
+with a full report of the result of the operation.
 
 ---- 5.1.1 /snapraid/v1/maintenance ----
 Triggers the complete automated maintenance sequence. It orchestrates
@@ -283,20 +289,21 @@ by the 'scrub_percentage' and 'scrub_older_than' settings.
 Example:
     curl -X POST http://localhost:8080/snapraid/v1/maintenance
 
-It's implemented with the sequence of commands: up, diff, sync, scrub,
+It is implemented with the sequence of commands: up, diff, sync, scrub, and
 report.
 
 ---- 5.1.2 /snapraid/v1/heal ----
 Executes a specialized silent error recovery workflow. The daemon
-automatically runs a targeted fix operation to repair detected corruption
-and immediately follows up with a verification scrub of the affected
-blocks to ensure the recovery was successful.
+automatically runs a targeted fix operation to repair detected corruption,
+immediately follows up with a verification scrub of the affected
+blocks to ensure the recovery was successful, and concludes by issuing
+a report of the result.
 
 Example:
     curl -X POST http://localhost:8080/snapraid/v1/heal
 
-It's implemented with the sequence of commands: up, fix -e, scrub -p bad,
-report.
+It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
+and report.
 
 ---- 5.1.3 /snapraid/v1/undelete ----
 Invokes the SnapRAID restoration engine to recover files that have been
@@ -309,18 +316,18 @@ Example:
     	-H "Content-Type: application/json" \
     	-d '{ "filters": [ "*.txt" ] }'
 
-It's implemented with the sequence of commands: up, fix -m -f ...,
-report.
+It is implemented with the sequence of commands: up, fix -m -f ...,
+diff, and report.
 
 ---- 5.1.4 /snapraid/v1/down_idle ----
 Executes a conditional spindown operation. The daemon will only issue
 the spindown command to disks that have exceeded the 'spindown_idle_minutes'
-threshold.
+threshold. In this case, no report is generated.
 
 Example:
     curl -X POST http://localhost:8080/snapraid/v1/down_idle
 
-It's implemented with the sequence of commands: probe, down -d ....
+It is implemented with the sequence of commands: probe, down -d ....
 
 5.2 Monitoring & Inventory
 --------------------------
@@ -361,12 +368,13 @@ require a manual edit and SIGHUP.
 
 Example:
     curl -X GET http://localhost:8080/snapraid/v1/config | jq
-    curl -X PATCH http://localhost:8080/snapraid/v1/config -H "Content-Type: application/json" -d '{ "probe_interval_minutes": 10 }'
+    curl -X PATCH http://localhost:8080/snapraid/v1/config \
+    	-d '{ "probe_interval_minutes": 10 }'
 
 5.4 Activity Control
 --------------------
 
-All operations that modify the array state are asynchronous, they
+All operations that modify the array state are asynchronous; they
 return an HTTP 202 Accepted status and queue a task for background
 execution.
 
@@ -377,14 +385,15 @@ monitor progress and manage the execution lifecycle.
 Provides real-time telemetry for the currently executing task,
 including a progress percentage, estimated time of completion (ETA),
 and a live stream of the process log output.
-If no tasks is in execution it returns the last completed task.
+If no task is in execution, it returns the last completed task.
 
 Example:
     curl -s http://localhost:8080/snapraid/v1/activity | jq
 
 ---- 5.4.2 /snapraid/v1/tasks ----
-Lists all the tasks waiting, the task currently active, and the tasks
-execution history.
+Lists all tasks waiting, the task currently active, and the task
+execution history. The response from this entry point can be very long,
+as the history may span up to a month.
 
 Example:
     curl -s http://localhost:8080/snapraid/v1/tasks | jq
@@ -426,27 +435,33 @@ into a single sequential session. Upon submission, the daemon executes
 tasks in the order provided, maintaining a single-threaded execution
 flow.
 
+The daemon enforces strict serialization for all operations. Only one
+task can access the array at a time. All scheduled tasks are placed
+in an execution queue and executed in their scheduled order.
+
 To ensure data safety, the daemon employs a fail-fast policy where any
 command failure triggers the immediate cancellation of all subsequent
-tasks in the queue. This prevents operations from running against an
-unstable or inconsistent array state.
+tasks within the same schedule request. This prevents operations from
+running against an unstable or inconsistent array state while
+preserving any independent tasks previously queued in the system.
 
 The only exception is the report command, which acts as a mandatory
 finalizer. It will execute regardless of previous failures to ensure
-to get a report that reflects the final state of the system.
+the generation of a report that reflects the final state of the system.
 
 ---- 5.6.1 /snapraid/v1/schedule ----
 Queues a sequence of standard SnapRAID operations.
 
 Example:
-    curl -X POST http://localhost:8080/snapraid/v1/schedule
+    curl -X POST http://localhost:8080/snapraid/v1/schedule \
     	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
 Supported Commands:
+
 up - Spins up all drives in the array.
 down - Spins down array drives to save power.
-probe - Verifies the power status of all configured disks, and gather
-    smart information for the ones already spinning.
+probe - Verifies the power status of all configured disks and gathers
+    SMART information for those already spinning.
 smart - Collects and parses SMART attributes from all drives to assess
     physical health.
 diff - Scans the array to identify changed, added, or deleted files
@@ -463,23 +478,63 @@ fix - Attempts to recover deleted files or repair corrupted data using
     the parity information.
 report - Generates a comprehensive summary of the last operations and
     array statistics.
+down_idle - Executes a conditional spindown operation of the disks that
+    have exceeded the 'spindown_idle_minutes' threshold.
 
 
-6 COPYRIGHT
+6 SIGNALS
+=========
+
+SIGHUP
+    Reloads the configuration file and resets the internal state.
+    This is the recommended way to apply changes to static
+    parameters without restarting the service.
+
+SIGTERM, SIGINT
+    Initiates a graceful shutdown. If a task is currently
+    running, the daemon attempts to terminate the child process
+    before exiting.
+
+
+7 COPYRIGHT
 ===========
 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 
 
-7 FILES
+8 FILES
 =======
 
-/etc/snapraidd.conf - Default configuration file.
-/run/snapraidd.pid - PID file.
-/var/log/snapraid - Default directory for command execution logs.
+$PREFIX/etc/snapraidd.conf
+    The primary configuration file location. The $PREFIX variable
+    represents the installation path chosen at build time (typically
+    via the `--prefix` argument to the configure script). Common
+    values include `/usr/local` or `/usr`. If this file does not
+    exist, the daemon falls back to `/etc/snapraidd.conf`.
+
+$PREFIX/share/snapraidd
+    The primary system data directory. This is the first location
+    searched for the web dashboard ZIP file (e.g., commander.zip).
+    If not found here, the daemon falls back to `/usr/share/snapraidd`.
+
+    /etc/snapraidd.conf
+        The secondary/system-wide configuration file location, used if
+        the prefix-specific file is missing.
+
+    /usr/share/snapraidd
+        The secondary/system-wide data directory, used as a fallback for
+        web assets.
+
+    /run/snapraidd.pid
+        Default PID file location.
+
+    /var/log/snapraid
+        Default directory for SnapRAID command execution logs. This
+        directory contains the output of the SnapRAID binary itself,
+        rather than the daemon's service logs.
 
 
-8 SEE ALSO
+9 SEE ALSO
 ==========
 
 snapraid(1)

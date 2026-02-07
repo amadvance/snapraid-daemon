@@ -45,9 +45,9 @@ struct {
 	{ CMD_FIX, "fix" },
 	{ CMD_CHECK, "check" },
 	{ CMD_REPORT, "report" },
-	{ CMD_MAINTENANCE, "maintenance" },
-	{ CMD_HEAL, "heal" },
-	{ CMD_UNDELETE, "undelete" },
+	{ CMD_MAINTENANCE, "maintenance" }, /* never enter in the queue */
+	{ CMD_HEAL, "heal" }, /* never enter in the queue */
+	{ CMD_UNDELETE, "undelete" }, /* never enter in the queue */
 	{ CMD_DOWN_IDLE, "down_idle" },
 	{ 0 }
 };
