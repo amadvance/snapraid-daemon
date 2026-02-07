@@ -122,9 +122,35 @@ Configuration
 	be modified via the REST API. Defaults to 0 (Read-only).
 
     net_web_root
-	Specifies the local directory where the web dashboard assets are installed.
-	If this path is not defined or is inaccessible, the built-in HTTP server
-	will not be able to serve the web interface.
+	Specifies the local path where the web dashboard assets are located.
+	This option supports both a standard directory and a single compressed
+	ZIP file. If a ZIP file is provided, the internal HTTP server will
+	serve assets directly from the archive without requiring extraction to
+	the disk.
+
+	The daemon resolves the location of the assets based on the following rules:
+
+	ZIP Filename - If only a filename is provided (e.g., commander.zip),
+		the daemon initiates a search within the standard installation
+		data directories. It first checks the directory associated
+		with the configured installation prefix, located at
+		$PREFIX/share/snapraidd/, and then the system-wide data
+		directory at /usr/share/snapraidd/.
+	ZIP Path - If an absolute path to a ZIP file is provided (e.g.,
+		/opt/web/ui.zip), the daemon will attempt to use that specific
+		file exclusively and will not perform a search in the system
+		data directories.
+	ZIP Path -  If a path to a ZIP file is provided, it must be absolute
+		(e.g., /opt/snapraid/ui.zip). The daemon will attempt to use
+		this specific file exclusively and will not perform a search
+		in system directories.
+	Directories - If the target is a directory rather than a ZIP archive,
+		the path must be absolute (e.g., /var/www/snapraid-ui/).
+
+	If the specified path or filename cannot be resolved, if a directory
+	path is not absolute, or if the ZIP archive is inaccessible or
+	malformed, the built-in HTTP server will be unable to serve the web
+	interface.
 
   Automation & Maintenance
 	These settings control the automation and maintenance tasks run by

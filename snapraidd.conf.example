@@ -99,21 +99,40 @@ net_allowed_origin = self
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 net_config_full_access = 0
 
-# Specifies the local directory or .zip archive containing the dashboard's
-# web assets (HTML, JS, CSS, SVG, etc.).
+# The net_web_root specifies the local path where the web dashboard assets are
+# located.
 #
-# ZIP Path Resolution:
-# 1. If a path is specified (e.g., /opt/web/ui.zip), that specific file
-#    or directory is used.
-# 2. If only a filename is specified (e.g., commander.zip), the daemon
-#    searches in the installation data directories in this order:
-#    - /usr/local/share/snapraidd/
-#    - /usr/share/snapraidd/
+# This option supports both a standard directory and a single compressed
+# ZIP file. When a ZIP file is used, the internal HTTP server serves
+# assets directly from the archive, eliminating the need for an
+# extracted file structure on the disk.
 #
-# Archive Support:
-# If the target is a .zip file, the daemon will treat the archive as a
-# virtual filesystem. All files contained within the zip will be extracted
-# into the internal memory cache at startup and served as web pages.
+# The daemon resolves the location of the assets according to strict
+# pathing rules:
+#
+# ZIP Filename:
+# If the value is a simple filename ending in .zip with no path
+# components (e.g., commander.zip), the daemon searches for the file
+# in the installation data directories. It first checks the configured
+# installation prefix at $PREFIX/share/snapraidd/, followed by the
+# system-wide directory at /usr/share/snapraidd/.
+#
+# Explicit ZIP Path:
+# If a path to a ZIP file is provided, it MUST BE ABSOLUTE
+# (e.g., /opt/snapraid/ui.zip). The daemon will attempt to use this
+# specific file exclusively and will not perform a search in
+# system directories.
+#
+# Directories:
+# If the target is a directory rather than an archive, the path
+# MUST BE ABSOLUTE (e.g., /var/www/snapraid-ui/).
+#
+# Note: Any relative pathing (e.g., ./ui.zip or ../assets/) is
+# explicitly unsupported for both directories and specific ZIP files
+# to ensure predictable behavior regardless of the daemon's working
+# directory. If the path is unresolved, is not absolute when
+# required, or the archive is malformed, the web interface will
+# fail to initialize.
 #
 # The daemon recursively crawls the directory or archive at startup to
 # provide high-performance, compressed delivery of the UI.

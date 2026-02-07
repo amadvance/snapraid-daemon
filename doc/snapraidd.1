@@ -124,9 +124,52 @@ browser access, or a specific URL for custom dashboards.
 Determines if restricted parameters (like scripts and log paths) can
 be modified via the REST API. Defaults to 0 (Read\-only).
 .SS net_web_root 
-Specifies the local directory where the web dashboard assets are installed.
-If this path is not defined or is inaccessible, the built\-in HTTP server
-will not be able to serve the web interface.
+Specifies the local path where the web dashboard assets are located.
+This option supports both a standard directory and a single compressed
+ZIP file. If a ZIP file is provided, the internal HTTP server will
+serve assets directly from the archive without requiring extraction to
+the disk.
+.PP
+The daemon resolves the location of the assets based on the following rules:
+.PP
+ZIP Filename \- If only a filename is provided (e.g., commander.zip),
+.PP
+.RS 4
+the daemon initiates a search within the standard installation
+data directories. It first checks the directory associated
+with the configured installation prefix, located at
+$PREFIX/share/snapraidd/, and then the system\-wide data
+directory at /usr/share/snapraidd/.
+.RE
+.PP
+ZIP Path \- If an absolute path to a ZIP file is provided (e.g.,
+.PP
+.RS 4
+/opt/web/ui.zip), the daemon will attempt to use that specific
+file exclusively and will not perform a search in the system
+data directories.
+.RE
+.PP
+ZIP Path \-  If a path to a ZIP file is provided, it must be absolute
+.PP
+.RS 4
+(e.g., /opt/snapraid/ui.zip). The daemon will attempt to use
+this specific file exclusively and will not perform a search
+in system directories.
+.RE
+.RS 0
+.PD 0
+.HP 4
+.I Directories
+If the target is a directory rather than a ZIP archive,
+the path must be absolute (e.g., /var/www/snapraid\-ui/).
+.PD
+.RE
+.PP
+If the specified path or filename cannot be resolved, if a directory
+path is not absolute, or if the ZIP archive is inaccessible or
+malformed, the built\-in HTTP server will be unable to serve the web
+interface.
 .SS Automation & Maintenance 
 These settings control the automation and maintenance tasks run by
 the SnapRAID daemon.
