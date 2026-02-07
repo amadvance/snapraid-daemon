@@ -931,3 +931,158 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
 	return pidfd;
 }
 
+/****************************************************************************/
+/* system */
+
+/**
+ * @brief Parses a system attribute file.
+ * @param path The filesystem path (e.g., "/proc/cpuinfo").
+ * @param tag The tag to search for (e.g., "model name"). If NULL, matches the first line.
+ * @param position The zero-based index of the whitespace-separated argument to return. If -1 return everything
+ * @param out The output buffer.
+ * @param out_size Size of the output buffer.
+ * @return char* Pointer to 'out' on success, NULL on failure.
+ */
+char* sysattr(const char* path, const char* tag, char separator, int position, char* out, size_t out_size)
+{
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		return 0;
+
+	char line[1024];
+	char* result = 0;
+
+	while (fgets(line, sizeof(line), fp)) {
+		int match = 0;
+		char* content = line;
+
+		if (!tag) {
+			/* if no tag is specified, assume the first row matches */
+			match = 1;
+		} else {
+			size_t tag_len = strlen(tag);
+
+			/* check if the line starts with the specified tag */
+			if (strncmp(line, tag, tag_len) == 0) {
+				char* p = line + tag_len;
+
+				/* skip optional spaces before the separator */
+				while (*p == ' ' || *p == '\t')
+					++p;
+
+				if (separator == 0) {
+					match = 1;
+					content = p;
+				} else if (*p == separator) {
+					match = 1;
+					content = p + 1; /* data starts after the separator */
+				}
+
+				/* skip spaces */
+				while (*content == ' ' || *content == '\t')
+					++content;
+			}
+		}
+
+		if (match && position < 0) {
+			char* token = strtok(content, "\n\r");
+			if (token) {
+				sncpy(out, out_size, token);
+				result = out;
+			}
+			break;
+		}
+
+		if (match && position >= 0) {
+			/* tokenize the line content to find the argument at 'position' */
+			char* token = strtok(content, " \t\n\r");
+			int i = 0;
+
+			if (tag)
+				++i; /* skip the tag already processed */
+
+			while (token != NULL) {
+				if (i == position) {
+					sncpy(out, out_size, token);
+					result = out;
+					break;
+				}
+
+				token = strtok(NULL, " \t\n\r");
+				++i;
+			}
+
+			/* break because we found our match and (or failed the position check) */
+			break;
+		}
+	}
+
+	fclose(fp);
+	return result;
+}
+
+void daemon_system(struct snapraid_system* system)
+{
+	char buf[256];
+	struct utsname un;
+
+	memset(system, 0, sizeof(struct snapraid_system));
+
+	if (uname(&un) == 0) {
+		sncpy(system->hostname, sizeof(system->hostname), un.nodename);
+		sncpy(system->kernel_version, sizeof(system->kernel_version), un.release);
+	}
+
+	if (sysattr("/etc/os-release", "PRETTY_NAME", '=', -1, buf, sizeof(buf))) {
+		ssize_t len = strlen(buf);
+		if (len >= 2 && buf[0] == '"' && buf[len - 1] == '"') {
+			buf[len - 1] = 0;
+			sncpy(system->os_distribution, sizeof(system->os_distribution), buf + 1);
+		} else {
+			sncpy(system->os_distribution, sizeof(system->os_distribution), buf);
+		}
+	}
+
+	if (sysattr("/proc/cpuinfo", "model name", ':', -1, buf, sizeof(buf))) {
+		sncpy(system->cpu_model, sizeof(system->cpu_model), buf);
+	}
+
+	char board_vendor[128];
+	char board_name[128];
+	if (sysattr("/sys/class/dmi/id/board_vendor", 0, 0, -1, board_vendor, sizeof(board_vendor)) == 0)
+		board_vendor[0] = 0;
+	if (sysattr("/sys/class/dmi/id/board_name", 0, 0, -1, board_name, sizeof(board_name)) == 0)
+		board_name[0] = 0;
+	if (board_vendor[0] && board_name[0]) {
+		snprintf(system->motherboard, sizeof(system->motherboard), "%s %s", board_vendor, board_name);
+	} else {
+		if (board_vendor[0])
+			sncpy(system->motherboard, sizeof(system->motherboard), board_vendor);
+		if (board_name[0])
+			sncpy(system->motherboard, sizeof(system->motherboard), board_name);
+	}
+
+	if (access("/sys/devices/system/edac/mc/mc0/size_mb", F_OK) == 0)
+		system->is_ecc = 1;
+	else
+		system->is_ecc = 0;
+
+	daemon_system_refresh(system);
+}
+
+void daemon_system_refresh(struct snapraid_system* system)
+{
+	char buf[256];
+	struct sysinfo si;
+
+	if (sysinfo(&si) == 0) {
+		system->uptime_seconds = (uint64_t)si.uptime;
+		system->memory_total_bytes = ((uint64_t)si.totalram * si.mem_unit);
+	}
+
+	if (sysattr("/proc/meminfo", "MemAvailable", ':', 1, buf, sizeof(buf))) {
+		stru64(&system->memory_free_bytes, buf);
+		system->memory_free_bytes *= 1024;
+	}
+}
+

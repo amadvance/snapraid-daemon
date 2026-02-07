@@ -418,6 +418,26 @@ struct snapraid_config {
 	int notify_differences;
 };
 
+#include <stdint.h>
+#include <stdbool.h>
+
+/**
+ * @brief Structure containing host system metadata for the SnapRAID dashboard.
+ * * This structure maps to the 'System' object in the OpenAPI specification
+ * and is used to provide hardware and OS context to the web interface.
+ */
+struct snapraid_system {
+	char hostname[256]; /**< Network hostname of the machine */
+	char os_distribution[256]; /**< Operating system name and version (e.g., "Ubuntu 24.04 LTS") */
+	char kernel_version[128]; /**< Running Linux kernel version string */
+	char motherboard[256]; /**< Manufacturer and model of the motherboard */
+	char cpu_model[256]; /**< Total physical RAM available in kilobytes */
+	uint64_t memory_total_bytes; /**< Total physical RAM available */
+	uint64_t memory_free_bytes; /**< Currently unused physical RAM */
+	uint64_t uptime_seconds; /**< Number of seconds the system has been powered on */
+	int is_ecc; /**< True if Error Correction Code (ECC) memory is detected and active */
+};
+
 #define DAEMON_QUIT 0
 #define DAEMON_RUNNING 1
 #define DAEMON_RELOAD 2
@@ -435,6 +455,7 @@ struct snapraid_state {
 	struct snapraid_scheduler scheduler;
 	struct snapraid_global global;
 	struct snapraid_config config;
+	struct snapraid_system system;
 	tommy_list data_list;
 	tommy_list parity_list;
 	int page_nocache; /**< If pages are not cached but read at runtime */

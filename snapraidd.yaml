@@ -434,6 +434,19 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/Array'
 
+  /snapraid/v1/system:
+    get:
+      summary: Get host system information
+      description: >
+        Returns hardware and OS details.
+      responses:
+        '200':
+          description: System information retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/System'
+
 components:
   responses:
     CommandResult:
@@ -1502,6 +1515,55 @@ components:
           description: >
             The current relative path of the file on the disk.
           example: "movies/file.mkv"
+
+    System:
+      type: object
+      description: >
+        Metadata describing the host hardware and operating system
+        environment where the daemon is executing.
+      properties:
+        hostname:
+          type: string
+          description: >
+            The network name of the host machine.
+        os_distribution:
+          type: string
+          description: >
+            The name and version of the operating system
+            (e.g., "Ubuntu 24.04 LTS").
+        os_kernel_version:
+          type: string
+          description: >
+            The version of the running OS kernel.
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: >
+            The number of seconds the system has been running.
+        cpu_model:
+          type: string
+          description: >
+            The model name of the system processor, relevant for
+            parity calculation performance.
+        memory_total_bytes:
+          type: integer
+          format: int64
+          description: >
+            Total physical RAM available on the host.
+        memory_free_bytes:
+          type: integer
+          format: int64
+          description: >
+            Currently available physical RAM.
+        is_ecc:
+          type: boolean
+          description: >
+            Indicates if the system memory supports Error Correction
+            Code (ECC), if detectable.
+        motherboard:
+          type: string
+          description: >
+            Manufacturer and model of the system motherboard.
 
     Array:
       type: object

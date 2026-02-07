@@ -33,6 +33,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([fcntl.h stddef.h stdint.h stdlib.h string.h limits.h time.h sys/time.h strings.h])
 AC_CHECK_HEADERS([unistd.h getopt.h fnmatch.h io.h inttypes.h byteswap.h])
 AC_CHECK_HEADERS([pthread.h math.h syslog.h grp.h pwd.h])
+AC_CHECK_HEADERS([sys/sysinfo.h sys/utsname.h])
 
 # Check for the close_range(...,CLOSE_RANGE_CLOEXEC)
 AC_CHECK_HEADERS([linux/close_range.h])

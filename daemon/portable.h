@@ -186,6 +186,14 @@
 #include <pwd.h>
 #endif
 
+#if HAVE_SYS_SYSINFO_H
+#include <sys/sysinfo.h>
+#endif
+
+#if HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
+
 #if HAVE_ZLIB
 #include <zlib.h>
 #endif

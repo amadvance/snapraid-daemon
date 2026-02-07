@@ -73,5 +73,8 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
  */
 void daemon_signal_restore_after_fork(void);
 
+void daemon_system(struct snapraid_system* system);
+void daemon_system_refresh(struct snapraid_system* system);
+
 #endif
 

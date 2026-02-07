@@ -186,6 +186,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/**
+	 * Load system information
+	 */
+	daemon_system(&state->system);
+
 	/*
 	 * Install signal handlers
 	 */

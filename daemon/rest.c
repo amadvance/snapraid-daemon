@@ -24,6 +24,7 @@
 #include "log.h"
 #include "elem.h"
 #include "scheduler.h"
+#include "daemon.h"
 #include "rest.h"
 
 /****************************************************************************/
@@ -538,6 +539,44 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 		}
 	}
 	ss_json_str(&s, level, "health", health_name(health_array(state)));
+	ss_json_close(&s, &level);
+
+	state_unlock();
+
+	send_json_answer(conn, 200, &s);
+
+	ss_done(&s);
+
+	return 200;
+}
+
+/**
+ * GET /snapraid/v1/system
+ */
+static int handler_system(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	struct snapraid_system* system = &state->system;
+	int level = 0;
+	ss_t s;
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	state_lock();
+
+	daemon_system_refresh(&state->system);
+
+	ss_json_open(&s, &level);
+	ss_json_str(&s, level, "hostname", system->hostname);
+	ss_json_str(&s, level, "os_distribution", system->os_distribution);
+	if (system->kernel_version[0])
+		ss_json_str(&s, level, "os_kernel_version", system->kernel_version);
+	ss_json_u64(&s, level, "uptime_seconds", system->uptime_seconds);
+	ss_json_str(&s, level, "motherboard", system->motherboard);
+	ss_json_str(&s, level, "cpu_model", system->cpu_model);
+	ss_json_u64(&s, level, "memory_total_bytes", system->memory_total_bytes);
+	ss_json_u64(&s, level, "memory_free_bytes", system->memory_free_bytes);
+	ss_json_bool(&s, level, "is_ecc", system->is_ecc);
 	ss_json_close(&s, &level);
 
 	state_unlock();
@@ -1820,6 +1859,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/system", handler_system, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");
