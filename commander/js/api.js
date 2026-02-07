@@ -33,6 +33,7 @@ export const API = {
     getActivity: () => request('/activity'),
     getTasks: () => request('/tasks'),
     getConfig: () => request('/config'),
+    getSystem: () => request('/system'),
     updateConfig: (config) => request('/config', { method: 'PATCH', body: JSON.stringify(config) }),
 
     schedule: (tasks) => request('/schedule', { method: 'POST', body: JSON.stringify({ tasks }) }),

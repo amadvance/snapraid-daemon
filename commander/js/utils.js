@@ -40,16 +40,17 @@ export const formatTime = (isoString) => {
 
 export const formatDuration = (start, end) => {
     if (!start || !end) return '-';
-    const diff = new Date(end) - new Date(start);
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
+    const diff = Math.floor((new Date(end) - new Date(start)) / 1000);
+    return formatSeconds(diff);
 };
 
 export const formatSeconds = (seconds) => {
     if (!seconds && seconds !== 0) return '-';
-    const h = Math.floor(seconds / 3600);
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
+
+    if (d > 0) return `${d}d ${h}h ${m}m`;
     return `${h}h ${m}m`;
 };
 

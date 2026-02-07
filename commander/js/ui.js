@@ -30,8 +30,61 @@ const statusBadge = (task) => {
     return badge(task.status, color);
 };
 
+const renderSystemCard = (system) => {
+    if (!system) return '';
+
+    const totalMem = system.memory_total_bytes || 0;
+    const freeMem = system.memory_free_bytes || 0;
+    const usedMem = totalMem - freeMem;
+    const memPercent = totalMem > 0 ? (usedMem / totalMem * 100) : 0;
+
+    return `
+        <div class="card">
+            <h3 class="font-bold mb-4 border-b border-slate-700 pb-2 text-cyan">System</h3>
+            <div class="property-list">
+                 <div class="property-row">
+                    <div class="property-label">Hostname</div>
+                    <div class="property-value">${system.hostname}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">OS</div>
+                    <div class="property-value text-sm">${system.os_distribution}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Kernel</div>
+                    <div class="property-value text-xs font-mono">${system.os_kernel_version}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Uptime</div>
+                    <div class="property-value text-sm">${formatSeconds(system.uptime_seconds)}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">CPU</div>
+                    <div class="property-value text-sm">${system.cpu_model}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Memory</div>
+                    <div class="property-value">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span>${formatBytes(usedMem)} / ${formatBytes(totalMem)}</span>
+                            <span>${system.is_ecc ? '(ECC)' : ''}</span>
+                        </div>
+                        <div class="progress-container" style="height: 6px; margin: 0;">
+                            <div class="progress-bar" style="width: ${memPercent}%"></div>
+                        </div>
+                    </div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Motherboard</div>
+                    <div class="property-value text-xs">${system.motherboard || 'Unknown'}</div>
+                 </div>
+            </div>
+        </div>
+    `;
+};
+
 /* --- Dashboard --- */
-export const renderDashboard = (arrayInfo, activity) => {
+export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     // 1. Hero: Activity
     let heroHtml = '';
     const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
@@ -186,6 +239,7 @@ export const renderDashboard = (arrayInfo, activity) => {
     const summaryHtml = `
         <div class="grid-2">
             ${arrayStatusHtml}
+            ${renderSystemCard(systemInfo)}
             ${configHtml}
         </div>
     `;

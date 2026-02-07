@@ -644,13 +644,16 @@ body {
     font-weight: 800;
     /* Extra bold for names */
     text-transform: uppercase;
-    width: 200px;
+    width: 150px;
     flex-shrink: 0;
 }
 
 .property-value {
     font-size: 1.1rem;
     font-weight: 700;
+    word-break: break-all;
+    flex: 1;
+    min-width: 0;
 }
 
 /* Utility Typography */

@@ -10,7 +10,11 @@ const app = {
         pulse: {},
         pollingInterval: null,
         isConnected: true,
-        hidePeriodic: false
+        hidePeriodic: false,
+        system: null,
+        lastSystemRefresh: 0,
+        dashboardArray: null,
+        dashboardActivity: null
     },
 
     init: () => {
@@ -57,6 +61,12 @@ const app = {
             }
 
             let needsRefresh = false;
+            let needsSystemRefresh = false;
+
+            const now = Date.now();
+            if (app.state.currentRoute === '#/' && (now - app.state.lastSystemRefresh) > 60000) {
+                needsSystemRefresh = true;
+            }
 
             switch (app.state.currentRoute) {
                 case '#/': // Dashboard - check array and activity
@@ -82,9 +92,15 @@ const app = {
             // Also refresh if we reconnected and are currently showing an error
             const isShowingError = !!document.querySelector('#view-container .border-red-500');
 
-            if (needsRefresh || (wasDisconnected && isShowingError)) {
+            if (needsRefresh || needsSystemRefresh || (wasDisconnected && isShowingError)) {
                 const hash = app.state.currentRoute;
-                if (hash === '#/') await app.loadDashboard();
+                if (hash === '#/') {
+                    await app.loadDashboard({
+                        array: (pulse.array !== oldPulse.array) || wasDisconnected,
+                        activity: (pulse.activity !== oldPulse.activity) || wasDisconnected,
+                        system: needsSystemRefresh || wasDisconnected
+                    });
+                }
                 else if (hash === '#/disks') await app.loadDisks();
                 else if (hash === '#/tasks') await app.loadTasks();
                 else if (hash === '#/diff') await app.loadDifferences();
@@ -186,7 +202,7 @@ const app = {
                     actions.innerHTML = `
                         <button class="btn btn-primary" onclick="app.triggerMaintenance()">Maintenance</button>
                     `;
-                    await app.loadDashboard();
+                    await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
                     title.innerText = 'Disks';
@@ -231,17 +247,29 @@ const app = {
 
     /* --- Page Loaders --- */
 
-    loadDashboard: async () => {
+    loadDashboard: async (refreshFlags = { array: true, activity: true, system: true }) => {
         try {
-            // Fetch all in parallel
-            const [array, activity] = await Promise.all([
-                API.getArray(),
-                API.getActivity()
-            ]);
+            const promises = [];
+
+            if (refreshFlags.array) promises.push(API.getArray());
+            else promises.push(Promise.resolve(app.state.dashboardArray));
+
+            if (refreshFlags.activity) promises.push(API.getActivity());
+            else promises.push(Promise.resolve(app.state.dashboardActivity));
+
+            if (refreshFlags.system) promises.push(API.getSystem());
+            else promises.push(Promise.resolve(app.state.system));
+
+            const [array, activity, system] = await Promise.all(promises);
 
             // Update pulse state (use most recent)
-            if (array.pulse) app.state.pulse = array.pulse;
+            if (array && array.pulse) app.state.pulse = array.pulse;
             if (activity && activity.pulse) app.state.pulse = activity.pulse;
+
+            app.state.dashboardArray = array;
+            app.state.dashboardActivity = activity;
+            app.state.system = system;
+            if (refreshFlags.system) app.state.lastSystemRefresh = Date.now();
 
             app.setConnection(true);
 
@@ -253,7 +281,7 @@ const app = {
                     ${active ? `<button class="btn btn-danger" onclick="app.triggerStop()">Stop Task</button>` : ''}
                     <button class="btn btn-primary" onclick="app.triggerMaintenance()">Maintenance</button>
                 `;
-                document.getElementById('view-container').innerHTML = renderDashboard(array, activity);
+                document.getElementById('view-container').innerHTML = renderDashboard(array, activity, app.state.system);
 
                 // Auto-scroll logs
                 const logWindow = document.querySelector('.log-window');
