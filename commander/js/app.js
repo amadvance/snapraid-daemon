@@ -250,6 +250,12 @@ const app = {
                     <button class="btn btn-primary" onclick="app.triggerMaintenance()">Maintenance</button>
                 `;
                 document.getElementById('view-container').innerHTML = renderDashboard(array, activity);
+
+                // Auto-scroll logs
+                const logWindow = document.querySelector('.log-window');
+                if (logWindow) {
+                    logWindow.scrollTop = logWindow.scrollHeight;
+                }
             }
         } catch (e) {
             app.setConnection(false);
