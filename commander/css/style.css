@@ -185,6 +185,24 @@ body {
     fill: currentColor;
 }
 
+.status-separator {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0.25rem;
+    color: var(--c-slate-700);
+}
+
+.status-separator svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
+
+.status-next {
+    color: var(--c-slate-400);
+    font-weight: 500;
+}
+
 .icon-spin {
     animation: spin 2s linear infinite;
 }

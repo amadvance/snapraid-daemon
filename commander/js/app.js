@@ -104,6 +104,10 @@ const app = {
                             <span class="status-command flex items-center">
                                 <span class="status-icon icon-spin">${Icons.refresh}</span>
                                 ${state.active_command.toUpperCase()}
+                                ${state.next_command ? `
+                                    <span class="status-separator">${Icons.arrowRight}</span>
+                                    <span class="status-next">${state.next_command.toUpperCase()}</span>
+                                ` : ''}
                             </span>
                             ${hasProgress ? `<span>${state.progress}%</span>` : ''}
                         </div>
