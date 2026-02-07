@@ -164,7 +164,7 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 	state_unlock();
 }
 
-static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
+static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
 {
 	/*
 	 * Schedule a probe and spindown on idle
@@ -181,11 +181,11 @@ static void schedule_down_idle_locked(struct snapraid_state* state, time_t now, 
 		(void)runner_locked(state, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
 }
 
-void schedule_down_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 	state_lock();
-	schedule_down_idle_locked(state, now, msg, msg_size, status);
+	schedule_suspend_idle_locked(state, now, msg, msg_size, status);
 	state_unlock();
 }
 
@@ -293,7 +293,7 @@ void* scheduler_thread(void* arg)
 			if (interval_minutes > 0
 				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60) {
 				last_probe_and_spindown_ts = mono_now_secs;
-				schedule_down_idle_locked(state, now, msg, sizeof(msg), &status);
+				schedule_suspend_idle_locked(state, now, msg, sizeof(msg), &status);
 				break;
 			}
 		}

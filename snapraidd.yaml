@@ -99,23 +99,23 @@ paths:
         '500':
           $ref: '#/components/responses/CommandResult'
 
-  /snapraid/v1/down_idle:
+  /snapraid/v1/suspend_idle:
     post:
       summary: Conditional spindown of idle disks
       description: >
-        Initiates a power management sequence that targets disks based
-        on inactivity duration.
+        Initiates an automated power management sequence to transition inactive
+        disks into a low-power standby state.
 
-        The task first performs a non-intrusive probe to refresh the
-        'access_count_idle_duration' metric for all disks without
-        waking those in standby.
+        The workflow begins by executing a 'probe' task to refresh the
+        real-time activity metrics for all disks. This operation is
+        non-intrusive and will not wake disks that are already in standby.
 
-        Subsequently, any active disk with an idle duration exceeding
-        'spindown_idle_minutes', as defined in the daemon
-        configuration, is issued a spindown command.
+        Following the probe, the daemon identifies disks whose idle duration
+        exceeds the 'spindown_idle_minutes' configuration threshold and
+        issues a targeted 'down_idle' command to those specific devices.
 
-        This is an asynchronous operation. Monitor progress via the
-        '/snapraid/v1/activity' endpoint.
+        This is an asynchronous operation. Monitor progress and view the
+        resulting command sequence via the '/snapraid/v1/activity' endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'

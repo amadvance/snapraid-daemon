@@ -49,24 +49,6 @@ This application is a lightweight, frontend-only Single Page Application (SPA) d
 *   **System**: A hybrid of semantic class names (`.sidebar`, `.card`) and utility-like helper classes (`.flex`, `.text-sm`, `.mb-4`).
 *   **Responsiveness**: Mobile-first media queries (`@media (max-width: 768px)`).
 
-## API Contract (Inferred)
-
-The application expects a backend running at `/snapraid/v1` supporting the following endpoints:
-
-*   `GET /array`: Returns array status, health, version info.
-*   `GET /state`: Returns global state object (pulse) for real-time updates.
-*   `GET /disks`: Returns list of `parity_disks` and `data_disks` with SMART info.
-*   `GET /activity`: Returns current running task status (progress, speed, logs).
-*   `GET /tasks`: Returns generic task lists containing `active`, `pending`, and `history`.
-*   `GET /config`: Returns key-value configuration.
-*   `PATCH /config`: Updates configuration.
-*   `POST /maintenance`: Triggers maintenance flow.
-*   `POST /stop`: Stops running tasks.
-*   `POST /probe`: Triggers a disk probe.
-*   `POST /diff`: Triggers a diff view generation.
-*   `POST /up`, `POST /down`: Spin up/down disks.
-*   `POST /down_idle`: Spin down idle disks.
-
 ## Page Breakdown
 
 ### 1. Dashboard (`#/`)

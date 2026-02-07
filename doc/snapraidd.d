@@ -295,15 +295,17 @@ Rest API
 	It is implemented with the sequence of commands: up, fix -m -f ...,
 	diff, and report.
 
-    /snapraid/v1/down_idle
-	Executes a conditional spindown operation. The daemon will only issue
-	the spindown command to disks that have exceeded the 'spindown_idle_minutes'
-	threshold. In this case, no report is generated.
+    /snapraid/v1/suspend_idle
+	Probes the disks to gather their latest activity state and executes a
+	conditional spindown operation. The daemon will only issue the
+	down_idle command to disks that have exceeded the
+	'spindown_idle_minutes' threshold. In this case, no report is
+	generated.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/down_idle
+		:curl -X POST http://localhost:8080/snapraid/v1/suspend_idle
 
-	It is implemented with the sequence of commands: probe, down -d ....
+	It is implemented with the sequence of commands: probe, down_idle.
 
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of

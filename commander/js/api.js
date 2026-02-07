@@ -44,7 +44,7 @@ export const API = {
     startDiff: () => API.schedule([{ command: 'up' }, { command: 'diff' }]),
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
-    spinDownIdle: () => request('/down_idle', { method: 'POST' }),
+    spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
     undelete: (filters) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters }) }),
     stopTask: () => request('/stop', { method: 'POST' })
 };

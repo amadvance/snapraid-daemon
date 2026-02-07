@@ -188,11 +188,13 @@ struct snapraid_disk {
 #define CMD_SCRUB 11
 #define CMD_FIX 12
 #define CMD_CHECK 13
-#define CMD_REPORT 100
-#define CMD_MAINTENANCE 101
-#define CMD_HEAL 102
-#define CMD_UNDELETE 103
-#define CMD_DOWN_IDLE 104
+#define CMD_REPORT 101 /**< Additional command that generate a report */
+#define CMD_DOWN_IDLE 102 /**< Additional command that spin down inactive disks */
+#define CMD_MAINTENANCE 201 /**< High level command. Never enter the queue. */
+#define CMD_HEAL 202 /**< High level command. Never enter the queue. */
+#define CMD_UNDELETE 203 /**< High level command. Never enter the queue. */
+#define CMD_SUSPEND_IDLE 204 /**< High level command. Never enter the queue. */
+
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */
