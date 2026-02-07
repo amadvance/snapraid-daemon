@@ -521,6 +521,10 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 	if (state->runner.latest && state->runner.latest->running) {
 		struct snapraid_task* task = state->runner.latest;
 		ss_json_str(&s, level, "active_command", command_name(task->cmd));
+		if (!tommy_list_empty(&state->runner.waiting_list)) {
+			struct snapraid_task* next_task = tommy_list_head(&state->runner.waiting_list)->data;
+			ss_json_str(&s, level, "next_command", command_name(next_task->cmd));
+		}
 		if (task->cmd == CMD_SYNC || task->cmd == CMD_SCRUB
 			|| task->cmd == CMD_FIX || task->cmd == CMD_CHECK) {
 			switch (task->state) {

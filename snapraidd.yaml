@@ -221,6 +221,14 @@ paths:
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
+                  next_command:
+                    type: string
+                    enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
+                    description: >
+                      The next command scheduled in the current execution sequence.
+                      This field is present when the daemon is running an automated
+                      workflow and there are pending steps remaining in the queue.
+                      If no subsequent task is queued, this field is omitted.
                   progress:
                     type: integer
                     minimum: 0
