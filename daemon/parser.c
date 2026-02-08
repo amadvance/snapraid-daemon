@@ -469,6 +469,12 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		pulse_double(state, PULSE_DISKS, &device->afr, val);
 		if (mac >= 6)
 			pulse_double(state, PULSE_DISKS, &device->prob, map[5]);
+	} else if (strcmp(tag, "temperature") == 0) {
+		int temperature;
+		if (pulse_strint(state, PULSE_DISKS, &temperature, val) == 0) {
+			struct snapraid_temp* temp = temperature_alloc(temperature, state->global.last_time);
+			temperature_insert(&device->temp_list, temp);
+		}
 	} else if (strcmp(tag, "error_protocol") == 0)
 		/* PULSE_ARRAY use the disk error as health */
 		pulse_stru64(state, PULSE_ARRAY | PULSE_DISKS, &device->error_protocol, val);
@@ -928,35 +934,35 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		switch (task->cmd) {
 		case CMD_SYNC :
 			pulse(state, PULSE_ARRAY);
-			state->global.sync_time = state->global.last_time;
+			state->global.sync_time = task->unix_start_time;
 
 			/* move the parsed diff to the previous state */
 			diff_move(&state->global.diff_parse, &state->global.diff_prev);
 
 			/* cleanup the current state, because after sync there is no difference anymore */
-			state->global.diff_time = state->global.sync_time;
+			state->global.diff_time = task->unix_start_time;
 			state->global.fix_time = 0;
 			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
 			fix_cleanup(&state->global.fix_current);
 			break;
 		case CMD_SCRUB :
 			pulse(state, PULSE_ARRAY);
-			state->global.scrub_time = state->global.last_time;
+			state->global.scrub_time = task->unix_start_time;
 			break;
 		case CMD_DIFF :
 			pulse(state, PULSE_ARRAY);
-			state->global.diff_time = state->global.last_time;
+			state->global.diff_time = task->unix_start_time;
 
 			/* move the parsing diff to the current state */
 			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
 		case CMD_STATUS :
 			pulse(state, PULSE_ARRAY);
-			state->global.status_time = state->global.last_time;
+			state->global.status_time = task->unix_start_time;
 			break;
 		case CMD_FIX :
 			pulse(state, PULSE_ARRAY);
-			state->global.fix_time = state->global.last_time;
+			state->global.fix_time = task->unix_start_time;
 
 			/* accumulate the parsing fix to the current state */
 			fix_accumulate(&task->fix_list, &state->global.fix_current);

@@ -88,7 +88,11 @@ void disk_free(void* void_disk)
 
 void device_free(void* void_device)
 {
-	free(void_device);
+	struct snapraid_device* device = void_device;
+	if (!device)
+		return;
+	tommy_list_foreach(&device->temp_list, temperature_free);
+	free(device);
 }
 
 void split_free(void* void_split)
@@ -550,6 +554,43 @@ static double poisson_prob_at_least_one_failure(double rate)
 double fp_array(struct snapraid_state* state)
 {
 	return poisson_prob_at_least_one_failure(afr_array(state));
+}
+
+/****************************************************************************/
+/* temperature */
+
+struct snapraid_temp* temperature_alloc(int temperature, time_t time_at)
+{
+	struct snapraid_temp* temp = malloc_nofail(sizeof(struct snapraid_temp));
+	temp->temp = temperature;
+	temp->time_at = time_at;
+	return temp;
+}
+
+void temperature_free(void* void_temp)
+{
+	struct snapraid_temp* temp = void_temp;
+	free(temp);
+}
+
+void temperature_insert(tommy_list* list, struct snapraid_temp* temp)
+{
+	time_t cutoff = temp->time_at - SECONDS_IN_A_DAY;
+
+	tommy_list_insert_tail(list, &temp->node, temp);
+
+	/* clear too old entries */
+	tommy_node* i = tommy_list_head(list);
+	while (i) {
+		tommy_node* i_next = i->next;
+
+		struct snapraid_temp* entry = i->data;
+
+		if (entry->time_at < cutoff)
+			tommy_list_remove_existing(list, &entry->node);
+
+		i = i_next;
+	}
 }
 
 /****************************************************************************/

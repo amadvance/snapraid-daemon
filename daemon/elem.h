@@ -101,6 +101,13 @@ double afr_array(struct snapraid_state* state);
 double fp_array(struct snapraid_state* state);
 
 /****************************************************************************/
+/* temperature */
+
+struct snapraid_temp* temperature_alloc(int temperature, time_t time_at);
+void temperature_free(void* void_temp);
+void temperature_insert(tommy_list* list, struct snapraid_temp* temp);
+
+/****************************************************************************/
 /* page */
 
 struct snapraid_page {

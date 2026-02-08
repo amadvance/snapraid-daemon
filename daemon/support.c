@@ -278,7 +278,7 @@ ssize_t ss_printl(ss_t* s, const char* str, size_t pad)
 	return len < pad ? pad : len;
 }
 
-static void ss_json_tab(ss_t* s, int level)
+void ss_json_tab(ss_t* s, int level)
 {
 	while (level > 0) {
 		ss_write(s, "  ", 2);

@@ -1279,6 +1279,50 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, status, msg);
 }
 
+#define TEMP_COUNT 144
+
+static void json_temp_list(ss_t* s, int level, tommy_list* list)
+{
+	tommy_node* last = tommy_list_tail(list);
+	if (!last)
+		return;
+
+	struct snapraid_temp* last_temp = last->data;
+	int64_t base = last_temp->time_at - SECONDS_IN_A_DAY;
+	int64_t delta = (SECONDS_IN_A_DAY + TEMP_COUNT - 1) / TEMP_COUNT;
+
+	int vect[TEMP_COUNT];
+	memset(vect, 0, sizeof(vect));
+
+	for (tommy_node* i = tommy_list_head(list); i != 0; i = i->next) {
+		struct snapraid_temp* entry = i->data;
+
+		if (entry->time_at < base)
+			continue;
+
+		int index = (entry->time_at - base) / delta;
+		if (index < 0) /* safety check, it should never happen */
+			continue;
+		if (index >= TEMP_COUNT) /* safety check, it should never happen */
+			index = TEMP_COUNT - 1;
+
+		vect[index] = entry->temp;
+	}
+
+	ss_json_array_open(s, &level, "temp_history_24h");
+	for (int j = 0; j < TEMP_COUNT; ++j) {
+		if (j % 16 == 0) {
+			if (j != 0)
+				ss_prints(s, ",\n");
+			ss_json_tab(s, level);
+		} else {
+			ss_prints(s, ", ");
+		}
+		ss_printf(s, "%d", vect[j]);
+	}
+	ss_json_array_close(s, &level);
+}
+
 static void json_device_list(ss_t* s, int level, tommy_list* list)
 {
 	++level;
@@ -1311,6 +1355,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list)
 			ss_json_double(s, level, "annual_failure_rate", dev->afr);
 		if (dev->prob != 0)
 			ss_json_double(s, level, "failure_probability", dev->prob);
+		json_temp_list(s, level, &dev->temp_list);
 		ss_json_object_open(s, &level, "smart");
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
@@ -1328,10 +1373,11 @@ static void json_device_list(ss_t* s, int level, tommy_list* list)
 			ss_json_u64(s, level, "power_on_hours", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "load_cycle_count", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
-		if (dev->smart[SMART_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "temperature_celsius", dev->smart[SMART_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
-		else if (dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "temperature_celsius", dev->smart[SMART_AIRFLOW_TEMPERATURE_CELSIUS] & 0xFFFFFFFF);
+		tommy_node* last = tommy_list_tail(&dev->temp_list);
+		if (last) {
+			struct snapraid_temp* temp = last->data;
+			ss_json_u64(s, level, "temperature_celsius", temp->temp);
+		}
 		if (dev->flags != SMART_UNASSIGNED) {
 			ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);
 			ss_json_bool(s, level, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);

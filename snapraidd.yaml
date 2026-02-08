@@ -985,6 +985,17 @@ components:
             Statistical probability of at least one disk failure within a
             one-year period, calculated using a Poisson distribution model
             based on the aggregate Annual Failure Rate.
+        temp_history_24h:
+          type: array
+          minItems: 144
+          maxItems: 144
+          items:
+            type: integer
+          description: >
+            A rolling 24-hour history of temperatures measured
+            every 10 minutes (144 points total).
+            - Value 0: Standby mode
+            - Index 0 is 24h ago; Index 143 is current.
         smart:
           type: object
           description: >

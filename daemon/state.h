@@ -123,6 +123,15 @@ struct snapraid_pulse {
 };
 
 /**
+ * Temperature
+ */
+struct snapraid_temp {
+	time_t time_at; /**< Time of the measure */
+	int temp; /**< Temperature value */
+	tommy_node node;
+};
+
+/**
  * Device info entry.
  */
 struct snapraid_device {
@@ -143,6 +152,7 @@ struct snapraid_device {
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
 	int split_index; /**< Index of the split */
+	tommy_list temp_list; /**< Temperature measures */
 	tommy_node node;
 };
 

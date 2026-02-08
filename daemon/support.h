@@ -151,6 +151,11 @@ ssize_t ss_printr(ss_t* s, const char* str, size_t pad);
 ssize_t ss_printl(ss_t* s, const char* str, size_t pad);
 
 /**
+ * Write JSON tabs.
+ */
+void ss_json_tab(ss_t* s, int level);
+
+/**
  * Write JSON-escaped string to string stream.
  * @param s String stream
  * @param level Indentation level
