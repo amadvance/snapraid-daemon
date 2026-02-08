@@ -38,6 +38,21 @@ export const formatTime = (isoString) => {
     return `${datePart} ${hours}:${minutes}:${seconds}`;
 };
 
+export const formatRelativeTime = (isoString, referenceIsoString) => {
+    if (!isoString) return 'Unknown';
+    const date = new Date(isoString);
+    const reference = referenceIsoString ? new Date(referenceIsoString) : new Date();
+    const diffSeconds = Math.floor((reference - date) / 1000);
+
+    if (diffSeconds < 60) return 'Just now';
+    if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+    if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+    if (diffSeconds < 172800) return 'Yesterday';
+    if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
+
+    return date.toLocaleDateString();
+};
+
 export const formatDuration = (start, end) => {
     if (!start || !end) return '-';
     const diff = Math.floor((new Date(end) - new Date(start)) / 1000);

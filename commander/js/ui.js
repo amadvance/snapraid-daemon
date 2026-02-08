@@ -1,5 +1,5 @@
 
-import { formatBytes, formatTime, formatSeconds, formatDuration, formatSignal, Icons } from './utils.js';
+import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDuration, formatSignal, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
@@ -219,6 +219,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     </div>
                 </div>                
             </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-800 flex justify-center gap-2 text-xs text-muted">
+                <span>Last Sync: ${formatRelativeTime(arrayInfo.last_sync_at, arrayInfo.generated_at)}</span>
+                <span>&bull;</span>
+                <span>Last Scrub: ${formatRelativeTime(arrayInfo.last_scrub_at, arrayInfo.generated_at)}</span>
+            </div>
         </div>
     `;
 
@@ -303,7 +309,7 @@ export const renderDifferences = (arrayInfo) => {
                     <div class="text-sm text-muted mt-2 italic">
                         These differences represent changes since the last sync. They will be cleared once the next maintenance cycle completes.
                     </div>
-                    <div class="text-sm text-muted mt-1">Last updated: ${formatTime(arrayInfo.last_diff_at)}</div>
+                    <div class="text-sm text-muted mt-1">Last updated: ${formatRelativeTime(arrayInfo.last_diff_at, arrayInfo.generated_at)}</div>
                 </div>
                 <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
