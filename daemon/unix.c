@@ -726,6 +726,13 @@ pid_t daemon_spawn(char** argv, int* stderr_fd)
 	}
 
 	/* parent */
+
+	/* set the pipe buffer to the minimum to improve responsiveness */
+	if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
+		log_msg(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+		/* log non-fatal error or ignore */
+	}
+
 	close(err_pipe[1]);
 
 	*stderr_fd = err_pipe[0];
