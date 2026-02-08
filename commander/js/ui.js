@@ -59,7 +59,7 @@ export function renderTempSparkline(containerId, temperaturaArray) {
 
     const getColor = (temp) => {
         if (temp < 40) return '#00d2ff'; // Cyan
-        if (temp < 55) return '#ffcc00'; // Amber
+        if (temp < 50) return '#ffcc00'; // Amber
         return '#ff4d4d';                // Red
     };
 
@@ -84,7 +84,7 @@ export function renderTempSparkline(containerId, temperaturaArray) {
         const y = getY(temp);
 
         svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}">
-                    <title>${(143 - i) * 10}m ago: ${temp}°C</title>
+                    <title>${Math.floor((143 - i) * 10 / 60)}h ago: ${temp}°C</title>
                 </circle>`;
     });
 
@@ -107,24 +107,8 @@ const renderSystemCard = (system) => {
             <h3 class="font-bold mb-4 border-b border-slate-700 pb-2 text-cyan">System</h3>
             <div class="property-list">
                  <div class="property-row">
-                    <div class="property-label">Hostname</div>
-                    <div class="property-value">${system.hostname}</div>
-                 </div>
-                 <div class="property-row">
-                    <div class="property-label">OS</div>
-                    <div class="property-value text-sm">${system.os_distribution}</div>
-                 </div>
-                 <div class="property-row">
-                    <div class="property-label">Kernel</div>
-                    <div class="property-value text-xs font-mono">${system.os_kernel_version}</div>
-                 </div>
-                 <div class="property-row">
                     <div class="property-label">Uptime</div>
-                    <div class="property-value text-sm">${formatSeconds(system.uptime_seconds)}</div>
-                 </div>
-                 <div class="property-row">
-                    <div class="property-label">CPU</div>
-                    <div class="property-value text-sm">${system.cpu_model}</div>
+                    <div class="property-value">${formatSeconds(system.uptime_seconds)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Memory</div>
@@ -137,6 +121,22 @@ const renderSystemCard = (system) => {
                             <div class="progress-bar" style="width: ${memPercent}%"></div>
                         </div>
                     </div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Hostname</div>
+                    <div class="property-value text-sm">${system.hostname}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">OS</div>
+                    <div class="property-value text-sm">${system.os_distribution}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">Kernel</div>
+                    <div class="property-value text-sm font-mono">${system.os_kernel_version}</div>
+                 </div>
+                 <div class="property-row">
+                    <div class="property-label">CPU</div>
+                    <div class="property-value text-xs">${system.cpu_model}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Motherboard</div>
@@ -489,7 +489,7 @@ const renderDiskCard = (disk, type) => {
                 <div class="text-xs text-muted mb-2">${dev.model || 'Unknown Model'} (${dev.serial || '-'})</div>
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
-                    <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs">
+                    <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs text-muted">
                          <div>Temp: <span class="${tempClass}">${tempStr}</span></div>
                          <div class="text-muted mt-1">
                             ${dev.rotational ? 'HDD' : 'SSD'} (${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'})
@@ -527,7 +527,6 @@ const renderDiskCard = (disk, type) => {
                 <div class="progress-bar" style="width: ${percentUsed}%"></div>
             </div>
 
-            <h4 class="text-xs text-muted uppercase font-bold mb-1">Devices</h4>
             ${devicesHtml}
         </div>
     `;
