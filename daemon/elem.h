@@ -80,7 +80,7 @@ void file_free(void* void_file);
 /****************************************************************************/
 /* diff */
 
-void diff_cleanup(struct snapraid_diff_stat* diff);
+void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal);
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
 
 /****************************************************************************/

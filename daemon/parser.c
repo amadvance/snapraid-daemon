@@ -833,7 +833,7 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 	if (strcmp(cmd, "sync") == 0 || strcmp(cmd, "diff") == 0) {
 		/* diff and sync generate a new diff list, so cleanup it */
 		pulse(state, PULSE_ARRAY);
-		diff_cleanup(&state->global.diff_parse);
+		diff_cleanup(&state->global.diff_parse, 0);
 	}
 }
 
@@ -896,7 +896,7 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	const char* val = map[2];
 
 	/* diff */
-	if (task->cmd == CMD_DIFF) {
+	if (task->cmd == CMD_DIFF || task->cmd == CMD_SYNC) {
 		if (strcmp(tag, "equal") == 0)
 			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
@@ -934,9 +934,9 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			diff_move(&state->global.diff_parse, &state->global.diff_prev);
 
 			/* cleanup the current state, because after sync there is no difference anymore */
-			state->global.diff_time = 0;
+			state->global.diff_time = state->global.sync_time;
 			state->global.fix_time = 0;
-			diff_cleanup(&state->global.diff_current);
+			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
 			fix_cleanup(&state->global.fix_current);
 			break;
 		case CMD_SCRUB :

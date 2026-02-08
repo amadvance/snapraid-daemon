@@ -277,9 +277,9 @@ void file_free(void* void_file)
 /****************************************************************************/
 /* diff */
 
-void diff_cleanup(struct snapraid_diff_stat* diff)
+void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal)
 {
-	diff->diff_equal = 0;
+	diff->diff_equal = equal;
 	diff->diff_added = 0;
 	diff->diff_removed = 0;
 	diff->diff_updated = 0;
@@ -303,7 +303,6 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 
 	diff_src->diff_equal = diff_dest->diff_equal;
 	diff_src->diff_equal += diff_dest->diff_added;
-	diff_src->diff_equal -= diff_dest->diff_removed;
 	diff_src->diff_equal += diff_dest->diff_updated;
 	diff_src->diff_equal += diff_dest->diff_moved;
 	diff_src->diff_equal += diff_dest->diff_copied;
