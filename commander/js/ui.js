@@ -153,11 +153,25 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const usedSpace = totalSpace - freeSpace;
     const percentUsed = totalSpace > 0 ? (usedSpace / totalSpace * 100) : 0;
 
+    const parityLabels = [
+        '', 'SINGLE PARITY', 'DOUBLE PARITY', 'TRIPLE PARITY',
+        'QUAD PARITY', 'PENTA PARITY', 'HEXA PARITY'
+    ];
+    let parityColor = 'yellow'; // default to gold
+    if (arrayInfo.parity_disks_count === 1)
+        parityColor = 'purple';
+    else if (arrayInfo.parity_disks_count === 2)
+        parityColor = 'blue';
+
+    const parityBadgeHtml = arrayInfo.parity_disks_count > 0
+        ? badge(parityLabels[arrayInfo.parity_disks_count] || `${arrayInfo.parity_disks_count}-LEVEL PARITY`, parityColor)
+        : '';
+
     const arrayStatusHtml = `
         <div class="card">
             <div class="flex gap-4 items-center mb-4">
                 <h3 class="text-xl font-bold text-cyan">Array</h3>
-                <div class="text-2xl font-bold">${healthBadge(arrayInfo.health)}</div>
+                <div class="text-2xl font-bold flex gap-4 items-center">${healthBadge(arrayInfo.health)} ${parityBadgeHtml}</div>
             </div>
 
             <div class="mb-6">
