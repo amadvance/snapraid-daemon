@@ -1677,6 +1677,8 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		if (*global->content)
 			ss_json_str(&s, level, "engine_content", global->content);
 		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
+		ss_json_int(&s, level, "data_disks_count", tommy_list_count(&state->data_list));
+		ss_json_int(&s, level, "parity_disks_count", tommy_list_count(&state->parity_list));
 		if (global->last_time)
 			ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
 		if (*global->last_cmd)

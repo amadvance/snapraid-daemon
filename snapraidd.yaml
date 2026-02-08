@@ -1631,6 +1631,18 @@ components:
           example: 262144
           description: >
             Array block size in bytes (always power of 2).
+        data_disks_count:
+          type: integer
+          minimum: 1
+          description: >
+            The total number of data disks currently registered
+            and protected in the SnapRAID configuration.
+        parity_disks_count:
+          type: integer
+          minimum: 1
+          description: >
+            The number of parity disks (redundancy levels) configured,
+            defining how many simultaneous disk failures the array can survive.
         last_command_at:
           type: string
           example: "2026-01-12T08:00:00"
