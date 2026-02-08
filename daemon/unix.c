@@ -766,9 +766,8 @@ void daemon_signal_restore_after_fork(void)
 
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
-	sigaction(SIGQUIT, &sa, 0);
 	sigaction(SIGHUP, &sa, 0);
-	sigaction(SIGPIPE, &sa, 0);
+	/* do not restore SIGPIPE */
 
 	/* Ensure signals are unblocked */
 	sigset_t mask;
@@ -783,7 +782,6 @@ void daemon_signal_set(int enable)
 	sigemptyset(&set);
 	sigaddset(&set, SIGTERM);
 	sigaddset(&set, SIGINT);
-	sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGHUP);
 
 	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
@@ -800,7 +798,6 @@ void daemon_signal_init(void)
 
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
-	sigaction(SIGQUIT, &sa, 0);
 
 	sa.sa_handler = signal_handler_hup;
 	sigemptyset(&sa.sa_mask);

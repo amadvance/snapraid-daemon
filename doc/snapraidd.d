@@ -470,13 +470,21 @@ Rest API
 Signals
 	SIGHUP
 		Reloads the configuration file and resets the internal state.
-		This is the recommended way to apply changes to static
-		parameters without restarting the service.
+		It also reloads the Web UI. This is the recommended way to
+		apply changes to static	parameters without restarting the
+		service.
 
 	SIGTERM, SIGINT
 		Initiates a graceful shutdown. If a task is currently
 		running, the daemon attempts to terminate the child process
 		before exiting.
+
+	SIGQUIT
+		Immediately terminates the process using the default signal
+		action and may generate a core dump. This signal is intended
+		for emergency debugging and post mortem analysis of a hung
+		or misbehaving daemon. No cleanup or graceful shutdown is
+		performed.
 
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
