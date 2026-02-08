@@ -1,7 +1,7 @@
 
 import { API } from './api.js';
 import { Icons, showToast, showConfirm, formatSeconds } from './utils.js';
-import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings } from './ui.js';
+import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline } from './ui.js';
 
 const app = {
     state: {
@@ -301,6 +301,16 @@ const app = {
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
             document.getElementById('view-container').innerHTML = renderDisks(data);
+
+            // Post-render: Draw Sparklines
+            [...data.parity_disks, ...data.data_disks].forEach(disk => {
+                disk.devices.forEach(dev => {
+                    if (dev.temp_history_24h) {
+                        const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
+                        renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h);
+                    }
+                });
+            });
         } catch (e) {
             app.setConnection(false);
             throw e;

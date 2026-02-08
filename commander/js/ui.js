@@ -30,6 +30,70 @@ const statusBadge = (task) => {
     return badge(task.status, color);
 };
 
+/**
+ * Renders a temperature sparkline by measuring its parent container
+ * to ensure a 1:1 pixel-accurate render.
+ * * @param {string} containerId - The ID of the div to fill.
+ * @param {Array} temperaturaArray - 144 integers (0 for standby).
+ */
+export function renderTempSparkline(containerId, temperaturaArray) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // 1. Capture actual pixel dimensions
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // 2. Define Layout (Padding for labels)
+    const margin = { top: 10, right: 10, bottom: 10, left: 35 };
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+
+    // 3. Coordinate Math (Actual Pixels)
+    const getY = (temp) => {
+        const normalized = (temp - 20) / (70 - 20);
+        return chartHeight - (normalized * chartHeight) + margin.top;
+    };
+
+    const getX = (index) => (index / 143) * chartWidth + margin.left;
+
+    const getColor = (temp) => {
+        if (temp < 40) return '#00d2ff'; // Cyan
+        if (temp < 55) return '#ffcc00'; // Amber
+        return '#ff4d4d';                // Red
+    };
+
+    // 4. Build SVG String
+    let svg = `<svg width="${width}" height="${height}" class="temp-sparkline">`;
+
+    // Guide Rails & Labels (20, 45, 70)
+    [20, 45, 70].forEach(level => {
+        const yPos = getY(level);
+        svg += `
+            <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" style="font-family:sans-serif;">${level}°</text>
+            <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
+                  stroke="rgba(255,255,255,0.1)" stroke-dasharray="2" />
+        `;
+    });
+
+    // Render 144 Dots
+    temperaturaArray.forEach((temp, i) => {
+        if (temp <= 0) return; // Handle Standby
+
+        const x = getX(i);
+        const y = getY(temp);
+
+        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}">
+                    <title>${(143 - i) * 10}m ago: ${temp}°C</title>
+                </circle>`;
+    });
+
+    svg += `</svg>`;
+
+    // 5. Inject into DOM
+    container.innerHTML = svg;
+}
+
 const renderSystemCard = (system) => {
     if (!system) return '';
 
@@ -410,6 +474,12 @@ const renderDiskCard = (disk, type) => {
         const tempClass = temp >= 50 ? 'text-red font-bold' : (temp >= 40 ? 'text-yellow font-bold' : '');
         const tempStr = temp !== undefined ? `${temp}°C` : '-';
 
+        let sparklinePlaceholder = '';
+        if (dev.temp_history_24h) {
+            const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
+            sparklinePlaceholder = `<div id="sparkline-${safeId}" class="temp-sparkline-row temp-sparkline-container" style="width: 100%;"></div>`;
+        }
+
         return `
             <div class="bg-slate-950 p-3 rounded mt-2 border border-slate-800 text-sm">
                 <div class="flex justify-between mb-1">
@@ -417,10 +487,19 @@ const renderDiskCard = (disk, type) => {
                      <div>${badge(dev.power, dev.power === 'active' ? 'green' : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.model || 'Unknown Model'} (${dev.serial || '-'})</div>
-                <div class="flex justify-between text-xs mb-2">
-                    <span>Temp: <span class="${tempClass}">${tempStr}</span></span>
-                    <span>${dev.rotational ? 'HDD' : 'SSD'} (${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'})</span>
+                
+                <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
+                    <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs">
+                         <div>Temp: <span class="${tempClass}">${tempStr}</span></div>
+                         <div class="text-muted mt-1">
+                            ${dev.rotational ? 'HDD' : 'SSD'} (${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'})
+                         </div>
+                    </div>
+                    <div style="flex: 1; height: 100%; min-width: 0;">
+                        ${sparklinePlaceholder}
+                    </div>
                 </div>
+
                 ${smartStatus}
             </div>
         `;

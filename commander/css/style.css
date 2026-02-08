@@ -755,6 +755,21 @@ body {
     overflow-x: auto;
 }
 
+/* Temperature */
+.temp-sparkline {
+    display: block;
+}
+
+.temp-sparkline-row {
+    height: 60px;
+}
+
+.temp-sparkline-container {
+    border: 1px solid var(--c-slate-800);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
 /* Property List */
 .property-list {
     display: flex;
