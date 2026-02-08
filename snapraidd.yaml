@@ -1643,6 +1643,13 @@ components:
           description: >
             The number of parity disks (redundancy levels) configured,
             defining how many simultaneous disk failures the array can survive.
+        generated_at:
+          type: string
+          example: "2026-01-12T08:00:00"
+          description: >
+            The local system time at which this API response was generated.
+            This provides a baseline reference for calculating relative
+            time offsets for all other event timestamps in the payload.
         last_command_at:
           type: string
           example: "2026-01-12T08:00:00"
