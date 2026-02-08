@@ -15,7 +15,7 @@ const healthBadge = (health) => {
 const statusBadge = (task) => {
     const map = {
         queued: 'grey', starting: 'yellow', processing: 'blue',
-        finalizing: 'purple', terminated: 'green', canceled: 'red', signaled: 'red'
+        stopping: 'purple', finalizing: 'purple', terminated: 'green', canceled: 'red', signaled: 'red'
     };
     let color = map[task.status] || 'grey';
 
