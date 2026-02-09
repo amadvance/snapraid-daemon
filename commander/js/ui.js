@@ -72,7 +72,7 @@ export function renderTempSparkline(containerId, temperaturaArray) {
         svg += `
             <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" style="font-family:sans-serif;">${level}°</text>
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
-                  stroke="rgba(255,255,255,0.1)" stroke-dasharray="2" />
+                  stroke="rgba(255,255,255,0.3)" stroke-dasharray="2" />
         `;
     });
 
@@ -181,12 +181,12 @@ export function renderScrubHistory(containerId, history) {
 
         if (p.scrubbed > 0) {
             svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1">
-                        <title>${p.ago} days ago: ${p.scrubbed.toFixed(2)}% scrubbed</title>
+                        <title>${p.ago} days ago: ${p.scrubbed.toFixed(1)}% scrubbed</title>
                     </rect>`;
         }
         if (p.new > 0) {
             svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1">
-                        <title>${p.ago} days ago: ${p.new.toFixed(2)}% new</title>
+                        <title>${p.ago} days ago: ${p.new.toFixed(1)}% new</title>
                     </rect>`;
         }
     });
