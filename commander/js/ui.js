@@ -83,9 +83,7 @@ export function renderTempSparkline(containerId, temperaturaArray) {
         const x = getX(i);
         const y = getY(temp);
 
-        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}">
-                    <title>${Math.floor((143 - i) * 10 / 60)}h ago: ${temp}°C</title>
-                </circle>`;
+        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}" data-tooltip="${Math.floor((143 - i) * 10 / 60)}h ago: ${temp}°C"></circle>`;
     });
 
     svg += `</svg>`;
@@ -180,14 +178,10 @@ export function renderScrubHistory(containerId, history) {
         const yNew = chartHeight - hScrubbed - hNew + margin.top;
 
         if (p.scrubbed > 0) {
-            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1">
-                        <title>${p.ago} days ago: ${p.scrubbed.toFixed(1)}% scrubbed</title>
-                    </rect>`;
+            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.ago} days ago: ${p.scrubbed.toFixed(1)}% scrubbed"></rect>`;
         }
         if (p.new > 0) {
-            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1">
-                        <title>${p.ago} days ago: ${p.new.toFixed(1)}% new</title>
-                    </rect>`;
+            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.ago} days ago: ${p.new.toFixed(1)}% new"></rect>`;
         }
     });
 

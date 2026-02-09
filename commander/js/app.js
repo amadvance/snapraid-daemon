@@ -25,6 +25,55 @@ const app = {
             if (Icons[iconName]) el.innerHTML = Icons[iconName];
         });
 
+        // Global Tooltip Manager
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip-floating';
+        document.body.appendChild(tooltip);
+
+        document.addEventListener('mouseover', (e) => {
+            const el = e.target.closest('[data-tooltip]');
+            if (!el) {
+                tooltip.classList.remove('active');
+                return;
+            }
+
+            // Only use JS tooltip for SVG or where explicitly requested
+            // SVG elements don't support CSS ::after properly
+            const isSvg = el.namespaceURI === 'http://www.w3.org/2000/svg';
+            const isManual = el.hasAttribute('data-tooltip-js');
+
+            if (isSvg || isManual) {
+                tooltip.innerText = el.getAttribute('data-tooltip');
+                tooltip.classList.add('active');
+
+                const updatePos = (me) => {
+                    const padding = 15;
+                    let x = me.clientX + padding;
+                    let y = me.clientY + padding;
+
+                    // Flip if near edges
+                    if (x + tooltip.offsetWidth > window.innerWidth) x = me.clientX - tooltip.offsetWidth - padding;
+                    if (y + tooltip.offsetHeight > window.innerHeight) y = me.clientY - tooltip.offsetHeight - padding;
+
+                    tooltip.style.left = `${x}px`;
+                    tooltip.style.top = `${y}px`;
+                };
+
+                updatePos(e);
+                el._tooltipHandler = updatePos;
+                el.addEventListener('mousemove', updatePos);
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const el = e.target.closest('[data-tooltip]');
+            if (el && el._tooltipHandler) {
+                el.removeEventListener('mousemove', el._tooltipHandler);
+                delete el._tooltipHandler;
+            }
+            tooltip.classList.remove('active');
+        });
+
         // Navigation
         window.addEventListener('hashchange', app.handleRoute);
         app.handleRoute();
