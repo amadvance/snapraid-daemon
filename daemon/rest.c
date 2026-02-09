@@ -530,8 +530,6 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 			|| task->cmd == CMD_FIX || task->cmd == CMD_CHECK) {
 			switch (task->state) {
 			case PROCESS_STATE_RUN :
-			case PROCESS_STATE_TERM :
-			case PROCESS_STATE_SIGNAL :
 				ss_json_int(&s, level, "progress", task->progress);
 				ss_json_uint(&s, level, "eta_seconds", task->eta_seconds);
 				break;
