@@ -265,29 +265,32 @@ static void print_task(ss_t* ss, const char* task_name, struct snapraid_task* ta
 		}
 	}
 
-	/* print error messages if any */
-	int first = 1;
-	for (i = tommy_list_head(&task->message_list); i; i = i->next) {
-		struct snapraid_message* message = i->data;
-		switch (message->level) {
-		case MESSAGE_LEVEL_FATAL :
-		case MESSAGE_LEVEL_ERROR :
-			if (first) {
-				ss_prints(ss, "\nERROR MESSAGES:\n");
-				first = 0;
+	/* canceled tasks have real messages, just the exit_msg already shown */
+	if (task->state != PROCESS_STATE_CANCEL) {
+		/* print error messages if any */
+		int first = 1;
+		for (i = tommy_list_head(&task->message_list); i; i = i->next) {
+			struct snapraid_message* message = i->data;
+			switch (message->level) {
+			case MESSAGE_LEVEL_FATAL :
+			case MESSAGE_LEVEL_ERROR :
+				if (first) {
+					ss_prints(ss, "\nERROR MESSAGES:\n");
+					first = 0;
+				}
+				if (message->type == MESSAGE_TYPE_HARDWARE)
+					ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
+				else
+					ss_printf(ss, "  - %s\n", message->msg);
+				break;
 			}
-			if (message->type == MESSAGE_TYPE_HARDWARE)
-				ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
-			else
-				ss_printf(ss, "  - %s\n", message->msg);
-			break;
 		}
-	}
 
-	/* print recovered files if any */
-	if (!tommy_list_empty(&task->fix_list)) {
-		ss_prints(ss, "\nRECOVER:\n");
-		print_fix(ss, &task->fix_list);
+		/* print recovered files if any */
+		if (!tommy_list_empty(&task->fix_list)) {
+			ss_prints(ss, "\nRECOVER:\n");
+			print_fix(ss, &task->fix_list);
+		}
 	}
 }
 

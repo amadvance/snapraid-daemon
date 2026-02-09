@@ -174,6 +174,7 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 		/* remove from the waiting list */
 		tommy_list_remove_existing(waiting_list, i);
 		sncpy(task->exit_msg, sizeof(task->exit_msg), msg);
+		message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
 		task->state = PROCESS_STATE_CANCEL;
 		task->unix_start_time = now;
 		task->unix_end_time = now;
