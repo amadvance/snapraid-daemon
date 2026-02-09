@@ -473,7 +473,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		int temperature;
 		if (pulse_strint(state, PULSE_DISKS, &temperature, val) == 0) {
 			struct snapraid_temp* temp = temperature_alloc(temperature, state->global.last_time);
-			temperature_insert(&device->temp_list, temp);
+			temperature_insert(device, temp);
 		}
 	} else if (strcmp(tag, "error_protocol") == 0)
 		/* PULSE_ARRAY use the disk error as health */
@@ -914,6 +914,10 @@ static void process_unixtime(struct snapraid_state* state, char** map, size_t ma
 
 	/* this is the current time, no need to pulse */
 	stri64(&state->global.last_time, map[1]);
+
+	/* at any time update, remove too old temperature measurements */
+	if (temperature_cleanup_devices(state, state->global.last_time))
+		pulse(state, PULSE_DISKS);
 }
 
 static void process_command(struct snapraid_state* state, char** map, size_t mac)

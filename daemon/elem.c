@@ -606,24 +606,59 @@ void temperature_free(void* void_temp)
 	free(temp);
 }
 
-void temperature_insert(tommy_list* list, struct snapraid_temp* temp)
+int temperature_cleanup(struct snapraid_device* device, time_t last_time)
 {
-	time_t cutoff = temp->time_at - SECONDS_IN_A_DAY;
-
-	tommy_list_insert_tail(list, &temp->node, temp);
+	int ret = 0;
+	time_t cutoff = last_time - SECONDS_IN_A_DAY;
 
 	/* clear too old entries */
-	tommy_node* i = tommy_list_head(list);
+	tommy_node* i = tommy_list_head(&device->temp_list);
 	while (i) {
 		tommy_node* i_next = i->next;
 
 		struct snapraid_temp* entry = i->data;
 
-		if (entry->time_at < cutoff)
-			tommy_list_remove_existing(list, &entry->node);
+		if (entry->time_at < cutoff) {
+			tommy_list_remove_existing(&device->temp_list, &entry->node);
+			ret = 1;
+		}
 
 		i = i_next;
 	}
+
+	return ret;
+}
+
+int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time)
+{
+	int ret = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			if (temperature_cleanup(device, last_time))
+				ret = 1;
+		}
+	}
+
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+			struct snapraid_device* device = j->data;
+			if (temperature_cleanup(device, last_time))
+				ret = 1;
+		}
+	}
+
+	return ret;
+}
+
+void temperature_insert(struct snapraid_device* device, struct snapraid_temp* temp)
+{
+	temperature_cleanup(device, temp->time_at);
+
+	tommy_list_insert_tail(&device->temp_list, &temp->node, temp);
 }
 
 /****************************************************************************/

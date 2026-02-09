@@ -114,7 +114,21 @@ double fp_array(struct snapraid_state* state);
 
 struct snapraid_temp* temperature_alloc(int temperature, time_t time_at);
 void temperature_free(void* void_temp);
-void temperature_insert(tommy_list* list, struct snapraid_temp* temp);
+
+/**
+ * Insert a new temperature entru for the specific device
+ */
+void temperature_insert(struct snapraid_device* device, struct snapraid_temp* temp);
+
+/**
+ * Cleanup temperature that are too old for the specific device
+ */
+int temperature_cleanup(struct snapraid_device* device, time_t last_time);
+
+/**
+ * * Cleanup temperature that are too old all devices
+ */
+int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time);
 
 /****************************************************************************/
 /* page */

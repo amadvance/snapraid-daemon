@@ -1281,15 +1281,12 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 
 #define TEMP_COUNT 144
 
-static void json_temp_list(ss_t* s, int level, tommy_list* list)
+static void json_temp_list(ss_t* s, int level, tommy_list* list, int64_t reference)
 {
 	if (tommy_list_empty(list))
 		return;
 
-	tommy_node* last = tommy_list_tail(list);
-	struct snapraid_temp* last_temp = last->data;
-
-	int64_t base = last_temp->time_at - SECONDS_IN_A_DAY;
+	int64_t base = reference - SECONDS_IN_A_DAY;
 	int64_t delta = (SECONDS_IN_A_DAY + TEMP_COUNT - 1) / TEMP_COUNT;
 
 	int vect[TEMP_COUNT];
@@ -1335,7 +1332,7 @@ static unsigned day_ago(int64_t ref, int64_t now)
 	return (now - ref) / SECONDS_IN_A_DAY;
 }
 
-static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t now)
+static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t reference)
 {
 	if (tommy_list_empty(list))
 		return;
@@ -1369,8 +1366,8 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t now)
 			barmax = bar_scrubbed[column] + bar_new[column];
 	}
 
-	unsigned dayoldest = day_ago(oldest, now);
-	unsigned daynewest = day_ago(newest, now);
+	unsigned dayoldest = day_ago(oldest, reference);
+	unsigned daynewest = day_ago(newest, reference);
 
 	ss_json_object_open(s, &level, "scrub_history");
 	ss_json_uint(s, level, "x_axis_low", dayoldest);
@@ -1391,7 +1388,7 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t now)
 	ss_json_close(s, &level);
 }
 
-static void json_device_list(ss_t* s, int level, tommy_list* list)
+static void json_device_list(ss_t* s, int level, tommy_list* list, time_t reference)
 {
 	++level;
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
@@ -1423,7 +1420,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list)
 			ss_json_double(s, level, "annual_failure_rate", dev->afr);
 		if (dev->prob != 0)
 			ss_json_double(s, level, "failure_probability", dev->prob);
-		json_temp_list(s, level, &dev->temp_list);
+		json_temp_list(s, level, &dev->temp_list, reference);
 		ss_json_object_open(s, &level, "smart");
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
@@ -1458,7 +1455,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list)
 	}
 }
 
-static void json_disk_list(ss_t* s, int level, tommy_list* list)
+static void json_disk_list(ss_t* s, int level, tommy_list* list, int64_t reference)
 {
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -1498,7 +1495,7 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list)
 		ss_json_array_close(s, &level);
 
 		ss_json_array_open(s, &level, "devices");
-		json_device_list(s, level, &disk->device_list);
+		json_device_list(s, level, &disk->device_list, reference);
 		ss_json_array_close(s, &level);
 		ss_json_close(s, &level);
 	}
@@ -1528,10 +1525,10 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
-	json_disk_list(&s, level, &state->data_list);
+	json_disk_list(&s, level, &state->data_list, state->global.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "parity_disks");
-	json_disk_list(&s, level, &state->parity_list);
+	json_disk_list(&s, level, &state->parity_list, state->global.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
 
