@@ -109,7 +109,7 @@ export function renderScrubHistory(containerId, history) {
     if (!container || !history || !history.points) return;
 
     const width = container.clientWidth;
-    const height = 300; // Fixed vertical size
+    const height = 200; // Fixed vertical size
 
     const margin = { top: 20, right: 10, bottom: 30, left: 35 };
     const chartWidth = width - margin.left - margin.right;
@@ -378,12 +378,6 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <div class="property-label">Total Files</div>
                     <div class="property-value text-cyan">${arrayInfo.files_count.toLocaleString()}</div>
                 </div>
-                <div class="property-row">
-                    <div class="property-label">Scrubbed</div>
-                    <div class="property-value text-cyan">
-                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
-                    </div>
-                </div>
             </div>
         </div>
     `;
@@ -419,13 +413,14 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const scrubHistoryHtml = arrayInfo.scrub_history ? `
         <div class="card mt-4">
             <h3 class="font-bold mb-4 text-cyan">Maintenance History</h3>
-            <div id="scrub-history-graph" class="scrub-history-container" style="height: 300px; width: 100%;"></div>
+            <div id="scrub-history-graph" class="scrub-history-container" style="height: 200px; width: 100%;"></div>
             <div class="property-list mt-4 border-t border-slate-800 pt-4">
-            <div class="mt-4 pt-4 border-t border-slate-800 flex justify-center gap-2 text-xs text-muted">
-                <span>Last Sync: ${formatRelativeTime(arrayInfo.last_sync_at, arrayInfo.generated_at)}</span>
-                <span>&bull;</span>
-                <span>Last Scrub: ${formatRelativeTime(arrayInfo.last_scrub_at, arrayInfo.generated_at)}</span>
-            </div>
+                <div class="property-row">
+                    <div class="property-label">Scrubbed</div>
+                    <div class="property-value text-cyan">
+                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
+                    </div>
+                </div>
             </div>
         </div>
     ` : '';
