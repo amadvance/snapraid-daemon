@@ -1,5 +1,5 @@
 
-import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDuration, formatSignal, Icons } from './utils.js';
+import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
@@ -34,11 +34,11 @@ const statusBadge = (task) => {
  * Renders a temperature sparkline by measuring its parent container
  * to ensure a 1:1 pixel-accurate render.
  * * @param {string} containerId - The ID of the div to fill.
- * @param {Array} temperaturaArray - 144 integers (0 for standby).
+ * @param {Array} temperaturaArray - Array of integers (0 for standby).
  */
 export function renderTempSparkline(containerId, temperaturaArray) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container || !temperaturaArray || temperaturaArray.length === 0) return;
 
     // 1. Capture actual pixel dimensions
     const width = container.clientWidth;
@@ -49,13 +49,16 @@ export function renderTempSparkline(containerId, temperaturaArray) {
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
+    const dataLen = temperaturaArray.length;
+    const maxIndex = dataLen > 1 ? dataLen - 1 : 1;
+
     // 3. Coordinate Math (Actual Pixels)
     const getY = (temp) => {
         const normalized = (temp - 20) / (70 - 20);
         return chartHeight - (normalized * chartHeight) + margin.top;
     };
 
-    const getX = (index) => (index / 143) * chartWidth + margin.left;
+    const getX = (index) => (index / maxIndex) * chartWidth + margin.left;
 
     const getColor = (temp) => {
         if (temp < 40) return '#00d2ff'; // Cyan
@@ -76,14 +79,18 @@ export function renderTempSparkline(containerId, temperaturaArray) {
         `;
     });
 
-    // Render 144 Dots
+    // Render Dots
     temperaturaArray.forEach((temp, i) => {
         if (temp <= 0) return; // Handle Standby
 
         const x = getX(i);
         const y = getY(temp);
 
-        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}" data-tooltip="${Math.floor((143 - i) * 10 / 60)}h ago: ${temp}°C"></circle>`;
+        // Calculate time based on 24h window (total 1440 mins)
+        
+        const minsAgo = Math.floor((maxIndex - i) * (1440 / maxIndex));    
+
+        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}" data-tooltip="${formatAgoMins(minsAgo)}: ${temp}°C"></circle>`;
     });
 
     svg += `</svg>`;
@@ -178,10 +185,10 @@ export function renderScrubHistory(containerId, history) {
         const yNew = chartHeight - hScrubbed - hNew + margin.top;
 
         if (p.scrubbed > 0) {
-            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.ago} days ago: ${p.scrubbed.toFixed(1)}% scrubbed"></rect>`;
+            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${formatAgoDays(p.ago)}: ${p.scrubbed.toFixed(1)}% scrub"></rect>`;
         }
         if (p.new > 0) {
-            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.ago} days ago: ${p.new.toFixed(1)}% new"></rect>`;
+            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${formatAgoDays(p.ago)}: ${p.new.toFixed(1)}% sync"></rect>`;
         }
     });
 
