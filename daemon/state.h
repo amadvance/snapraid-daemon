@@ -189,15 +189,13 @@ struct snapraid_disk {
 #define CMD_UP 2
 #define CMD_DOWN 3
 #define CMD_SMART 4
-#define CMD_STATUS 5
-#define CMD_LIST 6
-#define CMD_DIFF 7
-#define CMD_DUP 8
-#define CMD_DEVICES 9
-#define CMD_SYNC 10
-#define CMD_SCRUB 11
-#define CMD_FIX 12
-#define CMD_CHECK 13
+#define CMD_LIST 5
+#define CMD_DIFF 6
+#define CMD_DUP 7
+#define CMD_SYNC 8
+#define CMD_SCRUB 9
+#define CMD_FIX 10
+#define CMD_CHECK 11
 #define CMD_REPORT 101 /**< Additional command that generate a report */
 #define CMD_DOWN_IDLE 102 /**< Additional command that spin down inactive disks */
 #define CMD_MAINTENANCE 201 /**< High level command. Never enter the queue. */
@@ -353,7 +351,6 @@ struct snapraid_global {
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */
 	int64_t diff_time; /**< Time of the last diff run. If 0 never run. */
 	int64_t fix_time; /**< Time of the last fix run. If 0 never run. */
-	int64_t status_time; /**< Time of the last status run. If 0 never run. */
 
 	/* info counters. Updated in sync/scrub */
 	uint64_t file_total; /**< Total file count in the array as stored in the content file */

@@ -1582,9 +1582,6 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 		ss_json_i64(s, level, "error_data", task->error_data);
 		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
-	case CMD_STATUS :
-		ss_json_i64(s, level, "block_bad", task->block_bad);
-		break;
 	}
 	ss_json_close(s, &level);
 }
@@ -1747,8 +1744,6 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_pair_iso8601(&s, level, "last_sync_at", global->sync_time);
 		if (global->scrub_time)
 			ss_json_pair_iso8601(&s, level, "last_scrub_at", global->scrub_time);
-		if (global->status_time)
-			ss_json_pair_iso8601(&s, level, "last_status_at", global->status_time);
 		if (global->diff_time)
 			ss_json_pair_iso8601(&s, level, "last_diff_at", global->diff_time);
 		if (global->fix_time)

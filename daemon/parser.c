@@ -956,10 +956,6 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			/* move the parsing diff to the current state */
 			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
-		case CMD_STATUS :
-			pulse(state, PULSE_ARRAY);
-			state->global.status_time = task->unix_start_time;
-			break;
 		case CMD_FIX :
 			pulse(state, PULSE_ARRAY);
 			state->global.fix_time = task->unix_start_time;

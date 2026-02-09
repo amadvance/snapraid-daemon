@@ -224,13 +224,13 @@ paths:
                       The aggregate health of the entire array.
                   active_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
                   next_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
                     description: >
                       The next command scheduled in the current execution sequence.
                       This field is present when the daemon is running an automated
@@ -537,9 +537,6 @@ components:
             - const: diff
               description: >
                 Identifies changed, added, or deleted files since the last sync.
-            - const: status
-              description: >
-                Summarizes array state, parity levels, and data distribution.
             - const: sync
               description: >
                 Updates parity to match current data disk state.
@@ -669,7 +666,7 @@ components:
             Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
           description: >
             The command executed.
         health:
@@ -857,7 +854,7 @@ components:
           example: 0
           description: >
             The count of blocks marked bad.
-            This field is available only on the `status`, `sync`, `scrub` and
+            This field is available only on the `sync`, `scrub` and
             `fix` commands.
 
     Device:
@@ -1668,7 +1665,7 @@ components:
             Local timestamp of the most recently concluded task.
         last_command:
           type: string
-          enum: [probe, up, down, smart, diff, status, sync, scrub, check, fix, report, down_idle]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
           description: >
             Identifier of the last successfully completed command.
         annual_failure_rate:
@@ -1749,11 +1746,6 @@ components:
           example: "2026-01-12T08:00:00"
           description: >
             Local timestamp of the last data integrity verification ('scrub').
-        last_status_at:
-          type: string
-          example: "2026-01-12T08:00:00"
-          description: >
-            Local timestamp of the last 'status' command execution.
         last_diff_at:
           type: string
           example: "2026-01-12T08:00:00"
