@@ -340,6 +340,11 @@ const app = {
             if (array && array.pulse) app.state.pulse = array.pulse;
             if (activity && activity.pulse) app.state.pulse = activity.pulse;
 
+            // Track if messages changed
+            const oldMessages = app.state.dashboardActivity?.messages || [];
+            const newMessages = activity?.messages || [];
+            const messagesChanged = oldMessages.length !== newMessages.length;
+
             app.state.dashboardArray = array;
             app.state.dashboardActivity = activity;
             app.state.system = system;
@@ -360,9 +365,9 @@ const app = {
                 // Draw graphs
                 app.redrawGraphs();
 
-                // Auto-scroll logs
+                // Auto-scroll logs only if they changed
                 const logWindow = document.querySelector('.log-window');
-                if (logWindow) {
+                if (logWindow && messagesChanged) {
                     logWindow.scrollTop = logWindow.scrollHeight;
                 }
             }
