@@ -318,7 +318,7 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 }
 
 /****************************************************************************/
-/* diff */
+/* fix */
 
 static int fix_compare(const void* void_a, const void* void_b)
 {
@@ -402,6 +402,41 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 		i = i->next;
 		j = j->next;
 	}
+}
+
+/****************************************************************************/
+/* bucket */
+
+struct snapraid_bucket* bucket_alloc(uint64_t time_at, uint64_t count_scrubbed, uint64_t count_justsynced)
+{
+	struct snapraid_bucket* bucket = malloc_nofail(sizeof(struct snapraid_bucket));
+	bucket->time_at = time_at;
+	bucket->count_scrubbed = count_scrubbed;
+	bucket->count_justsynced = count_justsynced;
+	return bucket;
+}
+
+void bucket_free(void* void_bucket)
+{
+	struct snapraid_bucket* bucket = void_bucket;
+	free(bucket);
+}
+
+void bucket_cleanup(tommy_list* bucket)
+{
+	tommy_list_foreach(bucket, bucket_free);
+	tommy_list_init(bucket);
+}
+
+void bucket_move(tommy_list* bucket_src, tommy_list* bucket_dest)
+{
+	/* clear the destination list */
+	tommy_list_foreach(bucket_dest, bucket_free);
+
+	*bucket_dest = *bucket_src;
+
+	/* reset the list */
+	tommy_list_init(bucket_src);
 }
 
 /****************************************************************************/

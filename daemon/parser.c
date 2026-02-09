@@ -545,29 +545,118 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[3];
 
 	if (strcmp(tag, "add") == 0) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "remove") == 0) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "update") == 0) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, path, disk, map[4]);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, disk, path, map[4], map[5]);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "restore") == 0) {
-		pulse(state, PULSE_ARRAY);
+		/* do not pulse because this is temporary storage for parsing */
 		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+	}
+}
+
+static void process_bucket(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 3)
+		return;
+
+	const char* tag = map[1];
+	const char* val = map[2];
+
+	if (strcmp(tag, "entry") == 0) {
+		if (mac < 5)
+			return;
+
+		const char* count1 = map[3];
+		const char* count2 = map[4];
+		uint64_t time_at;
+		uint64_t count_scrubbed;
+		uint64_t count_justsynced;
+
+		if (stru64(&time_at, val) == 0
+			&& stru64(&count_scrubbed, count1) == 0
+			&& stru64(&count_justsynced, count2) == 0) {
+			/* do not pulse because this is temporary storage for parsing */
+			struct snapraid_bucket* bucket = bucket_alloc(time_at, count_scrubbed, count_justsynced);
+			tommy_list_insert_tail(&state->global.bucket_parse_list, &bucket->node, bucket);
+		}
+	} else if (strcmp(tag, "count") == 0) {
+		/* unused */
+	} else if (strcmp(tag, "block_count") == 0) {
+		/* unused */
+	}
+}
+
+static void process_list(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task)
+		return;
+	if (mac < 2)
+		return;
+
+	const char* tag = map[1];
+
+	if (strcmp(tag, "scan_begin") == 0) {
+		switch (task->cmd) {
+		case CMD_SYNC :
+		case CMD_DIFF :
+			/* diff and sync generate a new diff list, so cleanup it */
+			/* do not pulse because this is temporary storage for parsing */
+			diff_cleanup(&state->global.diff_parse, 0);
+			break;
+		}
+	} else if (strcmp(tag, "scan_end") == 0) {
+		switch (task->cmd) {
+		case CMD_SYNC :
+			/* now we pulse because we move the temporary parsing data to the real data */
+			pulse(state, PULSE_ARRAY);
+
+			/* move the parsed diff to the previous state */
+			diff_move(&state->global.diff_parse, &state->global.diff_prev);
+
+			/* cleanup the current state, because after sync there is no difference anymore */
+			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
+			break;
+		case CMD_DIFF :
+			/* now we pulse because we move the temporary parsing data to the real data */
+			pulse(state, PULSE_ARRAY);
+
+			/* move the parsing diff to the current state */
+			diff_move(&state->global.diff_parse, &state->global.diff_current);
+			break;
+		}
+	} else if (strcmp(tag, "bucket_begin") == 0) {
+		/* for any command that load content */
+
+		/* generate a new bucket list, so cleanup it */
+		/* do not pulse because this is temporary storage for parsing */
+		bucket_cleanup(&state->global.bucket_parse_list);
+	} else if (strcmp(tag, "bucket_end") == 0) {
+		/* for any command that load content */
+
+		/* now we pulse because we move the temporary parsing data to the real data */
+		pulse(state, PULSE_ARRAY);
+
+		/* move the parsing bucket to the current state */
+		bucket_move(&state->global.bucket_parse_list, &state->global.bucket_list);
 	}
 }
 
@@ -835,12 +924,6 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 	const char* cmd = map[1];
 
 	pulse_str(state, PULSE_ARRAY, state->global.last_cmd, sizeof(state->global.last_cmd), cmd);
-
-	if (strcmp(cmd, "sync") == 0 || strcmp(cmd, "diff") == 0) {
-		/* diff and sync generate a new diff list, so cleanup it */
-		pulse(state, PULSE_ARRAY);
-		diff_cleanup(&state->global.diff_parse, 0);
-	}
 }
 
 static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
@@ -903,20 +986,21 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 
 	/* diff */
 	if (task->cmd == CMD_DIFF || task->cmd == CMD_SYNC) {
+		/* do not pulse because this is temporary storage for parsing */
 		if (strcmp(tag, "equal") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_equal, val);
+			stri64(&state->global.diff_parse.diff_equal, val);
 		else if (strcmp(tag, "added") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_added, val);
+			stri64(&state->global.diff_parse.diff_added, val);
 		else if (strcmp(tag, "removed") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_removed, val);
+			stri64(&state->global.diff_parse.diff_removed, val);
 		else if (strcmp(tag, "updated") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_updated, val);
+			stri64(&state->global.diff_parse.diff_updated, val);
 		else if (strcmp(tag, "moved") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_moved, val);
+			stri64(&state->global.diff_parse.diff_moved, val);
 		else if (strcmp(tag, "copied") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_copied, val);
+			stri64(&state->global.diff_parse.diff_copied, val);
 		else if (strcmp(tag, "restored") == 0)
-			pulse_stri64(state, PULSE_ARRAY, &state->global.diff_parse.diff_restored, val);
+			stri64(&state->global.diff_parse.diff_restored, val);
 	}
 
 	if (strcmp(tag, "error_soft") == 0) {
@@ -936,13 +1020,11 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			pulse(state, PULSE_ARRAY);
 			state->global.sync_time = task->unix_start_time;
 
-			/* move the parsed diff to the previous state */
-			diff_move(&state->global.diff_parse, &state->global.diff_prev);
-
-			/* cleanup the current state, because after sync there is no difference anymore */
+			/* after a sync the latest diff is the sync itself */
 			state->global.diff_time = task->unix_start_time;
 			state->global.fix_time = 0;
-			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
+
+			/* clear the parsing fix as now they are integrated in the parity */
 			fix_cleanup(&state->global.fix_current);
 			break;
 		case CMD_SCRUB :
@@ -950,11 +1032,9 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			state->global.scrub_time = task->unix_start_time;
 			break;
 		case CMD_DIFF :
+			/* now we pulse because we move the temporary parsing data to the real data */
 			pulse(state, PULSE_ARRAY);
 			state->global.diff_time = task->unix_start_time;
-
-			/* move the parsing diff to the current state */
-			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
 		case CMD_FIX :
 			pulse(state, PULSE_ARRAY);
@@ -1016,6 +1096,10 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_command(state, map, mac);
 		state_unlock();
+	} else if (strcmp(cmd, "list") == 0) {
+		state_lock();
+		process_list(state, map, mac);
+		state_unlock();
 	} else if (strcmp(cmd, "conf") == 0) {
 		state_lock();
 		process_conf(state, map, mac);
@@ -1055,6 +1139,10 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "content_info") == 0) {
 		state_lock();
 		process_content_info(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "bucket") == 0) {
+		state_lock();
+		process_bucket(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "fsinfo_data") == 0) {
 		state_lock();

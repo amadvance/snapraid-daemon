@@ -1,7 +1,7 @@
 
 import { API } from './api.js';
 import { Icons, showToast, showConfirm, formatSeconds } from './utils.js';
-import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline } from './ui.js';
+import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory } from './ui.js';
 
 const app = {
     state: {
@@ -14,7 +14,8 @@ const app = {
         system: null,
         lastSystemRefresh: 0,
         dashboardArray: null,
-        dashboardActivity: null
+        dashboardActivity: null,
+        disks: null
     },
 
     init: () => {
@@ -42,6 +43,30 @@ const app = {
 
         // Expose triggerStop to window for UI buttons
         window.app = app;
+
+        // Resize handler for graphs
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(app.redrawGraphs, 100);
+        });
+    },
+
+    redrawGraphs: () => {
+        const hash = app.state.currentRoute;
+        if (hash === '#/' && app.state.dashboardArray?.scrub_history) {
+            renderScrubHistory('scrub-history-graph', app.state.dashboardArray.scrub_history);
+        } else if (hash === '#/disks' && app.state.disks) {
+            const data = app.state.disks;
+            [...data.parity_disks, ...data.data_disks].forEach(disk => {
+                disk.devices.forEach(dev => {
+                    if (dev.temp_history_24h) {
+                        const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
+                        renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h);
+                    }
+                });
+            });
+        }
     },
 
     stopPolling: () => {
@@ -283,6 +308,9 @@ const app = {
                 `;
                 document.getElementById('view-container').innerHTML = renderDashboard(array, activity, app.state.system);
 
+                // Draw graphs
+                app.redrawGraphs();
+
                 // Auto-scroll logs
                 const logWindow = document.querySelector('.log-window');
                 if (logWindow) {
@@ -300,17 +328,11 @@ const app = {
             const data = await API.getDisks();
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
+            app.state.disks = data;
             document.getElementById('view-container').innerHTML = renderDisks(data);
 
-            // Post-render: Draw Sparklines
-            [...data.parity_disks, ...data.data_disks].forEach(disk => {
-                disk.devices.forEach(dev => {
-                    if (dev.temp_history_24h) {
-                        const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
-                        renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h);
-                    }
-                });
-            });
+            // Post-render: Draw graphs
+            app.redrawGraphs();
         } catch (e) {
             app.setConnection(false);
             throw e;

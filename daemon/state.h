@@ -337,6 +337,13 @@ struct snapraid_fix_stat {
 	tommy_list file_list; /**< List of snapraid_file entries */
 };
 
+struct snapraid_bucket {
+	time_t time_at; /**< Time of latest write */
+	uint64_t count_scrubbed; /**< Number of blocks scrubbed */
+	uint64_t count_justsynced; /**< Number of blocks justsynced */
+	tommy_node node;
+};
+
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
 	int version_major;
@@ -365,6 +372,9 @@ struct snapraid_global {
 	struct snapraid_diff_stat diff_current; /**< Latest complete diff stat */
 
 	struct snapraid_fix_stat fix_current; /**< Latest complete fix stat */
+
+	tommy_list bucket_list; /**< Latest bucket list */
+	tommy_list bucket_parse_list; /**< Working bucket list while parsing */
 };
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */

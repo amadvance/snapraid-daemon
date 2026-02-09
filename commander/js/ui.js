@@ -94,6 +94,107 @@ export function renderTempSparkline(containerId, temperaturaArray) {
     container.innerHTML = svg;
 }
 
+/**
+ * Renders a stacked histogram for scrub history.
+ * @param {string} containerId - The ID of the div to fill.
+ * @param {Object} history - The scrub history object from API.
+ */
+export function renderScrubHistory(containerId, history) {
+    const container = document.getElementById(containerId);
+    if (!container || !history || !history.points) return;
+
+    const width = container.clientWidth;
+    const height = 300; // Fixed vertical size
+
+    const margin = { top: 20, right: 10, bottom: 30, left: 30 };
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+
+    const yMax = history.y_axis_high || 100;
+    const xMin = history.x_axis_low;
+    const xMax = history.x_axis_high;
+
+    const getY = (val) => chartHeight - (val / yMax * chartHeight) + margin.top;
+    const getX = (ago) => {
+        // ago: oldest is xMin, current is xMax (0)
+        const range = xMin - xMax;
+        if (range === 0) return margin.left + chartWidth / 2;
+        const normalized = (ago - xMax) / range;
+        // Shift range so bars are fully to the right of the Y axis
+        const availableWidth = chartWidth - barWidth;
+        return (1 - normalized) * availableWidth + margin.left + barWidth / 2;
+    };
+
+    const barWidth = history.points.length > 1 ? (chartWidth / history.points.length) * 0.8 : 20;
+
+    let svg = `<svg width="${width}" height="${height}" class="scrub-history">`;
+
+    // Horizontal grid lines every 5%
+    for (let i = 5; i <= yMax; i += 5) {
+        const yPos = getY(i);
+        svg += `
+            <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
+                  stroke="rgba(255,255,255,0.30)" stroke-dasharray="4" />
+        `;
+    }
+
+    // Horizontal grid lines every 5%
+    for (let i = 1; i <= yMax; i += 1) {
+        const yPos = getY(i);
+        if (i % 5 != 0)
+            svg += `
+            <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
+                  stroke="rgba(255,255,255,0.10)" stroke-dasharray="2" />
+        `;
+    }
+
+
+    // Draw Axes
+    svg += `
+        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+    `;
+
+    // Y Axis High Label
+    svg += `<text x="${margin.left - 5}" y="${getY(yMax) + 4}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" style="font-family:sans-serif; font-weight:bold;">${Math.floor(yMax)}%</text>`;
+
+    // X Axis Labels
+    svg += `
+        <text x="${margin.left}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="start" style="font-family:sans-serif; font-weight:bold;">${xMin}</text>
+        <text x="${margin.left + chartWidth / 2}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="middle" style="font-family:sans-serif; font-weight:bold;">days ago</text>
+        <text x="${margin.left + chartWidth}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" style="font-family:sans-serif; font-weight:bold;">${xMax}</text>
+    `;
+
+    // Render Bars
+    history.points.forEach(p => {
+        // If both are 0, the prompt says "do try to draw the bar". 
+        // We'll proceed but it will have 0 height unless we force it.
+        // Usually "do try" means don't skip the logic.
+
+        const x = getX(p.ago) - barWidth / 2;
+
+        const hScrubbed = (p.scrubbed / yMax) * chartHeight;
+        const hNew = (p.new / yMax) * chartHeight;
+
+        const yScrubbed = chartHeight - hScrubbed + margin.top;
+        const yNew = chartHeight - hScrubbed - hNew + margin.top;
+
+        if (p.scrubbed > 0) {
+            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1">
+                        <title>${p.ago} days ago: ${p.scrubbed.toFixed(2)}% scrubbed</title>
+                    </rect>`;
+        }
+        if (p.new > 0) {
+            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1">
+                        <title>${p.ago} days ago: ${p.new.toFixed(2)}% new</title>
+                    </rect>`;
+        }
+    });
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
+}
+
 const renderSystemCard = (system) => {
     if (!system) return '';
 
@@ -253,12 +354,6 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
             <div class="property-list">
                 <div class="property-row">
-                    <div class="property-label">Failure Probability (1yr)</div>
-                    <div class="property-value text-cyan">${arrayInfo.failure_probability
-            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%`
-            : healthBadge('pending')}</div>
-                </div>
-                <div class="property-row">
                     <div class="property-label">Bad Blocks</div>
                     <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">
                         ${arrayInfo.blocks_bad}
@@ -273,15 +368,15 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     </div>
                 </div>
                 <div class="property-row">
+                    <div class="property-label">Failure Probability (1yr)</div>
+                    <div class="property-value text-cyan">${arrayInfo.failure_probability
+            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%`
+            : healthBadge('pending')}</div>
+                </div>
+                <div class="property-row">
                     <div class="property-label">Total Files</div>
                     <div class="property-value text-cyan">${arrayInfo.files_count.toLocaleString()}</div>
                 </div>
-                <div class="property-row">
-                    <div class="property-label">Scrubbed</div>
-                    <div class="property-value text-cyan">
-                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
-                    </div>
-                </div>                
             </div>
 
             <div class="mt-4 pt-4 border-t border-slate-800 flex justify-center gap-2 text-xs text-muted">
@@ -320,9 +415,25 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         </div>
     `;
 
+    const scrubHistoryHtml = arrayInfo.scrub_history ? `
+        <div class="card mt-4">
+            <h3 class="font-bold mb-4 text-cyan">Scrub History</h3>
+            <div id="scrub-history-graph" style="height: 300px; width: 100%;"></div>
+            <div class="property-list mt-4 border-t border-slate-800 pt-4">
+                <div class="property-row">
+                    <div class="property-label">Scrubbed</div>
+                    <div class="property-value text-cyan">
+                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    ` : '';
+
     const summaryHtml = `
         <div class="grid-2">
             ${arrayStatusHtml}
+            ${scrubHistoryHtml}
             ${renderSystemCard(systemInfo)}
             ${configHtml}
         </div>

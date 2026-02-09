@@ -90,6 +90,15 @@ void fix_cleanup(struct snapraid_fix_stat* fix);
 void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest);
 
 /****************************************************************************/
+/* bucket */
+
+struct snapraid_bucket* bucket_alloc(uint64_t time_at, uint64_t count_scrubbed, uint64_t count_justsynced);
+void bucket_free(void* void_bucket);
+
+void bucket_cleanup(tommy_list* bucket);
+void bucket_move(tommy_list* bucket_src, tommy_list* bucket_dest);
+
+/****************************************************************************/
 /* health */
 
 const char* power_name(int power);

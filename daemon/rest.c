@@ -1283,11 +1283,12 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 
 static void json_temp_list(ss_t* s, int level, tommy_list* list)
 {
-	tommy_node* last = tommy_list_tail(list);
-	if (!last)
+	if (tommy_list_empty(list))
 		return;
 
+	tommy_node* last = tommy_list_tail(list);
 	struct snapraid_temp* last_temp = last->data;
+
 	int64_t base = last_temp->time_at - SECONDS_IN_A_DAY;
 	int64_t delta = (SECONDS_IN_A_DAY + TEMP_COUNT - 1) / TEMP_COUNT;
 
@@ -1321,6 +1322,73 @@ static void json_temp_list(ss_t* s, int level, tommy_list* list)
 		ss_printf(s, "%d", vect[j]);
 	}
 	ss_json_array_close(s, &level);
+}
+
+#define SCRUB_COUNT 30
+
+static unsigned day_ago(int64_t ref, int64_t now)
+{
+	/* in case some dates is in the future */
+	if (now < ref)
+		return 0;
+
+	return (now - ref) / SECONDS_IN_A_DAY;
+}
+
+static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t now)
+{
+	if (tommy_list_empty(list))
+		return;
+
+	tommy_node* first = tommy_list_head(list);
+	tommy_node* last = tommy_list_tail(list);
+
+	struct snapraid_bucket* first_bucket = first->data;
+	struct snapraid_bucket* last_bucket = last->data;
+
+	int64_t oldest = first_bucket->time_at;
+	int64_t newest = last_bucket->time_at;
+
+	/* compute graph limits */
+	uint64_t bar_scrubbed[SCRUB_COUNT];
+	uint64_t bar_new[SCRUB_COUNT];
+	uint64_t barmax = 0;
+	uint64_t total = 0;
+	memset(bar_scrubbed, 0, sizeof(bar_scrubbed));
+	memset(bar_new, 0, sizeof(bar_new));
+	for (tommy_node* j = tommy_list_head(list); j != 0; j = j->next) {
+		struct snapraid_bucket* bucket = j->data;
+
+		unsigned column = (bucket->time_at - oldest) * SCRUB_COUNT / (newest - oldest + 1);
+
+		bar_scrubbed[column] += bucket->count_scrubbed;
+		bar_new[column] += bucket->count_justsynced;
+		total += bucket->count_scrubbed + bucket->count_justsynced;
+
+		if (bar_scrubbed[column] + bar_new[column] > barmax)
+			barmax = bar_scrubbed[column] + bar_new[column];
+	}
+
+	unsigned dayoldest = day_ago(oldest, now);
+	unsigned daynewest = day_ago(newest, now);
+
+	ss_json_object_open(s, &level, "scrub_history");
+	ss_json_uint(s, level, "x_axis_low", dayoldest);
+	ss_json_uint(s, level, "x_axis_high", daynewest);
+	ss_json_uint(s, level, "y_axis_low", 0);
+	ss_json_double(s, level, "y_axis_high", barmax * (double)100 / total);
+	ss_json_array_open(s, &level, "points");
+	for (int i = 0; i < SCRUB_COUNT; ++i) {
+		unsigned days_ago = dayoldest - (dayoldest - daynewest) * i / (SCRUB_COUNT - 1);
+		ss_json_tab(s, level);
+		ss_printf(s, "{ \"ago\": %u, \"scrubbed\": %.3g, \"new\": %.3g }", days_ago, bar_scrubbed[i] * (double)100 / total, bar_new[i] * (double)100 / total);
+		if (i == SCRUB_COUNT - 1)
+			ss_prints(s, "\n");
+		else
+			ss_prints(s, ",\n");
+	}
+	ss_json_array_close(s, &level);
+	ss_json_close(s, &level);
 }
 
 static void json_device_list(ss_t* s, int level, tommy_list* list)
@@ -1783,6 +1851,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_close(&s, &level);
 		}
 		ss_json_array_close(&s, &level);
+		json_scrub_list(&s, level, &state->global.bucket_list, state->global.last_time);
 	} else {
 		ss_json_str(&s, level, "health", health_name(HEALTH_PENDING));
 	}

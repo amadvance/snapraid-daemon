@@ -1580,6 +1580,69 @@ components:
           description: >
             Manufacturer and model of the system motherboard.
 
+    ScrubHistory:
+      type: object
+      description: |
+        The root object containing the time-series
+        data and the axis limits for the scrub report.
+      required:
+        - x_axis_low
+        - x_axis_high
+        - y_axis_low
+        - y_axis_high
+        - points
+      properties:
+        x_axis_low:
+          type: integer
+          description: |
+            The lower boundary of the X-axis,
+            representing the oldest record in the set.
+        x_axis_high:
+          type: integer
+          description: |
+            The upper boundary of the X-axis,
+            representing the current time (zero).
+        y_axis_low:
+          type: number
+          description: |
+            The minimum value of the Y-axis,
+            used to set the chart's vertical floor.
+        y_axis_high:
+          type: number
+          description: |
+            The maximum value of the Y-axis,
+            providing a ceiling for the vertical scale.
+        points:
+          type: array
+          description: |
+            A sequence of data points capturing
+            scrubbing activity at specific intervals.
+          items:
+            type: object
+            description: |
+              An explicit data point entry mapping
+              metrics to a specific time in the past.
+            required:
+              - ago
+              - scrubbed
+              - new
+            properties:
+              ago:
+                type: integer
+                description: |
+                  The number of time units elapsed
+                  from the present moment to this record.
+              scrubbed:
+                type: number
+                description: |
+                  The quantity or volume of data
+                  that was scrubbed at this time point.
+              new:
+                type: number
+                description: |
+                  The quantity or volume of new data
+                  that was identified at this time point.
+
     Array:
       type: object
       description: >
@@ -1815,3 +1878,5 @@ components:
             These fixes represent repair operation done since the last sync.
           items:
             $ref: '#/components/schemas/Fix'
+        scrub_history:
+          $ref: '#/components/schemas/ScrubHistory'
