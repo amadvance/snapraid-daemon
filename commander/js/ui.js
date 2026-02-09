@@ -106,7 +106,7 @@ export function renderScrubHistory(containerId, history) {
     const width = container.clientWidth;
     const height = 300; // Fixed vertical size
 
-    const margin = { top: 20, right: 10, bottom: 30, left: 30 };
+    const margin = { top: 20, right: 10, bottom: 30, left: 35 };
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
@@ -418,7 +418,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const scrubHistoryHtml = arrayInfo.scrub_history ? `
         <div class="card mt-4">
             <h3 class="font-bold mb-4 text-cyan">Scrub History</h3>
-            <div id="scrub-history-graph" style="height: 300px; width: 100%;"></div>
+            <div id="scrub-history-graph" class="scrub-history-container" style="height: 300px; width: 100%;"></div>
             <div class="property-list mt-4 border-t border-slate-800 pt-4">
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>

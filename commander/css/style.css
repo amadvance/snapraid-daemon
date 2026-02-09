@@ -770,6 +770,12 @@ body {
     background: rgba(0, 0, 0, 0.2);
 }
 
+.scrub-history-container {
+    border: 1px solid var(--c-slate-800);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
 /* Property List */
 .property-list {
     display: flex;
