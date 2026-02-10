@@ -1326,6 +1326,8 @@ static void json_temp_list(ss_t* s, int level, tommy_list* list, int64_t referen
 			ss_prints(s, ", ");
 		}
 		ss_printf(s, "%d", vect[j]);
+		if (j + 1 == TEMP_COUNT)
+			ss_prints(s, "\n");
 	}
 	ss_json_array_close(s, &level);
 }
@@ -1387,7 +1389,17 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t refere
 	for (int i = 0; i < SCRUB_COUNT; ++i) {
 		unsigned days_ago = dayoldest - (dayoldest - daynewest) * i / (SCRUB_COUNT - 1);
 		ss_json_tab(s, level);
-		ss_printf(s, "{ \"ago\": %u, \"scrubbed\": %.3g, \"new\": %.3g }", days_ago, bar_scrubbed[i] * (double)100 / total, bar_new[i] * (double)100 / total);
+
+		double scrubbed = bar_scrubbed[i] * (double)100 / total;
+		double justsynced = bar_new[i] * (double)100 / total;
+
+		/* avoid to show number too small */
+		if (scrubbed < 1E-3)
+			scrubbed = 0;
+		if (justsynced < 1E-3)
+			justsynced = 0;
+
+		ss_printf(s, "{ \"ago\": %u, \"scrubbed\": %.3g, \"new\": %.3g }", days_ago, scrubbed, justsynced);
 		if (i == SCRUB_COUNT - 1)
 			ss_prints(s, "\n");
 		else
