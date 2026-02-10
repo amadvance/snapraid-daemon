@@ -28,6 +28,11 @@ paths:
 
         This is an asynchronous operation. Monitor progress via the
         '/snapraid/v1/activity' endpoint.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -54,6 +59,11 @@ paths:
 
         This is an asynchronous operation. Monitor progress via the
         '/snapraid/v1/activity' endpoint.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -83,16 +93,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                filters:
-                  type: array
-                  items:
-                    type: string
-                  description: >
-                    Optional filters (e.g., 'dir/', '*.txt') to limit the
-                    restoration scope. Each item corresponds to a '-f'
-                    argument in the SnapRAID CLI.
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -133,8 +134,8 @@ paths:
         - Commands are executed in the exact order provided in the 'tasks' array.
         - If a command fails, all subsequent tasks in the queue are automatically
           cancelled to prevent operating on inconsistent data.
-        - Exception: The 'report' command is treated as a mandatory finalizer.
-          If 'report' is present in the sequence, it will be executed regardless
+        - Exception: The 'report' and 'down' commands are treated as a finalizers.
+          If they are present in the sequence, they will be executed regardless
           of the success or failure of preceding commands.
 
         Clients should monitor /v1/state to track the progress of the
@@ -512,6 +513,27 @@ components:
                   Process ID of the task stopped.
 
   schemas:
+    CommandRequest:
+      type: object
+      description: >
+        Optional configuration for the task.
+      properties:
+        filters:
+          type: array
+          items:
+            type: string
+          description: >
+            Optional filters (e.g., 'dir/', '*.txt') to limit the
+            restoration scope. Each item corresponds to a '-f'
+            argument in the SnapRAID CLI.
+            Valid only for `undelete`.
+        spindown_on_finish:
+          type: boolean
+          default: false
+          description: >
+            If true, the daemon will command all disks in the array to enter
+            STANDBY mode once the task finishes succesfully or not.
+
     TaskSchedule:
       type: object
       required:

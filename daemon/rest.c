@@ -993,6 +993,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	char* js;
 	int jc;
 	sl_t arg_list;
+	int spindown = 0;
 
 	sl_init(&arg_list);
 
@@ -1004,6 +1005,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	int cmd = 0;
 	int has_filters = 0;
+	int has_spindown = 0;
 	if (strncmp(path, "/snapraid/v1/", 13) == 0)
 		cmd = command_parse(path + 13);
 	switch (cmd) {
@@ -1011,9 +1013,10 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, 404, "Resource not found");
 	case CMD_MAINTENANCE :
 	case CMD_HEAL :
-	case CMD_DOWN_IDLE :
+		has_spindown = 1;
 		break;
 	case CMD_UNDELETE :
+		has_spindown = 1;
 		has_filters = 1;
 		break;
 	default :
@@ -1053,6 +1056,14 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 					}
 					++j;
 				}
+			} else if (has_spindown && json_entry(js, &jv[j], json_const("spindown_on_finish")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &spindown) == 0) {
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else {
 				json_error_entry(msg, sizeof(msg), js, &jv[j]);
 				goto bad;
@@ -1062,13 +1073,13 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	switch (cmd) {
 	case CMD_MAINTENANCE :
-		schedule_maintenance(state, msg, sizeof(msg), &status);
+		schedule_maintenance(state, spindown, msg, sizeof(msg), &status);
 		break;
 	case CMD_HEAL :
-		schedule_heal(state, msg, sizeof(msg), &status);
+		schedule_heal(state, spindown, msg, sizeof(msg), &status);
 		break;
 	case CMD_UNDELETE :
-		schedule_undelete(state, &arg_list, msg, sizeof(msg), &status);
+		schedule_undelete(state, spindown, &arg_list, msg, sizeof(msg), &status);
 		break;
 	case CMD_SUSPEND_IDLE :
 		schedule_suspend_idle(state, msg, sizeof(msg), &status);

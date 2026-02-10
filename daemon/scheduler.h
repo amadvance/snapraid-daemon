@@ -44,17 +44,17 @@ void scheduler_pulse(struct snapraid_state* state);
 /**
  * Schedule a maintenance
  */
-void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+void schedule_maintenance(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status);
 
 /**
  * Schedule a heal
  */
-void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status);
 
 /**
  * Schedule a heal
  */
-void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* msg, size_t msg_size, int* status);
+void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, char* msg, size_t msg_size, int* status);
 
 /**
  * Schedule a spindown of idle disks

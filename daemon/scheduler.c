@@ -23,7 +23,7 @@
 #include "log.h"
 #include "scheduler.h"
 
-static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
+static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, char* msg, size_t msg_size, int* status)
 {
 	sl_t diff_arg_list;
 	sl_t sync_arg_list;
@@ -71,6 +71,9 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (ret == 0 && do_scrub)
 		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
+	if (ret == 0 && spindown)
+		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
+
 	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&diff_arg_list);
@@ -78,15 +81,15 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_free(&scrub_arg_list);
 }
 
-void schedule_maintenance(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+void schedule_maintenance(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 	state_lock();
-	schedule_maintenance_locked(state, now, msg, msg_size, status);
+	schedule_maintenance_locked(state, now, spindown, msg, msg_size, status);
 	state_unlock();
 }
 
-void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 
@@ -116,6 +119,9 @@ void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int
 	if (ret == 0)
 		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
+	if (ret == 0 && spindown)
+		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
+
 	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
@@ -124,7 +130,7 @@ void schedule_heal(struct snapraid_state* state, char* msg, size_t msg_size, int
 	state_unlock();
 }
 
-void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* msg, size_t msg_size, int* status)
+void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 
@@ -153,6 +159,9 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 
 	if (ret == 0)
 		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+
+	if (ret == 0 && spindown)
+		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
 
 	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 
@@ -248,7 +257,7 @@ void* scheduler_thread(void* arg)
 			if (current_hour == state->config.maintenance_hour
 				&& current_minute == state->config.maintenance_minute
 				&& (state->config.maintenance_run == RUN_DAILY || (state->config.maintenance_run == RUN_WEEKLY && current_wday == state->config.maintenance_day_of_week))) {
-				schedule_maintenance_locked(state, now, msg, sizeof(msg), &status);
+				schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
 				break;
 			}
 
