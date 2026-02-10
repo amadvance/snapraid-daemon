@@ -279,7 +279,6 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <div><span class="text-muted block text-xs">Speed</span><span class="font-bold"> ${activity.speed_mbs || 0} MB/s</span></div>
                     <div><span class="text-muted block text-xs">Processed</span><span class="font-bold"> ${formatBytes(activity.size_done_bytes || 0)}</span></div>
                     <div><span class="text-muted block text-xs">CPU</span><span class="font-bold"> ${activity.cpu_usage || 0}%</span></div>
-                    <div><span class="text-muted block text-xs">Blocks</span><span class="font-bold"> ${activity.blocks_done} / ${activity.blocks_count}</span></div>
                 </div>
                 ` : ''}
 
@@ -911,7 +910,7 @@ export const renderRecovery = (arrayInfo) => {
                         <span class="icon-sm">${Icons.shield}</span> Silent Data Errors
                     </h3>
                     <p class="text-sm text-muted mb-4">
-                        SnapRAID can detect and heal silent data corruption using parity information.
+                        Detect and heal silent data corruption using parity information.
                     </p>
                     <div class="property-list mt-0 pt-0 border-t-0 mb-6">
                         <div class="property-row">
