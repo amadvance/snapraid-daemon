@@ -198,12 +198,12 @@ scrub_older_than = 10
 # The probe_interval_minutes setting controls how often the daemon checks
 # SMART attributes, provided the disks are already spinning. If this is
 # set to 0 or left blank, SMART monitoring is disabled.
-probe_interval_minutes = 15
+probe_interval_minutes = 5
 
 # To save power, spindown_idle_minutes will automatically spin down disks
 # after the specified period of inactivity. If unset, the daemon will not
 # manage disk power states.
-spindown_idle_minutes = 60
+spindown_idle_minutes = 15
 
 # Specify absolute paths for script_pre_run and script_post_run to trigger
 # custom logic immediately before or after SnapRAID activity.
