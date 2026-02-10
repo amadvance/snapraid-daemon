@@ -316,7 +316,6 @@ body {
     padding: var(--gap-lg);
     margin-bottom: var(--gap-lg);
     overflow: visible;
-    /* Ensure tooltips are not clipped */
 }
 
 .card-border-blue {
@@ -384,84 +383,9 @@ body {
     transition: all 0.2s ease;
     font-size: 0.9rem;
     position: relative;
-    /* Anchor for tooltips */
 }
 
-/* Tooltips */
-[data-tooltip] {
-    position: relative;
-}
-
-[data-tooltip]:not([data-tooltip-js])::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 10px);
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    background-color: #000;
-    /* Deepest black for contrast */
-    color: var(--text-primary);
-    padding: 0.6rem 0.9rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    line-height: 1.4;
-    white-space: normal;
-    /* Allow wrapping */
-    max-width: 250px;
-    /* Prevent extreme width */
-    width: max-content;
-    min-width: 120px;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 100;
-    border: 1px solid var(--c-cyan-500);
-    /* Use cyan border for high visibility */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
-}
-
-[data-tooltip]:not([data-tooltip-js]):hover::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0);
-}
-
-/* Triangle for tooltip */
-[data-tooltip]:not([data-tooltip-js])::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    border-width: 6px 6px 0 6px;
-    border-style: solid;
-    border-color: var(--c-slate-700) transparent transparent transparent;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 100;
-}
-
-[data-tooltip]:not([data-tooltip-js]):hover::before {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0);
-}
-
-.btn:hover {
-    filter: brightness(0.7);
-    z-index: 110;
-    /* Bring button and its tooltip to front */
-}
-
-/* Ensure data-tooltip elements also rise on hover */
-[data-tooltip]:not([data-tooltip-js]):hover {
-    z-index: 110;
-}
-
+/* Floating JavaScript Tooltip */
 .tooltip-floating {
     position: fixed;
     background-color: #000;
@@ -472,7 +396,7 @@ body {
     font-weight: 600;
     line-height: 1.4;
     white-space: normal;
-    max-width: 250px;
+    max-width: 350px;
     width: max-content;
     min-width: 120px;
     z-index: 1000;
@@ -485,6 +409,10 @@ body {
 
 .tooltip-floating.active {
     opacity: 1;
+}
+
+.btn:hover {
+    filter: brightness(0.7);
 }
 
 .btn:active {

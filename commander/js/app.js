@@ -37,32 +37,25 @@ const app = {
                 return;
             }
 
-            // Only use JS tooltip for SVG or where explicitly requested
-            // SVG elements don't support CSS ::after properly
-            const isSvg = el.namespaceURI === 'http://www.w3.org/2000/svg';
-            const isManual = el.hasAttribute('data-tooltip-js');
+            tooltip.innerText = el.getAttribute('data-tooltip');
+            tooltip.classList.add('active');
 
-            if (isSvg || isManual) {
-                tooltip.innerText = el.getAttribute('data-tooltip');
-                tooltip.classList.add('active');
+            const updatePos = (me) => {
+                const padding = 15;
+                let x = me.clientX + padding;
+                let y = me.clientY + padding;
 
-                const updatePos = (me) => {
-                    const padding = 15;
-                    let x = me.clientX + padding;
-                    let y = me.clientY + padding;
+                // Flip if near edges
+                if (x + tooltip.offsetWidth > window.innerWidth) x = me.clientX - tooltip.offsetWidth - padding;
+                if (y + tooltip.offsetHeight > window.innerHeight) y = me.clientY - tooltip.offsetHeight - padding;
 
-                    // Flip if near edges
-                    if (x + tooltip.offsetWidth > window.innerWidth) x = me.clientX - tooltip.offsetWidth - padding;
-                    if (y + tooltip.offsetHeight > window.innerHeight) y = me.clientY - tooltip.offsetHeight - padding;
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+            };
 
-                    tooltip.style.left = `${x}px`;
-                    tooltip.style.top = `${y}px`;
-                };
-
-                updatePos(e);
-                el._tooltipHandler = updatePos;
-                el.addEventListener('mousemove', updatePos);
-            }
+            updatePos(e);
+            el._tooltipHandler = updatePos;
+            el.addEventListener('mousemove', updatePos);
         });
 
         document.addEventListener('mouseout', (e) => {
@@ -274,15 +267,15 @@ const app = {
                 case '#/':
                     title.innerText = 'Dashboard';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-js onclick="app.triggerMaintenance()">Maintenance</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" onclick="app.triggerMaintenance()">Maintenance</button>
                     `;
                     await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
                     title.innerText = 'Disks';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" data-tooltip-js onclick="app.triggerCommand('spinUp')">Up</button>
-                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" data-tooltip-js onclick="app.triggerCommand('spinDown')">Down</button>
+                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" onclick="app.triggerCommand('spinUp')">Up</button>
+                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" onclick="app.triggerCommand('spinDown')">Down</button>
                     `;
                     await app.loadDisks();
                     break;
@@ -294,7 +287,7 @@ const app = {
                 case '#/diff':
                     title.innerText = 'Differences';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" data-tooltip-js onclick="app.triggerDiff()">Differences</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" onclick="app.triggerDiff()">Differences</button>
                     `;
                     await app.loadDifferences();
                     break;
@@ -306,8 +299,8 @@ const app = {
                 case '#/settings':
                     title.innerText = 'Settings';
                     actions.innerHTML = `
-                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" data-tooltip-js onclick="app.handleRoute()">Cancel</button>
-                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" data-tooltip-js onclick="app.saveSettings()">Save</button>
+                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" onclick="app.handleRoute()">Cancel</button>
+                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" onclick="app.saveSettings()">Save</button>
                     `;
                     await app.loadSettings();
                     break;
@@ -357,8 +350,8 @@ const app = {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
                 actions.innerHTML = `
-                    ${active ? `<button class="btn btn-danger" data-tooltip="Abort the currently running task" data-tooltip-js onclick="app.triggerStop()">Stop Task</button>` : ''}
-                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-js onclick="app.triggerMaintenance()">Maintenance</button>
+                    ${active ? `<button class="btn btn-danger" data-tooltip="Abort the currently running task" onclick="app.triggerStop()">Stop Task</button>` : ''}
+                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" onclick="app.triggerMaintenance()">Maintenance</button>
                 `;
                 document.getElementById('view-container').innerHTML = renderDashboard(array, activity, app.state.system);
 
