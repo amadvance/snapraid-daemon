@@ -330,7 +330,7 @@ Example:
     	-d '{ "filters": [ "*.txt" ] }'
 
 It is implemented with the sequence of commands: up, fix -m -f ...,
-diff, and report.
+and report.
 
 ---- 5.1.4 /snapraid/v1/suspend_idle ----
 Probes the disks to gather their latest activity state and executes a

@@ -397,24 +397,9 @@ bail:
 
 static int runner_precondition(struct snapraid_state* state)
 {
-	struct snapraid_task* task = state->runner.latest;
+	(void)state;
 
-	if (task->cmd == CMD_SYNC) {
-		if (state->config.sync_threshold_deletes) {
-			if (state->global.diff_current.diff_removed >= state->config.sync_threshold_deletes) {
-				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many deleted files");
-				return -1;
-			}
-		}
-
-		if (state->config.sync_threshold_updates) {
-			if (state->global.diff_current.diff_updated >= state->config.sync_threshold_deletes) {
-				sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), "Too many updated files");
-				return -1;
-			}
-		}
-	}
-
+	/* at present no precondition */
 	return 0;
 }
 

@@ -306,7 +306,7 @@ Rest API
 		:	-d '{ "filters": [ "*.txt" ] }'
 
 	It is implemented with the sequence of commands: up, fix -m -f ...,
-	diff, and report.
+	and report.
 
     /snapraid/v1/suspend_idle
 	Probes the disks to gather their latest activity state and executes a

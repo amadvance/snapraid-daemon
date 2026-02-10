@@ -29,7 +29,6 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
-	int do_diff = 0;
 
 	sl_init(&diff_arg_list);
 	sl_init(&scrub_arg_list);
@@ -40,10 +39,13 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (state->config.sync_force_zero) {
 		sl_insert_str(&sync_arg_list, "-Z");
 	}
-	if (state->config.notify_differences
-		|| state->config.sync_threshold_deletes
-		|| state->config.sync_threshold_updates) {
-		do_diff = 1;
+	if (state->config.sync_threshold_deletes) {
+		sl_insert_str(&sync_arg_list, "--gui-threshold-removes");
+		sl_insert_int(&sync_arg_list, state->config.sync_threshold_deletes);
+	}
+	if (state->config.sync_threshold_deletes) {
+		sl_insert_str(&sync_arg_list, "--gui-threshold-updates");
+		sl_insert_int(&sync_arg_list, state->config.sync_threshold_updates);
 	}
 	if (state->config.scrub_percentage > 0) {
 		do_scrub = 1;
@@ -62,9 +64,6 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	int ret = 0;
 	if (ret == 0)
 		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
-
-	if (ret == 0 && do_diff)
-		ret = runner_locked(state, CMD_DIFF, now, &diff_arg_list, msg, msg_size, status);
 
 	if (ret == 0)
 		ret = runner_locked(state, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
@@ -134,6 +133,7 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 	sl_t fix_arg_list;
 	sl_init(&fix_arg_list);
 
+	sl_insert_str(&fix_arg_list, "--gui-rescan-after"); /* force a rescan after the fix, equivalent to a 'diff' */
 	sl_insert_str(&fix_arg_list, "-m");
 	for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
 		sn_t* sn = i->data;
@@ -153,9 +153,6 @@ void schedule_undelete(struct snapraid_state* state, sl_t* filter_list, char* ms
 
 	if (ret == 0)
 		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
-
-	if (ret == 0)
-		(void)runner_locked(state, CMD_DIFF, now, 0, msg, msg_size, status);
 
 	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
 

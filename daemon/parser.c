@@ -616,9 +616,8 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(tag, "scan_begin") == 0) {
 		switch (task->cmd) {
-		case CMD_SYNC :
-		case CMD_DIFF :
-			/* diff and sync generate a new diff list, so cleanup it */
+		default :
+			/* a new diff list is coming, so cleanup it */
 			/* do not pulse because this is temporary storage for parsing */
 			diff_cleanup(&state->global.diff_parse, 0);
 			break;
@@ -635,11 +634,11 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 			/* cleanup the current state, because after sync there is no difference anymore */
 			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
 			break;
-		case CMD_DIFF :
+		default :
 			/* now we pulse because we move the temporary parsing data to the real data */
 			pulse(state, PULSE_ARRAY);
 
-			/* move the parsing diff to the current state */
+			/* move the parsing to the current state */
 			diff_move(&state->global.diff_parse, &state->global.diff_current);
 			break;
 		}

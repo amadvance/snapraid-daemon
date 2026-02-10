@@ -66,8 +66,8 @@ paths:
       description: >
         Initiates a restoration process for files that are present in the
         parity but missing from the physical data disks by executing
-        'up', followed by 'fix -m'. The process is concluded by a 'diff' and
-        'report' task to notify the result.
+        'up', followed by 'fix -m'. The process is concluded by a 'report'
+        task to notify the result.
 
         The '-m' flag ensures that only missing files are reconstructed.
         Existing files are never overwritten or modified.
