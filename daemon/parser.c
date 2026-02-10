@@ -615,33 +615,15 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 	const char* tag = map[1];
 
 	if (strcmp(tag, "scan_begin") == 0) {
-		switch (task->cmd) {
-		default :
-			/* a new diff list is coming, so cleanup it */
-			/* do not pulse because this is temporary storage for parsing */
-			diff_cleanup(&state->global.diff_parse, 0);
-			break;
-		}
+		/* a new diff list is coming, so cleanup it */
+		/* do not pulse because this is temporary storage for parsing */
+		diff_cleanup(&state->global.diff_parse, 0);
 	} else if (strcmp(tag, "scan_end") == 0) {
-		switch (task->cmd) {
-		case CMD_SYNC :
-			/* now we pulse because we move the temporary parsing data to the real data */
-			pulse(state, PULSE_ARRAY);
+		/* now we pulse because we move the temporary parsing data to the real data */
+		pulse(state, PULSE_ARRAY);
 
-			/* move the parsed diff to the previous state */
-			diff_move(&state->global.diff_parse, &state->global.diff_prev);
-
-			/* cleanup the current state, because after sync there is no difference anymore */
-			diff_cleanup(&state->global.diff_current, state->global.diff_parse.diff_equal);
-			break;
-		default :
-			/* now we pulse because we move the temporary parsing data to the real data */
-			pulse(state, PULSE_ARRAY);
-
-			/* move the parsing to the current state */
-			diff_move(&state->global.diff_parse, &state->global.diff_current);
-			break;
-		}
+		/* move the parsing to the current state */
+		diff_move(&state->global.diff_parse, &state->global.diff_current);
 	} else if (strcmp(tag, "bucket_begin") == 0) {
 		/* for any command that load content */
 
@@ -1020,12 +1002,16 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
+			/* now we pulse because we move the diff */
 			pulse(state, PULSE_ARRAY);
 			state->global.sync_time = task->unix_start_time;
 
 			/* after a sync the latest diff is the sync itself */
 			state->global.diff_time = task->unix_start_time;
 			state->global.fix_time = 0;
+
+			/* move the current to the previous state */
+			diff_move(&state->global.diff_current, &state->global.diff_prev);
 
 			/* clear the parsing fix as now they are integrated in the parity */
 			fix_cleanup(&state->global.fix_current);
@@ -1035,7 +1021,6 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			state->global.scrub_time = task->unix_start_time;
 			break;
 		case CMD_DIFF :
-			/* now we pulse because we move the temporary parsing data to the real data */
 			pulse(state, PULSE_ARRAY);
 			state->global.diff_time = task->unix_start_time;
 			break;
