@@ -392,7 +392,7 @@ body {
     position: relative;
 }
 
-[data-tooltip]::after {
+[data-tooltip]:not([data-tooltip-js])::after {
     content: attr(data-tooltip);
     position: absolute;
     bottom: calc(100% + 10px);
@@ -422,14 +422,14 @@ body {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
 }
 
-[data-tooltip]:hover::after {
+[data-tooltip]:not([data-tooltip-js]):hover::after {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
 }
 
 /* Triangle for tooltip */
-[data-tooltip]::before {
+[data-tooltip]:not([data-tooltip-js])::before {
     content: '';
     position: absolute;
     bottom: calc(100% + 4px);
@@ -445,65 +445,10 @@ body {
     z-index: 100;
 }
 
-[data-tooltip]:hover::before {
+[data-tooltip]:not([data-tooltip-js]):hover::before {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
-}
-
-/* Bottom-Left Tooltips (Anchored to right, extends left) */
-[data-tooltip-pos="bottom-left"]::after {
-    bottom: auto;
-    top: calc(100% + 10px);
-    left: auto;
-    right: 0;
-    transform: translateY(-10px);
-}
-
-[data-tooltip-pos="bottom-left"]:hover::after {
-    transform: translateY(0);
-}
-
-[data-tooltip-pos="bottom-left"]::before {
-    bottom: auto;
-    top: calc(100% + 4px);
-    left: auto;
-    right: 15px;
-    /* Offset to align with button center-ish */
-    border-width: 0 6px 6px 6px;
-    border-color: transparent transparent var(--c-slate-700) transparent;
-    transform: translateY(-10px);
-}
-
-[data-tooltip-pos="bottom-left"]:hover::before {
-    transform: translateY(0);
-}
-
-/* Bottom-Right Tooltips (Anchored to left, extends right) */
-[data-tooltip-pos="bottom-right"]::after {
-    bottom: auto;
-    top: calc(100% + 10px);
-    left: 0;
-    right: auto;
-    transform: translateY(-10px);
-}
-
-[data-tooltip-pos="bottom-right"]:hover::after {
-    transform: translateY(0);
-}
-
-[data-tooltip-pos="bottom-right"]::before {
-    bottom: auto;
-    top: calc(100% + 4px);
-    left: 15px;
-    right: auto;
-    border-width: 0 6px 6px 6px;
-    border-color: transparent transparent var(--c-slate-700) transparent;
-    transform: translateY(-10px);
-}
-
-[data-tooltip-pos="bottom-right"]:hover::before {
-    transform: translateY(0);
 }
 
 .btn:hover {
@@ -513,7 +458,7 @@ body {
 }
 
 /* Ensure data-tooltip elements also rise on hover */
-[data-tooltip]:hover {
+[data-tooltip]:not([data-tooltip-js]):hover {
     z-index: 110;
 }
 

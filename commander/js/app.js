@@ -274,15 +274,15 @@ const app = {
                 case '#/':
                     title.innerText = 'Dashboard';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-pos="bottom-left" onclick="app.triggerMaintenance()">Maintenance</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-js onclick="app.triggerMaintenance()">Maintenance</button>
                     `;
                     await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
                     title.innerText = 'Disks';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" data-tooltip-pos="bottom-left" onclick="app.triggerCommand('spinUp')">Up</button>
-                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" data-tooltip-pos="bottom-left" onclick="app.triggerCommand('spinDown')">Down</button>
+                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" data-tooltip-js onclick="app.triggerCommand('spinUp')">Up</button>
+                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" data-tooltip-js onclick="app.triggerCommand('spinDown')">Down</button>
                     `;
                     await app.loadDisks();
                     break;
@@ -294,7 +294,7 @@ const app = {
                 case '#/diff':
                     title.innerText = 'Differences';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" data-tooltip-pos="bottom-left" onclick="app.triggerDiff()">Differences</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" data-tooltip-js onclick="app.triggerDiff()">Differences</button>
                     `;
                     await app.loadDifferences();
                     break;
@@ -306,8 +306,8 @@ const app = {
                 case '#/settings':
                     title.innerText = 'Settings';
                     actions.innerHTML = `
-                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" data-tooltip-pos="bottom-left" onclick="app.handleRoute()">Cancel</button>
-                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" data-tooltip-pos="bottom-left" onclick="app.saveSettings()">Save</button>
+                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" data-tooltip-js onclick="app.handleRoute()">Cancel</button>
+                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" data-tooltip-js onclick="app.saveSettings()">Save</button>
                     `;
                     await app.loadSettings();
                     break;
@@ -357,8 +357,8 @@ const app = {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
                 actions.innerHTML = `
-                    ${active ? `<button class="btn btn-danger" data-tooltip="Abort the currently running task" data-tooltip-pos="bottom-left" onclick="app.triggerStop()">Stop Task</button>` : ''}
-                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-pos="bottom-left" onclick="app.triggerMaintenance()">Maintenance</button>
+                    ${active ? `<button class="btn btn-danger" data-tooltip="Abort the currently running task" data-tooltip-js onclick="app.triggerStop()">Stop Task</button>` : ''}
+                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-tooltip-js onclick="app.triggerMaintenance()">Maintenance</button>
                 `;
                 document.getElementById('view-container').innerHTML = renderDashboard(array, activity, app.state.system);
 
