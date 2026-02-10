@@ -67,7 +67,7 @@ export const formatAgoMins = (mins) => {
 
 export const formatAgoDays = (days) => {
     if (days < 7)
-	return "Past week";
+        return "Past week";
     return `${Math.floor(days / 7)} weeks ago`;
 };
 
@@ -168,6 +168,47 @@ export const showConfirm = (message, title = 'Confirmation Required') => {
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) cleanup(false);
+        });
+    });
+};
+
+export const showConfirmDown = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-container">
+                <div class="modal-title">${title}</div>
+                <div class="modal-body">${message}</div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                    <button class="btn btn-primary" id="modal-confirm">Start</button>
+                    <button class="btn btn-primary" id="modal-spindown">Start & SpinDown</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Force reflow for animation
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+
+        const cleanup = (result) => {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                overlay.remove();
+                resolve(result);
+            }, 200);
+        };
+
+        overlay.querySelector('#modal-cancel').addEventListener('click', () => cleanup(null));
+        overlay.querySelector('#modal-confirm').addEventListener('click', () => cleanup('confirm'));
+        overlay.querySelector('#modal-spindown').addEventListener('click', () => cleanup('spindown'));
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(null);
         });
     });
 };

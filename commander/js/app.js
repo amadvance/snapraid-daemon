@@ -1,6 +1,6 @@
 
 import { API } from './api.js';
-import { Icons, showToast, showConfirm, formatSeconds } from './utils.js';
+import { Icons, showToast, showConfirm, showConfirmDown, formatSeconds } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory } from './ui.js';
 
 const app = {
@@ -442,8 +442,9 @@ const app = {
     /* --- Actions --- */
 
     triggerMaintenance: async () => {
-        if (await showConfirm('Start full maintenance sequence?')) {
-            await API.startMaintenance();
+        const res = await showConfirmDown('Start full maintenance sequence?');
+        if (res) {
+            await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
             showToast('Maintenance Triggered', 'success');
             setTimeout(app.loadDashboard, 500);
         }
@@ -468,8 +469,9 @@ const app = {
     },
 
     triggerHeal: async () => {
-        if (await showConfirm('Start healing sequence for silent errors?', 'Heal Errors')) {
-            await API.startHeal();
+        const res = await showConfirmDown('Start healing sequence for silent errors?', 'Heal Errors');
+        if (res) {
+            await API.startHeal({ spindown_on_finish: res === 'spindown' });
             showToast('Heal Command Triggered', 'success');
         }
     },
@@ -485,10 +487,11 @@ const app = {
         }
 
         const filters = text.split('\n').map(l => l.trim()).filter(l => l);
+        const confirmRes = await showConfirmDown(`Recover files matching ${filters.length} patterns?`, 'Undelete Files');
 
-        if (await showConfirm(`Recover files matching ${filters.length} patterns?`, 'Undelete Files')) {
+        if (confirmRes) {
             try {
-                await API.undelete(filters);
+                await API.undelete(filters, { spindown_on_finish: confirmRes === 'spindown' });
                 showToast(`Undelete queued for ${filters.length} patterns`, 'success');
                 input.value = ''; // Clear input on success
             } catch (e) {

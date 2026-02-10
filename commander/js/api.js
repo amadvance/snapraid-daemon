@@ -39,13 +39,13 @@ export const API = {
     schedule: (tasks) => request('/schedule', { method: 'POST', body: JSON.stringify({ tasks }) }),
 
     // Commands
-    startMaintenance: () => request('/maintenance', { method: 'POST' }),
+    startMaintenance: (options = {}) => request('/maintenance', { method: 'POST', body: JSON.stringify(options) }),
     startProbe: () => API.schedule([{ command: 'probe' }]),
-    startHeal: () => request('/heal', { method: 'POST' }),
+    startHeal: (options = {}) => request('/heal', { method: 'POST', body: JSON.stringify(options) }),
     startDiff: () => API.schedule([{ command: 'up' }, { command: 'diff' }]),
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
     spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
-    undelete: (filters) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters }) }),
+    undelete: (filters, options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters, ...options }) }),
     stopTask: () => request('/stop', { method: 'POST' })
 };
