@@ -6,11 +6,10 @@ import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRec
 const app = {
     state: {
         currentRoute: '',
-
         pulse: {},
         pollingInterval: null,
         isConnected: true,
-        hidePeriodic: false,
+        hidePeriodic: true,
         system: null,
         lastSystemRefresh: 0,
         dashboardArray: null,
