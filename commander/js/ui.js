@@ -574,18 +574,18 @@ const renderDiskCard = (disk, type) => {
         }
 
         let smartStatus = '<span class="text-emerald font-bold text-xs">SMART PASSED</span>';
-        if (smartIssues.length > 0) smartStatus = `<div class="text-amber text-xs">${smartIssues.join('<br>')}</div>`;
-
         if (dev.smart && dev.smart.failing)
-            smartStatus = `<span class="badge badge-red">SMART FAILING</span>` + smartStatus;
+            smartStatus = `<span class="badge badge-red">SMART FAILING</span>`;
         else if (dev.smart && dev.smart.prefail)
-            smartStatus = `<span class="badge badge-yellow">SMART PREFAIL</span>` + smartStatus;
+            smartStatus = `<span class="badge badge-yellow">SMART PREFAIL</span>`;
         else if (dev.smart && dev.smart.prefail_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but PREFAIL logged)</span>` + smartStatus;
+            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but PREFAIL logged)</span>`;
         else if (dev.smart && dev.smart.error_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but ERROR logged)</span>` + smartStatus;
+            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but ERROR logged)</span>`;
         else if (dev.smart && dev.smart.selftest_error_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but SELFTEST ERROR logged)</span>` + smartStatus;
+            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but SELFTEST ERROR logged)</span>`;
+
+        if (smartIssues.length > 0) smartStatus += `<div class="text-amber text-xs">${smartIssues.join('<br>')}</div>`;
 
         const temp = dev.smart?.temperature_celsius;
         const tempClass = temp >= 50 ? 'text-red font-bold' : (temp >= 40 ? 'text-yellow font-bold' : '');
