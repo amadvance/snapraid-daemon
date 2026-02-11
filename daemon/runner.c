@@ -426,8 +426,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 		}
 
 		int unused_minutes = (data->access_count_latest_time - data->access_count_initial_time) / 60;
-		if (active
-			&& unused_minutes / 60 >= spindown_idle_minutes) {
+		if (active && unused_minutes >= spindown_idle_minutes) {
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", data->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");
@@ -448,8 +447,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 		}
 
 		int unused_minutes = (parity->access_count_latest_time - parity->access_count_initial_time) / 60;
-		if (active
-			&& unused_minutes / 60 >= spindown_idle_minutes) {
+		if (active && unused_minutes >= spindown_idle_minutes) {
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", parity->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");
