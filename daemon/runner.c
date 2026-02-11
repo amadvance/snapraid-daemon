@@ -397,9 +397,36 @@ bail:
 
 static int runner_precondition(struct snapraid_state* state)
 {
-	(void)state;
+	struct snapraid_task* task = state->runner.latest;
 
-	/* at present no precondition */
+	switch (task->cmd) {
+	case CMD_PROBE :
+	case CMD_UP :
+	case CMD_DOWN :
+	case CMD_SMART :
+	case CMD_REPORT :
+	case CMD_DOWN_IDLE :
+		/* these taks are allowed regardless the health */
+		break;
+	default :
+		/* other commands are run only if the array is sane */
+		int health = health_array(state);
+		if (health == HEALTH_PREFAIL) {
+			const char* msg = "Array is in PREFAIL! Task aborted!";
+			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
+			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
+			return -1;
+		}
+
+		if (health == HEALTH_FAILING) {
+			const char* msg = "Array is FAILING!!! Task aborted!!!";
+			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
+			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
+			return -1;
+		}
+		break;
+	}
+
 	return 0;
 }
 
