@@ -439,6 +439,16 @@ body {
     color: #fff;
 }
 
+.btn-disabled {
+    background-color: var(--c-slate-700); 
+    color: var(--c-slate-400);
+    /* Essential functional properties for a disabled button */
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none; /* Prevents hover effects or clicks */
+    border: 1px solid transparent;
+}
+
 .btn-icon {
     display: inline-flex;
     align-items: center;
