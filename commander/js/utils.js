@@ -44,7 +44,7 @@ export const formatRelativeTime = (isoString, referenceIsoString) => {
     const reference = referenceIsoString ? new Date(referenceIsoString) : new Date();
     const diffSeconds = Math.floor((reference - date) / 1000);
 
-    if (diffSeconds < 60) return 'Just now';
+    if (diffSeconds < 60) return 'Now';
     if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
     if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
     if (diffSeconds < 172800) return 'Yesterday';
@@ -54,7 +54,7 @@ export const formatRelativeTime = (isoString, referenceIsoString) => {
 };
 
 export const formatAgo = (seconds) => {
-    if (seconds < 60) return 'Just now';
+    if (seconds < 60) return 'Now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     if (seconds < 172800) return 'Yesterday';
