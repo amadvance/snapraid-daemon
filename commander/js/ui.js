@@ -423,13 +423,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Oldest block</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0} days ago
+                        ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0} <span class="text-sm">days ago</span>
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Median block</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0} days ago
+                        ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0} <span class="text-sm">days ago</span>
                     </div>
                 </div>
             </div>
@@ -927,7 +927,7 @@ export const renderRecovery = (arrayInfo) => {
                     </p>
                     <div class="property-list mt-0 pt-0 border-t-0 mb-6">
                         <div class="property-row">
-                            <div class="property-label">Bad Blocks Detected</div>
+                            <div class="property-label">Bad Blocks</div>
                             <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad}</div>
                         </div>
                     </div>
