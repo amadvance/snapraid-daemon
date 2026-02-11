@@ -826,13 +826,13 @@ export const renderSettings = (config) => {
                 <h3 class="font-bold mb-4 text-cyan">Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'e.g., daily 02:00')}
                 <div class="form-row">
-                    ${inputField('sync_threshold_deletes', 'Del. Threshold', 'number')}
-                    ${inputField('sync_threshold_updates', 'Upd. Threshold', 'number')}
+                    ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number')}
+                    ${inputField('sync_threshold_updates', 'Updates Threshold', 'number')}
                 </div>
                 ${inputField('scrub_percentage', 'Scrub %', 'number')}
                 ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number')}
                 ${boolField('sync_prehash', 'Enable Pre-hash')}
-                ${boolField('sync_force_zero', 'Force Zero')}
+                ${boolField('sync_force_zero', 'Enable Force Zero')}
             </div>
 
             <!-- Monitor & Log -->
