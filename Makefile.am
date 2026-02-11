@@ -26,6 +26,7 @@ endif
 if HAVE_ZIP
 COMMANDER_DIST = \
 	index.html \
+	image/logo.png \
 	css/style.css \
 	js/api.js \
 	js/app.js \
@@ -91,6 +92,7 @@ noinst_HEADERS = \
 	rc.snapraidd.in \
 	snapraidd.conf.example \
 	commander/index.html \
+	commander/image/logo.png \
 	commander/css/style.css \
 	commander/js/ui.js \
 	commander/js/api.js \

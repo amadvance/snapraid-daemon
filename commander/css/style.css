@@ -1,6 +1,7 @@
 /* --- Variables & Theme --- */
 :root {
     /* Color Palette - Deep Dark Mode */
+    /* https://htmlcolorcodes.com/color-chart/tailwind-color-chart/ */
     --c-slate-950: #020617;
     --c-slate-900: #0f172a;
     --c-slate-800: #1e293b;
@@ -8,9 +9,17 @@
     --c-slate-400: #94a3b8;
     --c-slate-200: #e2e8f0;
 
-    --c-cyan-500: #06b6d4;
-    --c-cyan-400: #22d3ee;
-    --c-cyan-900: #164e63;
+    --c-cyan-50: #ECFEFF;
+    --c-cyan-100: #CEFAFE;
+    --c-cyan-200: #A2F4FD;
+    --c-cyan-300: #53EAFD;
+    --c-cyan-400: #42D3F2;
+    --c-cyan-500: #3BB8DB;
+    --c-cyan-600: #2C92B8;
+    --c-cyan-700: #1A7595;
+    --c-cyan-800: #015F78;
+    --c-cyan-900: #104E64;
+    --c-cyan-950: #053345;
 
     --c-emerald-500: #10b981;
     --c-emerald-900: #064e3b;
@@ -22,7 +31,30 @@
     --c-red-900: #7f1d1d;
 
     --c-purple-500: #a855f7;
-    --c-blue-500: #3b82f6;
+
+    --c-blue-50: #EFF6FF;
+    --c-blue-100: #DBEAFE;
+    --c-blue-200: #BEDBFF;
+    --c-blue-300: #8EC5FF;
+    --c-blue-400: #51A2FF;
+    --c-blue-500: #2B7FFF;
+    --c-blue-600: #155DFC;
+    --c-blue-700: #1447E6;
+    --c-blue-800: #193CB8;
+    --c-blue-900: #1C398E;
+    --c-blue-950: #162456;
+
+    --c-sky-50: #F0F9FF;
+    --c-sky-100: #DFF2FE;
+    --c-sky-200: #B8E6FE;
+    --c-sky-300: #74D4FF;
+    --c-sky-400: #21BCFF;
+    --c-sky-500: #34A6F4;
+    --c-sky-600: #2984D1;
+    --c-sky-700: #1C69A8;
+    --c-sky-800: #10598A;
+    --c-sky-900: #024A70;
+    --c-sky-950: #052F4A;
 
     /* Semantic */
     --bg-main: var(--c-slate-950);
@@ -30,7 +62,7 @@
     --bg-card-hover: var(--c-slate-800);
     --text-primary: var(--c-slate-200);
     --text-secondary: var(--c-slate-400);
-    --accent: var(--c-cyan-400);
+    --accent: var(--c-sky-400);
     --accent-glow: rgba(34, 211, 238, 0.2);
 
     /* Spacing */
@@ -87,9 +119,9 @@ body {
 }
 
 .logo-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--c-cyan-500), var(--c-blue-500));
+    width: 50px;
+    height: 50px;
+    background: var(--bg-card);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -102,6 +134,14 @@ body {
     font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.1;
+    color: var(--c-sky-400);
+}
+
+.brand-sub {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: white;
 }
 
 .version-tag {
@@ -135,7 +175,7 @@ body {
 
 .nav-item.active {
     background-color: rgba(6, 182, 212, 0.1);
-    color: var(--c-cyan-400);
+    color: var(--c-sky-400);
 }
 
 .nav-item .icon svg {
@@ -161,7 +201,7 @@ body {
 }
 
 .status-command {
-    color: var(--c-cyan-400);
+    color: var(--c-sky-400);
 }
 
 .status-meta {
@@ -176,7 +216,7 @@ body {
     display: inline-flex;
     align-items: center;
     margin-right: 0.5rem;
-    color: var(--c-cyan-400);
+    color: var(--c-sky-400);
 }
 
 .status-icon svg {
@@ -331,7 +371,7 @@ body {
 }
 
 .card.glow {
-    border-color: var(--c-cyan-500);
+    border-color: var(--c-sky-500);
     box-shadow: 0 0 20px -5px var(--accent-glow);
 }
 
@@ -400,7 +440,7 @@ body {
     width: max-content;
     min-width: 120px;
     z-index: 1000;
-    border: 1px solid var(--c-cyan-500);
+    border: 1px solid var(--c-sky-500);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
     pointer-events: none;
     opacity: 0;
@@ -420,7 +460,7 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--c-cyan-500);
+    background-color: var(--c-sky-500);
     color: #fff;
 }
 
@@ -609,7 +649,7 @@ body {
 
 .form-control:focus {
     outline: none;
-    border-color: var(--c-cyan-500);
+    border-color: var(--c-sky-500);
 }
 
 .form-row {
@@ -772,7 +812,11 @@ body {
 }
 
 .text-cyan {
-    color: var(--c-cyan-400);
+    color: var(--c-sky-400);
+}
+
+.text-sky {
+    color: var(--c-sky-400);
 }
 
 .text-emerald {
@@ -890,7 +934,7 @@ body {
 /* Loading */
 .loading-spinner {
     border: 4px solid var(--c-slate-800);
-    border-top: 4px solid var(--c-cyan-500);
+    border-top: 4px solid var(--c-sky-500);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -994,7 +1038,7 @@ input[type=number]:focus {
 .modal-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--c-cyan-400);
+    color: var(--c-sky-400);
     margin-bottom: var(--gap-md);
 }
 
