@@ -1356,33 +1356,48 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t refere
 
 	int64_t oldest = first_bucket->time_at;
 	int64_t newest = last_bucket->time_at;
+	int64_t median = oldest;
 
 	/* compute graph limits */
 	uint64_t bar_scrubbed[SCRUB_COUNT];
 	uint64_t bar_new[SCRUB_COUNT];
 	uint64_t barmax = 0;
 	uint64_t total = 0;
+	uint64_t partial = 0;
 	memset(bar_scrubbed, 0, sizeof(bar_scrubbed));
 	memset(bar_new, 0, sizeof(bar_new));
+
+	/* get the total */
 	for (tommy_node* j = tommy_list_head(list); j != 0; j = j->next) {
 		struct snapraid_bucket* bucket = j->data;
+		total += bucket->count_scrubbed + bucket->count_justsynced;
+	}
+
+	/* get the median */
+	for (tommy_node* j = tommy_list_head(list); j != 0; j = j->next) {
+		struct snapraid_bucket* bucket = j->data;
+
+		if (partial < total / 2)
+			median = bucket->time_at;
+		partial += bucket->count_scrubbed + bucket->count_justsynced;
 
 		unsigned column = (bucket->time_at - oldest) * SCRUB_COUNT / (newest - oldest + 1);
 
 		bar_scrubbed[column] += bucket->count_scrubbed;
 		bar_new[column] += bucket->count_justsynced;
-		total += bucket->count_scrubbed + bucket->count_justsynced;
 
 		if (bar_scrubbed[column] + bar_new[column] > barmax)
 			barmax = bar_scrubbed[column] + bar_new[column];
 	}
 
 	unsigned dayoldest = day_ago(oldest, reference);
+	unsigned daymedian = day_ago(median, reference);
 	unsigned daynewest = day_ago(newest, reference);
 
 	ss_json_object_open(s, &level, "scrub_history");
 	ss_json_uint(s, level, "x_axis_low", dayoldest);
 	ss_json_uint(s, level, "x_axis_high", daynewest);
+	ss_json_uint(s, level, "x_axis_median", daymedian);
 	ss_json_uint(s, level, "y_axis_low", 0);
 	ss_json_double(s, level, "y_axis_high", barmax * (double)100 / total);
 	ss_json_array_open(s, &level, "points");

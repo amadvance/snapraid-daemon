@@ -143,7 +143,7 @@ export function renderScrubHistory(containerId, history) {
         `;
     }
 
-    // Horizontal grid lines every 5%
+    // Horizontal grid lines every 1%
     for (let i = 1; i <= yMax; i += 1) {
         const yPos = getY(i);
         if (i % 5 != 0)
@@ -374,6 +374,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             : healthBadge('pending')}</div>
                 </div>
                 <div class="property-row">
+                    <div class="property-label">Scrubbed</div>
+                    <div class="property-value text-cyan">
+                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
+                    </div>
+                </div>
+                <div class="property-row">
                     <div class="property-label">Total Files</div>
                     <div class="property-value text-cyan">${arrayInfo.files_count.toLocaleString()}</div>
                 </div>
@@ -415,9 +421,15 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div id="scrub-history-graph" class="scrub-history-container" style="height: 200px; width: 100%;"></div>
             <div class="property-list mt-4 border-t border-slate-800 pt-4">
                 <div class="property-row">
-                    <div class="property-label">Scrubbed</div>
+                    <div class="property-label">Oldest block</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
+                        ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0} days ago
+                    </div>
+                </div>
+                <div class="property-row">
+                    <div class="property-label">Median block</div>
+                    <div class="property-value text-cyan">
+                        ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0} days ago
                     </div>
                 </div>
             </div>

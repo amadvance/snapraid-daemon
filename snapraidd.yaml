@@ -1610,6 +1610,7 @@ components:
       required:
         - x_axis_low
         - x_axis_high
+        - x_axis_median
         - y_axis_low
         - y_axis_high
         - points
@@ -1623,7 +1624,11 @@ components:
           type: integer
           description: |
             The upper boundary of the X-axis,
-            representing the current time (zero).
+            representing the most recent time.
+        x_axis_median:
+          type: integer
+          description: |
+            The median boundary of the X-axis.
         y_axis_low:
           type: number
           description: |
