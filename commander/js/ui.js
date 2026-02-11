@@ -589,6 +589,7 @@ const renderDiskCard = (disk, type) => {
 
         const temp = dev.smart?.temperature_celsius;
         const tempClass = temp >= 50 ? 'text-red font-bold' : (temp >= 40 ? 'text-yellow font-bold' : '');
+        const powerClass = temp >= 50 ? 'active-red' : (temp >= 40 ? 'active-yellow' : 'active-cyan');
         const tempStr = temp !== undefined ? `${temp}°C` : '-';
 
         let sparklinePlaceholder = '';
@@ -601,7 +602,7 @@ const renderDiskCard = (disk, type) => {
             <div class="bg-slate-950 p-3 rounded mt-2 border border-slate-800 text-sm">
                 <div class="flex justify-between mb-1">
                      <span class="font-mono text-cyan">${dev.device_node}</span>
-                     <div>${badge(dev.power, dev.power === 'active' ? 'green' : 'blue')} ${healthBadge(dev.health)}</div>
+                     <div>${badge(dev.power, dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.model || 'Unknown Model'} (${dev.serial || '-'})</div>
                 

@@ -517,6 +517,29 @@ body {
     color: var(--c-slate-400);
 }
 
+@keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.badge-active-cyan {
+    background: rgba(6, 182, 212, 0.2); /* Cyan-500 with 0.2 opacity */
+    color: var(--c-cyan-500);
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.badge-active-yellow {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--c-amber-500);
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.badge-active-red {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--c-red-500);
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Progress Bar */
 .progress-container {
     height: 8px;
