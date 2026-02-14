@@ -1292,9 +1292,6 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 
 static void json_temp_list(ss_t* s, int level, tommy_list* list, int64_t reference)
 {
-	if (tommy_list_empty(list))
-		return;
-
 	int64_t base = reference - SECONDS_IN_A_DAY;
 	int64_t delta = (SECONDS_IN_A_DAY + TEMP_COUNT - 1) / TEMP_COUNT;
 
