@@ -3,7 +3,7 @@ Name{number}
 
 Synopsis
 	:snapraidd [-c, --conf CONFIG] [-f, --foreground] [-p, --pidfile FILE]
-		[-N, --no-cache] [-v, --verbose]
+	:	[-N, --no-cache] [-v, --verbose]
 
 	:snapraidd [-V, --version] [-H, --help]
 

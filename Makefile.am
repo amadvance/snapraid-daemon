@@ -112,7 +112,7 @@ LIST_MAN = doc/snapraidd.1 $(patsubst %, doc/snapraidd-%.1, $(LANG_CODES))
 
 LIST_TXT = doc/snapraidd.txt $(patsubst %, doc/snapraidd-%.txt, $(LANG_CODES))
 
-LIST_HH = doc/snapraidd.hh $(patsubst %, doc/snapraidd-%.hh, $(LANG_CODES))
+LIST_XML = doc/snapraidd.xml $(patsubst %, doc/snapraidd-%.xml, $(LANG_CODES))
 
 EXTRA_DIST = \
 	autogen.sh autover.sh \
@@ -135,7 +135,7 @@ clean-local:
 maintainer-clean-local:
 	rm -f $(LIST_MAN)
 	rm -f $(LIST_TXT)
-	rm -f $(LIST_HH)
+	rm -f $(LIST_XML)
 
 install-data-hook:
 # Install localized manpages
@@ -224,8 +224,8 @@ if HAVE_ADVD2
 %.html : %.d
 	advd2 html < $(srcdir)/$< > $@
 
-%.hh : %.d
-	advd2 frame < $(srcdir)/$< > $@
+%.xml : %.d
+	advd2 xml < $(srcdir)/$< > $@
 endif
 
 MANUAL=./snapraidd -f -N
@@ -254,4 +254,4 @@ helgrind:
 
 # Web distribution
 
-web: $(LIST_HH)
+web: $(LIST_XML)
