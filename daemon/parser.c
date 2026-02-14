@@ -50,6 +50,24 @@ static void clear_disk_accumulator(struct snapraid_state* state)
 }
 
 /**
+ * Clear the access accumulators of all the disks.
+ */
+static void clear_access_accumulator(struct snapraid_state* state)
+{
+	pulse(state, PULSE_DISKS);
+	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+		struct snapraid_disk* data = i->data;
+		data->access_count_initial_time = state->global.last_time;
+		data->access_count_latest_time = state->global.last_time;
+	}
+	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+		struct snapraid_disk* parity = i->data;
+		parity->access_count_initial_time = state->global.last_time;
+		parity->access_count_latest_time = state->global.last_time;
+	}
+}
+
+/**
  * Check if the passed name is a parity
  * Split parities are NOT recognized.
  */
@@ -906,9 +924,17 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 	if (mac < 2)
 		return;
 
-	const char* cmd = map[1];
+	const char* val = map[1];
 
-	pulse_str(state, PULSE_ARRAY, state->global.last_cmd, sizeof(state->global.last_cmd), cmd);
+	pulse_str(state, PULSE_ARRAY, state->global.last_cmd, sizeof(state->global.last_cmd), val);
+
+	int cmd = command_parse(val);
+
+	switch (cmd) {
+	case CMD_UP :
+		clear_access_accumulator(state);
+		break;
+	}
 }
 
 static void process_daemon(struct snapraid_state* state, char** map, size_t mac)

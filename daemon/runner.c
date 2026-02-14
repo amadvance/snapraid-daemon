@@ -432,7 +432,6 @@ static int runner_precondition(struct snapraid_state* state)
 
 static void runner_spindown_inactive_locked(struct snapraid_state* state)
 {
-	char msg[256];
 	struct snapraid_task* task = state->runner.latest;
 	int count = 0;
 
@@ -454,6 +453,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 		int unused_minutes = (data->access_count_latest_time - data->access_count_initial_time) / 60;
 		if (active && unused_minutes >= spindown_idle_minutes) {
+			char msg[256];
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", data->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");
@@ -475,6 +475,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 		int unused_minutes = (parity->access_count_latest_time - parity->access_count_initial_time) / 60;
 		if (active && unused_minutes >= spindown_idle_minutes) {
+			char msg[256];
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", parity->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");
@@ -485,15 +486,16 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 	/* no count, nothing to do */
 	if (count == 0) {
-		task->running = 0;
-		task->state = PROCESS_STATE_TERM;
-		task->exit_code = 0;
-		task->unix_end_time = task->unix_start_time;
+		/* set the latest task from the history, if any */
+		tommy_node * tail = tommy_list_tail(&state->runner.history_list);
+		if (tail) {
+			state->runner.latest = tail->data;
+		} else {
+			state->runner.latest = 0;
+		}
 
-		/* insert the task in the done list, but keep it in the latest pointer */
-		tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
-
-		message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, "Nothing to spindown");
+		/* free the down_idle task */
+		task_free(task);
 	} else {
 		runner_go(state);
 	}
