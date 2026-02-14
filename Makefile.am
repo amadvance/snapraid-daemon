@@ -26,7 +26,14 @@ endif
 if HAVE_ZIP
 COMMANDER_DIST = \
 	index.html \
+	site.webmanifest \
+	image/favicon-16x16.png \
 	image/logo.png \
+	image/android-chrome-512x512.png \
+	image/apple-touch-icon.png \
+	image/android-chrome-192x192.png \
+	image/favicon-32x32.png \
+	image/favicon.ico \
 	css/style.css \
 	js/api.js \
 	js/app.js \
@@ -92,13 +99,19 @@ noinst_HEADERS = \
 	rc.snapraidd.in \
 	snapraidd.conf.example \
 	commander/index.html \
+	commander/site.webmanifest \
+	commander/image/favicon-16x16.png \
 	commander/image/logo.png \
+	commander/image/android-chrome-512x512.png \
+	commander/image/apple-touch-icon.png \
+	commander/image/android-chrome-192x192.png \
+	commander/image/favicon-32x32.png \
+	commander/image/favicon.ico \
 	commander/css/style.css \
 	commander/js/ui.js \
 	commander/js/api.js \
 	commander/js/app.js \
-	commander/js/utils.js \
-	commander/metadata.json
+	commander/js/utils.js
 
 # Add the .version file in the distribution
 dist-hook:
