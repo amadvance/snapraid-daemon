@@ -1,0 +1,18 @@
+Package: @PACKAGE@
+Version: @PACKAGE_VERSION@-1
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Andrea Mazzoleni <amadvance@gmail.com>
+Depends: zlib1g, libzstd1, snapraid (>= 14.0)
+Description: A background service with a built-in Web UI that automates SnapRAID operations
+ SnapRAID Daemon is a lightweight background service that transforms manual parity
+ tasks into an automated workflow. It integrates directly with SnapRAID to
+ coordinate sync and scrub operations via intelligent scheduling, ensuring your
+ protection stays current without manual command-line intervention.
+ The service features a built-in Web UI and a comprehensive REST API, providing
+ both visual oversight and programmatic control. While the dashboard offers
+ real-time status and health alerts, the API enables seamless integration into
+ external monitoring stacks for persistent and reliable data protection.
+Homepage: https://www.snapraid.it/
+License: GPL-3.0-or-later

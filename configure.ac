@@ -2,15 +2,16 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.65])
 dnl Get version number from git
 m4_define([git_revision], m4_esyscmd_s([./autover.sh]))
-AC_INIT([snapraidd], [git_revision], [], [], [https://www.snapraid.it])
+AC_INIT([SnapRAID Daemon], [git_revision], [], [snapraid-daemon], [https://www.snapraid.it])
 AM_INIT_AUTOMAKE([foreign no-dependencies subdir-objects])
 AC_CONFIG_SRCDIR([daemon/daemon.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CANONICAL_HOST
+AC_USE_SYSTEM_EXTENSIONS
 
 dnl Checks for programs.
 AC_PROG_CC
-AC_USE_SYSTEM_EXTENSIONS
+PKG_PROG_PKG_CONFIG
 AC_CHECK_PROG([ADVD2],[advd2],[advd2],[])
 AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
 AC_CHECK_PROG([ZIP],[zip],[zip],[])
@@ -135,6 +136,8 @@ AC_ARG_ENABLE([warning],
 	],
 	[])
 
+AC_MSG_CHECKING([checking init system])
+
 AC_ARG_WITH([init-type],
     [AS_HELP_STRING([--with-init-type=TYPE], [Init system type: systemd, bsd, or none (default: auto)])],
     [init_type=$withval],
@@ -150,13 +153,38 @@ if test "x$init_type" = "xauto"; then
     fi
 fi
 
+AC_MSG_RESULT([$init_type])
+
+if test "x$init_type" = "xsystemd"; then
+  AC_MSG_CHECKING([checking systemdsystemunitdir])
+  AC_ARG_WITH([systemdsystemunitdir],
+    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
+                  [install systemd system unit files in DIR @<:@default=auto via pkg-config@:>@])],
+    [SERVICEDIR="$with_systemdsystemunitdir"],
+    [PKG_CHECK_MODULES([SYSTEMD], [systemd],
+      [SERVICEDIR=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`],
+      [SERVICEDIR="no"])
+    ])
+  AC_MSG_RESULT([$SERVICEDIR])
+  AC_SUBST([SERVICEDIR])
+fi
+
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
 
-# Provide feedback during ./configure
-AC_MSG_NOTICE([Selected init system: $init_type])
+PACKAGE_VERSION_UNDERSCORE=`echo "$PACKAGE_VERSION" | sed 's/-/_/g'`
+AC_SUBST([PACKAGE_VERSION_UNDERSCORE])
 
 AC_CONFIG_FILES([Makefile snapraidd.service rc.snapraidd])
+AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec])
+AC_CONFIG_FILES([makeslackware.sh], [chmod a+x makeslackware.sh])
+AC_CONFIG_FILES([pkg/snapraid-daemon.SlackBuild], [chmod a+x pkg/snapraid-daemon.SlackBuild])
+AC_CONFIG_FILES([makedeb.sh], [chmod a+x makedeb.sh])
+AC_CONFIG_FILES([makerpm.sh], [chmod a+x makerpm.sh])
+
+# Override datadir to be snapraidd and not snapraid-daemon
+datadir='${prefix}/share/snapraidd'
+AC_SUBST([datadir]) 
 
 AC_OUTPUT

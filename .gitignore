@@ -2,6 +2,9 @@
 *.zip
 *.tar.gz
 *.tgz
+*.txz
+*.deb
+*.rpm
 
 # backups
 *~
@@ -39,6 +42,13 @@ snapraidd
 *.o
 snapraidd.service
 rc.snapraidd
+makeslackware.sh
+pkg/snapraid-daemon.SlackBuild
+pkg/snapraid-daemon.info
+makedeb.sh
+pkg/control
+makerpm.sh
+pkg/snapraid-daemon.spec
 
 # projects
 *.dst

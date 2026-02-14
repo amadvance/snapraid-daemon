@@ -4,7 +4,7 @@ Description=SnapRAID Daemon
 # Ensures the network is up and local disks are mounted before starting
 After=network-online.target local-fs.target
 Wants=network-online.target local-fs.target
-Documentation=https://github.com/amadvance/snapraidd
+Documentation=https://github.com/amadvance/snapraid-daemon
 
 [Service]
 Type=forking

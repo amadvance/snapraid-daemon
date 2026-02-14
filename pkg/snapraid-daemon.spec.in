@@ -1,0 +1,51 @@
+Name:           @PACKAGE@
+Summary:        A background service with a built-in Web UI that automates SnapRAID operations
+Version:        @PACKAGE_VERSION_UNDERSCORE@
+Release:        1%{?dist}
+License:        GPL-3.0-or-later
+Group:          Applications/System
+URL:            https://www.snapraid.it/
+Source0:        https://github.com/amadvance/@PACKAGE@/releases/download/v%{version}/@PACKAGE@-%{version}.tar.gz
+BuildRequires:  gcc
+BuildRequires:  zlib-devel
+BuildRequires:  zstd-devel
+Requires:       snapraid >= 14.0
+Requires:       zlib
+Requires:       zstd
+
+%description
+SnapRAID Daemon is a lightweight background service that transforms manual parity
+tasks into an automated workflow. It integrates directly with SnapRAID to
+coordinate sync and scrub operations via intelligent scheduling, ensuring your
+protection stays current without manual command-line intervention.
+
+The service features a built-in Web UI and a comprehensive REST API, providing
+both visual oversight and programmatic control. While the dashboard offers
+real-time status and health alerts, the API enables seamless integration into
+external monitoring stacks for persistent and reliable data protection.
+
+%prep
+%setup -q
+
+%build
+%configure --with-init-type=systemd --with-systemdsystemunitdir=/usr/lib/systemd/system
+make %{?_smp_mflags}
+
+%check
+make check
+
+%install
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
+
+%files
+%license COPYING
+%doc AUTHORS HISTORY README snapraidd.conf.example snapraidd.yaml
+%{_bindir}/snapraidd
+%{_mandir}/man1/snapraidd.1*
+%dir %{_datadir}/snapraidd
+%{_datadir}/snapraidd/commander.zip
+/usr/lib/systemd/system/snapraidd.service
+
+%changelog
+# Add your changelog entries here

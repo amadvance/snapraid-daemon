@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# Script to build a Slackware .txz package for @PACKAGE_NAME@
+# using the @PACKAGE@.SlackBuild and related files in the current directory.
+#
+# This version:
+# - Prefers a source tarball already present in the current directory
+# - Only downloads it if not found locally
+# - Runs the SlackBuild (as root recommended for makepkg)
+#
+# Requirements:
+# - Run as root (or with sudo) for proper ownership/permissions in package
+
+set -euo pipefail
+
+VERSION="@PACKAGE_VERSION@"
+TARBALL="@PACKAGE@-${VERSION}.tar.gz"
+SOURCE_URL="https://github.com/amadvance/@PACKAGE@/releases/download/v${VERSION}/${TARBALL}"
+
+if [[ ! -f "pkg/@PACKAGE@.SlackBuild" ]]; then
+  echo "Error: @PACKAGE@.SlackBuild not found in the current directory."
+  exit 1
+fi
+
+if [[ ! -f "pkg/slack-desc" ]]; then
+  echo "Error: slack-desc not found in the current directory."
+  exit 1
+fi
+
+# Prefer local tarball
+if [[ -f "./${TARBALL}" ]]; then
+  echo "Found ${TARBALL} locally."
+  cp ${TARBALL} pkg/
+else
+  echo "Downloading ${TARBALL}..."
+  curl -L -O "$SOURCE_URL"
+fi
+
+# Set environment variables for SlackBuild
+export VERSION BUILD=1 TAG=_am OUTPUT=$(pwd)  # Package output in current dir
+
+echo "Running SlackBuild..."
+bash pkg/@PACKAGE@.SlackBuild
+
+echo "Cleanup..."
+rm -f pkg/${TARBALL}
+
+echo ""
+echo "Build complete!"
+echo "The .txz package should be in the current directory:"
+ls @PACKAGE@-${VERSION}-*-*.txz
+
+echo ""
+echo "You can install it with:"
+echo "  installpkg @PACKAGE@-${VERSION}-*-*.txz"
+echo "  or upgradepkg if replacing an older version."

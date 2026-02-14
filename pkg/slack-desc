@@ -1,0 +1,11 @@
+snapraid-daemon: snapraid-daemon (A background service with a built-in Web UI that automates SnapRAID operations)
+snapraid-daemon:
+snapraid-daemon: SnapRAID Daemon is a lightweight background service that transforms manual parity
+snapraid-daemon: tasks into an automated workflow. It integrates directly with SnapRAID to
+snapraid-daemon: coordinate sync and scrub operations via intelligent scheduling, ensuring your
+snapraid-daemon: protection stays current without manual command-line intervention.
+snapraid-daemon: 
+snapraid-daemon: The service features a built-in Web UI and a comprehensive REST API, providing
+snapraid-daemon: both visual oversight and programmatic control. While the dashboard offers
+snapraid-daemon: real-time status and health alerts, the API enables seamless integration into
+snapraid-daemon: external monitoring stacks for persistent and reliable data protection.

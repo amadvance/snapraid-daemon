@@ -13,7 +13,7 @@ snapraidd_LDADD = $(ZLIB_LIBS) $(ZSTD_LIBS)
 
 # init system
 if INSTALL_SYSTEMD
-systemdsystemunitdir = @systemdsystemunitdir@
+systemdsystemunitdir = @SERVICEDIR@
 systemdsystemunit_DATA = snapraidd.service
 endif
 
@@ -33,7 +33,7 @@ COMMANDER_DIST = \
 	js/ui.js \
 	js/utils.js
 
-pkgdata_DATA = commander.zip
+data_DATA = commander.zip
 
 commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
 	cd $(srcdir)/commander && $(ZIP) -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
@@ -116,7 +116,7 @@ LIST_XML = doc/snapraidd.xml $(patsubst %, doc/snapraidd-%.xml, $(LANG_CODES))
 
 EXTRA_DIST = \
 	autogen.sh autover.sh \
-	README COPYING HISTORY INSTALL \
+	README COPYING HISTORY INSTALL AUTHORS \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \
@@ -124,13 +124,23 @@ EXTRA_DIST = \
 	tommyds/LICENSE \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
-	snapraidd.service.in rc.snapraidd.in
+	snapraidd.service.in rc.snapraidd.in \
+	makeslackware.sh.in \
+	pkg/snapraid-daemon.SlackBuild.in \
+	pkg/snapraid-daemon.info.in \
+	pkg/slack-desc \
+	makedeb.sh.in \
+	pkg/control \
+	makerpm.sh.in \
+	pkg/snapraid-daemon.spec.in
 
 man1_MANS = doc/snapraidd.1
 
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip
+	rm -f makeslackware.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
+	rm -f snapraid-daemon-*.rpm snapraid-daemon_*.deb snapraid-daemon-*.txz
 
 maintainer-clean-local:
 	rm -f $(LIST_MAN)
