@@ -134,14 +134,14 @@ body {
     font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.1;
-    color: var(--c-sky-400);
+    color: white;
 }
 
 .brand-sub {
     font-size: 1.3rem;
     font-weight: 700;
     line-height: 1.1;
-    color: white;
+    color: var(--c-sky-400);
 }
 
 .version-tag {
