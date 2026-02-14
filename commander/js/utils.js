@@ -143,7 +143,7 @@ export const showConfirm = (message, title = 'Confirmation Required') => {
                 <div class="modal-body">${message}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                    <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+                    <button class="btn btn-primary" id="modal-confirm">Run</button>
                 </div>
             </div>
         `;
@@ -182,8 +182,8 @@ export const showConfirmDown = (message, title = 'Confirmation Required') => {
                 <div class="modal-body">${message}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                    <button class="btn btn-primary" id="modal-confirm">Start</button>
-                    <button class="btn btn-primary" id="modal-spindown">Start & SpinDown</button>
+                    <button class="btn btn-primary" id="modal-confirm">Run</button>
+                    <button class="btn btn-primary" id="modal-spindown">Run & SpinDown</button>
                 </div>
             </div>
         `;
