@@ -599,19 +599,21 @@ const renderDiskCard = (disk, type, pulseAt) => {
             sparklinePlaceholder = `<div id="sparkline-${safeId}" class="temp-sparkline-row temp-sparkline-container" style="width: 100%;"></div>`;
         }
 
+        const powerOnYears = dev.smart?.power_on_hours ? ` (${(dev.smart.power_on_hours / (24 * 365)).toFixed(1)} years)` : '';
+
         return `
             <div class="bg-slate-950 p-3 rounded mt-2 border border-slate-800 text-sm">
                 <div class="flex justify-between mb-1">
-                     <span class="font-mono text-cyan">${dev.device_node}</span>
-                     <div>${badge(dev.power, dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
+                     <span class="font-mono text-sm font-bold text-cyan">${dev.serial || 'Unknown Model'}</span>
+                     <div>${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
-                <div class="text-xs text-muted mb-2">${dev.model || 'Unknown Model'} (${dev.serial || '-'})</div>
+                <div class="text-xs text-muted mb-2">${dev.rotational ? 'HDD' : 'SSD'} ${dev.model || '-'}${powerOnYears}</div>
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
                     <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs text-muted">
                          <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">(${formatRelativeTime(dev.smart?.measured_at, pulseAt)})</span></div>
                          <div class="text-muted mt-1">
-                            ${dev.rotational ? 'HDD' : 'SSD'} (${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'})
+                            ${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'}
                          </div>
                     </div>
                     <div style="flex: 1; height: 100%; min-width: 0;">
