@@ -723,9 +723,11 @@ export const renderTasks = (data, hidePeriodic) => {
             <td colspan="7" style="padding: 0;">
                 <div class="text-xs font-mono bg-slate-950 p-4 border-b border-slate-800 shadow-inner">
                      ${exitStatus}
-                     <div class="text-muted mb-2 border-b border-slate-800 pb-2">
-                        <span class="font-bold">Log File: ${t.log_file || 'N/A'}</span>
-                     </div>
+                      ${t.log_file && t.log_file !== 'N/A' ? `
+                      <div class="text-muted mb-2 border-b border-slate-800 pb-2">
+                         <span class="font-bold">Log File: ${t.log_file}</span>
+                      </div>
+                      ` : ''}
                      <div class="overflow-x-auto">
                         ${(t.messages || []).length > 0
                 ? (t.messages || []).map(m => {
