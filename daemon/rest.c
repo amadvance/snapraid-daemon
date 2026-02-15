@@ -1794,7 +1794,6 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
-	time_t now = time(0);
 
 	if (strcmp(ri->request_method, "OPTIONS") == 0)
 		return send_no_content(conn);
@@ -1830,7 +1829,6 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
 		ss_json_int(&s, level, "data_disks_count", tommy_list_count(&state->data_list));
 		ss_json_int(&s, level, "parity_disks_count", tommy_list_count(&state->parity_list));
-		ss_json_pair_iso8601(&s, level, "generated_at", now);
 		if (global->last_time)
 			ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
 		if (*global->last_cmd)

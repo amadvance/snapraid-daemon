@@ -251,6 +251,7 @@ const renderSystemCard = (system) => {
 
 /* --- Dashboard --- */
 export const renderDashboard = (arrayInfo, activity, systemInfo) => {
+    const pulseAt = arrayInfo.pulse?.current_at;
     // 1. Hero: Activity
     let heroHtml = '';
     const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
@@ -261,7 +262,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="flex justify-between mb-4">
                     <div>
                         <h3 class="text-xl font-bold text-cyan">ACTIVE: ${activity.command.toUpperCase()}</h3>
-                        <div class="text-sm text-muted">Started: ${formatTime(activity.started_at)}</div>
+                        <div class="text-sm text-muted">Started: ${formatTime(activity.started_at, pulseAt)}</div>
                     </div>
                     <div>${statusBadge(activity)}</div>
                 </div>
@@ -305,7 +306,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                         <span class="font-bold text-cyan">${last.command.toUpperCase()}</span>
                         ${healthBadge(last.health)} ${statusBadge(last)}
                         <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
-                        <span class="text-muted">Ended: ${formatTime(last.finished_at)}</span>
+                        <span class="text-muted">Ended: ${formatTime(last.finished_at, pulseAt)}</span>
                     </div>
                 ` : '<p class="text-muted">No history available.</p>'}
             </div>
@@ -490,7 +491,7 @@ export const renderDifferences = (arrayInfo) => {
                     <div class="text-sm text-muted mt-2 italic">
                         These differences represent changes since the last sync. They will be cleared once the next maintenance cycle completes.
                     </div>
-                    <div class="text-sm text-muted mt-1">Last updated: ${formatRelativeTime(arrayInfo.last_diff_at, arrayInfo.generated_at)}</div>
+                    <div class="text-sm text-muted mt-1">Last updated: ${formatRelativeTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
@@ -664,6 +665,7 @@ export const renderDisks = (data) => {
 /* --- Tasks --- */
 export const renderTasks = (data, hidePeriodic) => {
     const { active, pending, history } = data;
+    const pulseAt = data.pulse?.current_at;
 
     const filteredHistory = hidePeriodic
         ? history.filter(t => t.command !== 'probe')
@@ -674,7 +676,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="font-mono text-muted">#${t.number}</td>
             <td class="font-bold text-cyan">${t.command}</td>
             <td>${statusBadge(t)}</td>
-            <td class="text-muted">${formatTime(t.scheduled_at)}</td>
+            <td class="text-muted">${formatTime(t.scheduled_at, pulseAt)}</td>
         </tr>
     `).join('') : `<tr><td colspan="4" class="text-center text-muted p-4">No tasks in queue</td></tr>`;
 
@@ -689,7 +691,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 <td class="font-mono text-muted">#${t.number}</td>
                 <td class="font-bold text-cyan">${t.command}</td>
                 <td>${statusBadge(t)}</td>
-                <td class="text-muted">${formatTime(t.started_at)}</td>
+                <td class="text-muted">${formatTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
                 <td class="font-bold">${progress}</td>
                 <td class="text-cyan">${eta}</td>
@@ -711,7 +713,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="font-bold text-cyan">${t.command}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
-            <td class="text-muted text-xs">${formatTime(t.started_at)}</td>
+            <td class="text-muted text-xs">${formatTime(t.started_at, pulseAt)}</td>
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
                 <button class="btn btn-secondary btn-xs" data-tooltip="View execution logs and exit status"
@@ -955,7 +957,7 @@ export const renderRecovery = (arrayInfo) => {
                      <div class="text-sm text-muted mt-2 italic">
                         These differences represent fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
-                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at) : formatTime(arrayInfo.last_sync_at)}</div>
+                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at, arrayInfo.pulse?.current_at) : formatTime(arrayInfo.last_sync_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 
                  <div class="property-list mt-0 pt-0 border-t-0">

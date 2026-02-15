@@ -8,12 +8,12 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-export const formatTime = (isoString) => {
-    if (!isoString) 
+export const formatTime = (isoString, referenceIsoString) => {
+    if (!isoString || !referenceIsoString) 
         return '-';
 
     const date = new Date(isoString);
-    const now = new Date();
+    const now = new Date(referenceIsoString);
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
@@ -41,7 +41,7 @@ export const formatTime = (isoString) => {
 };
 
 export const formatRelativeTime = (isoString, referenceIsoString) => {
-    if (!isoString || !referenceIsoString) 
+    if (!isoString || !referenceIsoString)
         return 'Unknown';
 
     const date = new Date(isoString);
