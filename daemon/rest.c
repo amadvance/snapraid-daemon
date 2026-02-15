@@ -1455,6 +1455,8 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_double(s, level, "failure_probability", dev->prob);
 		json_temp_list(s, level, &dev->temp_list, reference);
 		ss_json_object_open(s, &level, "smart");
+		if (dev->smart_time)
+			ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
 		if (dev->smart[SMART_RAW_READ_ERROR_RATE] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "raw_read_error_rate", dev->smart[SMART_RAW_READ_ERROR_RATE] & 0xFFFFFFFF);
 		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)

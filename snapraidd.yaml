@@ -1021,6 +1021,15 @@ components:
             derived from smartctl exit codes (bitmask 1 << 3 to 1 << 7).
             It is omitted if the disk is in standby.
           properties:
+            measured_at:
+              type: string
+              example: "2026-01-12T08:00:00"
+              description: >
+                The timestamp representing the exact moment the S.M.A.R.T.
+                telemetry was captured from the physical disk.
+                This serves as the "heartbeat" for health data, allowing
+                the system to determine the age and relevance of the
+                current diagnostic metrics.
             raw_read_error_rate:
               type: integer
               description: >

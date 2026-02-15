@@ -471,6 +471,9 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	const char* tag = map[3];
 	const char* val = map[4];
 
+	/* update the time, but do not pulse on this */
+	device->smart_time = state->global.last_time;
+
 	if (strcmp(tag, "serial") == 0)
 		pulse_str(state, PULSE_DISKS, device->serial, sizeof(device->serial), val);
 	else if (strcmp(tag, "model") == 0)
