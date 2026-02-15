@@ -1,6 +1,6 @@
 
 import { API } from './api.js';
-import { Icons, showToast, showConfirm, showConfirmDown, formatSeconds } from './utils.js';
+import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatSeconds } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory } from './ui.js';
 
 const app = {
@@ -553,6 +553,59 @@ const app = {
         } catch (e) {
             showToast('Failed to save: ' + e.message, 'error');
         }
+    },
+
+    showSmartDetails: async (deviceNode) => {
+        if (!app.state.disks) return;
+
+        let device = null;
+        [...app.state.disks.parity_disks, ...app.state.disks.data_disks].forEach(disk => {
+            disk.devices.forEach(dev => {
+                if (dev.device_node === deviceNode) device = dev;
+            });
+        });
+
+        if (!device || !device.smart) {
+            showToast('SMART data not available for this device', 'warning');
+            return;
+        }
+
+        const s = device.smart;
+        const criticalKeys = ['reallocated_sector_count', 'uncorrectable_error_cnt', 'command_timeout', 'current_pending_sector', 'offline_uncorrectable', 'reallocation_event_count'];
+        const otherKeys = ['power_on_hours', 'power_cycle_count', 'start_stop_count', 'load_cycle_count'];
+
+        const criticalRows = [];
+        const statusRows = [];
+        const otherRows = [];
+
+        Object.entries(s).forEach(([key, value]) => {
+            if (key === 'attributes' || value === null || value === undefined) return;
+
+            const label = key.replace(/_/g, ' ').toUpperCase();
+            let valStr = value;
+            let valClass = '';
+
+            if (typeof value === 'boolean') {
+                valStr = value ? 'YES' : 'NO';
+                valClass = value ? 'text-amber' : 'text-emerald';
+                statusRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono text-xs ${valClass}">${valStr}</td></tr>`);
+            } else if (criticalKeys.includes(key)) {
+                valClass = value > 0 ? 'text-amber' : 'text-emerald';
+                criticalRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono text-xs ${valClass}">${valStr}</td></tr>`);
+            } else if (otherKeys.includes(key)) {
+                if (key === 'power_on_hours') {
+                    const years = (value / (24*365)).toFixed(1);
+                    valStr = `${value} (${years} years)`;
+                }
+                otherRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono text-xs">${valStr}</td></tr>`);
+            }
+        });
+
+        const html = `<div>${criticalRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Critical Metrics</h4><table class="data-table dense mb-4"><tbody>${criticalRows.join('')}</tbody></table>` : ''}
+               ${statusRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">SMART Health Flags</h4><table class="data-table dense mb-4"><tbody>${statusRows.join('')}</tbody></table>` : ''}
+               ${otherRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Other Info</h4><table class="data-table dense"><tbody>${otherRows.join('')}</tbody></table>` : ''}</div>`;
+
+        showModal(`SMART Details: ${deviceNode}`, html, true);
     }
 };
 

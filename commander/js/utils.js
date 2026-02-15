@@ -9,7 +9,7 @@ export const formatBytes = (bytes, decimals = 2) => {
 };
 
 export const formatTime = (isoString, referenceIsoString) => {
-    if (!isoString || !referenceIsoString) 
+    if (!isoString || !referenceIsoString)
         return '-';
 
     const date = new Date(isoString);
@@ -212,6 +212,39 @@ export const showConfirmDown = (message, title = 'Confirmation Required') => {
         // Close on overlay click
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) cleanup(null);
+        });
+    });
+};
+
+export const showModal = (title, content, large = false) => {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-container ${large ? 'large' : ''}">
+                <div class="modal-title">${title}</div>
+                <div class="modal-body">${content}</div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-close">Close</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+
+        const cleanup = () => {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                overlay.remove();
+                resolve();
+            }, 200);
+        };
+
+        overlay.querySelector('#modal-close').addEventListener('click', cleanup);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup();
         });
     });
 };

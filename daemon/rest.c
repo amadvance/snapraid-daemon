@@ -1458,28 +1458,28 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 		ss_json_object_open(s, &level, "smart");
 		if (dev->smart_time)
 			ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
-		if (dev->smart[SMART_RAW_READ_ERROR_RATE] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "raw_read_error_rate", dev->smart[SMART_RAW_READ_ERROR_RATE] & 0xFFFFFFFF);
-		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "start_stop_count", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_REALLOCATED_SECTOR_COUNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "reallocated_sector_count", dev->smart[SMART_REALLOCATED_SECTOR_COUNT] & 0xFFFFFFFF);
-		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "power_on_hours", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
-		if (dev->smart[SMART_POWER_CYCLE_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "power_cycle_count", dev->smart[SMART_POWER_CYCLE_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "uncorrectable_error_cnt", dev->smart[SMART_UNCORRECTABLE_ERROR_CNT] & 0xFFFF);
 		if (dev->smart[SMART_COMMAND_TIMEOUT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "command_timeout", dev->smart[SMART_COMMAND_TIMEOUT] & 0xFFFF);
-		if (dev->smart[SMART_LOAD_CYCLE_COUNT] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "load_cycle_count", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_REALLOCATION_EVENT_COUNT] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "reallocation_event_count", dev->smart[SMART_REALLOCATION_EVENT_COUNT] & 0xFFFFFFFF);
 		if (dev->smart[SMART_CURRENT_PENDING_SECTOR] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "current_pending_sector", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
 		if (dev->smart[SMART_OFFLINE_UNCORRECTABLE] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "offline_uncorrectable", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
+		if (dev->smart[SMART_RAW_READ_ERROR_RATE] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "raw_read_error_rate", dev->smart[SMART_RAW_READ_ERROR_RATE] & 0xFFFFFFFF);
+		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "power_on_hours", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
+		if (dev->smart[SMART_POWER_CYCLE_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "power_cycle_count", dev->smart[SMART_POWER_CYCLE_COUNT] & 0xFFFFFFFF);
+		if (dev->smart[SMART_START_STOP_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "start_stop_count", dev->smart[SMART_START_STOP_COUNT] & 0xFFFFFFFF);
+		if (dev->smart[SMART_LOAD_CYCLE_COUNT] != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "load_cycle_count", dev->smart[SMART_LOAD_CYCLE_COUNT] & 0xFFFFFFFF);
 		tommy_node* last = tommy_list_tail(&dev->temp_list);
 		if (last) {
 			struct snapraid_temp* temp = last->data;

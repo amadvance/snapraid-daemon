@@ -4,7 +4,7 @@ import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDurat
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
 
-const esc = (str) => str.replace(/'/g, "\\'");
+export const esc = (str) => str.replace(/'/g, "\\'");
 
 
 const healthBadge = (health) => {
@@ -619,7 +619,9 @@ const renderDiskCard = (disk, type, pulseAt) => {
                     </div>
                 </div>
 
-                ${smartStatus}
+                <div class="smart-clickable mt-2" onclick="app.showSmartDetails('${esc(dev.device_node)}')">
+                    ${smartStatus}
+                </div>
             </div>
         `;
     }).join('');
