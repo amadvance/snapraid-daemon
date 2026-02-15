@@ -734,7 +734,10 @@ export const renderTasks = (data, hidePeriodic) => {
                     const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
                     return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
                 }).join('')
-                : '<div class="text-cyan">No logged messages.</div>'}
+                : (t.report_output ? '' : '<div class="text-cyan">No logged messages.</div>')}
+                        ${t.report_output ? `
+                        <div class="mt-4 pt-4 border-t border-slate-800 font-mono text-cyan whitespace-pre-wrap">${t.report_output}</div>
+                        ` : ''}
                      </div>
                 </div>
             </td>

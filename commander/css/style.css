@@ -799,6 +799,10 @@ body {
     font-size: 1.25rem;
 }
 
+.whitespace-pre-wrap {
+    white-space: pre-wrap;
+}
+
 .text-2xl {
     font-size: 1.5rem;
 }
