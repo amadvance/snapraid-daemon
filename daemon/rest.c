@@ -496,6 +496,7 @@ static int handler_not_found(struct mg_connection* conn, void* cbdata)
 static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
 {
 	ss_json_object_open(s, &level, "pulse");
+	ss_json_pair_iso8601(s, level, "current_at", time(0));
 	ss_json_i64(s, level, "array", pulse->array);
 	ss_json_i64(s, level, "config", pulse->config);
 	ss_json_i64(s, level, "disks", pulse->disks);

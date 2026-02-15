@@ -595,6 +595,14 @@ components:
         potentially return different data. Clients should use these counters
         to trigger selective cache invalidation.
       properties:
+        current_at:
+          type: string
+          example: "2026-01-12T08:00:00"
+          description: >
+            The current local system time of the server.
+            This acts as the master reference point for the client to
+            synchronize its local display and calculate the relative
+            age of other data points within the payload.
         array:
           type: integer
           format: int64
