@@ -665,7 +665,7 @@ export const renderTasks = (data, hidePeriodic) => {
     const { active, pending, history } = data;
 
     const filteredHistory = hidePeriodic
-        ? history.filter(t => t.command !== 'probe' && t.command !== 'down_idle')
+        ? history.filter(t => t.command !== 'probe')
         : history;
 
     const queueRows = pending.length ? pending.reverse().map(t => `
@@ -777,7 +777,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 </h3>
                 <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" onchange="app.toggleHidePeriodic(this.checked)" ${hidePeriodic ? 'checked' : ''}>
-                    Hide automatic tasks
+                    Hide automatic probes
                 </label>
             </div>
              <div class="overflow-x-auto">
