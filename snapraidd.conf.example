@@ -154,7 +154,7 @@ net_web_root = commander.zip
 # Examples:
 #   "daily 02:00"              - Run every night at 2 AM.
 #   "weekly Mon 03:00"         - Run every Monday morning at 3 AM.
-maintenance_schedule = weekly Mon 03:00
+maintenance_schedule = daily 02:00
 
 # Defines the maximum number of deleted or missing files allowed before
 # a 'sync' operation is aborted to prevent accidental parity loss.
@@ -188,7 +188,7 @@ sync_threshold_updates = 500
 # After a sync completes, the scrub_percentage determines how much of the
 # array is verified.
 # If this is missing or set to 0, the scrub phase is skipped entirely.
-scrub_percentage = 4
+scrub_percentage = 1
 
 # Do not scrub blocks newer than the specified number of days.
 # If this is missing, or set to 0, the scrub does not apply a selection based

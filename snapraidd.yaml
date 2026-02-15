@@ -824,10 +824,6 @@ components:
             or 'undelete'), the daemon automatically appends a final 'report'
             command to the task sequence upon successful completion of the
             primary actions.
-
-            For real-time operational tasks like 'sync' or 'scrub'
-            that are currently 'running' or 'queued', this field is
-            omitted.
         messages:
           type: array
           description: >
