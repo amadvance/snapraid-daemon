@@ -954,7 +954,7 @@ export const renderRecovery = (arrayInfo) => {
                      <div class="text-sm text-muted mt-2 italic">
                         These differences represent fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
-                     <div class="text-sm text-muted mt-1">Last updated: ${formatTime(arrayInfo.last_fix_at)}</div>
+                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at) : formatTime(arrayInfo.last_sync_at) }</div>
                 </div>
                 
                  <div class="property-list mt-0 pt-0 border-t-0">
