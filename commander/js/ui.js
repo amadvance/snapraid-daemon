@@ -550,7 +550,7 @@ export const renderDifferences = (arrayInfo) => {
 };
 
 /* --- Disks --- */
-const renderDiskCard = (disk, type) => {
+const renderDiskCard = (disk, type, pulseAt) => {
     const borderClass = type === 'parity' ? 'card-border-purple' : 'card-border-blue';
 
     const errorBadges = [];
@@ -608,7 +608,7 @@ const renderDiskCard = (disk, type) => {
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
                     <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs text-muted">
-                         <div>Temp: <span class="${tempClass}">${tempStr}</span></div>
+                         <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">(${formatRelativeTime(dev.smart?.measured_at, pulseAt)})</span></div>
                          <div class="text-muted mt-1">
                             ${dev.rotational ? 'HDD' : 'SSD'} (${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'})
                          </div>
@@ -651,12 +651,13 @@ const renderDiskCard = (disk, type) => {
 };
 
 export const renderDisks = (data) => {
+    const pulseAt = data.pulse?.current_at;
     return `
         <h3 class="text-xl font-bold mb-4">Parity Disks</h3>
-        <div class="grid-fill-2 mb-8">${data.parity_disks.map(d => renderDiskCard(d, 'parity')).join('')}</div>
+        <div class="grid-fill-2 mb-8">${data.parity_disks.map(d => renderDiskCard(d, 'parity', pulseAt)).join('')}</div>
         
         <h3 class="text-xl font-bold mb-4">Data Disks</h3>
-        <div class="grid-fill-2">${data.data_disks.map(d => renderDiskCard(d, 'data')).join('')}</div>
+        <div class="grid-fill-2">${data.data_disks.map(d => renderDiskCard(d, 'data', pulseAt)).join('')}</div>
     `;
 };
 
@@ -954,7 +955,7 @@ export const renderRecovery = (arrayInfo) => {
                      <div class="text-sm text-muted mt-2 italic">
                         These differences represent fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
-                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at) : formatTime(arrayInfo.last_sync_at) }</div>
+                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at) : formatTime(arrayInfo.last_sync_at)}</div>
                 </div>
                 
                  <div class="property-list mt-0 pt-0 border-t-0">
