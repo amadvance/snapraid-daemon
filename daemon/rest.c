@@ -1470,8 +1470,6 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_u64(s, level, "current_pending_sector", dev->smart[SMART_CURRENT_PENDING_SECTOR] & 0xFFFFFFFF);
 		if (dev->smart[SMART_OFFLINE_UNCORRECTABLE] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "offline_uncorrectable", dev->smart[SMART_OFFLINE_UNCORRECTABLE] & 0xFFFFFFFF);
-		if (dev->smart[SMART_RAW_READ_ERROR_RATE] != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "raw_read_error_rate", dev->smart[SMART_RAW_READ_ERROR_RATE] & 0xFFFFFFFF);
 		if (dev->smart[SMART_POWER_ON_HOURS] != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "power_on_hours", dev->smart[SMART_POWER_ON_HOURS] & 0xFFFFFFFF);
 		if (dev->smart[SMART_POWER_CYCLE_COUNT] != SMART_UNASSIGNED)

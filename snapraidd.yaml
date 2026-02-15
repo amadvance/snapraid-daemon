@@ -1038,13 +1038,6 @@ components:
                 This serves as the "heartbeat" for health data, allowing
                 the system to determine the age and relevance of the
                 current diagnostic metrics.
-            raw_read_error_rate:
-              type: integer
-              description: >
-                The rate of hardware read errors that occurred when reading data
-                from a disk surface (SMART ID 1). A decline in this normalized
-                value indicates a problem with either the disk surface or the
-                read/write heads.
             reallocated_sector_count:
               type: integer
               description: >

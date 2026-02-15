@@ -48,7 +48,6 @@ typedef tommy_list sl_t;
 /**
  * Standard SMART attributes.
  */
-#define SMART_RAW_READ_ERROR_RATE 1
 #define SMART_START_STOP_COUNT 4
 #define SMART_REALLOCATED_SECTOR_COUNT 5
 #define SMART_POWER_ON_HOURS 9
