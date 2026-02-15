@@ -1021,6 +1021,13 @@ components:
             derived from smartctl exit codes (bitmask 1 << 3 to 1 << 7).
             It is omitted if the disk is in standby.
           properties:
+            raw_read_error_rate:
+              type: integer
+              description: >
+                The rate of hardware read errors that occurred when reading data
+                from a disk surface (SMART ID 1). A decline in this normalized
+                value indicates a problem with either the disk surface or the
+                read/write heads.
             reallocated_sector_count:
               type: integer
               description: >
@@ -1051,12 +1058,25 @@ components:
                 The total number of uncorrectable errors during offline scan
                 (SMART ID 198). This represents failures discovered during
                 the drive's internal self-tests rather than during host I/O.
+            reallocation_event_count:
+              type: integer
+              description: >
+                The count of reallocation operations (SMART ID 196). This value
+                indicates the total number of attempts to transfer data from
+                reallocated sectors to a reserved area, including both
+                successful and unsuccessful attempts.
             start_stop_count:
               type: integer
               description: >
                 The cumulative count of spindle start/stop cycles (SMART ID 4).
                 In the context of snapraidd, this helps monitor the mechanical
                 wear caused by aggressive spindown power management policies.
+            power_cycle_count:
+              type: integer
+              description: >
+                The total count of full power-on/off cycles (SMART ID 12). While
+                distinct from start/stop cycles, high values may contribute to
+                mechanical stress on internal components.
             power_on_hours:
               type: integer
               description: >
