@@ -33,10 +33,12 @@ const statusBadge = (task) => {
 /**
  * Renders a temperature sparkline by measuring its parent container
  * to ensure a 1:1 pixel-accurate render.
- * * @param {string} containerId - The ID of the div to fill.
+ * @param {string} containerId - The ID of the div to fill.
  * @param {Array} temperaturaArray - Array of integers (0 for standby).
+ * @param {number} minTemp - Minimum temperature recorded.
+ * @param {number} maxTemp - Maximum temperature recorded.
  */
-export function renderTempSparkline(containerId, temperaturaArray) {
+export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxTemp) {
     const container = document.getElementById(containerId);
     if (!container || !temperaturaArray || temperaturaArray.length === 0) return;
 
@@ -76,6 +78,21 @@ export function renderTempSparkline(containerId, temperaturaArray) {
             <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" style="font-family:sans-serif;">${level}°</text>
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
                   stroke="rgba(255,255,255,0.3)" stroke-dasharray="2" />
+        `;
+    });
+
+    // Min/Max Lines
+    [
+        { val: minTemp, label: 'MIN' },
+        { val: maxTemp, label: 'MAX' }
+    ].forEach(item => {
+        if (item.val === undefined || item.val === null || item.val <= 0) return;
+        const yPos = getY(item.val);
+        const color = getColor(item.val);
+        svg += `
+            <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
+                  stroke="${color}" stroke-opacity="0.5" stroke-width="2.5"
+                  data-tooltip="${item.label}: ${item.val}°C" />
         `;
     });
 

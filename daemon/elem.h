@@ -116,7 +116,7 @@ struct snapraid_temp* temperature_alloc(int temperature, time_t time_at);
 void temperature_free(void* void_temp);
 
 /**
- * Insert a new temperature entru for the specific device
+ * Insert a new temperature entry for the specific device
  */
 void temperature_insert(struct snapraid_device* device, struct snapraid_temp* temp);
 

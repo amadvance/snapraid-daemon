@@ -1492,12 +1492,12 @@ struct smart_entry {
 //	{ 195, 48, "Hardware_ECC_Recovered", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 //	{ 195, 48, "Power_Fail_Health", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 //	{ 195, 48, "Total_Prog_Failures", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-	{ 195, 16, "Uncorrectable_Err_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* adjusted to 16 */
+	{ 195, 16, "Uncorrectable_Err_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* adjusted to 16 */  /* not present in https://github.com/linuxhw/SMART and EnterpriseDrive */
 	{ 195, 16, "Uncorrectable_Error_Cnt", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* adjusted to 16 */
-//	{ 195, 64, "Program_Failure_Blk_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 195,  8, "Hardware_ECC_Recovered", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 195, 64, "Program_Failure_Blk_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
+//	{ 195,  8, "Hardware_ECC_Recovered", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 	{ 196, 16, "Reallocated_Event_Count", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 196, 24 "Spare_Blocks", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 196, 24 "Spare_Blocks", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 	{ 196, 48, "Lifetime_Retried_Blk_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 //	{ 196, 48, "Not_In_Use", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 196, 48, "Reallocated_Event_Count", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
@@ -1512,32 +1512,32 @@ struct smart_entry {
 	{ 197, 48, "Total_Unc_Read_Failures", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 197, 64, "Read_Failure_Blk_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 198, 24, "Uncorrectable_Sector_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 198, 48, "Host_Reads_GiB", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 198, 48, "Host_Reads_GiB", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 //	{ 198, 48, "Not_In_Use", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 198, 48, "Offline_UErr_Media_Scan", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 198, 48, "Offline_Uncorrectable", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 198, 48, "Uncor_Read_Error_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 198, 64, "Read_Sectors_Tot_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 201, 16, "Power_Loss_Cap_Test", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 198, 64, "Read_Sectors_Tot_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
+//	{ 201, 16, "Power_Loss_Cap_Test", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 	{ 201, 24, "Unc_Soft_Read_Err_Rate", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 201, 48, "Lifetime_Remaining%", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 201, 48, "Percent_Lifetime_Remain", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 201, 48, "Lifetime_Remaining%", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
+//	{ 201, 48, "Percent_Lifetime_Remain", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 	{ 201, 48, "Read_Error_Rate", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 201, 48, "Soft_Read_Error_Rate,HDD", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 //	{ 201, 48, "Supercap_Status", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 201, 48, "Unc_Read_Error_Rate", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
 	{ 201, 48, "Uncorr_Soft_Read_Err_Rt", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
-//	{ 201, 64, "Write_Commands_Tot_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE },
+//	{ 201, 64, "Write_Commands_Tot_Ct", SMART_ENTRY_PREFAIL | SMART_ENTRY_PULSE }, /* not a error counter */
 
 	/* temperature */
-//	{ 190, 48, "Drive_Temp_Warning", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
+//	{ 190, 48, "Drive_Temp_Warning", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE }, /* not a temperature,  https://github.com/linuxhw/EnterpriseDrive/blob/66faf203c101ca6b6bb96b5eb84610374b37e7ad/SSD/SanDisk/SDLFOCAM-800/SDLFOCAM-800G-1HA1/0336B2AD416B#L76 */
 //	{ 190, 48, "SATA_Error_Ct", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 190, -1, "Airflow_Temperature_Cel", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 190, -1, "Case_Temperature", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 190, -1, "Drive_Temperature", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 190, -1, "Temperature_Case", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 190, -1, "Temperature_Celsius", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
-	{ 194, 48, "Device_Temperature", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
+//	{ 194, 48, "Device_Temperature", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE }, /* not present in https://github.com/linuxhw/SMART and EnterpriseDrive */
 	{ 194, -1, "Drive_Temperature", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 194, -1, "Temperature_Celsius", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
 	{ 194, -1, "Temperature_Internal", SMART_ENTRY_TEMP | SMART_ENTRY_PULSE },
@@ -1561,6 +1561,35 @@ int is_smart_pulse(int index, const char* name)
 	}
 
 	return 0;
+}
+
+void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64_t* temp_min, uint64_t* temp_max)
+{
+	uint64_t l, h, r;
+
+	/* first 190 */
+	r = dev->smart[190].raw;
+	if (r != SMART_UNASSIGNED) {
+		*temp = r & 0xFFFF;
+		l = (r >> 16) & 0xFFFF;
+		h = (r >> 32) & 0xFFFF;
+		if (l <= *temp && *temp <= h) {
+			*temp_min = l;
+			*temp_max = h;
+		}
+	}
+
+	/* then 194 that overwrite 190 */
+	r = dev->smart[194].raw;
+	if (r != SMART_UNASSIGNED) {
+		*temp = r & 0xFFFF;
+		l = (r >> 16) & 0xFFFF;
+		h = (r >> 32) & 0xFFFF;
+		if (l <= *temp && *temp <= h) {
+			*temp_min = l;
+			*temp_max = h;
+		}
+	}
 }
 
 static void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
@@ -1681,10 +1710,16 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 		if (dev->smart[9].raw != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw & 0xFFFFFF);
 		/* high level attributes */
-		tommy_node* last = tommy_list_tail(&dev->temp_list);
-		if (last) {
-			struct snapraid_temp* temp = last->data;
-			ss_json_u64(s, level, "temperature_celsius", temp->temp);
+		uint64_t temp = SMART_UNASSIGNED;
+		uint64_t temp_min = SMART_UNASSIGNED;
+		uint64_t temp_max = SMART_UNASSIGNED;
+		smart_temperature_range(dev, &temp, &temp_min, &temp_max);
+		if (temp != SMART_UNASSIGNED) {
+			ss_json_u64(s, level, "temperature_celsius", temp);
+			if (temp_min != SMART_UNASSIGNED)
+				ss_json_u64(s, level, "temperature_min_celsius", temp_min);
+			if (temp_max != SMART_UNASSIGNED)
+				ss_json_u64(s, level, "temperature_max_celsius", temp_max);
 		}
 		if (dev->flags != SMART_UNASSIGNED) {
 			ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);

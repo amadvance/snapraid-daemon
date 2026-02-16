@@ -1115,13 +1115,13 @@ components:
                 value ensures consistent monitoring regardless of the drive model.
                 Maintaining consistent temperatures below 45°C is critical for
                 the long-term reliability of the drive platters and motor.
-            temperature_celsius_min:
+            temperature_min_celsius:
               type: integer
               description: >
                 The lowest recorded internal temperature of the drive in
                 degrees Celsius during the current power-on session or
                 drive lifetime.
-            temperature_celsius_max:
+            temperature_max_celsius:
               type: integer
               description: >
                 The highest recorded internal temperature of the drive in
