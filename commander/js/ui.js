@@ -569,10 +569,14 @@ const renderDiskCard = (disk, type, pulseAt) => {
             smartIssues.push(`error_protocol: ${dev.error_protocol}`);
         }
         if (dev.smart) {
-            const criticalKeys = ['reallocated_sector_count', 'uncorrectable_error_cnt', 'command_timeout', 'current_pending_sector', 'offline_uncorrectable', 'reallocation_event_count'];
-            criticalKeys.forEach(k => {
-                if (dev.smart[k] > 0) smartIssues.push(`${k}: ${dev.smart[k]}`);
-            });
+            if (dev.smart.attributes) {
+                dev.smart.attributes.forEach(attr => {
+                    if (attr.type === 'prefail' && attr.raw !== 0) {
+                        const label = `${attr.name.toLowerCase()}: ${attr.raw}`;
+                        smartIssues.push(label);
+                    }
+                });
+            }
         }
 
         let smartStatus = '<span class="text-emerald font-bold text-xs">SMART PASSED</span>';

@@ -744,6 +744,7 @@ body {
     margin-bottom: 0.25rem;
 }
 
+.modal-body .data-table.v-dense th:first-child,
 .modal-body .data-table.v-dense td:first-child {
     width: 350px;
 }
@@ -1110,5 +1111,5 @@ input[type=number]:focus {
 }
 
 .modal-container.large {
-    max-width: 600px;
+    max-width: 800px;
 }
