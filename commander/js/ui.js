@@ -634,12 +634,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 <h3 class="font-bold text-lg">${disk.name}</h3>
                 ${healthBadge(disk.health)}
             </div>
-            <div class="text-xs font-mono text-muted mb-3 break-all">${disk.splits.map(s => {
-        const labelPart = s.label ? `${s.label}:` : '';
-        const typePart = s.type ? ` (${s.type})` : '';
-        return `${labelPart}${s.path}${typePart}`;
-    }).join(', ')}</div>
-            
+           
             ${errorBadges.join('')}
 
             <div class="mb-1 flex justify-between text-xs">
