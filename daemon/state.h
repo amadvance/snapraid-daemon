@@ -46,22 +46,6 @@ typedef tommy_list sl_t;
 #define FSINFO_MAX 64
 
 /**
- * Standard SMART attributes.
- */
-#define SMART_START_STOP_COUNT 4
-#define SMART_REALLOCATED_SECTOR_COUNT 5
-#define SMART_POWER_ON_HOURS 9
-#define SMART_POWER_CYCLE_COUNT 12
-#define SMART_UNCORRECTABLE_ERROR_CNT 187
-#define SMART_COMMAND_TIMEOUT 188
-#define SMART_AIRFLOW_TEMPERATURE_CELSIUS 190
-#define SMART_LOAD_CYCLE_COUNT 193
-#define SMART_TEMPERATURE_CELSIUS 194
-#define SMART_REALLOCATION_EVENT_COUNT 196
-#define SMART_CURRENT_PENDING_SECTOR 197
-#define SMART_OFFLINE_UNCORRECTABLE 198
-
-/**
  * SMART attributes count.
  */
 #define SMART_COUNT 256
@@ -87,6 +71,12 @@ typedef tommy_list sl_t;
  * Value for unassigned SMART attribute.
  */
 #define SMART_UNASSIGNED 0xFFFFFFFFFFFFFFFFULL
+
+
+/**
+ * Check if a SMART attribute needs the pulse.
+ */
+int is_smart_pulse(int index, const char* name);
 
 /**
  * Power mode
@@ -134,6 +124,26 @@ struct snapraid_temp {
 };
 
 /**
+ * SMART Attribute flags
+ */
+#define SMART_ATTR_TYPE_PREFAIL 1
+#define SMART_ATTR_TYPE_OLDAGE 2
+#define SMART_ATTR_UPDATE_ALWAYS 4
+#define SMART_ATTR_UPDATE_OFFLINE 8
+#define SMART_ATTR_WHEN_FAILED_NOW 16
+#define SMART_ATTR_WHEN_FAILED_PAST 32
+#define SMART_ATTR_WHEN_FAILED_NEVER 64
+
+struct smart_attr {
+	char name[128]; /**< SMART attribute name. */
+	uint64_t raw; /**< SMART attributes raw. */
+	uint64_t norm; /**< SMART attributes normalized. */
+	uint64_t worst; /**< SMART attributes worst. */
+	uint64_t thresh; /**< SMART attributes threshold. */
+	int flags; /**< SMART_ATTR_* flags */
+};
+
+/**
  * Device info entry.
  */
 struct snapraid_device {
@@ -143,7 +153,7 @@ struct snapraid_device {
 	char model[SMART_MAX]; /**< Model. */
 	char interf[SMART_MAX]; /**< Interface. */
 	int64_t smart_time; /**< Time of the latest smart measure */
-	uint64_t smart[SMART_COUNT]; /**< SMART attributes. */
+	struct smart_attr smart[SMART_COUNT]; /**< SMART attributes. */
 	uint64_t size;
 	uint64_t rotational;
 	uint64_t error_protocol;

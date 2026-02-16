@@ -1038,73 +1038,95 @@ components:
                 This serves as the "heartbeat" for health data, allowing
                 the system to determine the age and relevance of the
                 current diagnostic metrics.
-            reallocated_sector_count:
-              type: integer
+            attributes:
+              type: array
               description: >
-                The count of reallocated sectors (SMART ID 5). When the hard drive
-                finds a read/write/verification error, it marks this sector as
-                "reallocated" and transfers data to a special reserved area.
-            uncorrectable_error_cnt:
-              type: integer
-              description: >
-                The total count of uncorrectable errors when reading/writing a sector
-                (SMART ID 187). A rise in this value indicates hardware defects
-                that the drive's internal error correction (ECC) could not recover.
-            command_timeout:
-              type: integer
-              description: >
-                The count of aborted operations due to HDD timeout (SMART ID 188).
-                This can be caused by power supply issues, cable oxidation,
-                or internal drive failures.
-            current_pending_sector:
-              type: integer
-              description: >
-                The number of unstable sectors waiting to be remapped (SMART ID 197).
-                If a sector is subsequently read successfully, the count decreases.
-                If it fails again, it becomes a reallocated sector.
-            offline_uncorrectable:
-              type: integer
-              description: >
-                The total number of uncorrectable errors during offline scan
-                (SMART ID 198). This represents failures discovered during
-                the drive's internal self-tests rather than during host I/O.
-            reallocation_event_count:
-              type: integer
-              description: >
-                The count of reallocation operations (SMART ID 196). This value
-                indicates the total number of attempts to transfer data from
-                reallocated sectors to a reserved area, including both
-                successful and unsuccessful attempts.
-            start_stop_count:
-              type: integer
-              description: >
-                The cumulative count of spindle start/stop cycles (SMART ID 4).
-                In the context of snapraidd, this helps monitor the mechanical
-                wear caused by aggressive spindown power management policies.
-            power_cycle_count:
-              type: integer
-              description: >
-                The total count of full power-on/off cycles (SMART ID 12). While
-                distinct from start/stop cycles, high values may contribute to
-                mechanical stress on internal components.
+                A collection of all S.M.A.R.T. telemetry attributes retrieved
+                from the disk firmware, providing detailed health metrics.
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: >
+                      The technical identifier or human-readable name of the
+                      S.M.A.R.T. attribute (e.g., Power_On_Hours).
+                  type:
+                    type: string
+                    enum: [prefail, oldage, temperature]
+                    description: >
+                      Indicates if this attribute is a 'pre-fail' indicator,
+                      a 'temperature' or a 'oldage' informational value.
+                  when_failed:
+                    type: string
+                    enum: [never, now, past]
+                    description: >
+                      The failure history of this specific attribute. 'never' indicates
+                      it has always been within limits; 'now' indicates the attribute
+                      currently exceeds the threshold; 'past' indicates the attribute
+                      was out of limits at some point in the drive's history but has
+                      since returned to a nominal normalized value.
+                  raw:
+                    type: integer
+                    description: >
+                      The raw value processed by the daemon.
+                      This is the actual data point (e.g., total hours or
+                      degrees Celsius).
+                  norm:
+                    type: integer
+                    description: >
+                      The current normalized value of the attribute, typically
+                      scaled from 100 to 1 (where lower is usually worse).
+                  worst:
+                    type: integer
+                    description: >
+                      The lowest normalized value ever recorded for this
+                      attribute during the drive's lifetime.
+                  thresh:
+                    type: integer
+                    description: >
+                      The manufacturer-defined limit. If 'norm' drops below
+                      this value, the attribute is considered failed.
+                  min:
+                    type: integer
+                    description: >
+                      The minimum recorded value for this specific attribute
+                      session (commonly used for temperature tracking).
+                  max:
+                    type: integer
+                    description: >
+                      The maximum recorded value for this specific attribute
+                      session (commonly used for temperature tracking).
             power_on_hours:
               type: integer
               description: >
-                The total number of hours the drive has been powered on (SMART ID 9).
+                The total number of hours the drive has been powered on.
+                This field acts as a unified entry point, abstracting the data
+                from various possible S.M.A.R.T. attributes (such as IDs 9)
                 Used as a primary metric for determining the age and remaining
                 service life of the physical disk.
-            load_cycle_count:
-              type: integer
-              description: >
-                The number of times the heads have been parked in the landing zone
-                (SMART ID 193). High values are common in green/energy-efficient
-                drives but may indicate excessive head parking.
             temperature_celsius:
               type: integer
               description: >
-                The current internal temperature of the drive in degrees Celsius
-                (SMART ID 194 or 190). Maintaining consistent temperatures
-                below 45°C is critical for long-term platter and motor reliability.
+                The current internal temperature of the drive in degrees Celsius.
+                This field acts as a unified entry point, abstracting the data
+                from various possible S.M.A.R.T. attributes (such as IDs 190 or 194)
+                depending on the manufacturer's implementation. Centralizing this
+                value ensures consistent monitoring regardless of the drive model.
+                Maintaining consistent temperatures below 45°C is critical for
+                the long-term reliability of the drive platters and motor.
+            temperature_celsius_min:
+              type: integer
+              description: >
+                The lowest recorded internal temperature of the drive in
+                degrees Celsius during the current power-on session or
+                drive lifetime.
+            temperature_celsius_max:
+              type: integer
+              description: >
+                The highest recorded internal temperature of the drive in
+                degrees Celsius. Exceeding manufacturer limits (often 55-60°C)
+                typically triggers a PREFAIL status.
             failing:
               type: boolean
               description: >

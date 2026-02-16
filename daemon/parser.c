@@ -178,8 +178,12 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	}
 
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
-	for (j = 0; j < SMART_COUNT; ++j)
-		device->smart[j] = SMART_UNASSIGNED;
+	for (j = 0; j < SMART_COUNT; ++j) {
+		device->smart[j].raw = SMART_UNASSIGNED;
+		device->smart[j].norm = 0;
+		device->smart[j].worst = 0;
+		device->smart[j].thresh = 0;
+	}
 	device->error_protocol = SMART_UNASSIGNED;
 	device->error_medium = SMART_UNASSIGNED;
 	device->wear_level = SMART_UNASSIGNED;
@@ -532,25 +536,51 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			device->flags = flags;
 		}
 	} else {
+		if (mac < 13)
+			return;
+
 		int index;
+		const char* raw = map[4];
+		const char* norm = map[6];
+		const char* worst = map[7];
+		const char* thresh = map[8];
+		const char* name = map[9];
+		const char* type = map[10];
+		const char* updated = map[11];
+		const char* when_failed = map[12];
+
+		int flags = 0;
+		if (strcmp(type, "prefail") == 0)
+			flags |= SMART_ATTR_TYPE_PREFAIL;
+		else if (strcmp(type, "oldage") == 0)
+			flags |= SMART_ATTR_TYPE_OLDAGE;
+		if (strcmp(updated, "always") == 0)
+			flags |= SMART_ATTR_UPDATE_ALWAYS;
+		else if (strcmp(updated, "offline") == 0)
+			flags |= SMART_ATTR_UPDATE_OFFLINE;
+		if (strcmp(when_failed, "now") == 0)
+			flags |= SMART_ATTR_WHEN_FAILED_NOW;
+		else if (strcmp(when_failed, "past") == 0)
+			flags |= SMART_ATTR_WHEN_FAILED_PAST;
+		else if (strcmp(when_failed, "never") == 0)
+			flags |= SMART_ATTR_WHEN_FAILED_NEVER;
+
 		if (strint(&index, tag) == 0) {
-			switch (index) {
-			case SMART_REALLOCATED_SECTOR_COUNT :
-			case SMART_UNCORRECTABLE_ERROR_CNT :
-			case SMART_COMMAND_TIMEOUT :
-			case SMART_CURRENT_PENDING_SECTOR :
-			case SMART_OFFLINE_UNCORRECTABLE :
-			case SMART_START_STOP_COUNT :
-			case SMART_POWER_ON_HOURS :
-			case SMART_AIRFLOW_TEMPERATURE_CELSIUS :
-			case SMART_LOAD_CYCLE_COUNT :
-			case SMART_TEMPERATURE_CELSIUS :
-				pulse_stru64(state, PULSE_DISKS, &device->smart[index], val);
-				break;
-			default :
-				/* these values are not reported */
-				if (index >= 0 && index < 256)
-					stru64(&device->smart[index], val);
+			if (is_smart_pulse(index, name)) {
+				pulse_stru64(state, PULSE_DISKS, &device->smart[index].raw, raw);
+				pulse_stru64(state, PULSE_DISKS, &device->smart[index].norm, norm);
+				pulse_stru64(state, PULSE_DISKS, &device->smart[index].worst, worst);
+				pulse_stru64(state, PULSE_DISKS, &device->smart[index].thresh, thresh);
+				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
+				device->smart[index].flags = flags;
+			} else if (index >= 0 && index < 256) {
+				/* these values are not reported with pulse */
+				stru64(&device->smart[index].raw, raw);
+				stru64(&device->smart[index].norm, norm);
+				stru64(&device->smart[index].worst, worst);
+				stru64(&device->smart[index].thresh, thresh);
+				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
+				device->smart[index].flags = flags;
 			}
 		}
 	}
