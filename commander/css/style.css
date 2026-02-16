@@ -710,25 +710,42 @@ body {
     padding: 0.5rem 0.75rem;
 }
 
-.data-table.dense th {
+.data-table.dense th,
+.data-table.v-dense th {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     background-color: rgba(0, 0, 0, 0.2);
 }
 
-.data-table.dense td {
-    font-size: 0.85rem;
+.data-table.v-dense th,
+.data-table.v-dense td {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.data-table.dense td,
+.data-table.v-dense td {
     vertical-align: middle;
 }
 
-.data-table.dense tr:nth-child(even) {
+.data-table.dense tr:nth-child(even),
+.data-table.v-dense tr:nth-child(even) {
     background-color: rgba(255, 255, 255, 0.015);
 }
 
 .data-table.dense .badge {
     padding: 0.15rem 0.4rem;
     font-size: 0.7rem;
+}
+
+.modal-body h4 {
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.modal-body .data-table.v-dense td:first-child {
+    width: 350px;
 }
 
 .overflow-x-auto {
@@ -1093,5 +1110,5 @@ input[type=number]:focus {
 }
 
 .modal-container.large {
-    max-width: 800px;
+    max-width: 600px;
 }

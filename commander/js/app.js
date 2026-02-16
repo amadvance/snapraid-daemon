@@ -594,18 +594,18 @@ const app = {
                 criticalRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono text-xs ${valClass}">${valStr}</td></tr>`);
             } else if (otherKeys.includes(key)) {
                 if (key === 'power_on_hours') {
-                    const years = (value / (24*365)).toFixed(1);
+                    const years = (value / (24 * 365)).toFixed(1);
                     valStr = `${value} (${years} years)`;
                 }
                 otherRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono text-xs">${valStr}</td></tr>`);
             }
         });
 
-        const html = `<div>${criticalRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Critical Metrics</h4><table class="data-table dense mb-4"><tbody>${criticalRows.join('')}</tbody></table>` : ''}
-               ${statusRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">SMART Health Flags</h4><table class="data-table dense mb-4"><tbody>${statusRows.join('')}</tbody></table>` : ''}
-               ${otherRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Other Info</h4><table class="data-table dense"><tbody>${otherRows.join('')}</tbody></table>` : ''}</div>`;
+        const html = `<div>${criticalRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Critical Metrics</h4><table class="data-table v-dense mb-2"><tbody>${criticalRows.join('')}</tbody></table>` : ''}
+               ${statusRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">SMART Health Flags</h4><table class="data-table v-dense mb-2"><tbody>${statusRows.join('')}</tbody></table>` : ''}
+               ${otherRows.length ? `<h4 class="text-xs font-bold text-muted uppercase mb-1">Other Info</h4><table class="data-table v-dense"><tbody>${otherRows.join('')}</tbody></table>` : ''}</div>`;
 
-        showModal(`SMART Details: ${deviceNode}`, html, true);
+        showModal(`SMART Details for ${deviceNode}`, html, true);
     }
 };
 
