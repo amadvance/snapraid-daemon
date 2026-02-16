@@ -532,10 +532,12 @@ const app = {
             if (!fullAccess && protectedFields.includes(key)) continue;
 
             // Check if it should be a number
-            if (['sync_threshold_deletes', 'sync_threshold_updates', 'scrub_percentage',
+            if (['sync_threshold_deletes', 'sync_threshold_updates',
                 'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes',
                 'log_retention_days'].includes(key)) {
                 updates[key] = parseInt(value, 10);
+            } else if (key === 'scrub_percentage') {
+                updates[key] = parseFloat(value);
             } else {
                 updates[key] = value;
             }

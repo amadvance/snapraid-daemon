@@ -36,19 +36,32 @@ void config_line_free(void* void_line)
 
 static int parse_int(const char* input, int low, int high, int* out)
 {
-	long v;
-	char* e;
+	int v;
 
-	v = strtol(input, &e, 10);
-	if (input == e || *e != 0)
+	if (strint(&v, input) != 0)
 		return -1;
 
 	if (v < low || v > high)
 		return -1;
 
-	*out = (int)v;
+	*out = v;
 	return 0;
 }
+
+static int parse_double(const char* input, int low, int high, double* out)
+{
+	double v;
+
+	if (strdouble(&v, input) != 0)
+		return -1;
+
+	if (v < low || v > high)
+		return -1;
+
+	*out = v;
+	return 0;
+}
+
 
 const char* config_level_str(int level)
 {
@@ -240,7 +253,7 @@ int config_load(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
-				if (parse_int(val, 0, 100, &config->scrub_percentage) == 0) {
+				if (parse_double(val, 0, 100, &config->scrub_percentage) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -430,6 +443,17 @@ void config_set_int(struct snapraid_config* config, const char* key, int value)
 	} else {
 		char buf[32];
 		snprintf(buf, sizeof(buf), "%d", value);
+		config_set(config, key, buf);
+	}
+}
+
+void config_set_double(struct snapraid_config* config, const char* key, double value)
+{
+	if (value == 0) {
+		config_set(config, key, "");
+	} else {
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%.2g", value);
 		config_set(config, key, buf);
 	}
 }

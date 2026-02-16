@@ -50,7 +50,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (state->config.scrub_percentage > 0) {
 		do_scrub = 1;
 		sl_insert_str(&scrub_arg_list, "--plan");
-		sl_insert_int(&scrub_arg_list, state->config.scrub_percentage);
+		sl_insert_double(&scrub_arg_list, state->config.scrub_percentage);
 		sl_insert_str(&scrub_arg_list, "--older-than");
 		sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
 	}

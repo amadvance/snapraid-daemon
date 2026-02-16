@@ -102,5 +102,14 @@ void config_set_string(struct snapraid_config* config, const char* key, char* ne
  */
 void config_set_int(struct snapraid_config* config, const char* key, int new_value);
 
+/**
+ * Set double configuration value.
+ * @param config Configuration to modify
+ * @param key Configuration key name
+ * @param new_value New value to set
+ */
+void config_set_double(struct snapraid_config* config, const char* key, double new_value);
+
+
 #endif
 

@@ -428,7 +428,7 @@ struct snapraid_config {
 	int sync_threshold_updates;
 	int sync_prehash;
 	int sync_force_zero;
-	int scrub_percentage;
+	double scrub_percentage;
 	int scrub_older_than;
 	int probe_interval_minutes;
 	int spindown_idle_minutes;

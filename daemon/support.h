@@ -216,7 +216,7 @@ static inline void ss_json_u64(ss_t* s, int level, const char* field, uint64_t a
 
 static inline void ss_json_double(ss_t* s, int level, const char* field, double arg)
 {
-	ss_jsonf(s, level, "\"%s\": %g,\n", field, arg);
+	ss_jsonf(s, level, "\"%s\": %.2g,\n", field, arg);
 }
 
 /**
@@ -289,6 +289,13 @@ void sl_insert_list(sl_t* list, sl_t* add);
  * @param add Integer value to insert
  */
 void sl_insert_int(sl_t* list, int add);
+
+/**
+ * Insert double as string into string list.
+ * @param list String list to insert into
+ * @param add Integer value to insert
+ */
+void sl_insert_double(sl_t* list, double add);
 
 /**
  * Compare alphabetically two string nodes

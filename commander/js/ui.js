@@ -812,10 +812,10 @@ export const renderSettings = (config) => {
         </div>
     `;
 
-    const inputField = (key, label, type = "text", desc = "", disabled = false) => `
+    const inputField = (key, label, type = "text", desc = "", disabled = false, extra = "") => `
         <div class="form-group ${disabled ? 'disabled-control' : ''}">
             <label for="${key}">${label}</label>
-            <input type="${type}" id="${key}" name="${key}" class="form-control" value="${config[key] !== undefined ? config[key] : ''}" ${disabled ? 'disabled' : ''}>
+            <input type="${type}" id="${key}" name="${key}" class="form-control" value="${config[key] !== undefined ? config[key] : ''}" ${disabled ? 'disabled' : ''} ${extra}>
             ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
         </div>
     `;
@@ -841,7 +841,7 @@ export const renderSettings = (config) => {
                     ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number')}
                     ${inputField('sync_threshold_updates', 'Updates Threshold', 'number')}
                 </div>
-                ${inputField('scrub_percentage', 'Scrub %', 'number')}
+                ${inputField('scrub_percentage', 'Scrub %', 'number', '', false, 'step="0.1"')}
                 ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number')}
                 ${boolField('sync_prehash', 'Enable Pre-hash')}
                 ${boolField('sync_force_zero', 'Enable Force Zero')}

@@ -90,30 +90,42 @@ static int json_type(const char* js, jsmntok_t* jv, const char* field, ssize_t f
 	return 0;
 }
 
-static int json_value(const char* js, jsmntok_t* jv, int low, int high, int* out)
+static int json_int(const char* js, jsmntok_t* jv, int low, int high, int* out)
 {
-	const int limit_div = INT_MAX / 10;
-	const int limit_rem = INT_MAX % 10;
-	int v;
-	int i;
+	char buf[32];
+	size_t len = jv[0].end - jv[0].start;
 
-	if (jv[0].type != JSMN_PRIMITIVE)
+	if (jv[0].type != JSMN_PRIMITIVE || len >= 32)
 		return -1;
 
-	v = 0;
-	for (i = jv[0].start; i < jv[0].end; ++i) {
-		unsigned d;
+	memcpy(buf, js + jv[0].start, len);
+	buf[len] = 0;
 
-		if (js[i] < '0' || js[i] > '9')
-			return -1;
+	int v;
+	if (strint(&v, buf) != 0)
+		return -1;
 
-		d = js[i] - '0';
+	if (v < low || v > high)
+		return -1;
 
-		if (v > limit_div || (v == limit_div && d > limit_rem))
-			return -1; /* overflow */
+	*out = v;
+	return 0;
+}
 
-		v = v * 10 + d;
-	}
+static int json_double(const char* js, jsmntok_t* jv, double low, double high, double* out)
+{
+	char buf[32];
+	size_t len = jv[0].end - jv[0].start;
+
+	if (jv[0].type != JSMN_PRIMITIVE || len >= 32)
+		return -1;
+
+	memcpy(buf, js + jv[0].start, len);
+	buf[len] = 0;
+
+	double v;
+	if (strdouble(&v, buf) != 0)
+		return -1;
 
 	if (v < low || v > high)
 		return -1;
@@ -635,7 +647,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("probe_interval_minutes")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 1440, &state->config.probe_interval_minutes) == 0) {
+				if (json_int(js, &jv[j], 0, 1440, &state->config.probe_interval_minutes) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.probe_interval_minutes);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -644,7 +656,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("spindown_idle_minutes")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 1440, &state->config.spindown_idle_minutes) == 0) {
+				if (json_int(js, &jv[j], 0, 1440, &state->config.spindown_idle_minutes) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.spindown_idle_minutes);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -653,7 +665,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_deletes")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 10000, &state->config.sync_threshold_deletes) == 0) {
+				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_deletes) == 0) {
 				} else {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_deletes);
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -662,7 +674,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_updates")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 10000, &state->config.sync_threshold_updates) == 0) {
+				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_updates) == 0) {
 				} else {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_updates);
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -689,8 +701,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_percentage);
+				if (json_double(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
+					config_set_double(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_percentage);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -698,7 +710,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_older_than")) == 0) {
 				++j;
-				if (json_value(js, &jv[j], 0, 1000, &state->config.scrub_older_than) == 0) {
+				if (json_int(js, &jv[j], 0, 1000, &state->config.scrub_older_than) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_older_than);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -763,7 +775,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_value(js, &jv[j], 0, 10000, &state->config.log_retention_days) == 0) {
+				if (json_int(js, &jv[j], 0, 10000, &state->config.log_retention_days) == 0) {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.log_retention_days);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -926,7 +938,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
 	ss_json_bool(&s, level, "sync_prehash", config->sync_prehash);
 	ss_json_bool(&s, level, "sync_force_zero", config->sync_force_zero);
-	ss_json_int(&s, level, "scrub_percentage", config->scrub_percentage);
+	ss_json_double(&s, level, "scrub_percentage", config->scrub_percentage);
 	ss_json_int(&s, level, "scrub_older_than", config->scrub_older_than);
 
 	ss_json_int(&s, level, "probe_interval_minutes", config->probe_interval_minutes);

@@ -188,7 +188,7 @@ sync_threshold_updates = 500
 # After a sync completes, the scrub_percentage determines how much of the
 # array is verified.
 # If this is missing or set to 0, the scrub phase is skipped entirely.
-scrub_percentage = 1
+scrub_percentage = 0.7
 
 # Do not scrub blocks newer than the specified number of days.
 # If this is missing, or set to 0, the scrub does not apply a selection based

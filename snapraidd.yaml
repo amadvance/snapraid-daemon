@@ -1364,10 +1364,11 @@ components:
             Permits parity synchronization even if existing files have
             unexpectedly shrunk to zero bytes.
         scrub_percentage:
-          type: integer
-          minimum: 0
-          maximum: 100
-          example: 12
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 100.0
+          example: 12.5
           description: >
             The percentage of the array verified during the scrub phase of
             scheduled maintenance. Set to 0 to skip the scrub phase.
