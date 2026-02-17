@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+# Stop the service before removal or upgrade
+if [ -d /run/systemd/system ]; then
+    systemctl --no-reload stop snapraidd.service >/dev/null || true
+fi
+
+exit 0

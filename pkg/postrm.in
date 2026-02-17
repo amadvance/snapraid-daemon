@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ]; then
+    if [ -d /run/systemd/system ]; then
+        systemctl disable snapraidd.service >/dev/null || true
+    fi
+fi
+
+# Final reload to keep systemd state clean
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null || true
+fi
+
+exit 0

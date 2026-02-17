@@ -37,7 +37,7 @@ tar -xzf "${TARBALL}"
 # Build the software
 echo "Configuring and building @PACKAGE@..."
 cd @PACKAGE@-${VERSION}
-./configure --prefix=/usr --mandir=/usr/share/man --with-init-type=systemd --with-systemdsystemunitdir=/usr/lib/systemd/system
+./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man --with-init-type=systemd --with-systemdsystemunitdir=/usr/lib/systemd/system
 make
 
 # Install into package root
@@ -52,9 +52,13 @@ cp snapraidd.conf.example snapraidd.yaml COPYING AUTHORS HISTORY README "../${PK
 cd ..
 
 # Create DEBIAN directory and control file
-echo "Copying DEBIAN/control..."
+echo "Copying into DEBIAN/"
 mkdir -p "${PKG_ROOT}/DEBIAN"
 cp pkg/control "${PKG_ROOT}/DEBIAN/control"
+cp pkg/postinst "${PKG_ROOT}/DEBIAN/postinst"
+cp pkg/prerm "${PKG_ROOT}/DEBIAN/prerm"
+cp pkg/postrm "${PKG_ROOT}/DEBIAN/postrm"
+chmod 755 "${PKG_ROOT}/DEBIAN/postinst" "${PKG_ROOT}/DEBIAN/prerm" "${PKG_ROOT}/DEBIAN/postrm"
 
 # Build the .deb package
 echo "Building .deb package with dpkg-deb..."

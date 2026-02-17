@@ -177,7 +177,7 @@ PACKAGE_VERSION_UNDERSCORE=`echo "$PACKAGE_VERSION" | sed 's/-/_/g'`
 AC_SUBST([PACKAGE_VERSION_UNDERSCORE])
 
 AC_CONFIG_FILES([Makefile snapraidd.service rc.snapraidd])
-AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec])
+AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/postinst pkg/prerm pkg/postrm pkg/snapraid-daemon.spec])
 AC_CONFIG_FILES([makeslackware.sh], [chmod a+x makeslackware.sh])
 AC_CONFIG_FILES([pkg/snapraid-daemon.SlackBuild], [chmod a+x pkg/snapraid-daemon.SlackBuild])
 AC_CONFIG_FILES([makedeb.sh], [chmod a+x makedeb.sh])
