@@ -427,13 +427,13 @@ int web_reload(struct snapraid_state* state, const char* root)
 	if (dot != 0 && strcmp(dot, ".zip") == 0) {
 		char zip[PATH_MAX];
 		if (strchr(root, '/') == 0) {
-			/* if it's just the file name, search it in SYSCONFDIR */
+			/* if it's just the file name, search it in DATADIR (note that PACKAGE is snapraid-daemon) */
 #ifdef DATADIR
-			snprintf(zip, sizeof(zip), DATADIR "/" PACKAGE "/%s", root);
+			snprintf(zip, sizeof(zip), DATADIR "/snapraidd/%s", root);
 			if (access(zip, F_OK) != 0)
 #endif
 			/* otherwise use  /usr/share/snapraidd */
-			snprintf(zip, sizeof(zip), "/usr/share/" PACKAGE "/%s", root);
+			snprintf(zip, sizeof(zip), "/usr/share/snapraidd/%s", root);
 		} else {
 			sncpy(zip, sizeof(zip), root);
 		}
