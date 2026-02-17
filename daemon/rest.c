@@ -854,25 +854,6 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("notify_email_recipient")) == 0) {
-				++j;
-				if (json_string(js, &jv[j], state->config.notify_email_recipient, sizeof(state->config.notify_email_recipient)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
-				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
-					goto bad;
-				}
-				++j;
-			} else if (json_entry(js, &jv[j], json_const("notify_email_level")) == 0) {
-				++j;
-				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_level(buf, &state->config.notify_email_level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
-				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
-					goto bad;
-				}
-				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_differences")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &state->config.notify_differences) == 0) {
@@ -958,9 +939,6 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_str(&s, level, "notify_heartbeat", config->notify_heartbeat);
 	ss_json_str(&s, level, "notify_result", config->notify_result);
 	ss_json_str(&s, level, "notify_result_level", config_level_str(config->notify_result_level));
-
-	ss_json_str(&s, level, "notify_email_recipient", config->notify_email_recipient);
-	ss_json_str(&s, level, "notify_email_level", config_level_str(config->notify_email_level));
 
 	ss_json_bool(&s, level, "notify_differences", config->notify_differences);
 	ss_json_close(&s, &level);
@@ -1293,7 +1271,7 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	runner(state, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+	runner(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
 
 	if (status >= 200 && status <= 299)
 		return send_json_success(conn, status);
@@ -1741,7 +1719,6 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list, int64_t referen
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "name", disk->name);
 		ss_json_str(s, level, "health", health_name(health_disk(disk)));
-		// TODO power
 		if (disk->total_space_bytes != 0)
 			ss_json_u64(s, level, "total_space_bytes", disk->total_space_bytes);
 		if (disk->free_space_bytes != 0)

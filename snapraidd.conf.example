@@ -266,12 +266,48 @@ notify_syslog_level = info
 #notify_heartbeat = curl -fsS --max-time 30 --retry 3 https://hc-ping.com/550e8400-e29b-41d4
 
 # This command is triggered after every task, but is ONLY executed if the
-# task's result matches the 'notify_result_level' defined below.
-# It receives a structured text report via stdin.
+# task's result matches the 'notify_result_level' defined below. The daemon
+# pipes a structured, plain-text task report directly into the command's stdin.
 #
-# This option can only be modified via the REST API if 'net_config_full_access'
-# is set to 1. Otherwise, it remains read-only for security reasons.
-#notify_result = curl -fsS --max-time 30 --retry 3 -H "Content-Type: text/plain" -H "Title: SnapRAID Task Report" --data-binary @- https://ntfy.sh/your_private_topic
+# Available Placeholders:
+# %s : Replaced with the subject string (e.g., "[ERROR] SnapRAID Maintenance").
+# %l : Replaced with the task level (critical, error, warning, info, debug).
+# %n : Replaced with the ntfy priority (urgent, high, default, low, min).
+# %t : Replaced with the ntfy tag (skull, warning, default, -1, +1, heavy_check_mark).
+#
+# Examples of usage:
+# 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as
+#    a POST request.
+# 2. mail (Local System Mail): Uses the standard Linux 'mail' utility.
+#    This is ideal if you have a local MTA (like Postfix or Exim) configured.
+# 3. SMTP-over-SSL (Direct Delivery): Uses curl's built-in SMTP engine with
+#    the --netrc option. This is the most secure method for direct SMTP,
+#    as it keeps your login credentials out of the command line and logs.
+#
+# Automatic Header Injection:
+# If the command contains --mail-from or --mail-rcpt options, the
+# daemon automatically prepends a standard email header (From, To, and
+# Subject) followed by a blank line to the report text. This ensures that
+# curl's SMTP engine delivers a correctly formatted email to the recipient.
+#
+# Using --netrc and 'notify_run_as_user':
+# Curl looks for '.netrc' in the HOME directory of the executing user. If
+# you configure 'notify_run_as_user', ensure that the specified user has
+# a valid home directory containing the '.netrc' file with 600 permissions.
+# If the file is owned by root or in a different home path, curl will fail
+# to authenticate and it will terminate with error 55.
+#
+# File format (~/.netrc):
+# machine smtp.gmail.com
+# login your_email@gmail.com
+# password your-16-char-app-password
+#
+# For security enforcement, this parameter is immutable via the REST API
+# unless 'net_config_full_access' is explicitly enabled in the static
+# configuration file.
+#notify_result = curl -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" --data-binary @- https://ntfy.sh/your_private_topic
+#notify_result = mail -s "%s" your_user@localhost
+#notify_result = curl --netrc --url smtps://smtp.gmail.com:465 --ssl-reqd --mail-from your_email@gmail.com --mail-rcpt your_email@gmail.com --upload-file -
 
 # Controls the filter for 'notify_result'. The notification is sent only
 # if the task result is equal to or more severe than this level.
@@ -282,13 +318,6 @@ notify_syslog_level = info
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
 notify_result_level = error
-
-# Use notify_email_recipient to send reports to a local system email address.
-#notify_email_recipient = admin@example.com
-
-# Sets the minimum severity for email reports.
-# Possible values: info, warning, error, critical. Default: error.
-notify_email_level = warning
 
 # The user account used for notify_heartbeat, notify_result and mail notifications.
 # If missing or left blank, the task runs with the daemon's current privileges.

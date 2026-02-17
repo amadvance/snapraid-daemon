@@ -226,16 +226,12 @@ Possible values: info, warning, error, critical. Default: error.
 A shell command (e.g., \`curl\`) executed only upon task success, ideal
 for \[dq]dead man\'s switch\[dq] monitoring.
 .SS notify_result 
-A shell command triggered after task completion; it receives the task
-report via stdin.
+A shell command triggered after task completion. It receives the task
+report via stdin. You can use the \`%s\` placeholder in the command
+to get a subject line.
 .SS notify_result_level 
 Controls the filter for \`notify_result\`. The notification is sent only
 if the task result is equal to or more severe than this level.
-Possible values: info, warning, error, critical. Default: error.
-.SS notify_email_recipient 
-Local system email address for receiving health reports.
-.SS notify_email_level 
-Sets the minimum severity for email reports.
 Possible values: info, warning, error, critical. Default: error.
 .SS notify_differences 
 If enabled, includes a detailed list of file changes (added/removed/modified)

@@ -320,6 +320,7 @@ int stri64(int64_t* out, const char* src);
 int stru64(uint64_t* out, const char* src);
 int strdouble(double* out, const char* src);
 char* strtrim(char* str);
+void strupr(char* str);
 
 /****************************************************************************/
 /* pulse */

@@ -809,6 +809,10 @@ body {
     min-width: 0;
 }
 
+.w-1-2 {
+    width: 50%;
+}
+
 /* Utility Typography */
 .text-xs {
     font-size: 0.75rem;

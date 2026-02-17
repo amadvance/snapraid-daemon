@@ -187,6 +187,49 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 	}
 }
 
+int task_level(struct snapraid_task* task)
+{
+	int level = LVL_INFO;
+
+	/* check exit code */
+	if (task->state == PROCESS_STATE_TERM) {
+		if (task->exit_code == EXIT_SYNC_NEEDED)
+			level = level_mix(level, LVL_WARNING);
+		else if (task->exit_code != 0)
+			level = level_mix(level, LVL_ERROR);
+	} else if (task->state == PROCESS_STATE_SIGNAL) {
+		if (task->exit_sig == SIGINT /* user interrupt with Ctrl+C */
+			|| task->exit_sig == SIGTERM) /* user interrupt with "Stop" button */
+			level = level_mix(level, LVL_WARNING);
+		else
+			level = level_mix(level, LVL_CRITICAL); /* crash ? */
+	} else if (task->state == PROCESS_STATE_CANCEL) {
+		level = level_mix(level, LVL_WARNING);
+	}
+
+	/* check all messages */
+	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
+		struct snapraid_message* message = i->data;
+
+		switch (message->level) {
+		case MESSAGE_LEVEL_FATAL :
+			if (message->type == MESSAGE_TYPE_HARDWARE)
+				level = level_mix(level, LVL_CRITICAL);
+			else
+				level = level_mix(level, LVL_ERROR);
+			break;
+		case MESSAGE_LEVEL_ERROR :
+			if (message->type == MESSAGE_TYPE_HARDWARE)
+				level = level_mix(level, LVL_ERROR);
+			else
+				level = level_mix(level, LVL_WARNING);
+			break;
+		}
+	}
+
+	return level;
+}
+
 /****************************************************************************/
 /* schedule */
 

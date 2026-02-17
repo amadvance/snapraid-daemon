@@ -5,6 +5,10 @@ import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDurat
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
 
 export const esc = (str) => str.replace(/'/g, "\\'");
+const escAttr = (str) => {
+    if (str === undefined || str === null) return '';
+    return String(str).replace(/"/g, '&quot;');
+};
 
 
 const healthBadge = (health) => {
@@ -829,10 +833,10 @@ export const renderSettings = (config) => {
         </div>
     `;
 
-    const inputField = (key, label, type = "text", desc = "", disabled = false, extra = "") => `
-        <div class="form-group ${disabled ? 'disabled-control' : ''}">
+    const inputField = (key, label, type = "text", desc = "", disabled = false, extra = "", cls = "") => `
+        <div class="form-group ${disabled ? 'disabled-control' : ''} ${cls}">
             <label for="${key}">${label}</label>
-            <input type="${type}" id="${key}" name="${key}" class="form-control" value="${config[key] !== undefined ? config[key] : ''}" ${disabled ? 'disabled' : ''} ${extra}>
+            <input type="${type}" id="${key}" name="${key}" class="form-control" value="${escAttr(config[key])}" ${disabled ? 'disabled' : ''} ${extra}>
             ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
         </div>
     `;
@@ -841,7 +845,7 @@ export const renderSettings = (config) => {
         <div class="form-group ${disabled ? 'disabled-control' : ''}">
             <label for="${key}">${label}</label>
             <select id="${key}" name="${key}" class="form-control" ${disabled ? 'disabled' : ''}>
-                ${options.map(opt => `<option value="${opt}" ${config[key] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                ${options.map(opt => `<option value="${escAttr(opt)}" ${config[key] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
             </select>
         </div>
     `;
@@ -884,29 +888,27 @@ export const renderSettings = (config) => {
              <!-- Notifications -->
             <div class="card" style="grid-column: span 2;">
                 <h3 class="font-bold mb-4 text-cyan">Notifications</h3>
-                
+              
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-1">Syslog</h4>
                 <div class="form-row">
                      ${boolField('notify_syslog_enabled', 'Enable Syslog')}
                      ${selectField('notify_syslog_level', 'Log Level', logLevels)}
                 </div>
 
-                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Email</h4>
+                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Heartbeat</h4>
                 <div class="form-row">
-                    ${inputField('notify_email_recipient', 'Recipient', 'email')}
-                    ${selectField('notify_email_level', 'Log Level', logLevels)}
+                    ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', '', !fullAccess)}
                 </div>
-
-                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Hooks</h4>
-                ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', '', !fullAccess)}
+                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Result</h4>
+                <div class="form-row">
+                    ${boolField('notify_differences', 'Include Differences')}
+                    ${selectField('notify_result_level', 'Log Level', logLevels, !fullAccess)}
+                </div>                
                 <div class="form-row mt-2">
-                     ${inputField('notify_result', 'Result Command (On Report)', 'text', '', !fullAccess)}
-                     ${selectField('notify_result_level', 'Result Level', logLevels, !fullAccess)}
+                    ${inputField('notify_result', 'Result Command (Always)', 'text', '', !fullAccess)}
                 </div>
-                
-                 <div class="form-row mt-2">
-                     ${inputField('notify_run_as_user', 'Run Notification As User', 'text', '', !fullAccess)}
-                     ${boolField('notify_differences', 'Include Differences')}
+                <div class="mt-2 text-sm">
+                    ${inputField('notify_run_as_user', 'Run Notification As User', 'text', '', !fullAccess, '', 'w-1-2')}
                 </div>
             </div>
         </form>

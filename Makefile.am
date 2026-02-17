@@ -60,6 +60,7 @@ snapraidd_SOURCES = \
 	daemon/log.c \
 	daemon/elem.c \
 	daemon/report.c \
+	daemon/notify.c \
 	daemon/unix.c \
 	civetweb/civetweb.c \
 	tommyds/tommy.c
@@ -94,6 +95,7 @@ noinst_HEADERS = \
 	daemon/log.h \
 	daemon/elem.h \
 	daemon/report.h \
+	daemon/notify.h \
 	snapraidd.yaml \
 	snapraidd.service.in \
 	rc.snapraidd.in \

@@ -249,22 +249,16 @@ A shell command (e.g., `curl`) executed only upon task success, ideal
 for "dead man's switch" monitoring.
 
 ---- 4.3.6 notify_result ----
-A shell command triggered after task completion; it receives the task
-report via stdin.
+A shell command triggered after task completion. It receives the task
+report via stdin. You can use the `%s` placeholder in the command
+to get a subject line.
 
 ---- 4.3.7 notify_result_level ----
 Controls the filter for `notify_result`. The notification is sent only
 if the task result is equal to or more severe than this level.
 Possible values: info, warning, error, critical. Default: error.
 
----- 4.3.8 notify_email_recipient ----
-Local system email address for receiving health reports.
-
----- 4.3.9 notify_email_level ----
-Sets the minimum severity for email reports.
-Possible values: info, warning, error, critical. Default: error.
-
----- 4.3.10 notify_differences ----
+---- 4.3.8 notify_differences ----
 If enabled, includes a detailed list of file changes (added/removed/modified)
 in the notification reports.
 

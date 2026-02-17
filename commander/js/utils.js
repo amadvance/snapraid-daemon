@@ -146,7 +146,7 @@ export const showConfirm = (message, title = 'Confirmation Required') => {
                 <div class="modal-body">${message}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                    <button class="btn btn-primary" id="modal-confirm">Run</button>
+                    <button class="btn btn-primary" id="modal-confirm">Confirm</button>
                 </div>
             </div>
         `;

@@ -230,19 +230,13 @@ Configuration
 	for "dead man's switch" monitoring.
 
     notify_result
-	A shell command triggered after task completion; it receives the task
-	report via stdin.
+	A shell command triggered after task completion. It receives the task
+	report via stdin. You can use the `%s` placeholder in the command
+	to get a subject line.
 
     notify_result_level
 	Controls the filter for `notify_result`. The notification is sent only
 	if the task result is equal to or more severe than this level.
-	Possible values: info, warning, error, critical. Default: error.
-
-    notify_email_recipient
-	Local system email address for receiving health reports.
-
-    notify_email_level
-	Sets the minimum severity for email reports.
 	Possible values: info, warning, error, critical. Default: error.
 
     notify_differences

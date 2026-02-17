@@ -62,7 +62,6 @@ static int parse_double(const char* input, int low, int high, double* out)
 	return 0;
 }
 
-
 const char* config_level_str(int level)
 {
 	switch (level) {
@@ -72,7 +71,7 @@ const char* config_level_str(int level)
 	case LVL_INFO : return "info";
 	}
 
-	return "critical";
+	return "-";
 }
 
 void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
@@ -190,7 +189,7 @@ int config_load(struct snapraid_state* state)
 		if (*s == 0 || *s == '#')
 			continue;
 
-		if (sscanf(s, "%63[^=]=%127[^\n]", key, val) == 2) {
+		if (sscanf(s, "%127[^=]=%511[^\n]", key, val) == 2) { /* CONFIG_MAX == 512 */
 			strtrim(key);
 			strtrim(val);
 
@@ -294,13 +293,6 @@ int config_load(struct snapraid_state* state)
 				sncpy(config->notify_result, sizeof(config->notify_result), val);
 			} else if (strcmp(key, "notify_result_level") == 0) {
 				if (config_parse_level(val, &config->notify_result_level) == 0) {
-				} else {
-					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
-				}
-			} else if (strcmp(key, "notify_email_recipient") == 0) {
-				sncpy(config->notify_email_recipient, sizeof(config->notify_email_recipient), val);
-			} else if (strcmp(key, "notify_email_level") == 0) {
-				if (config_parse_level(val, &config->notify_email_level) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -533,8 +525,6 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->notify_heartbeat[0] = 0;
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_ERROR;
-	config->notify_email_recipient[0] = 0;
-	config->notify_email_level = LVL_ERROR;
 	config->notify_differences = 0;
 
 #ifdef SYSCONFDIR

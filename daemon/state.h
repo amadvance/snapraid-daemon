@@ -249,6 +249,7 @@ struct snapraid_message {
 struct snapraid_task {
 	char log_file[PATH_MAX]; /**< Log file of the task. */
 	int cmd; /**< The command running */
+	int high_cmd; /**< The high command generating this tasks. 0 if none. */
 	int number; /**< Number of the task. It's an increasing number. */
 	int running; /**< If the command is running or finished */
 	int state; /**< one of PROCESS_STATE_* */
@@ -402,6 +403,21 @@ struct snapraid_global {
 #define LVL_INFO 3
 #define LVL_DEBUG 4
 
+/**
+ * Combine two LVL_* returning most critical one
+ */
+static inline int level_mix(int level, int new_level)
+{
+	if (level > new_level)
+		level = new_level;
+	return level;
+}
+
+/**
+ * SnapRAID exit code when a sync is needed, like in 'diff'
+ */
+#define EXIT_SYNC_NEEDED 2
+
 #define CONFIG_LINE_MAX 1024
 
 struct snapraid_config_line {
@@ -443,8 +459,6 @@ struct snapraid_config {
 	char notify_heartbeat[CONFIG_MAX];
 	char notify_result[CONFIG_MAX];
 	int notify_result_level;
-	char notify_email_recipient[CONFIG_MAX];
-	int notify_email_level;
 	int notify_differences;
 };
 

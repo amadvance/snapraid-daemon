@@ -610,6 +610,14 @@ char* strtrim(char* str)
 	return str;
 }
 
+void strupr(char* str)
+{
+	while (*str) {
+		*str = toupper((int)*str);
+		++str;
+	}
+}
+
 /****************************************************************************/
 /* pulse */
 

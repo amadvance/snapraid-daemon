@@ -61,6 +61,12 @@ int task_success(struct snapraid_task* task);
  */
 void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
 
+/**
+ * Get the info level of the task from it's result
+ * @return One of LVL_* defines.
+ */
+int task_level(struct snapraid_task* task);
+
 /****************************************************************************/
 /* schedule */
 

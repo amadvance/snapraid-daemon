@@ -24,6 +24,7 @@
 #include "daemon.h"
 #include "elem.h"
 #include "report.h"
+#include "notify.h"
 #include "runner.h"
 
 /****************************************************************************/
@@ -48,9 +49,16 @@ static int runner_report_locked(struct snapraid_state* state)
 	struct snapraid_task* sync_task = 0;
 	struct snapraid_task* scrub_task = 0;
 	struct snapraid_task* latest_not_canceled_task = 0;
+	int report_level = LVL_INFO;
+	int report_high_cmd = report_task->high_cmd;
 	ss_t ss;
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
+
+	/* consider the array status */
+	int health = health_array(state);
+	if (health == HEALTH_PREFAIL || health == HEALTH_FAILING)
+		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* find the latest sync and scrub tasks from history */
 	tommy_node* i = tommy_list_tail(&state->runner.history_list);
@@ -60,6 +68,9 @@ static int runner_report_locked(struct snapraid_state* state)
 		/* they should have the same queue time */
 		if (task->unix_queue_time != report_task->unix_queue_time)
 			break;
+
+		/* keep track of the most critical level */
+		report_level = level_mix(report_level, task_level(task));
 
 		if (diff_task == 0 && task->cmd == CMD_DIFF)
 			diff_task = task;
@@ -104,13 +115,8 @@ static int runner_report_locked(struct snapraid_state* state)
 	/* propagate the array health to the report task */
 	report_task->health = health_array(state);
 
-	/* store the report */
+	/* store the report (dup to shrink the allocation) */
 	report_task->text_report = ss_dup(&ss);
-
-	/* TODO log the report */
-	printf("%s\n", report_task->text_report);
-
-	ss_done(&ss);
 
 	report_task->running = 0;
 	report_task->state = PROCESS_STATE_TERM;
@@ -122,6 +128,11 @@ static int runner_report_locked(struct snapraid_state* state)
 	/* set the latest pointer to the real executed task and not to the report */
 	if (latest_not_canceled_task != 0)
 		state->runner.latest = latest_not_canceled_task;
+
+	/* notify the report */
+	notify_locked(state, report_high_cmd, report_level, ss_extract(&ss));
+
+	ss_done(&ss);
 
 	return 0;
 }
@@ -598,7 +609,7 @@ const char* find_snapraid(void)
 	return 0;
 }
 
-static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
@@ -615,6 +626,7 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, tim
 
 	struct snapraid_task* task = task_alloc();
 	task->cmd = cmd;
+	task->high_cmd = high_cmd;
 	task->unix_queue_time = now;
 
 	/* translate some commands */
@@ -665,14 +677,14 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int cmd, tim
 	return 0;
 }
 
-int runner_locked(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	return runner_with_lock(state, 0, cmd, now, arg_list, msg, msg_size, status);
+	return runner_with_lock(state, 0, high_cmd, cmd, now, arg_list, msg, msg_size, status);
 }
 
-int runner(struct snapraid_state* state, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	return runner_with_lock(state, 1, cmd, now, arg_list, msg, msg_size, status);
+	return runner_with_lock(state, 1, high_cmd, cmd, now, arg_list, msg, msg_size, status);
 }
 
 /**

@@ -14,7 +14,7 @@ The daemon doesn't reimplement SnapRAID's core functionality. Instead, it manage
 - **Task Queue**: Sequential task execution with progress tracking and logging
 - **REST API**: HTTP interface for monitoring and control
 - **Web Server**: Embedded CivetWeb serving static dashboard files
-- **Notification System**: Syslog, email, webhooks, and custom script hooks
+- **Notification System**: Syslog, webhooks, and custom script hooks
 - **State Persistence**: Task history and logs survive daemon restarts
 
 ##Project Structure
@@ -227,9 +227,8 @@ The daemon computes **Annual Failure Rate (AFR)** using a proprietary formula ba
 #### Channels
 
 1. **Syslog**: Daemon lifecycle + task results (filtered by `notify_syslog_level`)
-2. **Email**: Local system mail via `sendmail` (filtered by `notify_email_level`)
-3. **Heartbeat**: `curl` ping on success (for dead man's switch services)
-4. **Result Hook**: Shell command receiving text report via stdin
+2. **Heartbeat**: `curl` ping on success (for dead man's switch services)
+3. **Result Hook**: Shell command receiving text report via stdin
 
 #### Report Format (`daemon/report.c`)
 

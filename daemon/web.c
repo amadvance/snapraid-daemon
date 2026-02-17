@@ -183,9 +183,6 @@ static int send_file(struct mg_connection* conn, time_t page_time, const char* b
 
 	int z = mg_accept_z(conn);
 
-	// TODO
-	z = Z_NONE;
-
 	ss_printf(&s, "HTTP/1.1 200 OK\r\n");
 	send_headers(conn, &s, page_time);
 	ss_printf(&s, "Content-Type: %s\r\n", mime);

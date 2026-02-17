@@ -63,18 +63,18 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_UP, now, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && do_scrub)
-		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		(void)runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, 0, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	(void)runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&diff_arg_list);
 	sl_free(&sync_arg_list);
@@ -111,18 +111,18 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_UP, now, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
 	if (ret == 0)
-		(void)runner_locked(state, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		(void)runner_locked(state, CMD_HEAL, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, 0, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	(void)runner_locked(state, CMD_HEAL, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 	sl_free(&scrub_arg_list);
@@ -155,15 +155,15 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_UP, now, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_DOWN, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, 0, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REPORT, now, 0, msg, msg_size, status);
+	(void)runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, 0, msg, msg_size, status);
 
 	sl_free(&fix_arg_list);
 
@@ -181,10 +181,10 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, 0, msg, msg_size, status);
 
 	if (ret == 0 && spindown_idle_minutes > 0)
-		(void)runner_locked(state, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
+		(void)runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
 }
 
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
@@ -211,7 +211,7 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 	for (tommy_node* i = tommy_list_head(scheds); i != 0; i = i->next) {
 		struct snapraid_schedule* sched = i->data;
 		if (ret == 0 || sched->cmd == CMD_REPORT)
-			ret = runner_locked(state, sched->cmd, now, &sched->args, msg, msg_size, status);
+			ret = runner_locked(state, 0 /* sequence of commands */, sched->cmd, now, &sched->args, msg, msg_size, status);
 	}
 
 	state_unlock();

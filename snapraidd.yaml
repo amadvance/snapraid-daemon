@@ -1476,8 +1476,7 @@ components:
             subprocesses are executed.
 
             This setting governs the execution privileges for heartbeat
-            pings, result shell commands (notify_result), and mail
-            delivery agents.
+            pings, result shell commands (notify_result).
 
             If left blank or omitted, these subprocesses inherit the
             current privileges of the snapraidd daemon.
@@ -1498,10 +1497,11 @@ components:
             enabled in the static configuration file.
         notify_result:
           type: string
-          example: "curl -fsS --data-binary @- https://ntfy.sh/topic"
+          example: "mail -s '%s' your_user@localhost"
           description: >
             Shell command executed after task completion. The daemon pipes
             the task report (plain-text) into the command's stdin.
+            Use the %s placeholder for dynamic injection of the subject string.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly
@@ -1512,24 +1512,12 @@ components:
           description: >
             Minimum severity threshold required to trigger the 'notify_result'
             command. Defaults to 'error' if unset.
-        notify_email_recipient:
-          type: string
-          format: email
-          description: >
-            Destination address for health reports sent via local system
-            mail (sendmail/postfix). Disabled if empty.
-        notify_email_level:
-          type: string
-          enum: [critical, error, warning, info]
-          description: >
-            Minimum severity threshold for dispatching local email reports.
-            Defaults to 'error' if unset.
         notify_differences:
           type: boolean
           example: true
           description: >
             Includes a detailed list of added/removed/modified files in
-            the 'notify_result' and 'notify_email' report bodies.
+            the 'notify_result' report bodies.
 
     Diff:
       type: object

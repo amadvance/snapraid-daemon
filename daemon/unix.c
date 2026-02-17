@@ -471,7 +471,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 
 	if (WIFEXITED(status)) {
 		/* child's exit(code) or return from main */
-		log_msg(LVL_INFO, "script %s terminated in %lld seconds with code %d", resolved_path, execution_time, WEXITSTATUS(status));
+		log_msg(LVL_INFO, "script %s terminated in %lld seconds with exit code %d", resolved_path, execution_time, WEXITSTATUS(status));
 		return WEXITSTATUS(status);
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
@@ -628,7 +628,7 @@ int daemon_command(const char* command, const char* target_user, const char* std
 
 	if (WIFEXITED(status)) {
 		/* child's exit(code) or return from main */
-		log_msg(LVL_INFO, "command %s terminated in %lld seconds with code %d", command, execution_time, WEXITSTATUS(status));
+		log_msg(LVL_INFO, "command %s terminated in %lld seconds with exit code %d", command, execution_time, WEXITSTATUS(status));
 		return WEXITSTATUS(status);
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
