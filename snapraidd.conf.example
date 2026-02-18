@@ -257,21 +257,23 @@ notify_syslog_enabled = 1
 # Possible values: info, warning, error, critical. Default: error.
 notify_syslog_level = info
 
-# Runs ONLY if the task was successful (exit code 0).
+# Runs ONLY if the maintenance task was successful (it's not triggered by
+# other tasks, like heal and undelete).
 # Ideal for 'Dead Man's Snitch' or Healthchecks.io.
 # If this ping stops, it means the server is down or the task is failing.
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-#notify_heartbeat = curl -fsS --max-time 30 --retry 3 https://hc-ping.com/550e8400-e29b-41d4
+#notify_heartbeat = curl -f --max-time 30 --retry 3 https://hc-ping.com/your_private_uuid
 
-# This command is triggered after every task, but is ONLY executed if the
-# task's result matches the 'notify_result_level' defined below. The daemon
-# pipes a structured, plain-text task report directly into the command's stdin.
+# This command is triggered after every high level tasks, like maintenance,
+# heal and undelete, but is ONLY executed if the task's result matches the
+# 'notify_result_level' defined below.
+# The daemon pipes a structured, plain-text task report directly into the command's stdin.
 #
 # Format Selection:
 # The daemon automatically chooses a 'wide' (80-col) or 'narrow' (32-col)
-# report based on the command (e.g., 'mail' triggers wide).
+# report based on the command and arguments used (e.g., 'mail' triggers wide).
 # You can manually override this by adding --wide or --narrow to the
 # command. These tags are stripped before the command is executed.
 #

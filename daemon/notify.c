@@ -127,10 +127,10 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 	return 0;
 }
 
-static void notify_mail_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
+static void result_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
 {
 	char cmd[1024];
-
+	char template[CONFIG_MAX];
 	char run_as_user[CONFIG_MAX];
 	char command[32];
 	char subject[128];
@@ -155,6 +155,7 @@ static void notify_mail_locked(struct snapraid_state* state, int high_cmd, int r
 	sncpy(command, sizeof(command), command_name(high_cmd));
 	command[0] = toupper((int)command[0]);
 	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
+	sncpy(template, sizeof(template), state->config.notify_result);
 	sncpy(level, sizeof(level), config_level_str(report_level));
 	strupr(level);
 	snprintf(subject, sizeof(subject), "[%s] SnapRAID %s", level, command);
@@ -195,7 +196,7 @@ static void notify_mail_locked(struct snapraid_state* state, int high_cmd, int r
 
 	ss_init(&ss, strlen(report_text) + 128);
 
-	if (replace_argument(state->config.notify_result, placeholders, values, cmd, sizeof(cmd)) != 0) {
+	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
 		log_msg_locked(LVL_ERROR, "command string overflow, notification not sent");
 		goto bail;
 	}
@@ -231,6 +232,32 @@ bail:
 	state_lock();
 }
 
+static void heartbeat_locked(struct snapraid_state* state)
+{
+	char cmd[1024];
+	char template[CONFIG_MAX];
+	char run_as_user[CONFIG_MAX];
+
+	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
+	sncpy(template, sizeof(template), state->config.notify_result);
+
+	/* release the lock to call the command */
+	state_unlock();
+
+	sncpy(cmd, sizeof(cmd), template);
+
+	int ret = daemon_command(cmd, run_as_user, 0);
+	if (ret != 0) {
+		log_msg(LVL_ERROR, "failed to hearbeat");
+		goto bail;
+	}
+
+	log_msg(LVL_INFO, "sent hearbeat");
+
+bail:
+	state_lock();
+}
+
 void notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
 {
 	if (!high_cmd)
@@ -238,6 +265,11 @@ void notify_locked(struct snapraid_state* state, int high_cmd, int report_level,
 
 	if (state->config.notify_result[0] != 0
 		&& report_level <= state->config.notify_result_level)
-		notify_mail_locked(state, high_cmd, report_level, report_text);
+		result_locked(state, high_cmd, report_level, report_text);
+
+	if (state->config.notify_heartbeat[0] != 0
+		&& high_cmd == CMD_MAINTENANCE
+		&& report_level == LVL_INFO)
+		heartbeat_locked(state);
 }
 
