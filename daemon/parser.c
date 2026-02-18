@@ -993,6 +993,8 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 		stri64(&task->unix_queue_time, val);
 	} else if (strcmp(tag, "command") == 0) {
 		task->cmd = command_parse(val);
+	} else if (strcmp(tag, "high_command") == 0) {
+		task->high_cmd = command_parse(val);
 	} else if (strcmp(tag, "term") == 0) {
 		task->state = PROCESS_STATE_TERM;
 		strint(&task->exit_code, val);

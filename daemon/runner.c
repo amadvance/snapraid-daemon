@@ -149,6 +149,7 @@ static void runner_go(struct snapraid_state* state)
 	time_t unix_end_time;
 	pid_t pid;
 	int cmd;
+	int high_cmd;
 	int status;
 	pid_t ret;
 	char** argv;
@@ -165,6 +166,7 @@ static void runner_go(struct snapraid_state* state)
 	unix_queue_time = task->unix_queue_time;
 	unix_start_time = task->unix_start_time;
 	cmd = task->cmd;
+	high_cmd = task->high_cmd;
 	number = task->number;
 	argc = tommy_list_count(&task->arg_list);
 	argv = calloc_nofail(argc + 1, sizeof(char*));
@@ -215,6 +217,8 @@ static void runner_go(struct snapraid_state* state)
 
 	if (log_f != 0) {
 		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
+		if (high_cmd != 0 && high_cmd != cmd)
+			fprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));
 		fprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
 		fprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
 		for (i = 0; i < argc; ++i)

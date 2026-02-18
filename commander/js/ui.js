@@ -270,6 +270,10 @@ const renderSystemCard = (system) => {
     `;
 };
 
+const formatFullCommand = (t) => {
+    return t.high_command ? `${t.high_command} - ${t.command}` : t.command;
+};
+
 /* --- Dashboard --- */
 export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const pulseAt = arrayInfo.pulse?.current_at;
@@ -282,7 +286,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="card glow">
                 <div class="flex justify-between mb-4">
                     <div>
-                        <h3 class="text-xl font-bold text-cyan">ACTIVE: ${activity.command.toUpperCase()}</h3>
+                        <h3 class="text-xl font-bold text-cyan">ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
                         <div class="text-sm text-muted">Started: ${formatTime(activity.started_at, pulseAt)}</div>
                     </div>
                     <div>${statusBadge(activity)}</div>
@@ -324,7 +328,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
                     <div class="flex items-center gap-4 text-sm bg-slate-800 p-3 rounded">
-                        <span class="font-bold text-cyan">${last.command.toUpperCase()}</span>
+                        <span class="font-bold text-cyan">${formatFullCommand(last).toUpperCase()}</span>
                         ${healthBadge(last.health)} ${statusBadge(last)}
                         <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
                         <span class="text-muted">Ended: ${formatTime(last.finished_at, pulseAt)}</span>
@@ -699,7 +703,7 @@ export const renderTasks = (data, hidePeriodic) => {
     const queueRows = pending.length ? pending.reverse().map(t => `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-cyan">${t.command}</td>
+            <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted">${formatTime(t.scheduled_at, pulseAt)}</td>
         </tr>
@@ -714,7 +718,7 @@ export const renderTasks = (data, hidePeriodic) => {
         return `
             <tr>
                 <td class="font-mono text-muted">#${t.number}</td>
-                <td class="font-bold text-cyan">${t.command}</td>
+                <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
                 <td>${statusBadge(t)}</td>
                 <td class="text-muted">${formatTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
@@ -735,7 +739,7 @@ export const renderTasks = (data, hidePeriodic) => {
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-cyan">${t.command}</td>
+            <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted text-xs">${formatTime(t.started_at, pulseAt)}</td>
