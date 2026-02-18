@@ -308,8 +308,9 @@ static ssize_t read_file(const char* path, struct stat* st, char** body)
 
 	if (read(f, *body, st->st_size) != st->st_size) {
 		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
-		free(*body);
 		close(f);
+		free(*body);
+		*body = 0;
 		return -1;
 	}
 

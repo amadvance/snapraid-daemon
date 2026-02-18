@@ -43,7 +43,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		sl_insert_str(&sync_arg_list, "--gui-threshold-removes");
 		sl_insert_int(&sync_arg_list, state->config.sync_threshold_deletes);
 	}
-	if (state->config.sync_threshold_deletes) {
+	if (state->config.sync_threshold_updates) {
 		sl_insert_str(&sync_arg_list, "--gui-threshold-updates");
 		sl_insert_int(&sync_arg_list, state->config.sync_threshold_updates);
 	}
@@ -290,9 +290,7 @@ void* scheduler_thread(void* arg)
 				break;
 
 			/* probe and spindown, use the lowest interval */
-			int64_t interval_minutes = 0;
-			if (state->config.probe_interval_minutes > 0 && (interval_minutes == 0 || interval_minutes > state->config.probe_interval_minutes))
-				interval_minutes = state->config.probe_interval_minutes;
+			int64_t interval_minutes = state->config.probe_interval_minutes;
 			if (state->config.spindown_idle_minutes > 0 && (interval_minutes == 0 || interval_minutes > state->config.spindown_idle_minutes))
 				interval_minutes = state->config.spindown_idle_minutes;
 

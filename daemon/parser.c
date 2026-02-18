@@ -492,9 +492,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		if (mac >= 6)
 			pulse_double(state, PULSE_DISKS, &device->prob, map[5]);
 	} else if (strcmp(tag, "temperature") == 0) {
-		int temperature;
-		if (pulse_strint(state, PULSE_DISKS, &temperature, val) == 0) {
-			struct snapraid_temp* temp = temperature_alloc(temperature, state->global.last_time);
+		if (pulse_strint(state, PULSE_DISKS, &device->temperature, val) == 0) {
+			struct snapraid_temp* temp = temperature_alloc(device->temperature, state->global.last_time);
 			temperature_insert(device, temp);
 		}
 	} else if (strcmp(tag, "error_protocol") == 0)

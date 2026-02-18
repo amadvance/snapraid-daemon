@@ -63,8 +63,6 @@ void log_msg(int level, const char *fmt, ...)
 	int verboselog;
 	va_list ap;
 
-	va_start(ap, fmt);
-
 	state_lock();
 	struct snapraid_state* state = state_ptr();
 	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
@@ -75,8 +73,8 @@ void log_msg(int level, const char *fmt, ...)
 	if (level == LVL_DEBUG && !verboselog)
 		return;
 
+	va_start(ap, fmt);
 	log_out(level, syslog, termlog, fmt, ap);
-
 	va_end(ap);
 }
 
@@ -87,8 +85,6 @@ void log_msg_locked(int level, const char *fmt, ...)
 	int verboselog;
 	va_list ap;
 
-	va_start(ap, fmt);
-
 	struct snapraid_state* state = state_ptr();
 	syslog = state->config.notify_syslog_enabled && level <= state->config.notify_syslog_level;
 	termlog = state->foreground;
@@ -97,8 +93,8 @@ void log_msg_locked(int level, const char *fmt, ...)
 	if (level == LVL_DEBUG && !verboselog)
 		return;
 
+	va_start(ap, fmt);
 	log_out(level, syslog, termlog, fmt, ap);
-
 	va_end(ap);
 }
 

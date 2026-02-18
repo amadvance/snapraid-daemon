@@ -164,6 +164,7 @@ struct snapraid_device {
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
+	int temperature; /**< Latest measured temperature, 0 if none */
 	int split_index; /**< Index of the split */
 	tommy_list temp_list; /**< Temperature measures */
 	tommy_node node;

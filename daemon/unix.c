@@ -351,6 +351,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 	/* script must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
 		log_msg(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
+		close(fd);
 		return -1;
 	}
 
@@ -915,8 +916,10 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
 	umask(0);
 
 	/* ensure the daemon doesn't block any filesystem unmounting */
-	if (chdir("/") != 0)
+	if (chdir("/") != 0) {
+		close(pidfd);
 		return -1;
+	}
 
 	/* redirect Standard I/O to /dev/null */
 	close(STDIN_FILENO);

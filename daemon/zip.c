@@ -184,6 +184,7 @@ int crawl_zip(tommy_list* page_list, const char* path)
 	if (ret <= 0 || (size_t)ret != buf_size) {
 		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
 		close(f);
+		free(buffer);
 		return -1;
 	}
 
