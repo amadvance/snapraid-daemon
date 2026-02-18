@@ -699,6 +699,11 @@ components:
           enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
           description: >
             The command executed.
+        high_command:
+          type: string
+          enum: [maintenance, heal, undelete, suspend_idle]
+          description: >
+            The high level command that triggered this command.
         health:
           type: string
           enum: [passed, prefail, failing, pending]

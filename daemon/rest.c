@@ -1803,6 +1803,8 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 		json_pulse(s, level, pulse);
 	ss_json_int(s, level, "number", task->number);
 	ss_json_str(s, level, "command", command_name(task->cmd));
+	if (task->high_cmd)
+		ss_json_str(s, level, "high_command", command_name(task->high_cmd));
 	ss_json_str(s, level, "health", health_name(health_task(task)));
 	if (task->running) {
 		switch (task->state) {

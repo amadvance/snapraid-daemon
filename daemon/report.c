@@ -855,6 +855,12 @@ int report_locked(struct snapraid_state* state, ss_t* ss,
 	is_mail |= strstr(cmd, "sendman") != 0;
 	is_mail |= strstr(cmd, "swaks") != 0;
 
+	/* forced */
+	if (strstr(cmd, "--wide") != 0)
+		is_mail = 1;
+	if (strstr(cmd, "--narrow") != 0)
+		is_mail = 0;
+
 	if (is_mail)
 		return report_wide_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
 	else

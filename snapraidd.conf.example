@@ -269,6 +269,12 @@ notify_syslog_level = info
 # task's result matches the 'notify_result_level' defined below. The daemon
 # pipes a structured, plain-text task report directly into the command's stdin.
 #
+# Format Selection:
+# The daemon automatically chooses a 'wide' (80-col) or 'narrow' (32-col)
+# report based on the command (e.g., 'mail' triggers wide).
+# You can manually override this by adding --wide or --narrow to the
+# command. These tags are stripped before the command is executed.
+#
 # Available Placeholders:
 # %s : Replaced with the subject string (e.g., "[ERROR] SnapRAID Maintenance").
 # %l : Replaced with the task level (critical, error, warning, info, debug).
@@ -277,7 +283,8 @@ notify_syslog_level = info
 #
 # Examples of usage:
 # 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as
-#    a POST request.
+#    a POST request. If you don't want to receive also the email, just remove
+#    the -H "Email: your_email@example.com" from the example.
 # 2. mail (Local System Mail): Uses the standard Linux 'mail' utility.
 #    This is ideal if you have a local MTA (like Postfix or Exim) configured.
 # 3. SMTP-over-SSL (Direct Delivery): Uses curl's built-in SMTP engine with
@@ -305,7 +312,7 @@ notify_syslog_level = info
 # For security enforcement, this parameter is immutable via the REST API
 # unless 'net_config_full_access' is explicitly enabled in the static
 # configuration file.
-#notify_result = curl -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" --data-binary @- https://ntfy.sh/your_private_topic
+#notify_result = curl --narrow -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" -H "Email: your_email@example.com" --data-binary @- https://ntfy.sh/your_private_topic
 #notify_result = mail -s "%s" your_user@localhost
 #notify_result = curl --netrc --url smtps://smtp.gmail.com:465 --ssl-reqd --mail-from your_email@gmail.com --mail-rcpt your_email@gmail.com --upload-file -
 

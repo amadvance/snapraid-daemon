@@ -96,20 +96,22 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 
 		/* try to match any placeholder at current position */
 		for (int i = 0; placeholder[i]; ++i) {
-			size_t ph_len = strlen(placeholder[i]);
-			if (strncmp(src, placeholder[i], ph_len) == 0) {
-				/* found a match — write the corresponding value */
-				ssize_t val_len = strlen(value[i]);
-				if (val_len >= remaining)
-					return -1;
+			if (src[0] == placeholder[i][0]) {
+				size_t ph_len = strlen(placeholder[i]);
+				if (strncmp(src, placeholder[i], ph_len) == 0) {
+					/* found a match — write the corresponding value */
+					ssize_t val_len = strlen(value[i]);
+					if (val_len >= remaining)
+						return -1;
 
-				memcpy(out, value[i], val_len);
-				out += val_len;
-				remaining -= val_len;
-				src += ph_len;
+					memcpy(out, value[i], val_len);
+					out += val_len;
+					remaining -= val_len;
+					src += ph_len;
 
-				matched = 1;
-				break;
+					matched = 1;
+					break;
+				}
 			}
 		}
 
@@ -138,14 +140,16 @@ static void notify_mail_locked(struct snapraid_state* state, int high_cmd, int r
 	char from[128];
 	char to[128];
 	int email_format = 0;
-	const char* placeholders[5] = {
+	const char* placeholders[7] = {
 		"%s",
 		"%l",
 		"%n",
 		"%t",
+		"--wide",
+		"--narrow",
 		0
 	};
-	const char* values[4];
+	const char* values[6];
 	ss_t ss;
 
 	sncpy(command, sizeof(command), command_name(high_cmd));
@@ -183,6 +187,8 @@ static void notify_mail_locked(struct snapraid_state* state, int high_cmd, int r
 	values[1] = config_level_str(report_level);
 	values[2] = ntfy_priority;
 	values[3] = ntfy_tag;
+	values[4] = ""; /* --wide */
+	values[5] = ""; /* --narrow */
 
 	/* release the lock to call the command */
 	state_unlock();
