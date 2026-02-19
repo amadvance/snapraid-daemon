@@ -32,8 +32,7 @@ static void clear_disk_accumulator(struct snapraid_state* state)
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_disk* data = i->data;
 		if (data->error_io != 0 || data->error_data != 0) {
-			/* PULSE_ARRAY use the disk error as health */
-			pulse(state, PULSE_ARRAY | PULSE_DISKS);
+			pulse(state, PULSE_DISKS);
 			data->error_io = 0;
 			data->error_data = 0;
 		}
@@ -41,8 +40,7 @@ static void clear_disk_accumulator(struct snapraid_state* state)
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_disk* parity = i->data;
 		if (parity->error_io != 0 || parity->error_data != 0) {
-			/* PULSE_ARRAY use the disk error as health */
-			pulse(state, PULSE_ARRAY | PULSE_DISKS);
+			pulse(state, PULSE_DISKS);
 			parity->error_io = 0;
 			parity->error_data = 0;
 		}
@@ -497,11 +495,9 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			temperature_insert(device, temp);
 		}
 	} else if (strcmp(tag, "error_protocol") == 0)
-		/* PULSE_ARRAY use the disk error as health */
-		pulse_stru64(state, PULSE_ARRAY | PULSE_DISKS, &device->error_protocol, val);
+		pulse_stru64(state, PULSE_DISKS, &device->error_protocol, val);
 	else if (strcmp(tag, "error_medium") == 0)
-		/* PULSE_ARRAY use the disk error as health */
-		pulse_stru64(state, PULSE_ARRAY | PULSE_DISKS, &device->error_medium, val);
+		pulse_stru64(state, PULSE_DISKS, &device->error_medium, val);
 	else if (strcmp(tag, "wear_level") == 0)
 		pulse_stru64(state, PULSE_DISKS, &device->wear_level, val);
 	else if (strcmp(tag, "power") == 0) {
@@ -843,15 +839,13 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 
 	/* the task error_io and error_data will be gathered by the final summary tag */
 
-	if (strstr(map[0], "error_io:") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
+	if (strstr(map[0], "error_io") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
 		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
-		/* PULSE_ARRAY use the disk error as health */
-		pulse(state, PULSE_ARRAY | PULSE_DISKS);
+		pulse(state, PULSE_DISKS);
 		++data->error_io;
 	} else if (strcmp(map[0], "error_data") == 0) {
 		struct snapraid_disk* data = find_disk(&state->data_list, map[2]);
-		/* PULSE_ARRAY use the disk error as health */
-		pulse(state, PULSE_ARRAY | PULSE_DISKS);
+		pulse(state, PULSE_DISKS);
 		++data->error_data;
 	}
 }
@@ -865,13 +859,11 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 
 	if (strcmp(map[0], "parity_error_io") == 0) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
-		/* PULSE_ARRAY use the disk error as health */
-		pulse(state, PULSE_ARRAY | PULSE_DISKS);
+		pulse(state, PULSE_DISKS);
 		++parity->error_io;
 	} else if (strcmp(map[0], "parity_error_data") == 0) {
 		struct snapraid_disk* parity = find_disk(&state->parity_list, map[2]);
-		/* PULSE_ARRAY use the disk error as health */
-		pulse(state, PULSE_ARRAY | PULSE_DISKS);
+		pulse(state, PULSE_DISKS);
 		++parity->error_data;
 	}
 }

@@ -30,6 +30,46 @@
 /****************************************************************************/
 /* runner */
 
+/**
+ * Update the health state of the array
+ * If there is a change in health, schedule a report task if not yet present
+ */
+static int runner_health_check_locked(struct snapraid_state* state)
+{
+	int new_health = health_array(state);
+
+	if (state->global.health == HEALTH_PENDING)
+		state->global.health = new_health;
+
+	/* if health change, run a report */
+	if (state->global.health != new_health) {
+		pulse(state, PULSE_ARRAY);
+
+		state->global.health = new_health;
+
+		/* check if the current task is a report or if there is a scheduled one */
+		int has_report = state->runner.latest->cmd == CMD_REPORT;
+		if (!has_report) {
+			for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
+				struct snapraid_task* task = i->data;
+				if (task->cmd == CMD_REPORT) {
+					has_report = 1;
+					break;
+				}
+			}
+		}
+
+		/* if no report, schedule a new one */
+		if (!has_report) {
+			char msg[256];
+			int status;
+			runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+		}
+	}
+
+	return state->global.health;
+}
+
 static int runner_need_script(int cmd)
 {
 	switch (cmd) {
@@ -54,11 +94,6 @@ static int runner_report_locked(struct snapraid_state* state)
 	ss_t ss;
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
-
-	/* consider the array status */
-	int health = health_array(state);
-	if (health == HEALTH_PREFAIL || health == HEALTH_FAILING)
-		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* find the latest sync and scrub tasks from history */
 	tommy_node* i = tommy_list_tail(&state->runner.history_list);
@@ -112,8 +147,10 @@ static int runner_report_locked(struct snapraid_state* state)
 		return -1;
 	}
 
-	/* propagate the array health to the report task */
-	report_task->health = health_array(state);
+	/* propagate the array health to the task */
+	report_task->health = runner_health_check_locked(state);
+	if (report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
+		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* store the report (dup to shrink the allocation) */
 	report_task->text_report = ss_dup(&ss);
@@ -361,8 +398,8 @@ bail:
 	task->running = 0;
 	state->runner.latest->unix_end_time = unix_end_time;
 
-	/* now with log processed, propagate the array health to the task */
-	task->health = health_array(state);
+	/* propagate the array health to the task */
+	task->health = runner_health_check_locked(state);
 
 	/* insert the task in the done list, but keep it in the latest pointer */
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
@@ -425,15 +462,14 @@ static int runner_precondition(struct snapraid_state* state)
 		break;
 	default :
 		/* other commands are run only if the array is sane */
-		int health = health_array(state);
-		if (health == HEALTH_PREFAIL) {
+		if (state->global.health == HEALTH_PREFAIL) {
 			const char* msg = "Array is in PREFAIL! Task aborted!";
 			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
 			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
 			return -1;
 		}
 
-		if (health == HEALTH_FAILING) {
+		if (state->global.health == HEALTH_FAILING) {
 			const char* msg = "Array is FAILING!!! Task aborted!!!";
 			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
 			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);

@@ -671,7 +671,7 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	ss_prints(ss, "\n");
 
 	/* array health */
-	array_health = health_array(state);
+	array_health = state->global.health;
 	ss_printf(ss, "ARRAY HEALTH: %s\n", health_report_wide(array_health));
 
 	/* overall status message */
@@ -773,7 +773,7 @@ static int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	(void)latest_fix;
 	(void)diff_stat;
 
-	int array_health = health_array(state);
+	int array_health = state->global.health;
 	ss_printf(ss, "HEALTH: %s\n", health_report_wide(array_health));
 
 	ss_prints(ss, "STATUS: ");

@@ -62,7 +62,7 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
- * Schedule a sequence of commands with argumets.
+ * Schedule a sequence of commands with argumets
  */
 void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* msg, size_t msg_size, int* status);
 

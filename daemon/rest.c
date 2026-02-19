@@ -550,7 +550,7 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 			}
 		}
 	}
-	ss_json_str(&s, level, "health", health_name(health_array(state)));
+	ss_json_str(&s, level, "health", health_name(state->global.health));
 	ss_json_close(&s, &level);
 
 	state_unlock();
@@ -2036,7 +2036,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	json_pulse(&s, level, &state->pulse);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
-	ss_json_str(&s, level, "health", health_name(health_array(state)));
+	ss_json_str(&s, level, "health", health_name(state->global.health));
 	if (*global->version) {
 		ss_json_str(&s, level, "engine_version", global->version);
 		ss_json_str(&s, level, "engine_conf", global->conf_engine);
