@@ -72,12 +72,6 @@ typedef tommy_list sl_t;
  */
 #define SMART_UNASSIGNED 0xFFFFFFFFFFFFFFFFULL
 
-
-/**
- * Check if a SMART attribute needs the pulse.
- */
-int is_smart_pulse(int index, const char* name);
-
 /**
  * Power mode
  */
@@ -96,12 +90,11 @@ int is_smart_pulse(int index, const char* name);
 /**
  * Pulse masks
  */
-#define PULSE_ARRAY 1
-#define PULSE_CONFIG 2
-#define PULSE_DISKS 4
-#define PULSE_TASKS 8
-#define PULSE_ACTIVITY 16
-#define PULSE_ALL (PULSE_ARRAY | PULSE_CONFIG | PULSE_DISKS | PULSE_TASKS | PULSE_ACTIVITY)
+#define PULSE_ARRAY 1 /* change in the /array entry point */
+#define PULSE_CONFIG 2 /* change in the /config entry point */
+#define PULSE_DISKS 4 /* change in the /disks entry point */
+#define PULSE_TASKS 8 /* change in the /tasks entry point */
+#define PULSE_ACTIVITY 16 /* change in the /activity entry point */
 
 /**
  * Pulse

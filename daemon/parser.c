@@ -22,6 +22,7 @@
 #include "log.h"
 #include "daemon.h"
 #include "elem.h"
+#include "smart.h"
 #include "parser.h"
 
 /**
@@ -561,7 +562,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			flags |= SMART_ATTR_WHEN_FAILED_NEVER;
 
 		if (strint(&index, tag) == 0) {
-			if (is_smart_pulse(index, name)) {
+			int kind = smart_kind(index, name);
+			if ((kind & SMART_KIND_PULSE) != 0) {
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].raw, raw);
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].norm, norm);
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].worst, worst);

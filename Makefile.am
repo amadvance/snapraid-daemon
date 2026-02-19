@@ -61,6 +61,7 @@ snapraidd_SOURCES = \
 	daemon/elem.c \
 	daemon/report.c \
 	daemon/notify.c \
+	daemon/smart.c \
 	daemon/unix.c \
 	civetweb/civetweb.c \
 	tommyds/tommy.c
@@ -96,6 +97,7 @@ noinst_HEADERS = \
 	daemon/elem.h \
 	daemon/report.h \
 	daemon/notify.h \
+	daemon/smart.h \
 	snapraidd.yaml \
 	snapraidd.service.in \
 	rc.snapraidd.in \
@@ -240,6 +242,8 @@ $(DAEMON_PREFIX)web.$(OBJEXT): $(srcdir)/daemon/rest.h $(srcdir)/daemon/web.h
 $(DAEMON_PREFIX)runner.$(OBJEXT): $(srcdir)/daemon/runner.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)scheduler.$(OBJEXT):$(srcdir)/daemon/scheduler.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)support.$(OBJEXT): $(srcdir)/daemon/support.h $(srcdir)/daemon/state.h
+$(DAEMON_PREFIX)notify.$(OBJEXT): $(srcdir)/daemon/notify.h $(srcdir)/daemon/state.h
+$(DAEMON_PREFIX)smart.$(OBJEXT): $(srcdir)/daemon/smart.h $(srcdir)/daemon/state.h
 
 # Rules for documentation
 if HAVE_ADVD2
