@@ -113,6 +113,10 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 {
 	if (compression_method == ZIP_METHOD_STORE) {
 		/* data is already uncompressed */
+		if (compressed_size != uncompressed_size) {
+			log_msg(LVL_ERROR, "crawler zip %s invalid uncompressed data size for compression method %d for %s", path, compression_method, file);
+			return -1;
+		}
 		plain_content(page_list, file, compressed_data, uncompressed_size, datetime);
 #if HAVE_ZLIB
 	} else if (compression_method == ZIP_METHOD_DEFLATE) {

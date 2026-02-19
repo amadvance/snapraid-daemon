@@ -24,11 +24,59 @@
 #include "zip.h"
 #include "web.h"
 
-static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
+static ssize_t read_fd(int fd, void* buffer, ssize_t size)
 {
-	DIR* d = opendir(current_path);
-	if (!d)
+	char* p = buffer;
+	ssize_t total = 0;
+
+	while (total < size) {
+		ssize_t r = read(fd, p + total, size - total);
+
+		if (r == 0) /* EOF */
+			return -1;
+
+		if (r < 0) {
+			if (errno == EINTR)
+				continue;
+			return -1;
+		}
+
+		total += r;
+	}
+
+	return total;
+}
+
+static ssize_t read_file(const char* path, struct stat* st, char** body)
+{
+	int f = open(path, O_RDONLY);
+	if (f == -1) {
+		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
+		return -1;
+	}
+
+	*body = malloc_nofail(st->st_size);
+
+	if (read_fd(f, *body, st->st_size) != st->st_size) {
+		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
+		close(f);
+		free(*body);
+		*body = 0;
+		return -1;
+	}
+
+	close(f);
+	return st->st_size;
+}
+
+static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_fd, const char* current_path)
+{
+	DIR* d = fdopendir(current_fd);
+	if (!d) {
+		log_msg(LVL_ERROR, "crawler error fdopendir %s, errno=%s(%d)", current_path, strerror(errno), errno);
+		close(current_fd);
 		return;
+	}
 
 	while (1) {
 		struct dirent* dd;
@@ -49,44 +97,62 @@ static void crawl_directory(tommy_list* page_list, size_t skip, const char* curr
 		char path[PATH_MAX];
 		snprintf(path, sizeof(path), "%s/%s", current_path, dd->d_name);
 
+		int fd = openat(current_fd, dd->d_name, O_RDONLY | O_NOFOLLOW);
+		if (fd == -1) {
+			if (errno == ELOOP) {
+				log_msg(LVL_WARNING, "crawler ignore link %s/%s", current_path, dd->d_name);
+			} else {
+				log_msg(LVL_ERROR, "crawler error openat %s, errno=%s(%d)", path, strerror(errno), errno);
+			}
+			continue;
+		}
+
 		struct stat st;
-		if (lstat(path, &st) != 0) {
-			log_msg(LVL_ERROR, "crawler error stating %s, errno=%s(%d)", path, strerror(errno), errno);
+		if (fstat(fd, &st) != 0) {
+			log_msg(LVL_ERROR, "crawler error fstat %s, errno=%s(%d)", path, strerror(errno), errno);
+			close(fd);
 			continue;
 		}
 
 		if (S_ISDIR(st.st_mode)) {
-			crawl_directory(page_list, skip, path);
-		} else if (S_ISLNK(st.st_mode)) {
-			log_msg(LVL_WARNING, "crawler ignore link %s", path);
+			crawl_directory_fd(page_list, skip, fd, path);
+			continue; /* fd consumed by recursion */
 		} else if (S_ISREG(st.st_mode)) {
-			int f = open(path, O_RDONLY);
-			if (f == -1) {
-				log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
-				continue;
-			}
-
 			const char* relative = path + skip;
 			struct snapraid_page* page = page_alloc(relative, st.st_size);
 
-			if (read(f, page->content, page->size) != page->size) {
+			if (read_fd(fd, page->content, page->size) != page->size) {
 				log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
-				close(f);
+				close(fd);
 				page_free(page);
 				continue;
 			}
 
-			close(f);
+			close(fd);
 
 			page->mime_type = get_mime_type(relative);
 			if (!page->mime_type)
 				page->mime_type = MIME_BINARY;
 
 			tommy_list_insert_tail(page_list, &page->node, page);
+		} else {
+			log_msg(LVL_WARNING, "crawler ignore special file %s", path);
+			close(fd);
 		}
 	}
 
-	closedir(d);
+	closedir(d); /* closes current_fd */
+}
+
+static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
+{
+	int fd = open(current_path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+	if (fd == -1) {
+		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", current_path, strerror(errno), errno);
+		return;
+	}
+
+	crawl_directory_fd(page_list, skip, fd, current_path);
 }
 
 #define HTTP_HEADERS_MAX 512
@@ -294,28 +360,6 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 	page_unlock();
 
 	return 0;
-}
-
-static ssize_t read_file(const char* path, struct stat* st, char** body)
-{
-	int f = open(path, O_RDONLY);
-	if (f == -1) {
-		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
-		return -1;
-	}
-
-	*body = malloc_nofail(st->st_size);
-
-	if (read(f, *body, st->st_size) != st->st_size) {
-		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
-		close(f);
-		free(*body);
-		*body = 0;
-		return -1;
-	}
-
-	close(f);
-	return st->st_size;
 }
 
 static int handler_real_file(struct mg_connection* conn, void* cbdata)
