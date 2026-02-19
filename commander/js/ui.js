@@ -6,7 +6,7 @@ const badge = (text, color) => `<span class="badge badge-${color}">${text}</span
 
 export const esc = (str) => str.replace(/'/g, "\\'");
 const escAttr = (str) => {
-    if (str === undefined || str === null) return '';
+    if (str == null) return '';
     return String(str).replace(/"/g, '&quot;');
 };
 
@@ -90,7 +90,7 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
         { val: minTemp, label: 'MIN' },
         { val: maxTemp, label: 'MAX' }
     ].forEach(item => {
-        if (item.val === undefined || item.val === null || item.val <= 0) return;
+        if (item.val == null || item.val <= 0) return;
         const yPos = getY(item.val);
         const color = getColor(item.val);
         svg += `
@@ -382,14 +382,14 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Bad Blocks</div>
                     <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">
-                        ${arrayInfo.blocks_bad}
+                        ${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}
                         ${arrayInfo.blocks_bad > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_bad * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Unsynced Blocks</div>
                     <div class="property-value ${arrayInfo.blocks_unsynced > 0 ? 'text-yellow' : 'text-emerald'}">
-                        ${arrayInfo.blocks_unsynced}
+                        ${arrayInfo.blocks_unsynced != null ? arrayInfo.blocks_unsynced : '?'}
                         ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
@@ -402,12 +402,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.blocks_count > 0 ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : 0}%
+                        ${arrayInfo.blocks_count != null ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : '?'}%
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Total Files</div>
-                    <div class="property-value text-cyan">${arrayInfo.files_count.toLocaleString()}</div>
+                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count.toLocaleString() : '?'}</div>
                 </div>
             </div>
         </div>
@@ -521,7 +521,7 @@ export const renderDifferences = (arrayInfo) => {
                 <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
                         <div class="property-label">Equal</div>
-                        <div class="property-value">${arrayInfo.diff_equal}</div>
+                        <div class="property-value">${arrayInfo.diff_equal != null ? arrayInfo.diff_equal : '?'}</div>
                     </div>
                     ${arrayInfo.diff_restored > 0 ? `
                     <div class="property-row">
@@ -583,7 +583,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
     if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red font-bold">I/O Errors: ${disk.error_io}</div>`);
     if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-amber font-bold">Data Errors: ${disk.error_data}</div>`);
 
-    const percentUsed = (disk.total_space_bytes - disk.free_space_bytes) / disk.total_space_bytes * 100;
+    const totalSpace = disk.total_space_bytes || 0;
+    const freeSpace = disk.free_space_bytes || 0;
+    const usedSpace = totalSpace - freeSpace;
+    const percentUsed = totalSpace > 0 ? (usedSpace / totalSpace * 100) : 0;
 
     const devicesHtml = disk.devices.map(dev => {
         const smartIssues = [];
@@ -604,16 +607,18 @@ const renderDiskCard = (disk, type, pulseAt) => {
             }
         }
 
-        let smartStatus = '<span class="text-emerald font-bold text-xs">SMART PASSED</span>';
-        if (dev.smart && dev.smart.failing)
+        let smartStatus = '<span class="text-grey font-bold text-xs">SMART PENDING</span>';
+        if (dev.smart?.measured_at)
+            smartStatus = '<span class="text-emerald font-bold text-xs">SMART PASSED</span>';
+        if (dev.smart?.failing)
             smartStatus = `<span class="badge badge-red">SMART FAILING</span>`;
-        else if (dev.smart && dev.smart.prefail)
+        else if (dev.smart?.prefail)
             smartStatus = `<span class="badge badge-yellow">SMART PREFAIL</span>`;
-        else if (dev.smart && dev.smart.prefail_logged)
+        else if (dev.smart?.prefail_logged)
             smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but PREFAIL logged)</span>`;
-        else if (dev.smart && dev.smart.error_logged)
+        else if (dev.smart?.error_logged)
             smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but ERROR logged)</span>`;
-        else if (dev.smart && dev.smart.selftest_error_logged)
+        else if (dev.smart?.selftest_error_logged)
             smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but SELFTEST ERROR logged)</span>`;
 
         if (smartIssues.length > 0) smartStatus += `<div class="text-amber text-xs">${smartIssues.join('<br>')}</div>`;
@@ -621,7 +626,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
         const temp = dev.smart?.temperature_celsius;
         const tempClass = temp >= 50 ? 'text-red font-bold' : (temp >= 40 ? 'text-yellow font-bold' : '');
         const powerClass = temp >= 50 ? 'active-red' : (temp >= 40 ? 'active-yellow' : 'active-cyan');
-        const tempStr = temp !== undefined ? `${temp}°C` : '-';
+        const tempStr = temp != null ? `${temp}°C` : '? °C';
+        let tempTime = '';
+        if (dev.smart?.measured_at)
+		tempTime = '(' + formatRelativeTime(dev.smart?.measured_at, pulseAt) + ')';
 
         let sparklinePlaceholder = '';
         if (dev.temp_history_24h) {
@@ -630,6 +638,14 @@ const renderDiskCard = (disk, type, pulseAt) => {
         }
 
         const powerOnYears = dev.smart?.power_on_hours ? ` (${(dev.smart.power_on_hours / (24 * 365)).toFixed(1)} years)` : '';
+        let failureProb = '';
+        if (dev.rotational != null) {
+            if (dev.rotational && dev.failure_probability) {
+                failureProb = (dev.failure_probability * 100).toFixed(0) + '% Fail Prob';
+            } else if (!dev.rotational && dev.wear_level) {
+                failureProb = dev.wear_level + '% Wear';
+            }
+        }
 
         return `
             <div class="bg-slate-950 p-3 rounded mt-2 border border-slate-800 text-sm">
@@ -641,9 +657,9 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
                     <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs text-muted">
-                         <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">(${formatRelativeTime(dev.smart?.measured_at, pulseAt)})</span></div>
+                         <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">${tempTime}</span></div>
                          <div class="text-muted mt-1">
-                            ${dev.rotational ? (dev.failure_probability * 100).toFixed(0) + '% Fail Prob' : dev.wear_level + '% Wear'}
+                            ${failureProb}
                          </div>
                     </div>
                     <div style="flex: 1; height: 100%; min-width: 0;">
@@ -669,7 +685,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
             <div class="mb-1 flex justify-between text-xs">
                 <span>Usage</span>
-                <span>${formatBytes(disk.total_space_bytes - disk.free_space_bytes)} / ${formatBytes(disk.total_space_bytes)}</span>
+                <span>${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
             </div>
             <div class="progress-container mb-4">
                 <div class="progress-bar" style="width: ${percentUsed}%"></div>
@@ -712,8 +728,8 @@ export const renderTasks = (data, hidePeriodic) => {
     const activeRows = active.length ? active.map(t => {
         const now = new Date();
         const duration = t.started_at ? formatDuration(t.started_at, now) : '-';
-        const progress = t.progress !== undefined ? `${t.progress}%` : '';
-        const eta = t.eta_seconds !== undefined ? formatSeconds(t.eta_seconds) : '-';
+        const progress = t.progress != null ? `${t.progress}%` : '';
+        const eta = t.eta_seconds != null ? formatSeconds(t.eta_seconds) : '-';
 
         return `
             <tr>
@@ -963,7 +979,7 @@ export const renderRecovery = (arrayInfo) => {
                     <div class="property-list mt-0 pt-0 border-t-0 mb-6">
                         <div class="property-row">
                             <div class="property-label">Bad Blocks</div>
-                            <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad}</div>
+                            <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}</div>
                         </div>
                     </div>
                     
