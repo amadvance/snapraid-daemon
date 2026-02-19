@@ -76,6 +76,7 @@ static int runner_need_script(int cmd)
 	case CMD_SYNC : return 1;
 	case CMD_SCRUB : return 1;
 	case CMD_FIX : return 1;
+	case CMD_CHECK : return 1;
 	}
 
 	return 0;
@@ -240,6 +241,21 @@ static void runner_go(struct snapraid_state* state)
 		}
 	}
 
+	/* check if the have to skip the script */
+	int pre_script_skip = state->runner.script_skip;
+	int post_script_skip = 0;
+	state->runner.script_skip = 0;
+
+	/* if the next task uses the script, skip the post */
+	j = tommy_list_head(&state->runner.waiting_list);
+	if (j) {
+		struct snapraid_task* waiting = j->data;
+		if (runner_need_script(waiting->cmd)) {
+			post_script_skip = 1;
+			state->runner.script_skip = 1;
+		}
+	}
+
 	state_unlock();
 
 	int f = -1;
@@ -263,7 +279,7 @@ static void runner_go(struct snapraid_state* state)
 		fflush(log_f);
 	}
 
-	if (script_pre_run[0] != 0 && runner_need_script(cmd)) {
+	if (pre_script_skip == 0 && script_pre_run[0] != 0 && runner_need_script(cmd)) {
 		int script_ret;
 		log_msg(LVL_INFO, "task %d run %s", number, script_pre_run);
 		if (log_f != 0)
@@ -341,7 +357,7 @@ static void runner_go(struct snapraid_state* state)
 			fflush(log_f);
 	}
 
-	if (script_post_run[0] != 0 && runner_need_script(cmd)) {
+	if (post_script_skip == 0 && script_post_run[0] != 0 && runner_need_script(cmd)) {
 		int script_ret;
 		log_msg(LVL_INFO, "task %d run %s", number, script_post_run);
 		if (log_f != 0)

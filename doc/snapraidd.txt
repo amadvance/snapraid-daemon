@@ -222,7 +222,7 @@ post-run hooks.
 
 ---- 4.2.11 script_pre_run/script_post_run ----
 Absolute paths to executable shell scripts triggered before or after
-SnapRAID activity.
+the 'sync', 'scrub', 'check' and 'fix' commands.
 
 4.3 Logging & Notifications
 ---------------------------

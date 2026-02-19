@@ -207,7 +207,8 @@ probe_interval_minutes = 5
 spindown_idle_minutes = 15
 
 # Specify absolute paths for script_pre_run and script_post_run to trigger
-# custom logic immediately before or after SnapRAID activity.
+# custom logic immediately before or after the 'sync', 'scrub', 'check' and
+# 'fix' commands.
 #
 # SECURITY REQUIREMENTS:
 # 1. The path MUST be absolute (starting with /).

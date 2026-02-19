@@ -205,7 +205,7 @@ Configuration
 
     script_pre_run/script_post_run
 	Absolute paths to executable shell scripts triggered before or after
-	SnapRAID activity.
+	the 'sync', 'scrub', 'check' and 'fix' commands.
 
   Logging & Notifications
 	These settings control the logging and notification operations performed
