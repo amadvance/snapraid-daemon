@@ -1,0 +1,149 @@
+SnapRAID Daemon TODO
+====================
+
+- Evaluate Mongoose as replacement of Civetweb https://github.com/cesanta/mongoose
+
+- Windows version of the daemon
+  - Service or application ?
+
+- macOS version of the daemon 
+  - Need to extend SnapRAID CLI to be able to build the list of low devices
+    from a filesystem. This will allow to call smartctl also on macOS.
+    Starting point is implementing devtree() that from a filesystem dev
+    gets the list of low level devices that can be used with smartctl.
+
+Something like this:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/param.h>
+#include <sys/mount.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/storage/IOMedia.h>
+
+typedef struct {
+    char **disks;
+    int count;
+    int capacity;
+} DiskList;
+
+// Initialization with capacity tracking for efficiency
+void init_disk_list(DiskList *list) {
+    list->count = 0;
+    list->capacity = 4; // Start with small buffer
+    list->disks = malloc(sizeof(char *) * list->capacity);
+}
+
+void free_disk_list(DiskList *list) {
+    if (!list->disks) return;
+    for (int i = 0; i < list->count; i++) {
+        free(list->disks[i]);
+    }
+    free(list->disks);
+    list->disks = NULL;
+    list->count = 0;
+}
+
+// Robustly adds a disk to the list, preventing duplicates and handling realloc failures
+int add_to_list(DiskList *list, const char *bsd_name) {
+    if (!list || !bsd_name) return -1;
+
+    // Check for duplicates
+    for (int i = 0; i < list->count; i++) {
+        if (strcmp(list->disks[i], bsd_name) == 0) return 0;
+    }
+
+    // Grow buffer if needed
+    if (list->count >= list->capacity) {
+        int new_capacity = list->capacity * 2;
+        char **new_disks = realloc(list->disks, sizeof(char *) * new_capacity);
+        if (!new_disks) return -1; // Memory error
+        list->disks = new_disks;
+        list->capacity = new_capacity;
+    }
+
+    list->disks[list->count] = strdup(bsd_name);
+    if (!list->disks[list->count]) return -1;
+    list->count++;
+    return 0;
+}
+
+// The recursive crawler with safety checks
+void find_physical_disks(io_registry_entry_t entry, DiskList *list) {
+    io_iterator_t iter;
+    kern_return_t kr = IORegistryEntryGetParentIterator(entry, kIOServicePlane, &iter);
+    
+    if (kr != KERN_SUCCESS) return;
+    if (!iter) return;
+
+    io_registry_entry_t parent;
+    while ((parent = IOIteratorNext(iter))) {
+        // Look for IOMedia objects
+        if (IOObjectConformsTo(parent, kIOMediaClass)) {
+            CFBooleanRef is_whole = IORegistryEntryCreateCFProperty(parent, CFSTR(kIOMediaWholeKey), kCFAllocatorDefault, 0);
+            
+            if (is_whole) {
+                if (CFBooleanGetValue(is_whole)) {
+                    // This is a 'Whole' physical disk (e.g., disk0)
+                    CFStringRef bsd_name = IORegistryEntryCreateCFProperty(parent, CFSTR(kIOBSDNameKey), kCFAllocatorDefault, 0);
+                    if (bsd_name) {
+                        char buffer[MAXPATHLEN];
+                        if (CFStringGetCString(bsd_name, buffer, MAXPATHLEN, kCFStringEncodingUTF8)) {
+                            char full_path[MAXPATHLEN];
+                            snprintf(full_path, MAXPATHLEN, "/dev/%s", buffer);
+                            add_to_list(list, full_path);
+                        }
+                        CFRelease(bsd_name);
+                    }
+                }
+                CFRelease(is_whole);
+            }
+        }
+
+        // Recursively climb. This handles RAID (multiple parents) and APFS
+        find_physical_disks(parent, list);
+        IOObjectRelease(parent);
+    }
+    IOObjectRelease(iter);
+}
+
+DiskList get_physical_disks_for_path(const char *path) {
+    DiskList list;
+    init_disk_list(&list);
+
+    if (!path) return list;
+
+    struct statfs st;
+    if (statfs(path, &st) != 0) {
+        // Possible reasons: Path doesn't exist, Permission denied
+        return list; 
+    }
+
+    const char *bsd_name = st.f_mntfromname;
+    // Strip /dev/ if present for IOKit matching
+    if (strncmp(bsd_name, "/dev/", 5) == 0) bsd_name += 5;
+
+    CFMutableDictionaryRef matching = IOBSDNameMatching(kIOMasterPortDefault, 0, bsd_name);
+    if (!matching) return list;
+
+    io_service_t service = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
+    if (service) {
+        // Case 1: The mount itself is a whole disk (unlikely for filesystems, but possible)
+        CFBooleanRef is_whole = IORegistryEntryCreateCFProperty(service, CFSTR(kIOMediaWholeKey), kCFAllocatorDefault, 0);
+        if (is_whole && CFBooleanGetValue(is_whole)) {
+            char full_path[MAXPATHLEN];
+            snprintf(full_path, MAXPATHLEN, "/dev/%s", bsd_name);
+            add_to_list(&list, full_path);
+        } else {
+            // Case 2: Standard case - climb the tree to find physical ancestors
+            find_physical_disks(service, &list);
+        }
+        
+        if (is_whole) CFRelease(is_whole);
+        IOObjectRelease(service);
+    }
+
+    return list;
+}
