@@ -219,6 +219,16 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 * Read the content file if is the first run
+	 */
+	if (state->global.content[0] == 0) {
+		if (runner(state, 0, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
+			log_msg(LVL_ERROR, "failed to run the first status command");
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	scheduler_init(state);
 
 	if (rest_init(state) != 0) {

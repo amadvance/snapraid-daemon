@@ -42,6 +42,8 @@ struct {
 	{ CMD_SCRUB, "scrub" },
 	{ CMD_FIX, "fix" },
 	{ CMD_CHECK, "check" },
+	{ CMD_STATUS, "status" },
+	{ CMD_READ, "read" },
 	{ CMD_REPORT, "report" },
 	{ CMD_DOWN_IDLE, "down_idle" },
 	{ CMD_MAINTENANCE, "maintenance" },
