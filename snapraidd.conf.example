@@ -188,6 +188,7 @@ sync_threshold_updates = 500
 # After a sync completes, the scrub_percentage determines how much of the
 # array is verified.
 # If this is missing or set to 0, the scrub phase is skipped entirely.
+# You can use a decimal value (e.g., 0.5)
 scrub_percentage = 0.7
 
 # Do not scrub blocks newer than the specified number of days.
@@ -232,8 +233,17 @@ script_run_as_user = nobody
 
 ### Logging & Retention
 # The log_directory defines where the output of individual SnapRAID
-# commands is stored. If empty, command output is not saved to persistent files.
-# If left unset, the daemon defaults to /var/log/snapraid
+# commands is stored. If left unset, the daemon defaults to
+# /var/log/snapraid.
+#
+# Setting this option to an empty value (log_directory = ) will
+# explicitly disable the saving of command output to persistent files.
+#
+# IMPORTANT: While it is possible to leave this empty to avoid saving files,
+# these logs are used by the daemon to reconstruct the past state of the
+# array (e.g., tracking the last successful sync or scrub). If no log
+# directory is provided, the daemon will lose its "memory" of previous
+# task results every time it is restarted.
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.

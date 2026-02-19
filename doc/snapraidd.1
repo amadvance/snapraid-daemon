@@ -54,6 +54,11 @@ Forces the daemon to load web interface assets directly from the
 filesystem for every request, bypassing internal memory caching.
 This is intended for development environments to allow real\-time
 testing of UI changes.
+This option is only effective when \`net_web_root\` is configured
+to point to an expanded directory on the filesystem.
+It has no effect if the web assets are being served from a
+compressed .zip file, as the daemon must crawl and index the
+archive\'s contents at startup regardless of this flag.
 This option is not recommended for production use due to the
 increased I/O overhead and for security reasons, as it could
 potentially expose the system to directory traversal
@@ -109,37 +114,122 @@ updates via the REST API. If a manual edit is performed while the
 daemon is active, ensure a reload is triggered immediately to
 synchronize the daemon\'s internal memory state with the disk.
 .PP
-For complete technical documentation, please refer to the
-\`snapraidd.conf.example\` file.
+For a comprehensive view of how these settings are applied in a
+real\-world environment, refer to the \`snapraidd.conf.example\` file
+typically located in the documentation directory of the installation.
 .SS Network & REST API 
 These settings control the network interface. These options are not
-visible from the REST API and can be set only in the snapraidd.conf
-file.
+visible from the REST API. They require a manual edit of the
+configuration file and a configuration reload (SIGHUP) to apply.
 .SS net_enabled 
-Master toggle for the HTTP interface.
-Set to 1 to enable the REST API, otherwise, the daemon operates in
-local\-only mode.
+Acts as the master toggle for the network interface. When set to 1,
+the daemon enables the REST API and prepares to serve the web dashboard.
+If set to 0 or left blank, the daemon operates in a secure, local\-only
+mode, and no network ports are opened.
 .SS net_port 
-Defines the IP address and port the daemon binds to (e.g., \`127.0.0.1:8080\`).
-Supports IPv4, IPv6, and multiple ports.
+Defines the specific IP address and port(s) to which the daemon binds.
+The format follows [IP_ADDRESS:]PORT[s].
+.RS 0
+.PD 0
+.HP 4
+.I IPv4/IPv6
+Bind to specific local addresses (e.g., 127.0.0.1:8080 or
+[::1]:8080).
+.HP 4
+.I Wildcard
+Providing only a port (e.g., 8080) binds to all available
+IPv4 interfaces (0.0.0.0).
+.HP 4
+.I Multiple_Ports
+Multiple listeners can be configured by providing a
+comma\-separated list.
+.PD
+.RE
+.PP
+If left unset, the daemon defaults to 127.0.0.1:8080. Modification
+requires a configuration reload and is restricted from API access.
 .SS net_acl 
-Restricts API access to specific client IPs using a comma\-separated
-list of allow (+) or deny (\-) rules.
+Restricts API and dashboard access to specific client IP addresses or
+subnets using a comma\-separated Access Control List (ACL).
+.PP
+The syntax uses + to allow and \- to deny, supporting CIDR notation
+(e.g., /24). If any rules are defined, the daemon adopts a \[dq]deny by default\[dq]
+stance. The rules are processed sequentially, and the last matching rule
+determines the outcome.
+If unset, it defaults to +127.0.0.1.
 .SS net_security_headers 
-When enabled (1), injects security headers like CSP and X\-Frame\-Options
-to harden the API against browser\-based attacks.
+When enabled (1), the daemon injects several browser\-level security
+hardening headers into every HTTP response. These include
+Content\-Security\-Policy (restricting resource loading),
+X\-Frame\-Options (preventing clickjacking via iframes),
+X\-Content\-Type\-Options (disabling MIME\-sniffing),
+and Referrer\-Policy.
+.PP
+This should only be disabled (0) if the daemon is behind a reverse
+proxy (like Nginx or Traefik) that is already configured to handle
+these security headers.
 .SS net_allowed_origin 
-Configures CORS. Use \`self\` for standard setups, \`none\` to block
-browser access, or a specific URL for custom dashboards.
+Configures Cross\-Origin Resource Sharing (CORS) to determine which web
+applications can interact with the API.
+.RS 0
+.PD 0
+.HP 4
+.I self
+(Default/Recommended) Dynamically reflects the \'Host\' header
+of the request, allowing the built\-in UI to work across various hostnames or IPs.
+.HP 4
+.I none
+Omits CORS headers entirely, blocking browser\-based access from any origin.
+.HP 4
+.I URL
+Restricts access to a specific origin (e.g., http://192.168.1.50:3000).
+.PD
+.RE
 .SS net_config_full_access 
-Determines if restricted parameters (like scripts and log paths) can
-be modified via the REST API. Defaults to 0 (Read\-only).
+A security flag that determines whether sensitive configuration parameters
+can be modified via the REST API.
+.PP
+By default (0), security\-sensitive options are strictly read\-only to
+prevent unauthorized system modifications or privilege escalation
+through the web interface.
+.PP
+When set to 1, the following configuration options become accessible
+for modification via PATCH requests:
+.RS 0
+.PD 0
+.HP 4
+.I script_run_as_user
+The account used for executing pre/post scripts.
+.HP 4
+.I script_pre_run
+The absolute path to the pre\-execution script.
+.HP 4
+.I script_post_run
+The absolute path to the post\-execution script.
+.HP 4
+.I log_directory
+The persistent storage path for command outputs.
+.HP 4
+.I log_retention_days
+The duration for which log files are kept.
+.HP 4
+.I notify_run_as_user
+The account used for notification commands.
+.HP 4
+.I notify_heartbeat
+The command used for health monitoring pings.
+.HP 4
+.I notify_result
+The command used for sending task reports.
+.HP 4
+.I notify_result_level
+The severity threshold for sending notifications.
+.PD
+.RE
 .SS net_web_root 
-Specifies the local path where the web dashboard assets are located.
-This option supports both a standard directory and a single compressed
-ZIP file. If a ZIP file is provided, the internal HTTP server will
-serve assets directly from the archive without requiring extraction to
-the disk.
+Specifies the source of the web dashboard assets. The daemon supports
+both a standard directory and a single compressed ZIP file for asset
+delivery.
 .PP
 The daemon resolves the location of the assets based on the following
 rules:
@@ -147,12 +237,9 @@ rules:
 .PD 0
 .HP 4
 .I ZIP_Filename
-If only a filename is provided (e.g., commander.zip),
-the daemon initiates a search within the standard installation
-data directories. It first checks the directory associated
-with the configured installation prefix, located at
-$PREFIX/share/snapraidd/, and then the system\-wide data
-directory at /usr/share/snapraidd/.
+If a simple filename is provided (e.g., commander.zip),
+the daemon searches for it in $PREFIX/share/snapraidd/ or
+/usr/share/snapraidd/.
 .HP 4
 .I ZIP_Path
 If a path to a ZIP file is provided, it must be absolute
@@ -177,72 +264,238 @@ the SnapRAID daemon.
 For security reasons, some of them can be set via the REST API only if the
 net_config_full_access option is enabled.
 .SS maintenance_schedule 
-Defines when the automated sync, scrub, and report sequence occurs
-(e.g., \`daily 02:00\` or \`weekly Mon 03:00\`).
+Defines the timing for the automated maintenance sequence, which
+consists of a sync, followed by a scrub, and concluding with a report.
+If this option is unset, automated maintenance is disabled.
+.PP
+The format must be either \[dq]daily HH:MM\[dq] or \[dq]weekly [Day] HH:MM\[dq].
+Hours are specified in a 24\-hour format (00\-23), and days are
+represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 .SS sync_threshold_deletes 
-Maximum number of deleted/missing files allowed before a scheduled
-sync is aborted to prevent accidental parity loss.
+Sets the maximum number of deleted or missing files allowed before a
+sync operation is automatically aborted. This serves as a safety
+mechanism to prevent accidental parity loss due to unintended mass
+deletions. This threshold is enforced during scheduled runs and
+maintenance API calls, but is bypassed for standalone sync API
+requests to allow for manual overrides.
+Set to 0 to disable this check.
 .SS sync_threshold_updates 
-Maximum number of modified files allowed before a scheduled sync is
-suspended.
+Sets the maximum number of modified or updated files allowed before a
+sync operation is aborted. Similar to the delete threshold, this
+prevents the parity from being overwritten if an unexpected number
+of files have changed. This is enforced during scheduled runs but
+bypassed for manual standalone sync requests.
+Set to 0 to disable this check.
 .SS sync_prehash 
-Enables the SnapRAID prehash option to verify files before updating
-parity, protecting against faulty RAM or cables.
+If set to 1, the sync command is executed with the \-\-prehash option.
+This calculates hashes before moving data to verify integrity,
+helping to prevent silent errors caused by faulty memory.
+If missing or set to 0, no pre\-hashing is performed.
 .SS sync_force_zero 
-Permits synchronization even if protected files have unexpectedly
-shrunk to zero bytes.
+If set to 1, the daemon allows a sync to proceed even if it detects
+files that have shrunk to zero size since the last run.
+By default (missing or 0), the daemon will halt the sync to protect
+against potential data corruption or accidental file clearing.
 .SS scrub_percentage 
-The percentage of the array verified during the scrub phase of
-automated maintenance.
+Determines the portion of the array verified after a successful sync.
+You may use decimal points to specify fractions of a percent
+(e.g., 0.7 to verify 0.7% of the array).
+If missing or set to 0, the scrub phase is skipped entirely.
 .SS scrub_older_than 
-Restricts scrubbing to blocks that have not been verified within the
-specified number of days.
+Specifies that only blocks older than the defined number of days
+should be scrubbed. This allows the daemon to focus verification on
+older data while skipping recently synced blocks.
+If missing or set to 0, no age\-based filtering is applied.
+.SS Disk Monitoring & Power 
+The following settings manage how the daemon interacts with physical
+hardware to monitor disk health and optimize energy consumption
 .SS probe_interval_minutes 
-Interval for background health checks. SMART attributes are only
-queried if disks are already active to avoid waking them.
+Controls the frequency at which the daemon checks disk SMART attributes.
+To prevent unnecessary disk wear, the daemon only performs this check
+if the disks are already spinning.
+If set to 0 or left blank, SMART monitoring is disabled.
 .SS spindown_idle_minutes 
-Inactivity threshold (in minutes) after which the daemon will issue a
-spindown command to the disks.
-.SS script_run_as_user 
-The system user account utilized for the execution of pre\- and
-post\-run hooks.
+Manages power consumption by automatically spinning down disks after
+the specified duration of inactivity.
+.PP
+Unlike the internal task logic of the daemon, this timer monitors the
+global activity of the disks across the entire operating system.
+A disk will only be spun down if it has remained completely idle for
+the specified period. If any other application, service, or system
+process accesses the disk, the idle timer is reset. The daemon will
+not force a spindown if the disk is currently in use by the system.
+.PP
+If this option is unset, the daemon will not manage disk power states,
+relying instead on the OS or hardware controllers.
 .SS script_pre_run/script_post_run 
-Absolute paths to executable shell scripts triggered before or after
-the \'sync\', \'scrub\', \'check\' and \'fix\' commands.
+Defines absolute paths to custom scripts to be executed immediately before
+or after the sync, scrub, check, or fix commands. These scripts allow
+for custom logic such as mounting drives or sending custom alerts.
+.PD 0
+.IP \(bu
+The path must be absolute (starting with /).
+.IP \(bu
+The script must not be world\-writable (recommended permissions: 700 or 755).
+.IP \(bu
+The script owner must match the daemon user or be root.
+.IP \(bu
+The script must contain a valid shebang (e.g., #!/bin/sh).
+.PD
+.SS script_run_as_user 
+Specifies the user account used to execute the pre\-run and post\-run
+scripts. If this is missing or blank, scripts are executed with the
+same privileges as the daemon process.
 .SS Logging & Notifications 
 These settings control the logging and notification operations performed
 by the SnapRAID daemon.
 .SS log_directory 
-Path where individual SnapRAID command outputs are stored as \`.log\`
-files. Default: \`/var/log/snapraid\`.
+The log_directory defines where the output of individual SnapRAID
+commands is stored. If left unset, the daemon defaults to
+/var/log/snapraid.
+.PP
+Setting this option to an empty value (log_directory = ) will
+explicitly disable the saving of command output to persistent files.
+.PP
+IMPORTANT: While it is possible to leave this empty to avoid saving files,
+these logs are used by the daemon to reconstruct the past state of the
+array (e.g., tracking the last successful sync or scrub). If no log
+directory is provided, the daemon will lose its \[dq]memory\[dq] of previous
+task results every time it is restarted.
 .SS log_retention_days 
-Number of days to keep log files before they are purged.
+To prevent your storage from filling up, log_retention_days sets the
+age at which old command logs are deleted. Logs are kept indefinitely
+if this is set to 0 or left unset.
 .SS notify_syslog_enabled 
-Enables logging of daemon activity to the OS system log (syslog/journald).
+When set to 1, daemon activity is sent to the operating system system
+log (syslog/journald). While lifecycle events like starting and
+stopping are always captured, task\-related messages are filtered by
+\`notify_syslog_level\`.
 .SS notify_syslog_level 
 Sets the minimum severity for syslog task entries.
-Possible values: info, warning, error, critical. Default: error.
+Possible values are \`info\`, \`warning\`, \`error\`, and \`critical\`.
+The default is \`error\`.
 .SS notify_heartbeat 
-A shell command (e.g., \`curl\`) executed only upon task success, ideal
-for \[dq]dead man\'s switch\[dq] monitoring.
+Defines a command to run ONLY if the maintenance task was successful
+(it is not triggered by other tasks, such as heal or undelete).
+This is ideal for external monitoring services like \[dq]Dead Man\'s Snitch\[dq]
+or Healthchecks.io. If this ping stops, it indicates the server is down
+or the task is failing.
 .SS notify_result 
-A shell command triggered after task completion. It receives the task
-report via stdin. You can use the \`%s\` placeholder in the command
-to get a subject line.
+Specifies a command triggered after every high\-level task (maintenance,
+heal, or undelete). The command is only executed if the task\'s result
+matches the notify_result_level. The daemon pipes a structured,
+plain\-text task report directly into the command\'s stdin.
+.PP
+The daemon automatically chooses a wide (80\-col) or narrow (32\-col)
+report based on the command and arguments used (e.g., presence of \[dq]mail\[dq]
+or \[dq]smtps\[dq]). Users can manually override this by adding \-\-wide or
+\-\-narrow to the command string. These tags are stripped before execution.
+.PP
+Before execution, the daemon scans the command string and replaces the
+following tokens with dynamic values corresponding to the current
+task\'s state and results:
+.RS 0
+.PD 0
+.HP 4
+.I %s
+Subject string (e.g., \[dq][ERROR] SnapRAID Maintenance\[dq]).
+.HP 4
+.I %l
+Task level (critical, error, warning, info, debug).
+.HP 4
+.I %n
+ntfy priority (urgent, high, default, low, min).
+.HP 4
+.I %t
+ntfy tag (skull, warning, default, \-1, +1, heavy_check_mark).
+.PD
+.RE
+.PP
+If the command contains \-\-mail\-from or \-\-mail\-rcpt, the daemon
+automatically prepends standard email headers (From, To, Subject)
+followed by a blank line to the report text. This ensures
+compatibility with curl\'s SMTP engine.
+.PP
+When using curl for SMTP, it is recommended to use the \-\-netrc flag.
+This allows curl to read credentials from a local file rather than
+exposing passwords in the command line or process list.
+.PP
+File format (~/.netrc):
+.PP
+.RS 4
+machine smtp.gmail.com
+.PD 0
+.PP
+.PD
+login your_email@gmail.com
+.PD 0
+.PP
+.PD
+password your\-16\-char\-app\-password
+.PD 0
+.PD
+.RE
+.PP
+If \`notify_run_as_user\` is configured, ensure that user has a valid
+home directory containing a .netrc file with 600 permissions for SMTP
+authentication. Failure to do so may result in authentication errors
+(e.g., curl error 55).
 .SS notify_result_level 
 Controls the filter for \`notify_result\`. The notification is sent only
 if the task result is equal to or more severe than this level.
-Possible values: info, warning, error, critical. Default: error.
+Valid values are \`info\` (always send), \`warning\`, \`error\`, and \`critical\`.
+The default is \`error\`.
 .SS notify_differences 
-If enabled, includes a detailed list of file changes (added/removed/modified)
-in the notification reports.
+If set to 1, the daemon logs a detailed list of file changes discovered
+before a sync begins. If set to 0 or missing, no difference report is
+generated.
+.SS Notification Examples: 
+The following examples demonstrate common notification and heartbeat
+configurations
+.SS External Heartbeat Monitoring (Healthchecks.io) 
+To monitor that automated maintenance is running successfully, use a service
+like Healthchecks.io.
+.PP
+In this example, curl sends a simple GET request to a unique monitoring URL.
+The flags ensure that curl fails silently on server errors (\-f), does not hang
+indefinitely (\-\-max\-time), and attempts to overcome transient network issues (\-\-retry).
+.PP
+notify_heartbeat = curl \-f \-\-max\-time 30 \-\-retry 3 https://hc\-ping.com/your_private_uuid
+.PD 0
+.PD
+.SS Push Notifications (ntfy.sh) 
+This uses curl to send the report as a POST request to a push notification service.
+It utilizes the \-\-narrow flag to ensure the report is readable on mobile devices
+and maps SnapRAID status to ntfy titles, priorities, and emojis via placeholders.
+.PP
+notify_result = curl \-\-narrow \-f \-\-max\-time 30 \-\-retry 3 \-H \[dq]Title: %s\[dq] \-H \[dq]Priority: %n\[dq] \-H \[dq]Tag: %t\[dq] \-H \[dq]Email: your_email@example.com\[dq] \-\-data\-binary @\- https://ntfy.sh/your_private_topic
+.PD 0
+.PD
+.SS Local System Mail (mail) 
+A traditional approach using the standard Linux mail utility. This is
+ideal if you have a local Mail Transfer Agent (MTA) like Postfix or
+Exim already configured on your system.
+.PP
+notify_result = mail \-s \[dq]%s\[dq] your_user@localhost
+.PD 0
+.PD
+.SS Direct Delivery (SMTP\-over\-SSL) 
+This leverages curl\'s built\-in SMTP engine for direct delivery to an
+external provider. By using the \-\-netrc option, login credentials
+remain secured in a separate file rather than being exposed in the
+process list or logs.
+.PP
+notify_result = curl \-\-netrc \-\-url smtps://smtp.gmail.com:465 \-\-ssl\-reqd \-\-mail\-from your_email@gmail.com \-\-mail\-rcpt your_email@gmail.com \-\-upload\-file \-
+.PD 0
+.PD
 .SH REST API 
 The SnapRAID Daemon provides a comprehensive RESTful JSON interface
 for monitoring and controlling the parity array.
 .PP
 For complete technical documentation, including request schemas and
-specific error codes, please refer to the snapraidd.yaml OpenAPI
-specification file.
+specific error codes, please refer to the \`snapraidd.yaml\` OpenAPI
+specification file typically located in the documentation directory of
+the installation.
 .SS Maintenance & Recovery 
 The API prioritizes orchestrated workflows over raw command execution.
 These high\-level endpoints encapsulate complex SnapRAID logic into
@@ -538,67 +791,50 @@ have exceeded the \'spindown_idle_minutes\' threshold.
 .PD
 .RE
 .SH SIGNALS 
-SIGHUP
-.PP
-.RS 4
+This section defines how the daemon responds to standard Unix signals,
+allowing for external process control and graceful management of the
+service lifecycle.
+.SS SIGHUP 
 Reloads the configuration file and resets the internal state.
 It also reloads the Web UI. This is the recommended way to
 apply changes to static	parameters without restarting the
 service.
-.RE
-.PP
-SIGTERM, SIGINT
-.PP
-.RS 4
+.SS SIGTERM, SIGINT 
 Initiates a graceful shutdown. If a task is currently
 running, the daemon attempts to terminate the child process
 before exiting.
-.RE
-.PP
-SIGQUIT
-.PP
-.RS 4
+.SS SIGQUIT 
 Immediately terminates the process using the default signal
 action and may generate a core dump. This signal is intended
 for emergency debugging and post mortem analysis of a hung
 or misbehaving daemon. No cleanup or graceful shutdown is
 performed.
-.RE
-.SH COPYRIGHT 
-This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH FILES 
-$PREFIX/etc/snapraidd.conf
-.PP
-.RS 4
+The following list specifies the default filesystem paths used by the
+daemon for configuration, data persistence, and inter\-process communication.
+.SS $PREFIX/etc/snapraidd.conf 
 The primary configuration file location. The $PREFIX variable
 represents the installation path chosen at build time (typically
 via the \`\-\-prefix\` argument to the configure script). Common
 values include \`/usr/local\` or \`/usr\`. If this file does not
 exist, the daemon falls back to \`/etc/snapraidd.conf\`.
-.RE
-.PP
-$PREFIX/share/snapraidd
-.PP
-.RS 4
+.SS $PREFIX/share/snapraidd 
 The primary system data directory. This is the first location
 searched for the web dashboard ZIP file (e.g., commander.zip).
 If not found here, the daemon falls back to \`/usr/share/snapraidd\`.
-.RE
-.TP
-.B /etc/snapraidd.conf
+.SS /etc/snapraidd.conf 
 The secondary/system\-wide configuration file location, used if
 the prefix\-specific file is missing.
-.TP
-.B /usr/share/snapraidd
+.SS /usr/share/snapraidd 
 The secondary/system\-wide data directory, used as a fallback for
 web assets.
-.TP
-.B /run/snapraidd.pid
+.SS /run/snapraidd.pid 
 Default PID file location.
-.TP
-.B /var/log/snapraid
+.SS /var/log/snapraid 
 Default directory for SnapRAID command execution logs. This
 directory contains the output of the SnapRAID binary itself,
 rather than the daemon\'s service logs.
+.SH COPYRIGHT 
+This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH SEE ALSO 
 snapraid(1)
