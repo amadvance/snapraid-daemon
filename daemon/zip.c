@@ -117,7 +117,7 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 			log_msg(LVL_ERROR, "crawler zip %s invalid uncompressed data size for compression method %d for %s", path, compression_method, file);
 			return -1;
 		}
-		plain_content(page_list, file, compressed_data, uncompressed_size, datetime);
+		plain_content(page_list, file, compressed_data, compressed_size, datetime);
 #if HAVE_ZLIB
 	} else if (compression_method == ZIP_METHOD_DEFLATE) {
 		void* out_buf = malloc_nofail(uncompressed_size);
@@ -243,9 +243,9 @@ int crawl_zip(tommy_list* page_list, const char* path)
 		}
 
 		/* read variable lengths */
-		uint16_t name_len = read16(cd_ptr + OFF_CD_FILENAME_LEN);
-		uint16_t extra_len = read16(cd_ptr + OFF_CD_EXTRA_LEN);
-		uint16_t comment_len = read16(cd_ptr + OFF_CD_COMMENT_LEN);
+		size_t name_len = read16(cd_ptr + OFF_CD_FILENAME_LEN);
+		size_t extra_len = read16(cd_ptr + OFF_CD_EXTRA_LEN);
+		size_t comment_len = read16(cd_ptr + OFF_CD_COMMENT_LEN);
 
 		/* bounds check: Full CD record */
 		size_t next_cd_pos = current_cd_pos + CD_FIXED_SIZE + name_len + extra_len + comment_len;
@@ -256,38 +256,38 @@ int crawl_zip(tommy_list* page_list, const char* path)
 
 		/* extract filename */
 		char name_buf[512];
-		uint16_t copy_len = (name_len < sizeof(name_buf) - 1) ? name_len : sizeof(name_buf) - 1;
+		size_t copy_len = (name_len < sizeof(name_buf) - 1) ? name_len : sizeof(name_buf) - 1;
 		memcpy(name_buf, cd_ptr + CD_FIXED_SIZE, copy_len);
 		name_buf[copy_len] = '\0';
 
 		/* extract metadata */
 		uint32_t crc32 = read32(cd_ptr + OFF_CD_CRC32);
 		uint16_t method = read16(cd_ptr + OFF_CD_METHOD);
-		uint32_t c_size = read32(cd_ptr + OFF_CD_COMP_SIZE);
-		uint32_t u_size = read32(cd_ptr + OFF_CD_UNCOMP_SIZE);
+		size_t c_size = read32(cd_ptr + OFF_CD_COMP_SIZE);
+		size_t u_size = read32(cd_ptr + OFF_CD_UNCOMP_SIZE);
 		uint16_t mod_time = read16(cd_ptr + OFF_CD_MOD_TIME);
 		uint16_t mod_date = read16(cd_ptr + OFF_CD_MOD_DATE);
-		uint32_t local_off = read32(cd_ptr + OFF_CD_LOCAL_OFFSET);
+		size_t local_off = read32(cd_ptr + OFF_CD_LOCAL_OFFSET);
 
-		/* resolve Data Pointer via Local Header */
+		/* resolve data pointer via Local Header */
 		if (local_off + LOCAL_FIXED_SIZE > buf_size) {
 			log_msg(LVL_ERROR, "crawler zip %s local header offset out of bounds", path);
 			goto bail;
 		}
 
-		uint8_t *local_ptr = buffer + local_off;
+		uint8_t* local_ptr = buffer + local_off;
 		if (read32(local_ptr + OFF_LOCAL_SIGNATURE) != LOCAL_SIGNATURE) {
 			log_msg(LVL_ERROR, "crawler zip %s bad local signature", path);
 			goto bail;
 		}
 
-		uint16_t loc_name_len = read16(local_ptr + OFF_LOCAL_FILENAME_LEN);
-		uint16_t loc_extra_len = read16(local_ptr + OFF_LOCAL_EXTRA_LEN);
+		size_t loc_name_len = read16(local_ptr + OFF_LOCAL_FILENAME_LEN);
+		size_t loc_extra_len = read16(local_ptr + OFF_LOCAL_EXTRA_LEN);
 
 		size_t data_offset = local_off + LOCAL_FIXED_SIZE + loc_name_len + loc_extra_len;
 
-		/* final Bounds Check: Data */
-		if (data_offset > buf_size || (data_offset + c_size) > buf_size) {
+		/* final bounds check: data */
+		if (data_offset > buf_size || c_size > (buf_size - data_offset)) {
 			log_msg(LVL_ERROR, "crawler zip %s data exceeds buffer bounds", path);
 			goto bail;
 		}
