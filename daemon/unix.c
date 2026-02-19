@@ -922,18 +922,22 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
 	}
 
 	/* redirect Standard I/O to /dev/null */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-
 	int fd = open("/dev/null", O_RDWR);
-	if (fd >= 0) {
-		dup2(fd, STDIN_FILENO);
-		dup2(fd, STDOUT_FILENO);
-		dup2(fd, STDERR_FILENO);
-		if (fd > STDERR_FILENO)
-			close(fd);
+	if (fd == -1) {
+		close(pidfd);
+		return -1;
 	}
+
+	if (dup2(fd, STDIN_FILENO) < 0
+		|| dup2(fd, STDOUT_FILENO) < 0
+		|| dup2(fd, STDERR_FILENO) < 0) {
+		close(fd);
+		close(pidfd);
+		return -1;
+	}
+
+	if (fd > STDERR_FILENO)
+		close(fd);
 
 	return pidfd;
 }
