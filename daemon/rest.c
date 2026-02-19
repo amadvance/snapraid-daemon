@@ -1744,7 +1744,7 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	ss_json_array_close(&s, &level);
 
 	ss_json_array_open(&s, &level, "active");
-	if (state->runner.latest->running)
+	if (state->runner.latest && state->runner.latest->running)
 		json_task(&s, level, state->runner.latest, 0);
 	ss_json_array_close(&s, &level);
 
