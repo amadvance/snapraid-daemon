@@ -873,6 +873,15 @@ export const renderSettings = (config) => {
     const logLevels = ['critical', 'error', 'warning', 'info'];
 
     return `
+        ${!fullAccess ? `
+        <div class="restricted-banner">
+            <div class="restricted-banner-title">
+                Restricted Access Mode
+            </div>
+            Security-sensitive settings (logs, scripts, commands, users) are read-only because <code>net_config_full_access</code> is disabled.
+            Edit <code>snapraidd.conf</code> manually to change these values.
+        </div>
+        ` : ''}
         <form id="settings-form" class="grid-2">
             <!-- Automation -->
             <div class="card">
