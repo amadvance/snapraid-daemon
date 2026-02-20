@@ -25,8 +25,8 @@ tasks, viewing history, and configuring system settings.
 │   ├── app.js          # Entry point, Router, Global State, Event Delegation
 │   ├── api.js          # API Client / Data Access Layer
 │   ├── ui.js           # View Layer (HTML Generators / "Components")
-│   └── utils.js        # Helper functions (Formatting, Icons)
-└── metadata.json       # Application metadata
+│   └── utils.js        # Helper functions (Formatting, Icons, Modals)
+└── site.webmanifest    # PWA manifest
 ```
 
 ## Architectural Patterns
@@ -64,6 +64,13 @@ The central hub for monitoring current system status.
     *   ETA, Speed (MB/s), Processed Bytes, CPU Usage, Block Counts.
     *   Live scrolling log of process messages.
     *   *Idle State*: Shows the last executed task's summary.
+*   **System Card**:
+    *   Host information (OS, Kernel, CPU model, Motherboard).
+    *   Real-time memory usage (Progress bar + ECC status).
+    *   System uptime.
+*   **Maintenance History Card**:
+    *   Integrated SVG histogram of scrubbed and synced blocks over time.
+    *   Oldest and Median block age indicators.
 *   **Array Card**:
     *   Overall Health Status (Passed/Prefail/Failing).
     *   Storage Usage (Total/Free/Used with progress bar).
@@ -84,7 +91,8 @@ Detailed breakdown of all physical drives in the array.
         *   Temperature (color-coded).
         *   SMART status (Passed/Failing/Prefail with specific error details).
         *   Device Model, Serial, Type (HDD/SSD).
-*   **Actions**: Spin Up, Spin Down, Spin Down Idle.
+    *   **Temp Sparkline**: Integrated pixel-accurate SVG graph showing 24h temperature history per device.
+*   **Actions**: Spin Up, Spin Down, Spin Down Idle, View SMART Details (Modal).
 
 ### 3. Tasks (`#/tasks`)
 Comprehensive view of the job queue and history.
@@ -99,9 +107,16 @@ Comprehensive view of the job queue and history.
 Visualizes the "diff" state (changes since last sync).
 *   **Summary Stats**: Counts of Added, Removed, Updated, Moved, Copied, Restored, and Equal files.
 *   **File List**: Table of specific file paths changed, color-coded by change type.
-*   **Actions**: Trigger new Diff generation.
+*   **Actions**: Trigger new Diff generation, Restore individual files (Undelete).
 
-### 5. Settings (`#/settings`)
+### 5. Recovery (`#/recovery`)
+Safety hub for data restoration and error correction.
+*   **Undelete Files**: Bulk file restoration using pattern/globbing input.
+*   **Silent Data Errors**: Detection of bad blocks and "Heal" trigger using parity.
+*   **Recovery Summary**: Statistics on Recovered and Unrecoverable files.
+*   **Processed Files**: Table of files processed during current recovery session.
+
+### 6. Settings (`#/settings`)
 Form to view and modify `snapraidd.conf` and daemon settings.
 *   **Sections**: Automation (Schedule, Thresholds), Monitor & Log (Probe interval,
     Spindown timeout), Script Hooks, Notifications (Syslog, Email, Webhooks).
@@ -120,6 +135,7 @@ The application maintains a synchronized state with the backend via a polling lo
     *   If `pulse.activity` changes -> Refreshes Dashboard.
     *   If `pulse.disks` changes -> Refreshes Disks page.
     *   If `pulse.tasks` changes -> Refreshes Tasks page.
+    *   If `pulse.config` changes -> Refreshes Settings page.
 *   **Efficiency**: Full data fetches (`loadDashboard`, `loadDisks`, etc.) only occur when the pulse indicates a change.
 
 ### Connection State
@@ -139,7 +155,14 @@ The project uses a custom, lightweight utility-first CSS framework defined in
 *   **Spacing**: `.m[t/b/l/r]-[1/2/4/6/8]`, `.p-[...]` (limited set).
 *   **Typography**: `.text-xs`, `.text-sm`, `.text-lg`, `.text-xl`, `.font-bold`, `.font-mono`.
 *   **Colors**: `.text-cyan`, `.text-red`, `.text-emerald`, `.text-amber`, `.text-muted`.
-*   **Components**: `.card`, `.btn`, `.btn-primary/secondary/danger`, `.badge`, `.table`.
+*   **Components**: 
+    *   `.card`: Dark-themed container with subtle border.
+    *   `.btn`: Flexible button system (`btn-primary`, `btn-secondary`, `btn-danger`).
+    *   `.badge`: Colored status indicators.
+    *   `.table`: Clean, dense data tables.
+    *   **.tooltip-floating**: Global, mouse-tracking tooltip system controlled via `data-tooltip`.
+    *   **.toast**: Bottom-anchored notification system (`showToast`).
+    *   **.modal-overlay**: Custom modal/confirmation system (`showConfirm`, `showConfirmDown`, `showModal`).
 
 ## Development Guidelines
 
