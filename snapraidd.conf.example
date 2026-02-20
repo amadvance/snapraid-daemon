@@ -18,7 +18,7 @@
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
-net_enabled = 0
+net_enabled = 1
 
 # The net_port defines the specific IP address and port the daemon binds to.
 # Format: [IP_ADDRESS:]PORT[s].
@@ -72,7 +72,7 @@ net_security_headers = 1
 #           request and reflects it back as the allowed origin. This allows
 #           the built-in UI to work across different IPs or hostnames.
 #   - none: Omits all CORS headers. This blocks browser-based API access
-#           from any origin (ideal for CLI-only or headless usage).
+#           from any origin.
 #   - [URL]: A specific origin (e.g., http://192.168.1.50:3000) for users
 #            running a custom or third-party dashboard.
 #
