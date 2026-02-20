@@ -24,6 +24,126 @@
 #include "zip.h"
 #include "web.h"
 
+void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers, const char* net_allowed_origin)
+{
+	ss_printf(s, "Server: %s/%s\r\n", PACKAGE_NAME, PACKAGE_VERSION);
+
+	char date_buf[64];
+	struct tm tm_gmt;
+	gmtime_r(&now, &tm_gmt);
+	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
+	ss_printf(s, "Date: %s\r\n", date_buf);
+
+	/* allowing the browser to cache for 1 day (86400 seconds) */
+	ss_prints(s, "Cache-Control: public, max-age=86400\r\n");
+
+	if (last_modified != 0) {
+		gmtime_r(&last_modified, &tm_gmt);
+		strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
+		ss_printf(s, "Last-Modified: %s\r\n", date_buf);
+	}
+
+
+	/*
+	 * Forces the browser to always fetch fresh data from the daemon.
+	 * 'no-store' prevents the sensitive JSON status from being saved to disk.
+	 */
+	ss_prints(s, "Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0\r\n");
+
+	/* Legacy (HTTP/1.0): Support for HTTP/1.0 proxies */
+	ss_prints(s, "Pragma: no-cache\r\n");
+
+	/* Legacy (HTTP/1.0): Mark as expired immediately */
+	ss_prints(s, "Expires: 0\r\n");
+
+	/*
+	 * Vary: Origin
+	 * Crucial for 'self' reflection. It tells intermediate caches and proxies
+	 * that the response depends on the 'Origin' header of the request,
+	 * preventing a response meant for one user from being served to another.
+	 *
+	 * Vary: Accept-Encoding
+	 * Compression depends on the Accept-Encoding
+	 */
+	ss_prints(s, "Vary: Origin, Accept-Encoding\r\n");
+
+	/*
+	 * These headers provide "Defense in Depth" against common web vulnerabilities.
+	 */
+	if (net_security_headers) {
+		/*
+		 * X-Frame-Options: SAMEORIGIN
+		 * Prevents "Clickjacking" attacks. By setting this to SAMEORIGIN, the browser
+		 * will only render this page inside an <iframe> if the parent page is
+		 * hosted on the same origin (this daemon). It blocks malicious external
+		 * sites from overlaying invisible buttons on top of your API controls.
+		 */
+		ss_prints(s, "X-Frame-Options: SAMEORIGIN\r\n");
+
+		/* * X-Content-Type-Options: nosniff
+		 * Prevents "MIME-sniffing" attacks. It forces the browser to trust the
+		 * 'Content-Type' header sent by the daemon. Without this, a browser might
+		 * guess that a .log file is actually a .js script and execute it,
+		 * leading to potential XSS vulnerabilities.
+		 */
+		ss_prints(s, "X-Content-Type-Options: nosniff\r\n");
+
+		/*
+		 * Content-Security-Policy (CSP)
+		 * The most powerful security header.
+		 * - 'default-src self': Only allow scripts, styles, and images from this daemon.
+		 * - 'frame-ancestors self': Modern version of X-Frame-Options; ensures only
+		 * this daemon can embed its own pages.
+		 */
+		ss_prints(s, "Content-Security-Policy: default-src 'self' 'unsafe-inline'\r\n");
+
+		/*
+		 * Referrer-Policy: no-referrer
+		 * Privacy protection. Ensures that if the user clicks a link to an external
+		 * site (like the SnapRAID manual), the browser does not send the
+		 * daemon's local IP or internal URL in the 'Referer' header.
+		 */
+		ss_prints(s, "Referrer-Policy: no-referrer\r\n");
+
+		/*
+		 * Cross-Origin-Opener-Policy: same-origin
+		 * Context Isolation. Prevents other browser tabs from maintaining a
+		 * reference to this window. This mitigates certain side-channel attacks
+		 * (like Spectre) and prevents a malicious tab from "reaching into"
+		 * the SnapRAID dashboard window via JavaScript.
+		 */
+		ss_prints(s, "Cross-Origin-Opener-Policy: same-origin\r\n");
+	}
+
+	/*
+	 * These headers allow or deny specific web applications from making
+	 * asynchronous (AJAX/Fetch) calls to the SnapRAID API.
+	 */
+	if (strcmp(net_allowed_origin, "none") != 0) {
+		/*
+		 * Access-Control-Allow-Origin
+		 * Tells the browser which website is allowed to read the API response.
+		 * - If 'self', we reflect the 'Host' header to allow local UI access.
+		 * - If a URL is provided, we whitelist only that specific dashboard.
+		 */
+		if (strcmp(net_allowed_origin, "self") == 0) {
+			const char* host = mg_get_header(conn, "Host");
+			ss_printf(s, "Access-Control-Allow-Origin: http://%s\r\n", host ? host : "null");
+		} else {
+			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
+		}
+
+		/*
+		 * Access-Control-Allow-Methods & Headers
+		 * These are required for the "Pre-flight" check (OPTIONS request).
+		 * Browsers will check these before allowing a POST or DELETE request
+		 * to ensure the daemon supports those actions and the 'Content-Type' header.
+		 */
+		ss_prints(s, "Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\n");
+		ss_prints(s, "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+	}
+}
+
 static ssize_t read_fd(int fd, void* buffer, ssize_t size)
 {
 	char* p = buffer;
@@ -155,8 +275,6 @@ static void crawl_directory(tommy_list* page_list, size_t skip, const char* curr
 	crawl_directory_fd(page_list, skip, fd, current_path);
 }
 
-#define HTTP_HEADERS_MAX 512
-
 static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modified)
 {
 	int net_security_headers;
@@ -169,44 +287,7 @@ static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modifi
 	sncpy(net_allowed_origin, sizeof(net_allowed_origin), state_ptr()->config.net_allowed_origin);
 	state_unlock();
 
-	ss_printf(s, "Server: %s/%s\r\n", PACKAGE_NAME, PACKAGE_VERSION);
-
-	char date_buf[64];
-	struct tm tm_gmt;
-	gmtime_r(&now, &tm_gmt);
-	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-	ss_printf(s, "Date: %s\r\n", date_buf);
-
-	/* allowing the browser to cache for 1 day (86400 seconds) */
-	ss_prints(s, "Cache-Control: public, max-age=86400\r\n");
-
-	if (last_modified != 0) {
-		gmtime_r(&last_modified, &tm_gmt);
-		strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-		ss_printf(s, "Last-Modified: %s\r\n", date_buf);
-	}
-
-	ss_prints(s, "Vary: Accept-Encoding, Origin\r\n");
-
-	if (net_security_headers) {
-		ss_prints(s, "X-Frame-Options: SAMEORIGIN\r\n");
-		ss_prints(s, "X-Content-Type-Options: nosniff\r\n");
-		ss_prints(s, "Content-Security-Policy: default-src 'self';\r\n");
-		ss_prints(s, "Referrer-Policy: no-referrer\r\n");
-		ss_prints(s, "Cross-Origin-Opener-Policy: same-origin\r\n");
-	}
-
-	if (strcmp(net_allowed_origin, "none") != 0) {
-		if (strcmp(net_allowed_origin, "self") == 0) {
-			const char* host = mg_get_header(conn, "Host");
-			ss_printf(s, "Access-Control-Allow-Origin: http://%s\r\n", host ? host : "null");
-		} else {
-			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
-		}
-
-		ss_prints(s, "Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\n");
-		ss_prints(s, "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
-	}
+	http_headers(conn, s, now, last_modified, net_security_headers, net_allowed_origin);
 }
 
 static int send_no_content(struct mg_connection* conn)

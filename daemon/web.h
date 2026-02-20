@@ -38,5 +38,14 @@ void web_done(struct snapraid_state* state);
 
 int web_reload(struct snapraid_state* state, const char* net_web_root);
 
+#define HTTP_HEADERS_MAX 512
+
+/**
+ * Generates and prints security and CORS headers into the provided string builder.
+ * These headers protect the SnapRAID daemon from cross-site attacks and ensure
+ * that only authorized web origins can communicate with the API.
+ */
+void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers, const char* net_allowed_origin);
+
 #endif
 
