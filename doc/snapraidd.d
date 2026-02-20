@@ -359,7 +359,7 @@ Configuration
 	%s - Subject string (e.g., "[ERROR] SnapRAID Maintenance").
 	%l - Task level (critical, error, warning, info, debug).
 	%n - ntfy priority (urgent, high, default, low, min).
-	%t - ntfy tag (skull, warning, default, -1, +1, heavy_check_mark).
+	%t - ntfy tag (rotating_light, warning, default, -1, +1, heavy_check_mark).
 
 	If the command contains --mail-from or --mail-rcpt, the daemon
 	automatically prepends standard email headers (From, To, Subject)
@@ -391,7 +391,7 @@ Configuration
 	before a sync begins. If set to 0 or missing, no difference report is
 	generated.
 
-  Notification Examples:
+  Notification Examples
 	The following examples demonstrate common notification and heartbeat
 	configurations
 

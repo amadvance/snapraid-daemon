@@ -76,8 +76,6 @@ net_security_headers = 1
 #   - [URL]: A specific origin (e.g., http://192.168.1.50:3000) for users
 #            running a custom or third-party dashboard.
 #
-# Note: When not set to 'none', the daemon automatically adds 'Vary: Origin'
-# to ensure compatibility with browser caches and proxies.
 # Default: self
 net_allowed_origin = self
 
@@ -172,7 +170,7 @@ sync_threshold_deletes = 50
 # It is bypassed for standalone '/api/v1/sync' API requests to allow
 # manual overrides.
 # Set to 0 to disable this check.
-sync_threshold_updates = 500
+sync_threshold_updates = 100
 
 # If set to 1 run sync with the prehash option to prevent silent errors due
 # faulty memory on files not yet hashed.
@@ -292,7 +290,7 @@ notify_syslog_level = info
 # %s : Replaced with the subject string (e.g., "[ERROR] SnapRAID Maintenance").
 # %l : Replaced with the task level (critical, error, warning, info, debug).
 # %n : Replaced with the ntfy priority (urgent, high, default, low, min).
-# %t : Replaced with the ntfy tag (skull, warning, default, -1, +1, heavy_check_mark).
+# %t : Replaced with the ntfy tag (rotating_light, warning, default, -1, +1, heavy_check_mark).
 #
 # Examples of usage:
 # 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as

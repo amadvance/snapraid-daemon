@@ -163,7 +163,7 @@ static void result_locked(struct snapraid_state* state, int high_cmd, int report
 	switch (report_level) {
 	case LVL_CRITICAL : /* hardware problem */
 		ntfy_priority = "urgent";
-		ntfy_tag = "skull";
+		ntfy_tag = "rotating_light";
 		break;
 	case LVL_ERROR : /* task terminated with error, like too many files missing */
 		ntfy_priority = "high";
