@@ -178,6 +178,10 @@ When modifying this application, adhere to the following rules:
     than using `<img>` tags or external libraries.
 6.  **Testing**: Do NOT test changes opening the interface. Instead, instruct
     the use about the test he should do.
+7.  **Security (CSP)**: Strictly forbid the use of inline JavaScript (e.g., `onclick`,
+    `onchange`, or inline `<script>` blocks). Adhere to the strict Content
+    Security Policy by using the centralized event delegation system in `app.js`
+    with `data-action` and `data-*` attributes for all interactivity.
 
 ## Future Extensibility
 

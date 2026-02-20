@@ -95,7 +95,7 @@ void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_m
 		 * - 'frame-ancestors self': Modern version of X-Frame-Options; ensures only
 		 * this daemon can embed its own pages.
 		 */
-		ss_prints(s, "Content-Security-Policy: default-src 'self' 'unsafe-inline'\r\n");
+		ss_prints(s, "Content-Security-Policy: default-src 'self'\r\n");
 
 		/*
 		 * Referrer-Policy: no-referrer

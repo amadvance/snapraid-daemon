@@ -247,6 +247,12 @@ body {
     animation: spin 2s linear infinite;
 }
 
+.sidebar-progress {
+    height: 4px;
+    background-color: var(--c-slate-800);
+    margin: 4px 0;
+}
+
 .sidebar-footer {
     padding-top: var(--gap-md);
     /* removed border-top as sidebar-status handles separation now */
@@ -380,6 +386,10 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
     gap: var(--gap-lg);
+}
+
+.grid-span-2 {
+    grid-column: span 2;
 }
 
 .grid-3 {
@@ -599,6 +609,11 @@ body {
     animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.progress-container.system-progress {
+    height: 6px;
+    margin: 0;
+}
+
 /* Progress Bar */
 .progress-container {
     height: 8px;
@@ -754,6 +769,26 @@ body {
 }
 
 /* Temperature */
+.flex-1 {
+    flex: 1;
+}
+
+.flex-shrink-0 {
+    flex-shrink: 0;
+}
+
+.whitespace-nowrap {
+    white-space: nowrap;
+}
+
+.h-full {
+    height: 100%;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
 .temp-sparkline {
     display: block;
 }
@@ -766,12 +801,15 @@ body {
     border: 1px solid var(--c-slate-800);
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.2);
+    width: 100%;
 }
 
 .scrub-history-container {
     border: 1px solid var(--c-slate-800);
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.2);
+    height: 200px;
+    width: 100%;
 }
 
 /* Property List */
@@ -809,8 +847,24 @@ body {
     min-width: 0;
 }
 
-.w-1-2 {
-    width: 50%;
+.w-50 {
+    width: 50px;
+}
+
+.w-60 {
+    width: 60px;
+}
+
+.w-80 {
+    width: 80px;
+}
+
+.w-100 {
+    width: 100px;
+}
+
+.p-0 {
+    padding: 0 !important;
 }
 
 /* Utility Typography */

@@ -82,8 +82,41 @@ const app = {
             });
         });
 
-        // Expose triggerStop to window for UI buttons
-        window.app = app;
+        // Centralized Event Dispatcher (for CSP compliance)
+        document.addEventListener('click', (e) => {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+
+            const action = el.dataset.action;
+            const ds = el.dataset;
+
+            switch (action) {
+                case 'maintenance': app.triggerMaintenance(); break;
+                case 'stop-task': app.triggerStop(); break;
+                case 'spin-up': app.triggerCommand('spinUp'); break;
+                case 'spin-down': app.triggerCommand('spinDown'); break;
+                case 'diff': app.triggerDiff(); break;
+                case 'recovery-cancel': app.handleRoute(); break;
+                case 'settings-save': app.saveSettings(); break;
+                case 'undelete': app.triggerUndelete(ds.path); break;
+                case 'undelete-batch': app.triggerUndeleteBatch(); break;
+                case 'heal': app.triggerHeal(); break;
+                case 'smart-details': app.showSmartDetails(ds.node); break;
+                case 'toggle-log':
+                    document.getElementById(ds.target).classList.toggle('hidden');
+                    break;
+            }
+        });
+
+        document.addEventListener('change', (e) => {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+
+            const action = el.dataset.action;
+            if (action === 'toggle-periodic') {
+                app.toggleHidePeriodic(el.checked);
+            }
+        });
 
         // Resize handler for graphs
         let resizeTimer;
@@ -108,6 +141,16 @@ const app = {
                 });
             });
         }
+    },
+
+    applyDynamicStyles: (container) => {
+        if (!container) return;
+        container.querySelectorAll('[data-style-width]').forEach(el => {
+            el.style.width = el.dataset.styleWidth;
+        });
+        container.querySelectorAll('[data-style-height]').forEach(el => {
+            el.style.height = el.dataset.styleHeight;
+        });
     },
 
     stopPolling: () => {
@@ -197,8 +240,8 @@ const app = {
 
                     if (hasProgress) {
                         html += `
-                        <div class="progress-container" style="height: 4px; background-color: var(--c-slate-800); margin: 4px 0;">
-                            <div class="progress-bar" style="width: ${state.progress}%"></div>
+                        <div class="progress-container sidebar-progress">
+                            <div class="progress-bar" data-style-width="${state.progress}%"></div>
                         </div>`;
                     }
 
@@ -210,6 +253,7 @@ const app = {
                     }
 
                     statusBar.innerHTML = html;
+                    app.applyDynamicStyles(statusBar);
                 } else {
                     statusBar.innerHTML = '';
                 }
@@ -266,15 +310,15 @@ const app = {
                 case '#/':
                     title.innerText = 'Dashboard';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" onclick="app.triggerMaintenance()">Maintenance</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                     `;
                     await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
                     title.innerText = 'Disks';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" onclick="app.triggerCommand('spinUp')">Up</button>
-                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" onclick="app.triggerCommand('spinDown')">Down</button>
+                        <button class="btn btn-primary" data-tooltip="Spin up all array disks" data-action="spin-up">Up</button>
+                        <button class="btn btn-primary" data-tooltip="Spin down all array disks" data-action="spin-down">Down</button>
                     `;
                     await app.loadDisks();
                     break;
@@ -286,7 +330,7 @@ const app = {
                 case '#/diff':
                     title.innerText = 'Differences';
                     actions.innerHTML = `
-                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" onclick="app.triggerDiff()">Differences</button>
+                        <button class="btn btn-primary" data-tooltip="Trigger a new differences check" data-action="diff">Differences</button>
                     `;
                     await app.loadDifferences();
                     break;
@@ -298,8 +342,8 @@ const app = {
                 case '#/settings':
                     title.innerText = 'Settings';
                     actions.innerHTML = `
-                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" onclick="app.handleRoute()">Cancel</button>
-                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" onclick="app.saveSettings()">Save</button>
+                        <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" data-action="recovery-cancel">Cancel</button>
+                        <button class="btn btn-primary" data-tooltip="Save configuration changes to server" data-action="settings-save">Save</button>
                     `;
                     await app.loadSettings();
                     break;
@@ -349,10 +393,11 @@ const app = {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
                 actions.innerHTML = `
-                    ${active ? `<button class="btn btn-danger" data-tooltip="Abort the currently running task" onclick="app.triggerStop()">Stop Task</button>` : ''}
-                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" onclick="app.triggerMaintenance()">Maintenance</button>
+                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                 `;
-                document.getElementById('view-container').innerHTML = renderDashboard(array, activity, app.state.system);
+                const view = document.getElementById('view-container');
+                view.innerHTML = renderDashboard(array, activity, app.state.system);
+                app.applyDynamicStyles(view);
 
                 // Draw graphs
                 app.redrawGraphs();
@@ -375,7 +420,9 @@ const app = {
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
             app.state.disks = data;
-            document.getElementById('view-container').innerHTML = renderDisks(data);
+            const view = document.getElementById('view-container');
+            view.innerHTML = renderDisks(data);
+            app.applyDynamicStyles(view);
 
             // Post-render: Draw graphs
             app.redrawGraphs();
@@ -390,7 +437,9 @@ const app = {
             const data = await API.getTasks();
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
-            document.getElementById('view-container').innerHTML = renderTasks(data, app.state.hidePeriodic);
+            const view = document.getElementById('view-container');
+            view.innerHTML = renderTasks(data, app.state.hidePeriodic);
+            app.applyDynamicStyles(view);
         } catch (e) {
             app.setConnection(false);
             throw e;
@@ -402,7 +451,9 @@ const app = {
             const array = await API.getArray();
             if (array.pulse) app.state.pulse = array.pulse;
             app.setConnection(true);
-            document.getElementById('view-container').innerHTML = renderDifferences(array);
+            const view = document.getElementById('view-container');
+            view.innerHTML = renderDifferences(array);
+            app.applyDynamicStyles(view);
         } catch (e) {
             app.setConnection(false);
             throw e;
@@ -419,7 +470,9 @@ const app = {
             // Wait, I need to update the import statement at the top of the file too.
             // I'll assume I update the import in a separate tool call if needed or just use consistent updates.
             // But since I can't update multiple files in one go easily without separate tool calls...
-            document.getElementById('view-container').innerHTML = renderRecovery(array);
+            const view = document.getElementById('view-container');
+            view.innerHTML = renderRecovery(array);
+            app.applyDynamicStyles(view);
         } catch (e) {
             app.setConnection(false);
             throw e;
@@ -432,7 +485,9 @@ const app = {
             if (config.pulse) app.state.pulse = config.pulse;
             app.setConnection(true);
             app.state.config = config;
-            document.getElementById('view-container').innerHTML = renderSettings(config);
+            const view = document.getElementById('view-container');
+            view.innerHTML = renderSettings(config);
+            app.applyDynamicStyles(view);
         } catch (e) {
             app.setConnection(false);
             throw e;

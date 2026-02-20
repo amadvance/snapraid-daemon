@@ -79,7 +79,7 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
     [20, 45, 70].forEach(level => {
         const yPos = getY(level);
         svg += `
-            <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" style="font-family:sans-serif;">${level}°</text>
+            <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${level}°</text>
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
                   stroke="rgba(255,255,255,0.3)" stroke-dasharray="2" />
         `;
@@ -182,13 +182,13 @@ export function renderScrubHistory(containerId, history) {
     `;
 
     // Y Axis High Label
-    svg += `<text x="${margin.left - 5}" y="${getY(yMax) + 4}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" style="font-family:sans-serif; font-weight:bold;">${Math.floor(yMax)}%</text>`;
+    svg += `<text x="${margin.left - 5}" y="${getY(yMax) + 4}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" font-family="sans-serif" font-weight="bold">${Math.floor(yMax)}%</text>`;
 
     // X Axis Labels
     svg += `
-        <text x="${margin.left}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="start" style="font-family:sans-serif; font-weight:bold;">${xMin}</text>
-        <text x="${margin.left + chartWidth / 2}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="middle" style="font-family:sans-serif; font-weight:bold;">days ago</text>
-        <text x="${margin.left + chartWidth}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" style="font-family:sans-serif; font-weight:bold;">${xMax}</text>
+        <text x="${margin.left}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="start" font-family="sans-serif" font-weight="bold">${xMin}</text>
+        <text x="${margin.left + chartWidth / 2}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="middle" font-family="sans-serif" font-weight="bold">days ago</text>
+        <text x="${margin.left + chartWidth}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" font-family="sans-serif" font-weight="bold">${xMax}</text>
     `;
 
     // Render Bars
@@ -240,8 +240,8 @@ const renderSystemCard = (system) => {
                             <span>${formatBytes(usedMem)} / ${formatBytes(totalMem)}</span>
                             <span>${system.is_ecc ? '(ECC)' : ''}</span>
                         </div>
-                        <div class="progress-container" style="height: 6px; margin: 0;">
-                            <div class="progress-bar" style="width: ${memPercent}%"></div>
+                        <div class="progress-container system-progress">
+                            <div class="progress-bar" data-style-width="${memPercent}%"></div>
                         </div>
                     </div>
                  </div>
@@ -294,7 +294,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 
                 ${activity.status === 'processing' ? `
                 <div class="progress-container">
-                    <div class="progress-bar" style="width: ${activity.progress || 0}%"></div>
+                    <div class="progress-bar" data-style-width="${activity.progress || 0}%"></div>
                 </div>
                 <div class="flex justify-between text-sm mb-4">
                     <span>${activity.progress || 0}% Complete</span>
@@ -371,7 +371,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <span class="font-mono">${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
                 </div>
                 <div class="progress-container">
-                    <div class="progress-bar" style="width: ${percentUsed}%"></div>
+                    <div class="progress-bar" data-style-width="${percentUsed}%"></div>
                 </div>
                 <div class="text-right text-xs text-muted mt-1">
                     ${formatBytes(freeSpace)} free
@@ -444,7 +444,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const scrubHistoryHtml = arrayInfo.scrub_history ? `
         <div class="card mt-4">
             <h3 class="font-bold mb-4 text-cyan">Maintenance History</h3>
-            <div id="scrub-history-graph" class="scrub-history-container" style="height: 200px; width: 100%;"></div>
+            <div id="scrub-history-graph" class="scrub-history-container"></div>
             <div class="property-list mt-4 border-t border-slate-800 pt-4">
                 <div class="property-row">
                     <div class="property-label">Oldest block</div>
@@ -501,7 +501,7 @@ export const renderDifferences = (arrayInfo) => {
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
                         <span>${d.path}</span>
-                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" onclick="app.triggerUndelete('${esc(d.path)}')">Undelete</button>` : ''}
+                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-path="${esc(d.path)}">Undelete</button>` : ''}
                     </div>
                 </td>
             </tr>
@@ -560,8 +560,8 @@ export const renderDifferences = (arrayInfo) => {
                     <table class="data-table dense">
                         <thead>
                             <tr>
-                                <th style="width: 80px">Change</th>
-                                <th style="width: 100px">Disk</th>
+                                <th class="w-80">Change</th>
+                                <th class="w-100">Disk</th>
                                 <th>Path</th>
                             </tr>
                         </thead>
@@ -629,12 +629,12 @@ const renderDiskCard = (disk, type, pulseAt) => {
         const tempStr = temp != null ? `${temp}°C` : '? °C';
         let tempTime = '';
         if (dev.smart?.measured_at)
-		tempTime = '(' + formatRelativeTime(dev.smart?.measured_at, pulseAt) + ')';
+            tempTime = '(' + formatRelativeTime(dev.smart?.measured_at, pulseAt) + ')';
 
         let sparklinePlaceholder = '';
         if (dev.temp_history_24h) {
             const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
-            sparklinePlaceholder = `<div id="sparkline-${safeId}" class="temp-sparkline-row temp-sparkline-container" style="width: 100%;"></div>`;
+            sparklinePlaceholder = `<div id="sparkline-${safeId}" class="temp-sparkline-row temp-sparkline-container"></div>`;
         }
 
         const powerOnYears = dev.smart?.power_on_hours ? ` (${(dev.smart.power_on_hours / (24 * 365)).toFixed(1)} years)` : '';
@@ -655,19 +655,19 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.rotational ? 'HDD' : 'SSD'} ${dev.model || '-'}${powerOnYears}</div>
                 
-                <div class="flex gap-4 mb-2 temp-sparkline-row" style="align-items: center;">
-                    <div style="flex-shrink: 0; white-space: nowrap;" class="text-xs text-muted">
+                <div class="flex gap-4 mb-2 temp-sparkline-row items-center">
+                    <div class="flex-shrink-0 whitespace-nowrap text-xs text-muted">
                          <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">${tempTime}</span></div>
                          <div class="text-muted mt-1">
                             ${failureProb}
                          </div>
                     </div>
-                    <div style="flex: 1; height: 100%; min-width: 0;">
+                    <div class="flex-1 h-full min-w-0">
                         ${sparklinePlaceholder}
                     </div>
                 </div>
 
-                <div class="smart-clickable mt-2" onclick="app.showSmartDetails('${esc(dev.device_node)}')">
+                <div class="smart-clickable mt-2" data-action="smart-details" data-node="${esc(dev.device_node)}">
                     ${smartStatus}
                 </div>
             </div>
@@ -688,7 +688,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 <span>${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
             </div>
             <div class="progress-container mb-4">
-                <div class="progress-bar" style="width: ${percentUsed}%"></div>
+                <div class="progress-bar" data-style-width="${percentUsed}%"></div>
             </div>
 
             ${devicesHtml}
@@ -762,13 +762,13 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
                 <button class="btn btn-secondary btn-xs" data-tooltip="View execution logs and exit status"
-                    onclick="document.getElementById('log-${t.number}').classList.toggle('hidden')">
+                    data-action="toggle-log" data-target="log-${t.number}">
                     Details
                 </button>
             </td>
         </tr>
         <tr id="log-${t.number}" class="hidden bg-slate-900">
-            <td colspan="7" style="padding: 0;">
+            <td colspan="7" class="p-0">
                 <div class="text-xs font-mono bg-slate-950 p-4 border-b border-slate-800 shadow-inner">
                      ${exitStatus}
                       ${t.log_file && t.log_file !== 'N/A' ? `
@@ -803,7 +803,7 @@ export const renderTasks = (data, hidePeriodic) => {
             </h3>
             <div class="overflow-x-auto">
                 <table class="data-table dense">
-                    <thead><tr><th style="width:50px">ID</th><th>Command</th><th>Status</th><th>Scheduled</th></tr></thead>
+                    <thead><tr><th class="w-50">ID</th><th>Command</th><th>Status</th><th>Scheduled</th></tr></thead>
                     <tbody>${queueRows}</tbody>
                 </table>
             </div>
@@ -816,7 +816,7 @@ export const renderTasks = (data, hidePeriodic) => {
             </h3>
             <div class="overflow-x-auto">
                 <table class="data-table dense">
-                    <thead><tr><th style="width:50px">ID</th><th>Command</th><th>Status</th><th>Started</th><th>Duration</th><th>%</th><th>ETA</th></tr></thead>
+                    <thead><tr><th class="w-50">ID</th><th>Command</th><th>Status</th><th>Started</th><th>Duration</th><th>%</th><th>ETA</th></tr></thead>
                     <tbody>${activeRows}</tbody>
                 </table>
             </div>
@@ -829,13 +829,13 @@ export const renderTasks = (data, hidePeriodic) => {
                     <span class="badge badge-grey text-xs">${filteredHistory.length}</span>
                 </h3>
                 <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" onchange="app.toggleHidePeriodic(this.checked)" ${hidePeriodic ? 'checked' : ''}>
+                    <input type="checkbox" data-action="toggle-periodic" ${hidePeriodic ? 'checked' : ''}>
                     Hide automatic probes
                 </label>
             </div>
              <div class="overflow-x-auto">
                 <table class="data-table dense">
-                    <thead><tr><th style="width:50px">ID</th><th>Cmd</th><th>Health</th><th>Result</th><th>Started</th><th>Duration</th><th style="width:60px">Details</th></tr></thead>
+                    <thead><tr><th class="w-50">ID</th><th>Cmd</th><th>Health</th><th>Result</th><th>Started</th><th>Duration</th><th class="w-60">Details</th></tr></thead>
                     <tbody>${historyRows}</tbody>
                 </table>
             </div>
@@ -905,8 +905,8 @@ export const renderSettings = (config) => {
                 ${inputField('script_run_as_user', 'Run Scripts As User', 'text', '', !fullAccess)}
             </div>
 
-             <!-- Notifications -->
-            <div class="card" style="grid-column: span 2;">
+            <!-- Notifications -->
+            <div class="card grid-span-2">
                 <h3 class="font-bold mb-4 text-cyan">Notifications</h3>
               
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-1">Syslog</h4>
@@ -963,7 +963,7 @@ export const renderRecovery = (arrayInfo) => {
                         Recover accidentally deleted files. Enter file path patterns/globbing (e.g. *.mp4), one per line.
                     </p>
                     <textarea id="undelete-patterns" class="form-control mb-4 font-mono text-sm bg-slate-950 border-slate-700 text-slate-200" rows="5" placeholder="*.mp4&#10;family_docs/*&#10;lost_file.txt"></textarea>
-                    <button class="btn btn-primary w-full" data-tooltip="Undelete the specified file patterns in all disks" onclick="app.triggerUndeleteBatch()">
+                    <button class="btn btn-primary w-full" data-tooltip="Undelete the specified file patterns in all disks" data-action="undelete-batch">
                         Undelete Files
                     </button>
                 </div>
@@ -985,7 +985,7 @@ export const renderRecovery = (arrayInfo) => {
                     
                     <button class="btn ${arrayInfo.blocks_bad > 0 ? 'btn-danger w-full' : 'btn-disabled w-full'}" 
                             data-tooltip="Repair silent data corruption on all data disks"
-                            onclick="${arrayInfo.blocks_bad > 0 ? 'app.triggerHeal()' : ''}"
+                            data-action="${arrayInfo.blocks_bad > 0 ? 'heal' : ''}"
                             ${arrayInfo.blocks_bad === 0 ? 'disabled' : ''}>
                         Heal Silent Errors
                     </button>
@@ -1019,8 +1019,8 @@ export const renderRecovery = (arrayInfo) => {
                     <table class="data-table dense">
                         <thead>
                             <tr>
-                                <th style="width: 100px">Status</th>
-                                <th style="width: 100px">Disk</th>
+                                <th class="w-100">Status</th>
+                                <th class="w-100">Disk</th>
                                 <th>Path</th>
                             </tr>
                         </thead>
