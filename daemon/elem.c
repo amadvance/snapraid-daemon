@@ -511,41 +511,55 @@ const char* health_name(int health)
 	return "-";
 }
 
-static int health_worse(int a, int b)
+static int health_worse(int current, int value, char* reason, size_t reason_size, const char* msg)
 {
-	if (a < b)
-		return a;
-	else
-		return b;
+	if (current <= value)
+		return current;
+
+	if (reason)
+		sncpy(reason, reason_size, msg);
+	return value;
 }
 
-static int health_device_list(tommy_list* list)
+static int health_device_list(tommy_list* list, char* reason, size_t reason_size)
 {
+	char msg[HEALTH_REASON_MAX + PATH_MAX];
 	int health = HEALTH_PASSED;
 
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* device = i->data;
-		if (device->error_medium != 0 && device->error_medium != SMART_UNASSIGNED)
-			health = health_worse(health, HEALTH_FAILING);
-		if (device->error_protocol != 0 && device->error_protocol != SMART_UNASSIGNED)
-			health = health_worse(health, HEALTH_PREFAIL);
-		health = health_worse(health, device->health);
+		if (device->error_medium != 0 && device->error_medium != SMART_UNASSIGNED) {
+			snprintf(msg, sizeof(msg), "Device %s has %" PRIu64 " medium errors", device->file, device->error_medium);
+			health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
+		}
+		if (device->error_protocol != 0 && device->error_protocol != SMART_UNASSIGNED) {
+			snprintf(msg, sizeof(msg), "Device %s has %" PRIu64 " protocol errors", device->file, device->error_protocol);
+			health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+		}
+
+		health = health_worse(health, device->health, reason, reason_size, device->health_reason);
 	}
 
 	return health;
 }
 
-int health_disk(struct snapraid_disk* data)
+int health_disk(struct snapraid_disk* data, char* reason, size_t reason_size)
 {
+	char msg[HEALTH_REASON_MAX + DISK_MAX];
 	int health = HEALTH_PASSED;
 
-	if (data->error_data != 0)
-		health = health_worse(health, HEALTH_PREFAIL);
+	if (data->error_data != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " silent data errors", data->name, data->error_data);
+		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+	}
 
-	if (data->error_io != 0)
-		health = health_worse(health, HEALTH_FAILING);
+	if (data->error_io != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " input/output errors", data->name, data->error_io);
+		health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
+	}
 
-	health = health_worse(health, health_device_list(&data->device_list));
+	int low_health = health_device_list(&data->device_list, msg, sizeof(msg));
+	health = health_worse(health, low_health, reason, reason_size, msg);
 
 	return health;
 }
@@ -555,41 +569,49 @@ int health_task(struct snapraid_task* task)
 	int health = task->health;
 
 	if (task->error_data != 0)
-		health = health_worse(health, HEALTH_PREFAIL);
+		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
 
 	if (task->error_io != 0)
-		health = health_worse(health, HEALTH_FAILING);
+		health = health_worse(health, HEALTH_FAILING, 0, 0, 0);
 
 	if (task->error_unrecoverable != 0)
-		health = health_worse(health, HEALTH_FAILING);
+		health = health_worse(health, HEALTH_FAILING, 0, 0, 0);
 
 	if (task->block_bad != 0)
-		health = health_worse(health, HEALTH_PREFAIL);
+		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
 
 	switch (task->state) {
 	case PROCESS_STATE_QUEUE :
-		health = health_worse(health, HEALTH_PENDING);
+		health = health_worse(health, HEALTH_PENDING, 0, 0, 0);
 		break;
 	}
 
 	return health;
 }
 
-int health_array(struct snapraid_state* state)
+int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 {
+	char msg[HEALTH_REASON_MAX];
 	int health = HEALTH_PASSED;
 
-	if (state->global.block_bad != 0)
-		health = health_worse(health, HEALTH_PREFAIL);
+	if (reason)
+		reason[0] = 0;
+
+	if (state->global.block_bad != 0) {
+		snprintf(msg, sizeof(msg), "The array has %" PRIu64 " bad blocks (silent data errors)", state->global.block_bad);
+		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+	}
 
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		health = health_worse(health, health_disk(disk));
+		int low_health = health_disk(disk, msg, sizeof(msg));
+		health = health_worse(health, low_health, reason, reason_size, msg);
 	}
 
 	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		health = health_worse(health, health_disk(disk));
+		int low_health = health_disk(disk, msg, sizeof(msg));
+		health = health_worse(health, low_health, reason, reason_size, msg);
 	}
 
 	return health;

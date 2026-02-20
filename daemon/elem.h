@@ -109,9 +109,9 @@ void bucket_move(tommy_list* bucket_src, tommy_list* bucket_dest);
 
 const char* power_name(int power);
 const char* health_name(int health);
-int health_disk(struct snapraid_disk* disk);
 int health_task(struct snapraid_task* task);
-int health_array(struct snapraid_state* state);
+int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size);
+int health_array(struct snapraid_state* state, char* reason, size_t reason_size);
 double afr_array(struct snapraid_state* state);
 double fp_array(struct snapraid_state* state);
 

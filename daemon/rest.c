@@ -440,7 +440,10 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 			}
 		}
 	}
+
 	ss_json_str(&s, level, "health", health_name(state->global.health));
+	if (state->global.health == HEALTH_PREFAIL || state->global.health == HEALTH_FAILING)
+		ss_json_str(&s, level, "health_reason", state->global.health_reason);
 	ss_json_close(&s, &level);
 
 	state_unlock();
@@ -1374,7 +1377,7 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list, int64_t referen
 
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "name", disk->name);
-		ss_json_str(s, level, "health", health_name(health_disk(disk)));
+		ss_json_str(s, level, "health", health_name(health_disk(disk, 0, 0)));
 		if (disk->total_space_bytes != 0)
 			ss_json_u64(s, level, "total_space_bytes", disk->total_space_bytes);
 		if (disk->free_space_bytes != 0)

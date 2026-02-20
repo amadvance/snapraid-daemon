@@ -1042,3 +1042,24 @@ export const renderRecovery = (arrayInfo) => {
         </div>
     `;
 };
+
+export const renderHealthBanner = (state) => {
+    if (!state || (state.health !== 'prefail' && state.health !== 'failing'))
+        return '';
+
+    const isFailing = state.health === 'failing';
+    const title = isFailing ? 'CRITICAL: ARRAY FAILING' : 'WARNING: ARRAY PREFAIL';
+
+    return `
+        <div class="health-banner ${state.health}">
+            <div class="health-banner-title">
+                ${title}
+            </div>
+            <div class="text-sm">
+                System health is currently <strong>${state.health.toUpperCase()}</strong>.
+                ${state.health_reason ? `<div class="health-banner-reason">${state.health_reason}</div>` : ''}
+            </div>
+        </div>
+    `;
+};
+

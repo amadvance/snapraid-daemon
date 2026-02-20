@@ -36,7 +36,8 @@
  */
 static int runner_health_check_locked(struct snapraid_state* state)
 {
-	int new_health = health_array(state);
+	state->global.health_reason[0] = 0;
+	int new_health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
 	if (state->global.health == HEALTH_PENDING)
 		state->global.health = new_health;

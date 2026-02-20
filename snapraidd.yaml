@@ -223,6 +223,13 @@ paths:
                     enum: [passed, prefail, failing, pending]
                     description: >
                       The aggregate health of the entire array.
+                  health_reason:
+                    type: string
+                    description: >
+                      A human-readable string explaining the current health state.
+                      This provides the specific cause when health is 'prefail'
+                      or 'failing' (e.g., "Disk 'd1' reporting SMART errors").
+                      This field is omitted if the array is healthy.
                   active_command:
                     type: string
                     enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]

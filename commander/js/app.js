@@ -1,7 +1,7 @@
 
 import { API } from './api.js';
 import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatSeconds } from './utils.js';
-import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory } from './ui.js';
+import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
 
 const app = {
     state: {
@@ -257,6 +257,12 @@ const app = {
                 } else {
                     statusBar.innerHTML = '';
                 }
+            }
+
+            // Global Health Banner
+            const globalAlerts = document.getElementById('global-alerts');
+            if (globalAlerts && state) {
+                globalAlerts.innerHTML = renderHealthBanner(state);
             }
 
             app.state.pulse = pulse;

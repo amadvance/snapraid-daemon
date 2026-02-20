@@ -598,7 +598,7 @@ static void print_disk_list_wide(tommy_list* disk_list, ss_t* ss, struct disk_sp
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		int disk_health = health_disk(disk);
+		int disk_health = health_disk(disk, 0, 0);
 
 		ss_prints(ss, "  ");
 		ss_printl(ss, disk->name, sp->name_len);
@@ -626,7 +626,7 @@ static void print_disk_list_narrow(tommy_list* disk_list, ss_t* ss)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		int disk_health = health_disk(disk);
+		int disk_health = health_disk(disk, 0, 0);
 
 		ss_prints(ss, disk->name);
 		ss_prints(ss, " ");

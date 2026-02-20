@@ -136,6 +136,8 @@ struct smart_attr {
 	int flags; /**< SMART_ATTR_* flags */
 };
 
+#define HEALTH_REASON_MAX 128
+
 /**
  * Device info entry.
  */
@@ -157,6 +159,7 @@ struct snapraid_device {
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
+	char health_reason[HEALTH_REASON_MAX];
 	int temperature; /**< Latest measured temperature, 0 if none */
 	int split_index; /**< Index of the split */
 	tommy_list temp_list; /**< Temperature measures */
@@ -364,6 +367,7 @@ struct snapraid_global {
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
 	int health; /**< Health of the array. Updated after any task. */
+	char health_reason[HEALTH_REASON_MAX]; /**< Health reason for failing or prefail. */
 
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */

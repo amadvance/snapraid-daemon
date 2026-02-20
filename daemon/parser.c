@@ -471,6 +471,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 
 	struct snapraid_device* device = find_device(state, map[2], map[1]);
 
+	const char* disk = map[2];
 	const char* tag = map[3];
 	const char* val = map[4];
 
@@ -517,18 +518,24 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		device->smart_time = state->global.last_time;
 
 		int health = HEALTH_PENDING;
+		char health_reason[HEALTH_REASON_MAX];
 		uint64_t flags;
 		if (stru64(&flags, val) == 0) {
-			if (flags & SMARTCTL_FLAG_FAIL)
+			if (flags & SMARTCTL_FLAG_FAIL) {
+				snprintf(health_reason, sizeof(health_reason), "SMART reports a FAILING condition for disk %s", disk);
 				health = HEALTH_FAILING;
-			else if (flags & SMARTCTL_FLAG_PREFAIL)
+			} else if (flags & SMARTCTL_FLAG_PREFAIL) {
+				snprintf(health_reason, sizeof(health_reason), "SMART reports a PREFAIL condition for disk %s", disk);
 				health = HEALTH_PREFAIL;
-			else
+			} else {
+				health_reason[0] = 0;
 				health = HEALTH_PASSED;
+			}
 		}
 		if (device->health != health || device->flags != flags) {
 			pulse(state, PULSE_DISKS);
 			device->health = health;
+			sncpy(device->health_reason, sizeof(health_reason), health_reason);
 			device->flags = flags;
 		}
 	} else {
