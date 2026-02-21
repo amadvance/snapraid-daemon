@@ -580,8 +580,14 @@ const renderDiskCard = (disk, type, pulseAt) => {
     const borderClass = type === 'parity' ? 'card-border-purple' : 'card-border-blue';
 
     const errorBadges = [];
-    if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red font-bold">io_errors: ${disk.error_io}</div>`);
-    if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-amber font-bold">data_errors: ${disk.error_data}</div>`);
+    let errorStatus = null;
+    if (disk.error_io > 0)
+        errorStatus = '<span class="badge badge-yellow">DATA PREFAIL</span>';
+    if (disk.error_data > 0)
+        errorStatus = '<span class="badge badge-purple">DATA CORRUPT</span>';
+    if (errorStatus != null) errorBadges.push(errorStatus);
+    if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
+    if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
 
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
@@ -591,10 +597,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
     const devicesHtml = disk.devices.map(dev => {
         const smartIssues = [];
         if (dev.error_medium > 0) {
-            smartIssues.push(`error_medium: ${dev.error_medium}`);
+            smartIssues.push(`medium_errors: ${dev.error_medium}`);
         }
         if (dev.error_protocol > 0) {
-            smartIssues.push(`error_protocol: ${dev.error_protocol}`);
+            smartIssues.push(`protocol_errors: ${dev.error_protocol}`);
         }
         if (dev.smart) {
             if (dev.smart.attributes) {
@@ -681,8 +687,6 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 ${healthBadge(disk.health)}
             </div>
            
-            ${errorBadges.join('')}
-
             <div class="mb-1 flex justify-between text-xs">
                 <span>Usage</span>
                 <span>${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
@@ -690,6 +694,8 @@ const renderDiskCard = (disk, type, pulseAt) => {
             <div class="progress-container mb-4">
                 <div class="progress-bar" data-style-width="${percentUsed}%"></div>
             </div>
+
+            ${errorBadges.join('')}
 
             ${devicesHtml}
         </div>

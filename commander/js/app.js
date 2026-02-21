@@ -638,6 +638,34 @@ const app = {
         const statusRows = [];
         const otherRows = [];
 
+        // Add protocol and medium errors manually to critical metrics
+        if (device.error_protocol != null) {
+            const rowClass = device.error_protocol > 0 ? 'text-amber' : 'text-emerald';
+            criticalRows.push(`
+                <tr>
+                    <td class="font-bold text-xs">PROTOCOL ERRORS</td>
+                    <td class="${rowClass} font-mono text-xs font-bold">${device.error_protocol}</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs font-bold uppercase">-</td>
+                </tr>
+            `);
+        }
+        if (device.error_medium != null) {
+            const rowClass = device.error_medium > 0 ? 'text-amber' : 'text-emerald';
+            criticalRows.push(`
+                <tr>
+                    <td class="font-bold text-xs">MEDIUM ERRORS</td>
+                    <td class="${rowClass} font-mono text-xs font-bold">${device.error_medium}</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs font-bold uppercase">-</td>
+                </tr>
+            `);
+        }
+
         // 1. Process top-level boolean flags for statusRows
         Object.entries(s).forEach(([key, value]) => {
             if (key === 'attributes' || typeof value !== 'boolean') return;
