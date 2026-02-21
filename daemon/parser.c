@@ -368,8 +368,6 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 		pulse_stru64(state, PULSE_ARRAY, &state->global.file_total, val);
 	} else if (strcmp(tag, "block_bad") == 0) {
 		pulse_stru64(state, PULSE_ARRAY, &state->global.block_bad, val);
-		pulse_stru64(state, PULSE_ACTIVITY, &task->block_bad, val);
-
 		if (state->global.block_bad == 0) {
 			/* if content has no stored error, clear the disk error accumulators */
 			clear_disk_accumulator(state);

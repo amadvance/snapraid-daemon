@@ -442,7 +442,7 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (state->global.health == HEALTH_PREFAIL || state->global.health == HEALTH_FAILING)
+	if (state->global.health == HEALTH_CORRUPT || state->global.health == HEALTH_PREFAIL || state->global.health == HEALTH_FAILING)
 		ss_json_str(&s, level, "health_reason", state->global.health_reason);
 	ss_json_close(&s, &level);
 
@@ -1553,7 +1553,6 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
 		ss_json_i64(s, level, "error_io", task->error_io);
 		ss_json_i64(s, level, "error_data", task->error_data);
-		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
 	case CMD_FIX :
 	case CMD_CHECK :
@@ -1561,7 +1560,6 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
 		ss_json_i64(s, level, "error_io", task->error_io);
 		ss_json_i64(s, level, "error_data", task->error_data);
-		ss_json_i64(s, level, "block_bad", task->block_bad);
 		break;
 	}
 	ss_json_close(s, &level);

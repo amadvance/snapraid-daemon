@@ -220,15 +220,29 @@ paths:
                     $ref: '#/components/schemas/Pulse'
                   health:
                     type: string
-                    enum: [passed, prefail, failing, pending]
+                    enum: [passed, corrupt, prefail, failing, pending]
                     description: >
                       The aggregate health of the entire array.
+
+                      * passed: All member devices are nominal, and no data
+                        inconsistencies are detected.
+                      * corrupt: This is triggered by the presence of silent
+                        data errors, specifically if the 'blocks_bad' counter
+                        is greater than zero.
+                      * prefail: A critical state indicating that one or more
+                        underlying devices have encountered I/O failures, or a
+                        SMART prefail condition.
+                      * failing: A critical state indicating that one or more
+                        underlying devices have encountered a SMART failing
+                        condition.
+                      * pending: The aggregate health has not yet been
+                        determined.
                   health_reason:
                     type: string
                     description: >
                       A human-readable string explaining the current health state.
-                      This provides the specific cause when health is 'prefail'
-                      or 'failing' (e.g., "Disk 'd1' reporting SMART errors").
+                      This provides the specific cause when health is 'corrupt',
+                      'prefail' or 'failing' (e.g., "Disk 'd1' reporting SMART errors").
                       This field is omitted if the array is healthy.
                   active_command:
                     type: string
@@ -713,22 +727,20 @@ components:
             The high level command that triggered this command.
         health:
           type: string
-          enum: [passed, prefail, failing, pending]
+          enum: [passed, corrupt, prefail, failing, pending]
           description: >
             The operational health of the task, dynamically derived from
             the execution results and exit codes.
 
-            * 'passed': The task completed without hardware errors. This
+            * passed: The task completed without hardware errors. This
               includes runs with 'soft' errors (e.g., files modified or moved
               during execution) which do not compromise parity integrity.
-            * 'prefail': The task detected 'silent data errors'
-              (checksum mismatches). This indicates data corruption
-              that requires a 'fix' operation, but does not
-              necessarily imply physical hardware failure.
-            * 'failing': The task encountered physical I/O errors
-              (read/write failures, timeouts, or hardware rejects).
-              This indicates a critical hardware-level issue.
-            * 'pending': The task is currently queued or running and
+            * corrupt: The task detected 'silent data errors'.
+              This indicates data corruption that requires a heal' operation,
+              but does not necessarily imply physical hardware failure.
+            * prefail: The task encountered physical I/O errors.
+            * failing: The task encountered failing errors like disks missing.
+            * pending: The task is currently queued or running and
               has not yet produced a final health result.
         status:
           type: string
@@ -886,14 +898,6 @@ components:
             The count of errors that the `fix` command was unable to recover.
             If this counter is 0 it means that everything was recovered.
             This field is available only on the `fix` command.
-        block_bad:
-          type: integer
-          format: int64
-          example: 0
-          description: >
-            The count of blocks marked bad.
-            This field is available only on the `sync`, `scrub` and
-            `fix` commands.
 
     Device:
       type: object
@@ -918,20 +922,17 @@ components:
           type: string
           enum: [passed, prefail, failing, pending]
           description: >
-            The aggregate health status of the physical hardware.
+            The aggregate health status of the physical hardware device.
 
-            * 'passed': The drive is operating within normal
+            * passed: The device is operating within normal
               manufacturer specifications with no logged errors.
-            * 'prefail': SMART telemetry indicates predictive failure
-              attributes OR the device has encountered 'error_protocol'
-              events (communication/interface issues). The drive is
-              operational, but reliability is compromised.
-            * 'failing': The drive has encountered 'error_medium'
-              events (physical platter/cell damage), hardware I/O
-              timeouts, or the SMART 'failing' bit is set.
-              Immediate replacement is recommended.
-            * 'pending': Health data is unavailable or the device
-              is currently in standby and a refresh was not forced.
+            * prefail: The drive has encountered hardware I/O errors or a
+              SMART prefail condition.
+            * failing: The drive has encountered a SMART failing condition.
+            * pending: The health has not yet been determined.
+
+            Note that there is no silent error detection at device level,
+            and the 'corrupt' health state is not possible.
         power:
           type: string
           enum: [active, standby, pending]
@@ -1206,23 +1207,21 @@ components:
             Logical name (e.g., d1, d2, ..., parity, 2-parity, ...).
         health:
           type: string
-          enum: [passed, prefail, failing, pending]
+          enum: [passed, corrupt, prefail, failing, pending]
           description: >
             The aggregate operational health of the logical disk.
 
-            * 'passed': The disk is fully synchronized and no errors
-              of any kind are detected.
-            * 'prefail': The disk has encountered 'silent data errors'
-              (checksum mismatches detected during a scrub or sync)
-              or data-level inconsistencies that do not stem from
-              physical I/O failure or any device part of disk has a prefail
+            * passed: All member devices are nominal, and no data
+              inconsistencies are detected.
+            * corrupt: The disk has encountered silent data errors.
+            * prefail: A critical state indicating that one or more
+              underlying devices have encountered I/O failures, or a
+              SMART prefail condition.
+            * failing: A critical state indicating that one or more
+              underlying devices have encountered a SMART failing
               condition.
-            * 'failing': The underlying physical device has reported
-              I/O errors, or the disk is inaccessible due to
-              hardware failure or any device part of disk has a failing
-              condition.
-            * 'pending': The health status is unknown or incomplete or the
-              disk is currently in standby.
+            * pending: The aggregate health has not yet been
+              determined.
         power:
           type: string
           enum: [active, standby, pending]
@@ -1740,25 +1739,24 @@ components:
             Absolute path to the SnapRAID-Daemon configuration file.
         health:
           type: string
-          enum: [passed, prefail, failing, pending]
+          enum: [passed, corrupt, prefail, failing, pending]
           description: >
-            The aggregate operational health of the array, representing
-            the collective state of all member disk integrity.
+            The aggregate health of the entire array.
 
-            * 'passed': All member devices are nominal, and no data
+            * passed: All member devices are nominal, and no data
               inconsistencies are detected.
-            * 'prefail': A warning state indicating that the array requires
-              maintenance. This is triggered if any device reports protocol
-              errors, if silent data corruption is detected, a SMART prefail
-              condition is reported by a member device, or if the
-              'block_bad' counter is greater than zero.
-            * 'failing': A critical state indicating that one or more
-              underlying devices have encountered physical medium errors,
-              I/O failures, or a SMART failing condition. Immediate
-              hardware replacement and data reconstruction are
-              required.
-            * 'pending': The aggregate health has not yet been determined.
-        engine_version:
+            * corrupt: This is triggered by the presence of silent
+              data errors, specifically if the 'blocks_bad' counter
+              is greater than zero.
+            * prefail: A critical state indicating that one or more
+              underlying devices have encountered I/O failures, or a
+              SMART prefail condition.
+            * failing: A critical state indicating that one or more
+              underlying devices have encountered a SMART failing
+              condition.
+            * pending: The aggregate health has not yet been
+              determined.
+        engi:
           type: string
           example: "13.1"
           description: >

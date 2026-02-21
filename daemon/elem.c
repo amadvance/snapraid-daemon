@@ -505,6 +505,7 @@ const char* health_name(int health)
 	case HEALTH_PASSED : return "passed";
 	case HEALTH_FAILING : return "failing";
 	case HEALTH_PREFAIL : return "prefail";
+	case HEALTH_CORRUPT : return "corrupt";
 	case HEALTH_PENDING : return "pending";
 	}
 
@@ -540,12 +541,12 @@ int health_disk(struct snapraid_disk* data, char* reason, size_t reason_size)
 
 	if (data->error_data != 0) {
 		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " silent data errors", data->name, data->error_data);
-		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
 	if (data->error_io != 0) {
 		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " input/output errors", data->name, data->error_io);
-		health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
+		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
 	}
 
 	int low_health = health_device_list(&data->device_list, msg, sizeof(msg));
@@ -559,16 +560,13 @@ int health_task(struct snapraid_task* task)
 	int health = task->health;
 
 	if (task->error_data != 0)
-		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
+		health = health_worse(health, HEALTH_CORRUPT, 0, 0, 0);
 
 	if (task->error_io != 0)
-		health = health_worse(health, HEALTH_FAILING, 0, 0, 0);
+		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
 
 	if (task->error_unrecoverable != 0)
-		health = health_worse(health, HEALTH_FAILING, 0, 0, 0);
-
-	if (task->block_bad != 0)
-		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
+		health = health_worse(health, HEALTH_CORRUPT, 0, 0, 0);
 
 	switch (task->state) {
 	case PROCESS_STATE_QUEUE :
@@ -589,7 +587,7 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 
 	if (state->global.block_bad != 0) {
 		snprintf(msg, sizeof(msg), "The array has %" PRIu64 " bad blocks (silent data errors)", state->global.block_bad);
-		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
 	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {

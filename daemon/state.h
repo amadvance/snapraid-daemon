@@ -84,8 +84,9 @@ typedef tommy_list sl_t;
  */
 #define HEALTH_PENDING 0
 #define HEALTH_PASSED 1
-#define HEALTH_PREFAIL -1
-#define HEALTH_FAILING -2
+#define HEALTH_CORRUPT -1
+#define HEALTH_PREFAIL -2
+#define HEALTH_FAILING -3
 
 /**
  * Pulse masks
@@ -286,7 +287,6 @@ struct snapraid_task {
 	uint64_t error_data; /**< Total silent data errors encountered (sync/scrub only). */
 	uint64_t error_recovered; /**< Total error recovered (fix only). */
 	uint64_t error_unrecoverable; /**< Total error unrecoverable (fix only). */
-	uint64_t block_bad; /**< Total blocks marked as bad (status/sync/scrub only). */
 
 	tommy_node node;
 };

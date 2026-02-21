@@ -12,7 +12,7 @@ const escAttr = (str) => {
 
 
 const healthBadge = (health) => {
-    const map = { passed: 'green', prefail: 'yellow', failing: 'red', pending: 'grey' };
+    const map = { passed: 'green', prefail: 'yellow', failing: 'red', corrupt: 'purple', pending: 'grey' };
     return badge(health, map[health] || 'grey');
 };
 
@@ -580,8 +580,8 @@ const renderDiskCard = (disk, type, pulseAt) => {
     const borderClass = type === 'parity' ? 'card-border-purple' : 'card-border-blue';
 
     const errorBadges = [];
-    if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red font-bold">I/O Errors: ${disk.error_io}</div>`);
-    if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-amber font-bold">Data Errors: ${disk.error_data}</div>`);
+    if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red font-bold">io_errors: ${disk.error_io}</div>`);
+    if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-amber font-bold">data_errors: ${disk.error_data}</div>`);
 
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
@@ -1044,11 +1044,17 @@ export const renderRecovery = (arrayInfo) => {
 };
 
 export const renderHealthBanner = (state) => {
-    if (!state || (state.health !== 'prefail' && state.health !== 'failing'))
+    if (!state)
         return '';
-
-    const isFailing = state.health === 'failing';
-    const title = isFailing ? 'CRITICAL: ARRAY FAILING' : 'WARNING: ARRAY PREFAIL';
+    let title = '';
+    if (state.health === 'prefail')
+        title = 'WARNING: ARRAY PREFAIL';
+    else if (state.health === 'failing')
+        title = 'CRITICAL: ARRAY FAILING';
+    else if (state.health === 'corrupt')
+        title = 'WARNING: ARRAY CORRUPTED';
+    else
+        return '';
 
     return `
         <div class="health-banner ${state.health}">

@@ -34,6 +34,7 @@ static const char* health_report_wide(int health)
 	case HEALTH_PASSED : return " [passed]";
 	case HEALTH_FAILING : return "[FAILING]";
 	case HEALTH_PREFAIL : return "[PREFAIL]";
+	case HEALTH_CORRUPT : return "[CORRUPT]";
 	case HEALTH_PENDING : return "[pending]";
 	}
 
@@ -46,6 +47,7 @@ static const char* health_report_narrow(int health)
 	case HEALTH_PASSED : return "[OK]";
 	case HEALTH_FAILING : return "[FAIL]";
 	case HEALTH_PREFAIL : return "[PRE]";
+	case HEALTH_CORRUPT : return "[BAD]";
 	case HEALTH_PENDING : return "[??]";
 	}
 
@@ -382,7 +384,6 @@ static void print_task_wide(ss_t *ss, const char *task_name, struct snapraid_tas
 	if (task->state != PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
-		ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", task->block_bad);
 		ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
 
 		/* error statistics for sync */
@@ -460,7 +461,6 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 	if (task->state != PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "I/O Errs: %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "Data Errs: %" PRIu64 "\n", task->error_data);
-		ss_printf(ss, "Bad Blocks: %" PRIu64 "\n", task->block_bad);
 		ss_printf(ss, "Soft Errors: %" PRIu64 "\n", task->error_soft);
 
 		/* error statistics for sync */
@@ -681,6 +681,8 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "  Overall Status: FAILING\n");
 	else if (array_health == HEALTH_PREFAIL)
 		ss_prints(ss, "  Overall Status: PRE FAILING\n");
+	else if (array_health == HEALTH_CORRUPT)
+		ss_prints(ss, "  Overall Status: CORRUPT\n");
 	else
 		ss_prints(ss, "  Overall Status: Pending\n");
 
@@ -783,6 +785,8 @@ static int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "FAILING\n");
 	else if (array_health == HEALTH_PREFAIL)
 		ss_prints(ss, "PRE FAILING\n");
+	else if (array_health == HEALTH_CORRUPT)
+		ss_prints(ss, "CORRUPT\n");
 	else
 		ss_prints(ss, "Pending\n");
 

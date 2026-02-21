@@ -753,6 +753,12 @@ body {
     border-left: 4px solid var(--c-red-500);
 }
 
+.health-banner.corrupt {
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-left: 4px solid var(--c-purple-500);
+}
+
 .health-banner-title {
     font-weight: 700;
     font-size: 1rem;
@@ -770,6 +776,10 @@ body {
 
 .health-banner.failing .health-banner-title {
     color: var(--c-red-500);
+}
+
+.health-banner.corrupt .health-banner-title {
+    color: var(--c-purple-500);
 }
 
 .health-banner-reason {

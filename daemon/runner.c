@@ -151,7 +151,7 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	/* propagate the array health to the task */
 	report_task->health = runner_health_check_locked(state);
-	if (report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
+	if (report_task->health == HEALTH_CORRUPT || report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
 		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* store the report (dup to shrink the allocation) */
