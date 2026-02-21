@@ -523,20 +523,10 @@ static int health_worse(int current, int value, char* reason, size_t reason_size
 
 static int health_device_list(tommy_list* list, char* reason, size_t reason_size)
 {
-	char msg[HEALTH_REASON_MAX + PATH_MAX];
 	int health = HEALTH_PASSED;
 
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* device = i->data;
-		if (device->error_medium != 0 && device->error_medium != SMART_UNASSIGNED) {
-			snprintf(msg, sizeof(msg), "Device %s has %" PRIu64 " medium errors", device->file, device->error_medium);
-			health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
-		}
-		if (device->error_protocol != 0 && device->error_protocol != SMART_UNASSIGNED) {
-			snprintf(msg, sizeof(msg), "Device %s has %" PRIu64 " protocol errors", device->file, device->error_protocol);
-			health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
-		}
-
 		health = health_worse(health, device->health, reason, reason_size, device->health_reason);
 	}
 
