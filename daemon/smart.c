@@ -132,6 +132,20 @@ struct smart_entry {
 //	{ 193,raw48,Dynamic_Remaps", SMART_KIND_INFO },
 	{ 193, 48, "Load_Cycle_Count", SMART_KIND_INFO },
 //	{ 193, 48, "Power_Fail_Uncompl_Cnt", SMART_KIND_INFO },
+
+	/* from SnapRAID SCSI mapping, see smartctl_attribute() */
+	{ 5, 16, "Elements_In_Grown_Defect_List", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 194, 16, "Current_Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, 16, "Drive_Trip_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 4, 32, "Accumulated_Start-Stop_Cycles", SMART_KIND_INFO },
+	{ 193, 32, "Accumulated_Load-Unload_Cycles", SMART_KIND_INFO },
+	{ 12, 32, "Number_Of_Hours_Powered_Up", SMART_KIND_INFO },
+
+	/* from SnapRAID NVME mapping, see smartctl_attribute() */
+	{ 194, 16, "Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 9, 24, "Power_On_Hours", SMART_KIND_INFO },
+	{ 12, 48, "Power_Cycles", SMART_KIND_INFO },
+
 	{ 0 }
 };
 
