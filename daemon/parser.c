@@ -1449,6 +1449,9 @@ int parse_past_log(struct snapraid_state* state)
 		parse_log(state, f, 0, 0);
 		++count;
 
+		/* compute the task health */
+		task->health = health_task(task);
+
 		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
 			task->state = PROCESS_STATE_TERM;
 

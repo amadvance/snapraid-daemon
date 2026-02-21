@@ -149,7 +149,8 @@ static int runner_report_locked(struct snapraid_state* state)
 		return -1;
 	}
 
-	/* propagate the array health to the task */
+	/* propagate the array health to the report task */
+	/* do not call health_task() as the report cannot fail */
 	report_task->health = runner_health_check_locked(state);
 	if (report_task->health == HEALTH_CORRUPT || report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
 		report_level = level_mix(report_level, LVL_CRITICAL);
@@ -415,8 +416,11 @@ bail:
 	task->running = 0;
 	state->runner.latest->unix_end_time = unix_end_time;
 
-	/* propagate the array health to the task */
-	task->health = runner_health_check_locked(state);
+	/* compute the task health */
+	task->health = health_task(task);
+
+	/* check the array health, but DO NOT propagate it to the task */
+	runner_health_check_locked(state);
 
 	/* insert the task in the done list, but keep it in the latest pointer */
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
