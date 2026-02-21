@@ -697,9 +697,9 @@ body {
 
 .restricted-banner {
     grid-column: span 2;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    border-left: 4px solid var(--c-amber-500);
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    border-left: 4px solid var(--c-sky-500);
     border-radius: var(--radius-lg);
     padding: var(--gap-lg);
     margin-bottom: var(--gap-lg);
@@ -710,7 +710,7 @@ body {
 .restricted-banner-title {
     font-weight: 700;
     font-size: 1rem;
-    color: var(--c-amber-500);
+    color: var(--c-sky-500);
     margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
@@ -720,8 +720,8 @@ body {
 .restricted-banner code {
     font-family: monospace;
     font-size: 0.9em;
-    color: var(--c-amber-500);
-    background: rgba(245, 158, 11, 0.15);
+    color: var(--c-sky-500);
+    background: rgba(14, 165, 233, 0.15);
     padding: 0.1rem 0.3rem;
     border-radius: 4px;
 }
