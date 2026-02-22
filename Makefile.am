@@ -177,32 +177,52 @@ install-data-hook:
 	@echo "=================================================================="
 	@echo " $(PACKAGE_NAME) installation complete!"
 	@echo "=================================================================="
+	@echo ""
+	@echo " Configuration:"
+	@if [ ! -f $(DESTDIR)/etc/snapraidd.conf ]; then \
+		echo "  No configuration found. Installing default to:"; \
+		echo "  /etc/snapraidd.conf"; \
+		if [ ! -d $(DESTDIR)/etc ]; then \
+			mkdir $(DESTDIR)/etc; \
+		fi; \
+		cp $(srcdir)/snapraidd.conf.example $(DESTDIR)/etc/snapraidd.conf; \
+		chmod 600 $(DESTDIR)/etc/snapraidd.conf; \
+	else \
+		echo "  Existing configuration found at /etc/snapraidd.conf"; \
+		echo "  Your settings have been preserved."; \
+	fi
+	@echo ""
+	@echo "=================================================================="
+
 # Install service/rc.d
 if INSTALL_SYSTEMD
 	@echo ""
 	@echo " Detected systemd. To start the daemon now and at boot:"
 	@echo "   sudo systemctl daemon-reload"
-	@echo "   sudo systemctl enable --now $(PACKAGE_NAME)"
+	@echo "   sudo systemctl enable --now snapraidd"
 	@echo ""
 	@echo " To check status:"
-	@echo "   systemctl status $(PACKAGE_NAME)"
+	@echo "   systemctl status snapraidd"
 	@echo "=================================================================="
 	@echo ""
 endif
 if INSTALL_BSD_INIT
 	@echo ""
 	@echo " Detected BSD-style init. To enable the daemon:"
-	@echo "   sudo chmod +x /etc/rc.d/rc.$(PACKAGE_NAME)"
+	@echo "   sudo chmod +x /etc/rc.d/rc.snapraidd"
 	@echo ""
 	@echo " To start it now, add this to /etc/rc.d/rc.local:"
-	@echo "   if [ -x /etc/rc.d/rc.$(PACKAGE_NAME) ]; then"
-	@echo "     /etc/rc.d/rc.$(PACKAGE_NAME) start"
+	@echo "   if [ -x /etc/rc.d/rc.snapraidd ]; then"
+	@echo "     /etc/rc.d/rc.snapraidd start"
 	@echo "   fi"
 	@echo ""
-	@echo " Or run manually: sudo /etc/rc.d/rc.$(PACKAGE_NAME) start"
+	@echo " Or run manually: sudo /etc/rc.d/rc.snapraidd start"
 	@echo "=================================================================="
 	@echo ""
 endif
+
+uninstall-local:
+	-rm -f $(DESTDIR)/etc/snapraidd.conf
 
 uninstall-hook:
 # Uninstall localized manpages
@@ -216,10 +236,10 @@ if INSTALL_SYSTEMD
 	@echo ""
 	@echo "=================================================================="
 	@echo "Stopping and disabling systemd service..."
-	systemctl disable --now $(PACKAGE_NAME) 2>/dev/null || true
+	systemctl disable --now snapraidd 2>/dev/null || true
 	systemctl daemon-reload 2>/dev/null || true
 	@echo "Cleaning up runtime files..."
-	rm -f /run/$(PACKAGE_NAME).pid
+	rm -f /run/snapraidd.pid
 endif
 	@echo ""
 	@echo "=================================================================="
