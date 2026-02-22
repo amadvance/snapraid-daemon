@@ -69,6 +69,44 @@ Options
 		Prints the program version.
 
 Getting Started
+	The daemon acts as a management layer for the SnapRAID CLI. Therefore,
+	SnapRAID must be installed and fully configured before starting the
+	service. All interactions with the underlying parity array are handled
+	through the standard SnapRAID binary.
+
+	Upon installation, the daemon provides a default configuration that
+	enables the REST API and the Web UI. By default, these services are
+	accessible via a web browser at the following address:
+
+	+http://127.0.0.1:7627
+
+	At startup, the daemon parses historical logs from `/var/log/snapraid`
+	to reconstruct the current state of the array. These
+	logs are generated and saved by the daemon itself during the execution
+	of SnapRAID commands. Consequently, on the very
+	first run, this directory will be empty.
+
+	In this initial scenario, the daemon automatically triggers a SnapRAID
+	`read` command. This allows SnapRAID to process its internal `content`
+	files and provide the daemon with the necessary metadata to establish
+	the array's baseline state.
+
+	Once the service is running, you should review `/etc/snapraidd.conf` to
+	tailor the behavior to your environment. Typical post-installation
+	steps include:
+
+	* Defining a `maintenance_schedule` for automated sync and scrub
+		operations.
+	* Setting `spindown_idle_minutes` to optimize energy usage for
+		disks not in active use.
+	* Configuring the `notify_result` system to receive alerts
+		regarding array health and task outcomes.
+
+	To make changes to the `.conf` file effective, you must either restart
+	the daemon or send a `SIGHUP` signal to the running process.
+
+	Example:
+		:killall -HUP snapraidd
 
 Health
 	The array's aggregate health is determined by evaluating historical log
