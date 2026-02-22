@@ -295,7 +295,7 @@ sudo journalctl -u snapraidd -f
 
 ```bash
 # Via API
-curl -X POST http://127.0.0.1:8080/snapraid/v1/maintenance
+curl -X POST http://127.0.0.1:7627/snapraid/v1/maintenance
 
 # Via schedule (in snapraidd.conf)
 maintenance_schedule = daily 02:00
@@ -305,10 +305,10 @@ maintenance_schedule = daily 02:00
 
 ```bash
 # Get active task
-curl http://127.0.0.1:8080/snapraid/v1/activity | jq
+curl http://127.0.0.1:7627/snapraid/v1/activity | jq
 
 # Check pulse counters
-curl http://127.0.0.1:8080/snapraid/v1/state | jq .pulse
+curl http://127.0.0.1:7627/snapraid/v1/state | jq .pulse
 ```
 
 ### File Locations

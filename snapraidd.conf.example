@@ -24,17 +24,17 @@ net_enabled = 1
 # Format: [IP_ADDRESS:]PORT[s].
 # IP_ADDRESS can be an IPv4 (e.g., 127.0.0.1) or an IPv6 address wrapped
 # in brackets (e.g., [::1]). PORT is a standard number.
-# If left unset, the daemon defaults to 127.0.0.1:8080.
+# If left unset, the daemon defaults to 127.0.0.1:7627.
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 #
 # Examples:
-#   "127.0.0.1:8080"       - IPv4 localhost only (Recommended).
-#   "8080"                 - All IPv4 interfaces (0.0.0.0).
-#   "[::1]:8080"           - IPv6 loopback only.
-#   "127.0.0.1:8080,8081"  - Listen on multiple ports.
-net_port = 127.0.0.1:8080
+#   "127.0.0.1:7627"       - IPv4 localhost only (Recommended).
+#   "7627"                 - All IPv4 interfaces (0.0.0.0).
+#   "[::1]:7627"           - IPv6 loopback only.
+#   "127.0.0.1:7627,8080"  - Listen on multiple ports.
+net_port = 127.0.0.1:7627
 
 # The net_acl restricts API access to specific client IPs.
 # Format: A comma-separated list of [+/-][IP/MASK].

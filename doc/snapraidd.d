@@ -68,6 +68,53 @@ Options
 	-V, --version
 		Prints the program version.
 
+Getting Started
+
+Health
+	The array's aggregate health is determined by evaluating historical log
+	data alongside real-time hardware telemetry.
+
+	If the array transitions into any problematic state, the daemon
+	immediately issues an alert through the configured notification system.
+
+	In the REST API, this state is reported by the `health` field.
+	Whenever the health is not PASSED, a supplementary `health_reason` field
+	is provided to give a discursive explanation of the specific condition or
+	failure detected.
+
+	The Web UI also reflects these states by displaying a prominent top
+	banner across all pages if the health is in a problematic state. This
+	ensures that critical issues are visible regardless of the specific
+	dashboard view being accessed.
+
+	The possible health states are:
+
+	PENDING - The health has not yet been assessed. The daemon requires a
+		successful hardware probe where all disks are spinning at
+		least once to read SMART attributes.
+		Issuing an `up` command is sufficient to satisfy this.
+	PASSED - The array is fully healthy. All disks report positive SMART
+		status and the last scrub found no data corruption.
+	CORRUPT - Silent errors (hash or parity mismatches) were detected, though
+		no physical hardware issues were identified.
+		In this state, scheduled maintenance remains active.
+	PREFAIL - The SMART telemetry reports a pre-failing condition (e.g.,
+		reallocated sectors), or a task encountered I/O errors while
+		accessing files. File access errors are
+		temporary and clear automatically after a successful scrub.
+		Automated maintenance is suspended in this state, and manual
+		intervention is required.
+	FAILING - The SMART telemetry reports a critical failing condition, or a
+		disk has disappeared from the system.
+		Automated maintenance is suspended in this state, and immediate
+		manual intervention is required.
+
+	Individual tasks also maintain a health state reflecting only the
+	problems identified during that specific operation.
+	For example, an array in a CORRUPT state may still produce a PASSED
+	result for a `down` task if that operation encountered no specific
+	errors.
+
 Configuration
 	The SnapRAID Daemon is configured via a plain-text .conf file,
 	defaulting to $PREFIX/etc/snapraidd.conf and if not found to
@@ -119,14 +166,14 @@ Configuration
 	Defines the specific IP address and port(s) to which the daemon binds.
 	The format follows [IP_ADDRESS:]PORT[s].
 
-	IPv4/IPv6 - Bind to specific local addresses (e.g., 127.0.0.1:8080 or
-		[::1]:8080).
-	Wildcard - Providing only a port (e.g., 8080) binds to all available
+	IPv4/IPv6 - Bind to specific local addresses (e.g., 127.0.0.1:7627 or
+		[::1]:7627).
+	Wildcard - Providing only a port (e.g., 7627) binds to all available
 		IPv4 interfaces (0.0.0.0).
 	Multiple_Ports - Multiple listeners can be configured by providing a
 		comma-separated list.
 
-	If left unset, the daemon defaults to 127.0.0.1:8080. Modification
+	If left unset, the daemon defaults to 127.0.0.1:7627. Modification
 	requires a configuration reload and is restricted from API access.
 
     net_acl
@@ -455,7 +502,7 @@ REST API
 	by the 'scrub_percentage' and 'scrub_older_than' settings.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/maintenance
+		:curl -X POST http://localhost:7627/snapraid/v1/maintenance
 
 	It is implemented with the sequence of commands: up, diff, sync, scrub, and
 	report.
@@ -468,7 +515,7 @@ REST API
 	a report of the result.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/heal
+		:curl -X POST http://localhost:7627/snapraid/v1/heal
 
 	It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
 	and report.
@@ -480,7 +527,7 @@ REST API
 	last successful synchronization.
 
 	Example:
-		:curl -s -X POST http://localhost:8080/snapraid/v1/undelete \
+		:curl -s -X POST http://localhost:7627/snapraid/v1/undelete \
 		:	-H "Content-Type: application/json" \
 		:	-d '{ "filters": [ "*.txt" ] }'
 
@@ -495,7 +542,7 @@ REST API
 	generated.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/suspend_idle
+		:curl -X POST http://localhost:7627/snapraid/v1/suspend_idle
 
 	It is implemented with the sequence of commands: probe, down_idle.
 
@@ -510,7 +557,7 @@ REST API
 	and the timestamp of the last successful maintenance.
 
 	Example:
-		:curl -s http://localhost:8080/snapraid/v1/array | jq
+		:curl -s http://localhost:7627/snapraid/v1/array | jq
 
     /snapraid/v1/disks
 	Returns a comprehensive inventory of every physical disk associated
@@ -519,7 +566,7 @@ REST API
 	power state (Active/Spin-up vs. Standby/Spin-down).
 
 	Example:
-		:curl -s http://localhost:8080/snapraid/v1/disks | jq
+		:curl -s http://localhost:7627/snapraid/v1/disks | jq
 
   Configuration
 	Provides a programmatic interface to retrieve and modify the
@@ -533,8 +580,8 @@ REST API
 	require a manual edit and SIGHUP.
 
 	Example:
-		:curl -X GET http://localhost:8080/snapraid/v1/config | jq
-		:curl -X PATCH http://localhost:8080/snapraid/v1/config \
+		:curl -X GET http://localhost:7627/snapraid/v1/config | jq
+		:curl -X PATCH http://localhost:7627/snapraid/v1/config \
 		:	-d '{ "probe_interval_minutes": 10 }'
 
   Activity Control
@@ -552,7 +599,7 @@ REST API
 	If no task is in execution, it returns the last completed task.
 
 	Example:
-		:curl -s http://localhost:8080/snapraid/v1/activity | jq
+		:curl -s http://localhost:7627/snapraid/v1/activity | jq
 
     /snapraid/v1/tasks
 	Lists all tasks waiting, the task currently active, and the task
@@ -560,14 +607,14 @@ REST API
 	as the history may span up to a month.
 
 	Example:
-		:curl -s http://localhost:8080/snapraid/v1/tasks | jq
+		:curl -s http://localhost:7627/snapraid/v1/tasks | jq
 
     /snapraid/v1/stop
 	Terminates the currently running task (such as sync or scrub) by
 	sending a SIGTERM signal to the background process.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/stop
+		:curl -X POST http://localhost:7627/snapraid/v1/stop
 
   State and Cache Management
 	To optimize performance and support lightweight monitoring (such as
@@ -592,7 +639,7 @@ REST API
 	them only for equality.
 
 	Example:
-		:curl -X GET http://localhost:8080/snapraid/v1/state | jq
+		:curl -X GET http://localhost:7627/snapraid/v1/state | jq
 
   Schedule
 	The schedule entry point allows batching multiple SnapRAID commands
@@ -618,7 +665,7 @@ REST API
 	Queues a sequence of standard SnapRAID operations.
 
 	Example:
-		:curl -X POST http://localhost:8080/snapraid/v1/schedule \
+		:curl -X POST http://localhost:7627/snapraid/v1/schedule \
 		:	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
 	Supported Commands:

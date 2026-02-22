@@ -496,7 +496,7 @@ void config_init(struct snapraid_config* config, const char* argv0)
 
 	/* set default */
 	config->net_enabled = 0;
-	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:8080");
+	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:7627");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
 	config->net_security_headers = 1;
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");

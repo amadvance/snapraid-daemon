@@ -1840,7 +1840,7 @@ int rest_init(struct snapraid_state* state)
 
 	i = 0;
 	if (state->config.net_port[0] == 0) {
-		sncpy(state->config.net_port, sizeof(state->config.net_port), "127.0.0.1:8080");
+		sncpy(state->config.net_port, sizeof(state->config.net_port), "127.0.0.1:7627");
 	}
 	options[i++] = "listening_ports";
 	options[i++] = state->config.net_port;
