@@ -398,7 +398,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Failure Probability</div>
                     <div class="property-value text-cyan">${arrayInfo.failure_probability
-            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}% (1 year)`
+            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">(for one year)</span>`
             : healthBadge('pending')}</div>
                 </div>
                 <div class="property-row">
