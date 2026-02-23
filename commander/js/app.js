@@ -36,6 +36,11 @@ const app = {
                 return;
             }
 
+            // On touch devices, do not show tooltips for buttons to avoid them sticking after click
+            const isTouch = !window.matchMedia('(hover: hover)').matches;
+            const isButton = el.tagName === 'BUTTON' || el.classList.contains('btn');
+            if (isTouch && isButton) return;
+
             tooltip.innerText = el.getAttribute('data-tooltip');
             tooltip.classList.add('active');
 
