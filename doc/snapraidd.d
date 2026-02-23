@@ -207,13 +207,22 @@ Configuration
 
 	IPv4/IPv6 - Bind to specific local addresses (e.g., 127.0.0.1:7627 or
 		[::1]:7627).
-	Wildcard - Providing only a port (e.g., 7627) binds to all available
+	Port - Providing only a port (e.g., 7627) binds to all available
 		IPv4 interfaces (0.0.0.0).
 	Multiple_Ports - Multiple listeners can be configured by providing a
 		comma-separated list.
 
 	If left unset, the daemon defaults to 127.0.0.1:7627. Modification
 	requires a configuration reload and is restricted from API access.
+
+	To export the service to a VPN like Tailscale or a local network, you
+	must bind to all interfaces (0.0.0.0) by specifying only the port number.
+
+	Examples:
+		:net_port=127.0.0.1:7627       - IPv4 localhost only (Recommended).
+		:net_port=7627                 - All IPv4 interfaces (Required for Tailscale/LAN).
+		:net_port=[::1]:7627           - IPv6 loopback only.
+		:net_port=127.0.0.1:7627,8080  - Listen on multiple ports on localhost.
 
     net_acl
 	Restricts API and dashboard access to specific client IP addresses or
@@ -224,6 +233,14 @@ Configuration
 	stance. The rules are processed sequentially, and the last matching rule
 	determines the outcome.
 	If unset, it defaults to +127.0.0.1.
+
+	To allow access via Tailscale or similar services, ensure you add the
+	relevant network prefix (e.g., +100.0.0.0/8).
+
+	Examples:
+		:net_acl=+127.0.0.1,+::1          - Allow IPv4 and IPv6 loopback.
+		:net_acl=+100.0.0.0/8,+127.0.0.1  - Allow Tailscale and localhost.
+		:net_acl=+192.168.1.0/24          - Allow local subnet only.
 
     net_security_headers
 	When enabled (1), the daemon injects several browser-level security
