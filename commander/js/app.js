@@ -407,6 +407,16 @@ const app = {
                     ${active ? `<button class="btn btn-danger mr-2" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
                     <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                 `;
+
+                // Capture scroll state
+                const logWindowBefore = document.querySelector('.log-window');
+                let scrollPos = 0;
+                let isAtBottom = true;
+                if (logWindowBefore) {
+                    scrollPos = logWindowBefore.scrollTop;
+                    isAtBottom = (logWindowBefore.scrollHeight - logWindowBefore.scrollTop - logWindowBefore.clientHeight) < 50;
+                }
+
                 const view = document.getElementById('view-container');
                 view.innerHTML = renderDashboard(array, activity, app.state.system);
                 app.applyDynamicStyles(view);
@@ -414,10 +424,14 @@ const app = {
                 // Draw graphs
                 app.redrawGraphs();
 
-                // Auto-scroll logs only if they changed
-                const logWindow = document.querySelector('.log-window');
-                if (logWindow && messagesChanged) {
-                    logWindow.scrollTop = logWindow.scrollHeight;
+                // Restore scroll state
+                const logWindowAfter = document.querySelector('.log-window');
+                if (logWindowAfter) {
+                    if (isAtBottom) {
+                        logWindowAfter.scrollTop = logWindowAfter.scrollHeight;
+                    } else {
+                        logWindowAfter.scrollTop = scrollPos;
+                    }
                 }
             }
         } catch (e) {
