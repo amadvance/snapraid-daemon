@@ -239,7 +239,7 @@ static void heartbeat_locked(struct snapraid_state* state)
 	char run_as_user[CONFIG_MAX];
 
 	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
-	sncpy(template, sizeof(template), state->config.notify_result);
+	sncpy(template, sizeof(template), state->config.notify_heartbeat);
 
 	/* release the lock to call the command */
 	state_unlock();
