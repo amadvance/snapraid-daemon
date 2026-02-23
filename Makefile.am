@@ -18,7 +18,7 @@ systemdsystemunit_DATA = snapraidd.service
 endif
 
 if INSTALL_BSD_INIT
-rcdir = /etc/rc.d
+rcdir = @RCDIR@
 rc_SCRIPTS = rc.snapraidd
 endif
 
@@ -179,17 +179,21 @@ install-data-hook:
 	@echo "=================================================================="
 	@echo ""
 	@echo " Configuration:"
-	@if [ ! -f $(DESTDIR)/etc/snapraidd.conf ]; then \
-		echo "  No configuration found. Installing default to:"; \
-		echo "  /etc/snapraidd.conf"; \
-		if [ ! -d $(DESTDIR)/etc ]; then \
-			mkdir $(DESTDIR)/etc; \
+	@if test -z "$(DESTDIR)"; then \
+		if test -f $(sysconfdir)/snapraidd.conf ; then \
+			echo "  Existing configuration found at $(sysconfdir)/snapraidd.conf"; \
+			echo "  Your settings have been preserved."; \
+		elif test -f /etc/snapraidd.conf ; then \
+			echo "  Existing configuration found at /etc/snapraidd.conf"; \
+			echo "  Your settings have been preserved."; \
+		else \
+			echo "  No configuration found. Installing default to:"; \
+			echo "  $(sysconfdir)/snapraidd.conf"; \
+			$(INSTALL) -D -m 600 $(srcdir)/snapraidd.conf.example $(sysconfdir)/snapraidd.conf; \
 		fi; \
-		cp $(srcdir)/snapraidd.conf.example $(DESTDIR)/etc/snapraidd.conf; \
-		chmod 600 $(DESTDIR)/etc/snapraidd.conf; \
 	else \
-		echo "  Existing configuration found at /etc/snapraidd.conf"; \
-		echo "  Your settings have been preserved."; \
+		echo "DESTDIR is set ($(DESTDIR)), installing example only"; \
+		echo "Real config should be created/managed by packaging script."; \
 	fi
 	@echo ""
 	@echo "=================================================================="
@@ -209,20 +213,20 @@ endif
 if INSTALL_BSD_INIT
 	@echo ""
 	@echo " Detected BSD-style init. To enable the daemon:"
-	@echo "   sudo chmod +x /etc/rc.d/rc.snapraidd"
+	@echo "   sudo chmod +x $(rcdir)/rc.snapraidd"
 	@echo ""
 	@echo " To start it now, add this to /etc/rc.d/rc.local:"
-	@echo "   if [ -x /etc/rc.d/rc.snapraidd ]; then"
-	@echo "     /etc/rc.d/rc.snapraidd start"
+	@echo "   if [ -x $(rcdir)/rc.snapraidd ]; then"
+	@echo "     $(rcdir)/rc.snapraidd start"
 	@echo "   fi"
 	@echo ""
-	@echo " Or run manually: sudo /etc/rc.d/rc.snapraidd start"
+	@echo " Or run manually: sudo $(rcdir)/rc.snapraidd start"
 	@echo "=================================================================="
 	@echo ""
 endif
 
 uninstall-local:
-	-rm -f $(DESTDIR)/etc/snapraidd.conf
+	-rm -f $(DESTDIR)$(sysconfdir)/snapraidd.conf
 
 uninstall-hook:
 # Uninstall localized manpages

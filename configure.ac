@@ -177,9 +177,21 @@ if test "x$init_type" = "xsystemd"; then
   AC_SUBST([SERVICEDIR])
 fi
 
+if test "x$init_type" = "xbsd"; then
+  AC_MSG_CHECKING([checking rcdir])
+  AC_ARG_WITH([rcdir],
+    [AS_HELP_STRING([--with-rcdir=DIR], [directory for BSD init scripts (default: PREFIX/etc/rc.d)])],
+    [RCDIR=$withval],
+    [RCDIR='/etc/rc.d']
+  )
+  AC_MSG_RESULT([$RCDIR])
+  AC_SUBST([RCDIR])
+fi
+
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
+
 
 PACKAGE_VERSION_UNDERSCORE=`echo "$PACKAGE_VERSION" | sed 's/-/_/g'`
 AC_SUBST([PACKAGE_VERSION_UNDERSCORE])

@@ -87,10 +87,15 @@ SnapRAID must be installed and fully configured before starting the
 service. All interactions with the underlying parity array are handled
 through the standard SnapRAID binary.
 
-Upon installation, the daemon provides a default configuration
-`/etc/snapraidd.conf` that enables the REST API and the Web UI. By
-default, these services are accessible via a web browser at the
-following address:
+During the installation process, a default configuration file is
+provisioned to enable the REST API and the Web UI. For users installing
+via binary packages, this file is typically placed at `/etc/snapraidd.conf`.
+If you are installing from source, it is recommended to run
+`./configure --sysconfdir=/etc` during the build process to ensure the
+configuration is placed in the standard `/etc` directory.
+
+Using this default configuration file, the services are accessible via
+a web browser at the following address:
 
     http://127.0.0.1:7627
 
