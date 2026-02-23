@@ -28,7 +28,6 @@ COMMANDER_DIST = \
 	index.html \
 	site.webmanifest \
 	image/favicon-16x16.png \
-	image/logo.png \
 	image/android-chrome-512x512.png \
 	image/apple-touch-icon.png \
 	image/android-chrome-192x192.png \
@@ -105,7 +104,6 @@ noinst_HEADERS = \
 	commander/index.html \
 	commander/site.webmanifest \
 	commander/image/favicon-16x16.png \
-	commander/image/logo.png \
 	commander/image/android-chrome-512x512.png \
 	commander/image/apple-touch-icon.png \
 	commander/image/android-chrome-192x192.png \
