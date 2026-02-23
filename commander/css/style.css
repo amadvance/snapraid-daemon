@@ -336,6 +336,16 @@ body {
     z-index: 40;
 }
 
+#page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex-shrink: 1;
+}
+
 .header-actions {
     display: flex;
     gap: var(--gap-md);
@@ -384,7 +394,7 @@ body {
 /* Grid */
 .grid-2 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--gap-lg);
 }
 
@@ -394,7 +404,7 @@ body {
 
 .grid-3 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: var(--gap-lg);
 }
 
@@ -855,7 +865,16 @@ body {
 
 .modal-body .data-table.v-dense th:first-child,
 .modal-body .data-table.v-dense td:first-child {
-    width: 350px;
+    width: 250px;
+    max-width: 250px;
+}
+
+@media (max-width: 480px) {
+
+    .modal-body .data-table.v-dense th:first-child,
+    .modal-body .data-table.v-dense td:first-child {
+        width: 120px;
+    }
 }
 
 .overflow-x-auto {
@@ -929,7 +948,7 @@ body {
     font-weight: 800;
     /* Extra bold for names */
     text-transform: uppercase;
-    width: 150px;
+    width: 90px;
     flex-shrink: 0;
 }
 
@@ -1028,6 +1047,10 @@ body {
 
 .flex {
     display: flex;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
 }
 
 .items-center {
@@ -1208,6 +1231,9 @@ input[type=number]:focus {
     border-radius: var(--radius-lg);
     width: 90%;
     max-width: 450px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     padding: var(--gap-lg);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     transform: translateY(20px);
@@ -1230,6 +1256,8 @@ input[type=number]:focus {
     color: var(--text-primary);
     margin-bottom: var(--gap-lg);
     line-height: 1.6;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .modal-actions {
@@ -1239,6 +1267,10 @@ input[type=number]:focus {
 }
 
 @media (max-width: 480px) {
+    #page-title {
+        max-width: 100px;
+    }
+
     .modal-actions {
         flex-direction: column;
     }

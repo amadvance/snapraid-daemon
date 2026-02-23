@@ -399,6 +399,7 @@ const app = {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
                 actions.innerHTML = `
+                    ${active ? `<button class="btn btn-danger mr-2" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
                     <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                 `;
                 const view = document.getElementById('view-container');

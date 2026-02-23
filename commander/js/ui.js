@@ -262,7 +262,7 @@ const renderSystemCard = (system) => {
                     <div class="property-value text-xs">${system.cpu_model}</div>
                  </div>
                  <div class="property-row">
-                    <div class="property-label">Motherboard</div>
+                    <div class="property-label">Board</div>
                     <div class="property-value text-xs">${system.motherboard || 'Unknown'}</div>
                  </div>
             </div>
@@ -271,7 +271,7 @@ const renderSystemCard = (system) => {
 };
 
 const formatFullCommand = (t) => {
-    return t.high_command ? `${t.high_command} - ${t.command}` : t.command;
+    return t.high_command ? `${t.high_command} ${t.command}` : t.command;
 };
 
 /* --- Dashboard --- */
@@ -327,11 +327,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <h3 class="text-lg font-bold mb-2 text-cyan">System Idle</h3>
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
-                    <div class="flex items-center gap-4 text-sm bg-slate-800 p-3 rounded">
+                    <div class="flex flex-wrap items-center gap-4 text-sm bg-slate-800 p-3 rounded">
                         <span class="font-bold text-cyan">${formatFullCommand(last).toUpperCase()}</span>
-                        ${healthBadge(last.health)} ${statusBadge(last)}
-                        <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
-                        <span class="text-muted">Ended: ${formatTime(last.finished_at, pulseAt)}</span>
+                        <span class="flex gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
+                        <span class="flex flex-wrap gap-4">
+                            <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
+                            <span class="text-muted">Ended: ${formatTime(last.finished_at, pulseAt)}</span>
+                        </span>
                     </div>
                 ` : '<p class="text-muted">No history available.</p>'}
             </div>
@@ -380,23 +382,23 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
             <div class="property-list">
                 <div class="property-row">
-                    <div class="property-label">Bad Blocks</div>
+                    <div class="property-label">Bad</div>
                     <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">
                         ${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}
                         ${arrayInfo.blocks_bad > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_bad * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
-                    <div class="property-label">Unsynced Blocks</div>
+                    <div class="property-label">Unsynced</div>
                     <div class="property-value ${arrayInfo.blocks_unsynced > 0 ? 'text-yellow' : 'text-emerald'}">
                         ${arrayInfo.blocks_unsynced != null ? arrayInfo.blocks_unsynced : '?'}
                         ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
-                    <div class="property-label">Failure Probability (1yr)</div>
+                    <div class="property-label">Failure Probability</div>
                     <div class="property-value text-cyan">${arrayInfo.failure_probability
-            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%`
+            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}% (1 year)`
             : healthBadge('pending')}</div>
                 </div>
                 <div class="property-row">
@@ -418,23 +420,23 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <h3 class="font-bold mb-4 border-b border-slate-700 pb-2 text-cyan">Configuration</h3>
             <div class="property-list">
                  <div class="property-row">
-                    <div class="property-label">Daemon Version</div>
+                    <div class="property-label">Daemon</div>
                     <div class="property-value">${arrayInfo.daemon_version}</div>
                  </div>
                  <div class="property-row">
-                    <div class="property-label">Daemon Configuration</div>
+                    <div class="property-label">Config</div>
                     <div class="property-value font-mono text-xs">${arrayInfo.daemon_conf}</div>
                  </div>
                  <div class="property-row">
-                    <div class="property-label">Engine Version</div>
+                    <div class="property-label">Engine</div>
                     <div class="property-value">${arrayInfo.engine_version}</div>
                  </div>
                  <div class="property-row">
-                    <div class="property-label">Engine Configuration</div>
+                    <div class="property-label">Config</div>
                     <div class="property-value font-mono text-xs">${arrayInfo.engine_conf}</div>
                  </div>
                  <div class="property-row">
-                    <div class="property-label">Engine Content</div>
+                    <div class="property-label">Content</div>
                     <div class="property-value font-mono text-xs">${arrayInfo.engine_content}</div>
                  </div>
             </div>
@@ -447,13 +449,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div id="scrub-history-graph" class="scrub-history-container"></div>
             <div class="property-list mt-4 border-t border-slate-800 pt-4">
                 <div class="property-row">
-                    <div class="property-label">Oldest block</div>
+                    <div class="property-label">Oldest</div>
                     <div class="property-value text-cyan">
                         ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0} <span class="text-sm">days ago</span>
                     </div>
                 </div>
                 <div class="property-row">
-                    <div class="property-label">Median block</div>
+                    <div class="property-label">Median</div>
                     <div class="property-value text-cyan">
                         ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0} <span class="text-sm">days ago</span>
                     </div>
@@ -514,7 +516,7 @@ export const renderDifferences = (arrayInfo) => {
                 <div class="mb-4 border-b border-slate-700 pb-2">
                     <h3 class="font-bold text-cyan">Change Summary</h3>
                     <div class="text-sm text-muted mt-2 italic">
-                        These differences represent changes since the last sync. They will be cleared once the next maintenance cycle completes.
+                        The changes since the last sync. They will be cleared once the next maintenance cycle completes.
                     </div>
                     <div class="text-sm text-muted mt-1">Last updated: ${formatRelativeTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
@@ -888,8 +890,9 @@ export const renderSettings = (config) => {
             Edit <code>snapraidd.conf</code> manually to change these values.
         </div>
         ` : ''}
-        <form id="settings-form" class="grid-2">
+        <form id="settings-form">
             <!-- Automation -->
+            <div class="grid-2">
             <div class="card">
                 <h3 class="font-bold mb-4 text-cyan">Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'e.g., daily 02:00')}
@@ -919,8 +922,10 @@ export const renderSettings = (config) => {
                 ${inputField('script_post_run', 'Script Post-Run', 'text', '', !fullAccess)}
                 ${inputField('script_run_as_user', 'Run Scripts As User', 'text', '', !fullAccess)}
             </div>
+            </div>
 
             <!-- Notifications -->
+            <div class="grid-fill-2">
             <div class="card grid-span-2">
                 <h3 class="font-bold mb-4 text-cyan">Notifications</h3>
               
@@ -945,6 +950,7 @@ export const renderSettings = (config) => {
                 <div class="mt-2 text-sm">
                     ${inputField('notify_run_as_user', 'Run Notification As User', 'text', '', !fullAccess, '', 'w-1-2')}
                 </div>
+            </div>
             </div>
         </form>
     `;
@@ -993,7 +999,7 @@ export const renderRecovery = (arrayInfo) => {
                     </p>
                     <div class="property-list mt-0 pt-0 border-t-0 mb-6">
                         <div class="property-row">
-                            <div class="property-label">Bad Blocks</div>
+                            <div class="property-label">Bad</div>
                             <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}</div>
                         </div>
                     </div>
@@ -1013,18 +1019,18 @@ export const renderRecovery = (arrayInfo) => {
                 <div class="mb-4 border-b border-slate-700 pb-2">
                      <h3 class="font-bold text-cyan">Recovery Summary</h3>
                      <div class="text-sm text-muted mt-2 italic">
-                        These differences represent fixes since the last sync. They will be cleared once the next maintenance cycle completes.
+                        The fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
                      <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at, arrayInfo.pulse?.current_at) : formatTime(arrayInfo.last_sync_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 
                  <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
-                        <div class="property-label">Recovered</div>
+                        <div class="property-label">Fixed</div>
                         <div class="property-value text-emerald">${arrayInfo.fix_recovered || 0}</div>
                     </div>
                     <div class="property-row">
-                        <div class="property-label">Unrecoverable</div>
+                        <div class="property-label">Lost</div>
                         <div class="property-value text-red">${arrayInfo.fix_unrecoverable || 0}</div>
                     </div>
                 </div>
