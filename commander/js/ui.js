@@ -736,8 +736,6 @@ export const renderTasks = (data, hidePeriodic) => {
     const activeRows = active.length ? active.map(t => {
         const now = new Date();
         const duration = t.started_at ? formatDuration(t.started_at, now) : '-';
-        const progress = t.progress != null ? `${t.progress}%` : '';
-        const eta = t.eta_seconds != null ? formatSeconds(t.eta_seconds) : '-';
 
         return `
             <tr>
@@ -746,11 +744,9 @@ export const renderTasks = (data, hidePeriodic) => {
                 <td>${statusBadge(t)}</td>
                 <td class="text-muted">${formatTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
-                <td class="font-bold">${progress}</td>
-                <td class="text-cyan">${eta}</td>
             </tr>
         `;
-    }).join('') : `<tr><td colspan="7" class="text-center text-muted p-4">No active tasks</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="text-center text-muted p-4">No active tasks</td></tr>`;
 
     const historyRows = filteredHistory.length ? filteredHistory.reverse().map(t => {
         let exitStatus = '';
@@ -824,7 +820,7 @@ export const renderTasks = (data, hidePeriodic) => {
             </h3>
             <div class="overflow-x-auto">
                 <table class="data-table dense">
-                    <thead><tr><th class="w-50">ID</th><th>Command</th><th>Status</th><th>Started</th><th>Duration</th><th>%</th><th>ETA</th></tr></thead>
+                    <thead><tr><th class="w-50">ID</th><th>Command</th><th>Status</th><th>Started</th><th>Duration</th></tr></thead>
                     <tbody>${activeRows}</tbody>
                 </table>
             </div>
