@@ -270,6 +270,7 @@ struct snapraid_task {
 	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
 	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
 	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
+	unsigned pulse; /**< Pulse flags triggered by the task */
 
 	sl_t arg_list; /**< List of arguments */
 	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument */

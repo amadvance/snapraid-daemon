@@ -325,6 +325,7 @@ void strupr(char* str);
 /****************************************************************************/
 /* pulse */
 
+unsigned pulse_rev(struct snapraid_state* state, struct snapraid_pulse* pulse);
 void pulse(struct snapraid_state* state, unsigned mask);
 
 int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const char* src);

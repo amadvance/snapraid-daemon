@@ -191,13 +191,14 @@ static void runner_go(struct snapraid_state* state)
 	int cmd;
 	int high_cmd;
 	int status;
-	pid_t ret;
+	pid_t pid_ret;
 	char** argv;
 	int argc;
 	tommy_node* j;
 	int i;
 	int number;
 	struct snapraid_task* task = state->runner.latest;
+	struct snapraid_pulse pulse_before = state->pulse;
 
 	sncpy(script_pre_run, sizeof(script_pre_run), state->config.script_pre_run);
 	sncpy(script_post_run, sizeof(script_post_run), state->config.script_post_run);
@@ -291,7 +292,7 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_INFO, "task %d end %s with failed run", number, script_pre_run);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_fail\n");
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
 			log_msg(LVL_INFO, "task %d end %s", number, script_pre_run);
@@ -301,13 +302,13 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_INFO, "task %d end %s with return code %d", number, script_pre_run, script_ret);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_term:%d\n", script_ret);
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		} else {
 			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_pre_run, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		}
 		if (log_f)
@@ -317,7 +318,7 @@ static void runner_go(struct snapraid_state* state)
 	pid = daemon_spawn(argv, &f);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to start task %d run %s due to failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
-		ret = -1;
+		pid_ret = -1;
 		/* continue to run the script_post_run */
 	} else {
 		if (log_f != 0)
@@ -334,10 +335,10 @@ static void runner_go(struct snapraid_state* state)
 
 		/* wait for the child process to terminate */
 		do {
-			ret = waitpid(pid, &status, 0);
-		} while (ret == -1 && errno == EINTR);
+			pid_ret = waitpid(pid, &status, 0);
+		} while (pid_ret == -1 && errno == EINTR);
 
-		if (ret == -1) {
+		if (pid_ret == -1) {
 			log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") with failed wait", number, command_name(cmd), (uint64_t)pid);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:fail\n");
@@ -370,7 +371,7 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_INFO, "task %d end %s with failed run", number, script_post_run);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_fail\n");
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
 			log_msg(LVL_INFO, "task %d end %s", number, script_post_run);
@@ -380,13 +381,13 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_INFO, "task %d end %s with exit code %d", number, script_post_run, script_ret);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_term:%d\n", script_ret);
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		} else {
 			log_msg(LVL_INFO, "task %d end %s with signal %s(%d)", number, script_post_run, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
-			ret = -1;
+			pid_ret = -1;
 			goto bail;
 		}
 		if (log_f)
@@ -422,11 +423,36 @@ bail:
 	/* check the array health, but DO NOT propagate it to the task */
 	runner_health_check_locked(state);
 
+	/* compare the pulse (after evaluating the array health) */
+	task->pulse = pulse_rev(state, &pulse_before);
+
+	/* if task is a PROBE and completed succesfully */
+	if (task->cmd == CMD_PROBE
+		&& pid_ret != -1
+		&& WIFEXITED(status)
+		&& WEXITSTATUS(status) == 0
+		&& !tommy_list_empty(&state->runner.history_list)) {
+		struct snapraid_task* last = tommy_list_tail(&state->runner.history_list)->data;
+		/* if lastest was PROBE, and completed without change, remove it */
+		if (last->cmd == CMD_PROBE
+			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
+			log_msg_locked(LVL_INFO, "task %d probe omitted for no change", last->number);
+			/* delete its log */
+			if (last->log_file[0]) {
+				if (remove(last->log_file) != 0) {
+					log_msg_locked(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", last->log_file, strerror(errno), errno);
+				}
+			}
+			/* remove from the list */
+			tommy_list_remove_existing(&state->runner.history_list, &last->node);
+		}
+	}
+
 	/* insert the task in the done list, but keep it in the latest pointer */
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 
-	if (ret == -1) {
+	if (pid_ret == -1) {
 		task->exit_code = -1;
 		task->state = PROCESS_STATE_TERM;
 

@@ -253,7 +253,7 @@ log_directory = /var/log/snapraid
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-log_retention_days = 30
+log_retention_days = 120
 
 ### Notifications
 # --- System Log (syslog/journald) ---

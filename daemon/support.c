@@ -621,6 +621,22 @@ void strupr(char* str)
 /****************************************************************************/
 /* pulse */
 
+unsigned pulse_rev(struct snapraid_state* state, struct snapraid_pulse* pulse)
+{
+	unsigned mask = 0;
+	if (state->pulse.array != pulse->array)
+		mask |= PULSE_ARRAY;
+	if (state->pulse.config != pulse->config)
+		mask |= PULSE_CONFIG;
+	if (state->pulse.disks != pulse->disks)
+		mask |= PULSE_DISKS;
+	if (state->pulse.tasks != pulse->tasks)
+		mask |= PULSE_TASKS;
+	if (state->pulse.activity != pulse->activity)
+		mask |= PULSE_ACTIVITY;
+	return mask;
+}
+
 void pulse(struct snapraid_state* state, unsigned mask)
 {
 	if ((mask & PULSE_ARRAY) != 0)
