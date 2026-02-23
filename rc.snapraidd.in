@@ -26,7 +26,6 @@ snapraidd_start() {
     fi
 
     echo "Starting snapraidd..."
-    # We call it without an '&' because os_daemonize() handles the backgrounding
     $BIN --conf "$CONF"
 }
 
@@ -35,7 +34,7 @@ snapraidd_stop() {
         PID=$(cat "$PIDF")
         echo "Stopping snapraidd (PID: $PID)..."
         kill "$PID"
-        # The C code should unlink the file, but we wait and clean up to be sure
+        # The daemon should unlink the file, but we wait and clean up to be sure
         COUNT=0
         while [ -f "$PIDF" ] && [ $COUNT -lt 5 ]; do
             sleep 1

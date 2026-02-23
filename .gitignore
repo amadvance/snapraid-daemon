@@ -47,9 +47,6 @@ pkg/snapraid-daemon.SlackBuild
 pkg/snapraid-daemon.info
 makedeb.sh
 pkg/control
-pkg/postinst
-pkg/prerm
-pkg/postrm
 makerpm.sh
 pkg/snapraid-daemon.spec
 

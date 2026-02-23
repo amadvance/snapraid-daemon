@@ -40,6 +40,8 @@ make check
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}%{_sysconfdir}
+cp snapraidd.conf.example %{buildroot}%{_sysconfdir}/snapraidd.conf
 make install DESTDIR=%{buildroot}
 
 %post
@@ -58,4 +60,5 @@ make install DESTDIR=%{buildroot}
 %{_mandir}/man1/snapraidd.1*
 %dir %{_datadir}/snapraidd
 %{_datadir}/snapraidd/commander.zip
+%config(noreplace) %{_sysconfdir}/snapraidd.conf
 /usr/lib/systemd/system/snapraidd.service

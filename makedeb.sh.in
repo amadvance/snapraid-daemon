@@ -48,6 +48,8 @@ make -j4 install DESTDIR="../${PKG_ROOT}"
 # Add example config and docs
 mkdir -p "../${PKG_ROOT}/usr/share/doc/@PACKAGE@"
 cp snapraidd.conf.example snapraidd.yaml COPYING AUTHORS HISTORY README "../${PKG_ROOT}/usr/share/doc/@PACKAGE@/"
+mkdir -p "../${PKG_ROOT}/etc"
+cp snapraidd.conf.example "../${PKG_ROOT}/etc/snapraidd.conf"
 
 cd ..
 
@@ -55,6 +57,7 @@ cd ..
 echo "Copying into DEBIAN/"
 mkdir -p "${PKG_ROOT}/DEBIAN"
 cp pkg/control "${PKG_ROOT}/DEBIAN/control"
+cp pkg/conffiles "${PKG_ROOT}/DEBIAN/conffiles"
 cp pkg/postinst "${PKG_ROOT}/DEBIAN/postinst"
 cp pkg/prerm "${PKG_ROOT}/DEBIAN/prerm"
 cp pkg/postrm "${PKG_ROOT}/DEBIAN/postrm"

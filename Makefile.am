@@ -147,7 +147,8 @@ EXTRA_DIST = \
 	pkg/snapraid-daemon.info.in \
 	pkg/slack-desc \
 	makedeb.sh.in \
-	pkg/control \
+	pkg/control.in \
+	pkg/conffiles \
 	pkg/postinst \
 	pkg/prerm \
 	pkg/postrm \
@@ -159,7 +160,7 @@ man1_MANS = doc/snapraidd.1
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip
-	rm -f makeslackware.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control pkg/postinst pkg/prerm pkg/postrm makerpm.sh pkg/spec
+	rm -f makeslackware.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
 	rm -f snapraid-daemon-*.rpm snapraid-daemon_*.deb snapraid-daemon-*.txz
 
 maintainer-clean-local:
@@ -178,8 +179,8 @@ install-data-hook:
 	@echo " $(PACKAGE_NAME) installation complete!"
 	@echo "=================================================================="
 	@echo ""
-	@echo " Configuration:"
 	@if test -z "$(DESTDIR)"; then \
+		echo " Configuration:"; \
 		if test -f $(sysconfdir)/snapraidd.conf ; then \
 			echo "  Existing configuration found at $(sysconfdir)/snapraidd.conf"; \
 			echo "  Your settings have been preserved."; \

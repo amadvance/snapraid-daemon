@@ -9,6 +9,7 @@ Documentation=https://github.com/amadvance/snapraid-daemon
 [Service]
 Type=forking
 PIDFile=/run/snapraidd.pid
+ExecStartPre=/usr/bin/test -f @sysconfdir@/snapraidd.conf
 ExecStart=@bindir@/snapraidd --conf @sysconfdir@/snapraidd.conf
 ExecReload=/bin/kill -HUP $MAINPID
 
