@@ -62,6 +62,8 @@ static void run(struct snapraid_state* state)
 {
 	log_msg(LVL_INFO, "daemon ready");
 
+	state->daemon_running = DAEMON_RUNNING;
+
 	while (state->daemon_running) {
 		if (state->daemon_running == DAEMON_RELOAD) {
 			state->daemon_running = DAEMON_RUNNING;

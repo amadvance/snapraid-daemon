@@ -30,7 +30,7 @@ struct snapraid_state* state_init(void)
 	struct snapraid_state* state = &STATE;
 
 	thread_mutex_init(&state->lock);
-	state->daemon_running = 1;
+	state->daemon_running = DAEMON_STARTING;
 
 	return state;
 }

@@ -106,11 +106,19 @@ AC_CHECK_CC_OPT([-Wextra], CFLAGS="$CFLAGS -Wextra", [])
 AC_CHECK_CC_OPT([-Wuninitialized], CFLAGS="$CFLAGS -Wuninitialized", [])
 AC_CHECK_CC_OPT([-Wshadow], CFLAGS="$CFLAGS -Wshadow", [])
 
+dnl Options to improve stacktrace
+AC_CHECK_CC_OPT([-fno-omit-frame-pointer], CFLAGS="$CFLAGS -fno-omit-frame-pointer", [])
+AC_CHECK_CC_OPT([-fno-inline-functions-called-once], CFLAGS="$CFLAGS -fno-inline-functions-called-once", [])
+AC_CHECK_CC_OPT([-fno-inline-small-functions], CFLAGS="$CFLAGS -fno-inline-small-functions", [])
+AC_CHECK_CC_OPT([-fno-optimize-sibling-calls], CFLAGS="$CFLAGS -fno-optimize-sibling-calls", [])
+AC_CHECK_CC_OPT([-rdynamic], CFLAGS="$CFLAGS -rdynamic", [])
+# This the new default for gcc 10
+AC_CHECK_CC_OPT([-fno-common], CFLAGS="$CFLAGS -fno-common", [])
+
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debugging])],
 	[
-	CFLAGS="-Og -g -pthread -Wall -Wextra"
-	AC_CHECK_CC_OPT([-rdynamic], CFLAGS="$CFLAGS -rdynamic", [])
+	CFLAGS="-O0 -g -pthread -Wall -Wextra -fno-omit-frame-pointer -rdynamic"
 	],
 	[])
 

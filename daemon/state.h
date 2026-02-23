@@ -485,8 +485,9 @@ struct snapraid_system {
 };
 
 #define DAEMON_QUIT 0
-#define DAEMON_RUNNING 1
-#define DAEMON_RELOAD 2
+#define DAEMON_STARTING 1
+#define DAEMON_RUNNING 2
+#define DAEMON_RELOAD 3
 
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */

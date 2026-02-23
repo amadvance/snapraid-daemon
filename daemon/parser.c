@@ -484,7 +484,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	else if (strcmp(tag, "size") == 0)
 		pulse_stru64(state, PULSE_DISKS, &device->size, val);
 	else if (strcmp(tag, "rotationrate") == 0)
-		pulse_stru64(state, PULSE_DISKS, &device->rotational, val);
+		/* do not pulse because if the disk is in stand-by it gets 1 instead of the rate */
+		stru64(&device->rotational, val);
 	else if (strcmp(tag, "afr") == 0) {
 		pulse_double(state, PULSE_DISKS, &device->afr, val);
 		if (mac >= 6)
