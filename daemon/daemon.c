@@ -32,7 +32,7 @@
 
 static void version(void)
 {
-	printf(PACKAGE " v" VERSION " by Andrea Mazzoleni, " PACKAGE_URL "\n");
+	printf(PACKAGE_NAME " v" VERSION " by Andrea Mazzoleni, " PACKAGE_URL "\n");
 }
 
 static void usage(const char* conf)
