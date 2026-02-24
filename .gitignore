@@ -43,6 +43,7 @@ snapraidd
 snapraidd.service
 rc.snapraidd
 makeslackware.sh
+makeslackdisk.sh
 pkg/snapraid-daemon.SlackBuild
 pkg/snapraid-daemon.info
 makedeb.sh

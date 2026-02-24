@@ -144,6 +144,7 @@ EXTRA_DIST = \
 	civetweb/LICENSE.md \
 	snapraidd.service.in rc.snapraidd.in \
 	makeslackware.sh.in \
+	makeslackdist.sh.in \
 	pkg/snapraid-daemon.SlackBuild.in \
 	pkg/snapraid-daemon.info.in \
 	pkg/slack-desc \
@@ -166,7 +167,7 @@ distuninstallcheck_listfiles = \
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip
-	rm -f makeslackware.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
+	rm -f makeslackware.sh makeslackdist.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
 	rm -f snapraid-daemon-*.rpm snapraid-daemon_*.deb snapraid-daemon-*.txz
 
 maintainer-clean-local:
