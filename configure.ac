@@ -248,7 +248,7 @@ fi
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
 
-AC_CONFIG_FILES([Makefile snapraidd.service rc.snapraidd])
+AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec])
 AC_CONFIG_FILES([makeslackware.sh], [chmod a+x makeslackware.sh])
 AC_CONFIG_FILES([pkg/snapraid-daemon.SlackBuild], [chmod a+x pkg/snapraid-daemon.SlackBuild])

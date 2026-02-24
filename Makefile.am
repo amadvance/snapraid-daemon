@@ -22,6 +22,9 @@ rcdir = @RCDIR@
 rc_SCRIPTS = rc.snapraidd
 endif
 
+noinst_DATA = rc.snapraidd snapraidd.service
+CLEANFILES = rc.snapraidd snapraidd.service
+
 # Web UI
 if HAVE_ZIP
 COMMANDER_DIST = \
@@ -280,6 +283,20 @@ $(DAEMON_PREFIX)scheduler.$(OBJEXT):$(srcdir)/daemon/scheduler.h $(srcdir)/daemo
 $(DAEMON_PREFIX)support.$(OBJEXT): $(srcdir)/daemon/support.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)notify.$(OBJEXT): $(srcdir)/daemon/notify.h $(srcdir)/daemon/state.h
 $(DAEMON_PREFIX)smart.$(OBJEXT): $(srcdir)/daemon/smart.h $(srcdir)/daemon/state.h
+
+# Rules for scripts
+snapraidd.service: snapraidd.service.in
+	$(AM_V_GEN)sed \
+		-e 's|@bindir[@]|$(bindir)|g' \
+		-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
+		< $< > $@-t && mv $@-t $@
+
+rc.snapraidd: rc.snapraidd.in
+	$(AM_V_GEN)sed \
+		-e 's|@bindir[@]|$(bindir)|g' \
+		-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
+		< $< > $@-t && mv $@-t $@
+
 
 # Rules for documentation
 if HAVE_ADVD2
