@@ -13,9 +13,13 @@
 {
    CivetWEB
    Helgrind:Race
+   fun:consume_socket.constprop.0
+}
+
+{
+   CivetWEB
+   Helgrind:Race
    fun:mg_stop
-   fun:rest_done
-   fun:main
 }
 
 {
