@@ -1,18 +1,24 @@
 SnapRAID Daemon TODO
 ====================
 
-- Evaluate Mongoose as replacement of Civetweb https://github.com/cesanta/mongoose
+- Evaluate Mongoose as a replacement for CivetWeb: https://github.com/cesanta/mongoose
 
-- Show also disks not part of the array
+- Show disks that are not part of the array in the inventory
 
-- Windows version of the daemon
-  - Service or application ?
+- Support maintenance scheduling for multiple days of the week
 
-- macOS version of the daemon 
-  - Need to extend SnapRAID CLI to be able to build the list of low devices
-    from a filesystem. This will allow to call smartctl also on macOS.
-    Starting point is implementing devtree() that from a filesystem dev
-    gets the list of low level devices that can be used with smartctl.
+- Implement initial configuration of SnapRAID directly through the Web UI
+
+- Windows version of the daemon:
+  - Native Service + NSIS installer
+  - Portable application support
+
+- macOS version of the daemon:
+  - Extend the SnapRAID CLI to build the list of low-level devices from
+    a filesystem. This will enable smartctl support on macOS.
+  - Implementation starting point: devtree(), which retrieves the list of
+    low-level devices associated with a filesystem device for use
+    with smartctl.
 
 Something like this:
 
