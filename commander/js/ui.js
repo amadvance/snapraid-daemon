@@ -921,7 +921,7 @@ export const renderSettings = (config) => {
             </div>
 
             <!-- Notifications -->
-            <div class="grid-fill-2">
+            <div class="grid-fit-2">
             <div class="card grid-span-2">
                 <h3 class="font-bold mb-4 text-cyan">Notifications</h3>
               

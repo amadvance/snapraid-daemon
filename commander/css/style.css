@@ -383,7 +383,7 @@ body {
 }
 
 .card-disk {
-    max-width: 500px;
+    max-width: 400px;
 }
 
 .card.glow {
@@ -417,19 +417,19 @@ body {
 /* Auto-fill grids: items stay at their min-width and don't stretch to fill the row */
 .grid-fill-2 {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 400px));
     gap: var(--gap-lg);
 }
 
 .grid-fill-3 {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 300px));
     gap: var(--gap-lg);
 }
 
 .grid-fill-4 {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 250px));
     gap: var(--gap-lg);
 }
 
