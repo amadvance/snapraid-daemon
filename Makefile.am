@@ -196,7 +196,6 @@ install-data-hook:
 	fi
 	@echo ""
 	@echo "=================================================================="
-
 # Install service/rc.d
 if INSTALL_SYSTEMD
 	@echo ""
@@ -223,9 +222,6 @@ if INSTALL_BSD_INIT
 	@echo "=================================================================="
 	@echo ""
 endif
-
-uninstall-local:
-	-rm -f $(DESTDIR)$(sysconfdir)/snapraidd.conf
 
 uninstall-hook:
 # Uninstall localized manpages
