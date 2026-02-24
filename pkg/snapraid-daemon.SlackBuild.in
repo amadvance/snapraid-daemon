@@ -68,13 +68,10 @@ make -j4
 make install DESTDIR=$PKG
 
 mkdir -p $PKG/etc
-cp -a snapraidd.conf.example $PKG/etc/snapraidd.conf
+cp -a snapraidd.conf.example $PKG/etc/snapraidd.conf.new
 
 mkdir -p $PKG/etc/rc.d
 cp -a rc.snapraidd $PKG/etc/rc.d
-
-find $PKG -print0 | xargs -0 file | grep -e "executable" -e "shared object" | grep ELF \
-  | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
 gzip -9 $PKG/usr/man/man?/*.?
 
@@ -84,6 +81,7 @@ cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
 
 mkdir -p $PKG/install
 cat $CWD/slack-desc > $PKG/install/slack-desc
+cat $CWD/doinst.sh > $PKG/install/doinst.sh
 
 cd $PKG
 /sbin/makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD$TAG.${PKGTYPE:-txz}

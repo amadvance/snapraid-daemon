@@ -147,6 +147,7 @@ EXTRA_DIST = \
 	pkg/snapraid-daemon.SlackBuild.in \
 	pkg/snapraid-daemon.info.in \
 	pkg/slack-desc \
+	pkg/doinst.sh \
 	makedeb.sh.in \
 	pkg/control.in \
 	pkg/conffiles \

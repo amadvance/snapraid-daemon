@@ -3,6 +3,8 @@ SnapRAID Daemon TODO
 
 - Evaluate Mongoose as replacement of Civetweb https://github.com/cesanta/mongoose
 
+- Show also disks not part of the array
+
 - Windows version of the daemon
   - Service or application ?
 
