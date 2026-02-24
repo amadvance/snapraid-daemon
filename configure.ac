@@ -144,54 +144,109 @@ AC_ARG_ENABLE([warning],
 	],
 	[])
 
-AC_MSG_CHECKING([checking init system])
-
 AC_ARG_WITH([init-type],
     [AS_HELP_STRING([--with-init-type=TYPE], [Init system type: systemd, bsd, or none (default: auto)])],
     [init_type=$withval],
     [init_type=auto])
 
+AC_MSG_CHECKING([checking init system])
 if test "x$init_type" = "xauto"; then
-    if test -d /etc/rc.d; then
-        init_type=bsd
-    elif $PKG_CONFIG --exists systemd; then
+    # Check systemd first (more specific)
+    if $PKG_CONFIG --exists systemd; then
         init_type=systemd
+    # Then check for BSD directory existence
+    elif test -d /etc/rc.d; then
+        init_type=bsd
     else
         init_type=none
     fi
 fi
-
 AC_MSG_RESULT([$init_type])
 
 if test "x$init_type" = "xsystemd"; then
-  AC_MSG_CHECKING([checking systemdsystemunitdir])
+  # Set a default for SERVICEDIR based on prefix
+  if test "x$prefix" = "x/usr"; then
+    # Standard system install: Use pkg-config to find the "real" path
+    PKG_CHECK_EXISTS([systemd], 
+      [default_unitdir=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`],
+      [default_unitdir='${libdir}/systemd/system'])
+  else
+      # Custom/Local install: Keep it inside the prefix sandbox
+      default_unitdir='${libdir}/systemd/system'
+  fi
   AC_ARG_WITH([systemdsystemunitdir],
-    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
-                  [install systemd system unit files in DIR @<:@default=auto via pkg-config@:>@])],
+    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [directory for systemd service files (default: PREFIX/lib/systemd/system)])],
     [SERVICEDIR="$with_systemdsystemunitdir"],
-    [PKG_CHECK_MODULES([SYSTEMD], [systemd],
-      [SERVICEDIR=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`],
-      [SERVICEDIR="no"])
-    ])
-  AC_MSG_RESULT([$SERVICEDIR])
+    [SERVICEDIR="$default_unitdir"]
+  )
   AC_SUBST([SERVICEDIR])
 fi
 
 if test "x$init_type" = "xbsd"; then
-  AC_MSG_CHECKING([checking rcdir])
+  # Check OS type via $host_os (provided by AC_CANONICAL_HOST)
+  case "$host_os" in
+    *linux*)
+      # Slackware case: Prefix /usr means /etc/rc.d
+      if test "x$prefix" = "x/usr"; then
+          default_rcdir='/etc/rc.d'
+      else
+          default_rcdir='${sysconfdir}/rc.d'
+      fi
+      ;;
+    *)
+      # True BSD case: Usually ${prefix}/etc/rc.d
+      default_rcdir='${sysconfdir}/rc.d'
+      ;;
+  esac
   AC_ARG_WITH([rcdir],
     [AS_HELP_STRING([--with-rcdir=DIR], [directory for BSD init scripts (default: PREFIX/etc/rc.d)])],
     [RCDIR=$withval],
-    [RCDIR='/etc/rc.d']
+    [RCDIR='$default_rcdir']
   )
-  AC_MSG_RESULT([$RCDIR])
   AC_SUBST([RCDIR])
+fi
+
+if test "x$init_type" = "xsystemd"; then
+    AC_MSG_CHECKING([for systemdsystemunitdir])
+    
+    # Resolve the path safely in a subshell without changing prefix/execprefix in the parent shell
+    actual_unitdir=$(
+        # Resolve NONE to defaults locally
+        test "x$prefix" = xNONE && prefix="$ac_default_prefix"
+        test "x$exec_prefix" = xNONE && exec_prefix="$prefix"
+
+        # Loop multiple times to ensure we resolve all variables: ${libdir} -> ${exec_prefix} -> /usr/local
+        res="$SERVICEDIR"
+        eval res=\"$res\"
+        eval res=\"$res\"
+        eval res=\"$res\"
+        echo "$res"
+    )
+    AC_MSG_RESULT([$actual_unitdir])
+fi
+
+if test "x$init_type" = "xbsd"; then
+    AC_MSG_CHECKING([for rcdir])
+    
+    # Resolve the path safely in a subshell without changing prefix/execprefix in the parent shell
+    actual_rcdir=$(
+        # Resolve NONE to defaults locally
+        test "x$prefix" = xNONE && prefix="$ac_default_prefix"
+        test "x$exec_prefix" = xNONE && exec_prefix="$prefix"
+
+        # Loop multiple times to ensure we resolve all variables: ${sysconfdir} -> ${prefix} -> /usr/local
+        res="$RCDIR"
+        eval res=\"$res\"
+        eval res=\"$res\"
+        eval res=\"$res\"
+        echo "$res"
+    )
+    AC_MSG_RESULT([$actual_rcdir])
 fi
 
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
-
 
 PACKAGE_VERSION_UNDERSCORE=`echo "$PACKAGE_VERSION" | sed 's/-/_/g'`
 AC_SUBST([PACKAGE_VERSION_UNDERSCORE])

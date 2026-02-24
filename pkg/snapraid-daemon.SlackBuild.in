@@ -67,6 +67,7 @@ make -j4
 
 make install DESTDIR=$PKG
 
+mkdir -p $PKG/etc
 cp -a snapraidd.conf.example $PKG/etc/snapraidd.conf
 
 find $PKG -print0 | xargs -0 file | grep -e "executable" -e "shared object" | grep ELF \
