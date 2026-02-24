@@ -415,7 +415,7 @@ bail:
 
 	/* the task is not running anymore */
 	task->running = 0;
-	state->runner.latest->unix_end_time = unix_end_time;
+	task->unix_end_time = unix_end_time;
 
 	/* compute the task health */
 	task->health = health_task(task);
@@ -437,7 +437,7 @@ bail:
 		if (last->cmd == CMD_PROBE
 			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
 			log_msg_locked(LVL_INFO, "task %d removed probe for no change", last->number);
-			/* delete its log */
+			/* delete its log file */
 			if (last->log_file[0]) {
 				if (remove(last->log_file) != 0) {
 					log_msg_locked(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", last->log_file, strerror(errno), errno);
@@ -445,6 +445,7 @@ bail:
 			}
 			/* remove from the list */
 			tommy_list_remove_existing(&state->runner.history_list, &last->node);
+			task_free(last);
 		}
 	}
 
