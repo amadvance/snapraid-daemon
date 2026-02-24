@@ -1,6 +1,6 @@
 Name:           @PACKAGE@
 Summary:        A background service with a built-in Web UI that automates SnapRAID operations
-Version:        @PACKAGE_VERSION_UNDERSCORE@
+Version:        @PACKAGE_VERSION@
 Release:        1%{?dist}
 License:        GPL-3.0-or-later
 Group:          Applications/System

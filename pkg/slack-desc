@@ -1,11 +1,19 @@
-snapraid-daemon: snapraid-daemon (A background service with a built-in Web UI that automates SnapRAID operations)
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct.  It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+               |-----handy-ruler------------------------------------------------------|
+snapraid-daemon: snapraid-daemon (Background service with built-in Web UI)
 snapraid-daemon:
-snapraid-daemon: SnapRAID Daemon is a lightweight background service that transforms manual parity
-snapraid-daemon: tasks into an automated workflow. It integrates directly with SnapRAID to
-snapraid-daemon: coordinate sync and scrub operations via intelligent scheduling, ensuring your
-snapraid-daemon: protection stays current without manual command-line intervention.
-snapraid-daemon: 
-snapraid-daemon: The service features a built-in Web UI and a comprehensive REST API, providing
-snapraid-daemon: both visual oversight and programmatic control. While the dashboard offers
-snapraid-daemon: real-time status and health alerts, the API enables seamless integration into
-snapraid-daemon: external monitoring stacks for persistent and reliable data protection.
+snapraid-daemon: SnapRAID Daemon is a service that automates parity management.
+snapraid-daemon: It integrates with SnapRAID to coordinate sync and scrub tasks
+snapraid-daemon: via intelligent scheduling, ensuring data protection stays
+snapraid-daemon: current without manual command-line intervention.
+snapraid-daemon:
+snapraid-daemon: The service features a built-in Web UI and a REST API for both
+snapraid-daemon: visual oversight and programmatic control. The "Board" offers
+snapraid-daemon: real-time status and health alerts, allowing for seamless
+snapraid-daemon: integration into external monitoring stacks and home servers.

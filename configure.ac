@@ -248,9 +248,6 @@ fi
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
 
-PACKAGE_VERSION_UNDERSCORE=`echo "$PACKAGE_VERSION" | sed 's/-/_/g'`
-AC_SUBST([PACKAGE_VERSION_UNDERSCORE])
-
 AC_CONFIG_FILES([Makefile snapraidd.service rc.snapraidd])
 AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec])
 AC_CONFIG_FILES([makeslackware.sh], [chmod a+x makeslackware.sh])
