@@ -676,6 +676,7 @@ int temperature_cleanup(struct snapraid_device* device, time_t last_time)
 
 		if (entry->time_at < cutoff) {
 			tommy_list_remove_existing(&device->temp_list, &entry->node);
+			temperature_free(entry);
 			ret = 1;
 		}
 
