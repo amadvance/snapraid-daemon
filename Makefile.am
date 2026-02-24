@@ -155,6 +155,10 @@ EXTRA_DIST = \
 
 man1_MANS = doc/snapraidd.1
 
+# Allow leftover .conf 
+distuninstallcheck_listfiles = \
+	find . -type f -print | grep -v 'etc/snapraidd.conf'
+
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip
