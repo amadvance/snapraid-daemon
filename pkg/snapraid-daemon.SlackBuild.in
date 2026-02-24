@@ -70,6 +70,9 @@ make install DESTDIR=$PKG
 mkdir -p $PKG/etc
 cp -a snapraidd.conf.example $PKG/etc/snapraidd.conf
 
+mkdir -p $PKG/etc/rc.d
+cp -a rc.snapraidd $PKG/etc/rc.d
+
 find $PKG -print0 | xargs -0 file | grep -e "executable" -e "shared object" | grep ELF \
   | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
