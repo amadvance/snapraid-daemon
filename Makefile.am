@@ -240,6 +240,19 @@ if INSTALL_SYSTEMD
 	@echo "Cleaning up runtime files..."
 	rm -f /run/snapraidd.pid
 endif
+if INSTALL_BSD_INIT
+	@echo ""
+	@echo "=================================================================="
+	@if test -f "$(rcdir)/rc.snapraidd"; then \
+		echo " Stopping BSD-style service..."; \
+		"$(rcdir)/rc.snapraidd" stop 2>/dev/null || true; \
+	else \
+		echo " Service script not found at $(rcdir)/rc.snapraidd, skipping stop."; \
+	fi
+	@echo ""
+	@echo " Note: If you added snapraidd to /etc/rc.d/rc.local, please"
+	@echo " remove those lines manually to prevent boot errors."
+endif
 	@echo ""
 	@echo "=================================================================="
 	@echo " $(PACKAGE_NAME) has been uninstalled."
