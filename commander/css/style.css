@@ -2,12 +2,28 @@
 :root {
     /* Color Palette - Deep Dark Mode */
     /* https://htmlcolorcodes.com/color-chart/tailwind-color-chart/ */
-    --c-slate-950: #020617;
-    --c-slate-900: #0f172a;
-    --c-slate-800: #1e293b;
-    --c-slate-700: #334155;
-    --c-slate-400: #94a3b8;
-    --c-slate-200: #e2e8f0;
+    --c-slate-50: #F8FAFC;
+    --c-slate-100: #F1F5F9;
+    --c-slate-200: #E2E8F0;
+    --c-slate-300: #CAD5E2;
+    --c-slate-400: #90A1B9;
+    --c-slate-500: #62748E;
+    --c-slate-600: #45556C;
+    --c-slate-700: #314158;
+    --c-slate-800: #1D293D;
+    --c-slate-900: #0F172B;
+    --c-slate-950: #020618;
+
+    /* Interpolated */
+    --c-slate-905:  hsl(224 51% 11%);   /* #0d1428 */
+    --c-slate-910:  hsl(224 55% 10%);   /* #0c1226 */
+    --c-slate-915:  hsl(225 59% 10%);   /* #0b1024 */
+    --c-slate-920:  hsl(225 63%  9%);   /* #0a0e22 */
+    --c-slate-925:  hsl(226 66%  8%);   /* #090c1f */
+    --c-slate-930:  hsl(227 70%  7%);   /* #080b1c */
+    --c-slate-935:  hsl(227 74%  7%);   /* #070919 */
+    --c-slate-940:  hsl(228 78%  6%);   /* #060917 */
+    --c-slate-945:  hsl(228 81%  6%);   /* #050715 */
 
     --c-cyan-50: #ECFEFF;
     --c-cyan-100: #CEFAFE;
@@ -55,6 +71,18 @@
     --c-sky-800: #10598A;
     --c-sky-900: #024A70;
     --c-sky-950: #052F4A;
+
+    --c-stone-50: #FAFAF9;
+    --c-stone-100: #F5F5F4;
+    --c-stone-200: #E7E5E4;
+    --c-stone-300: #D6D3D1;
+    --c-stone-400: #A6A09B;
+    --c-stone-500: #79716B;
+    --c-stone-600: #57534D;
+    --c-stone-700: #44403B;
+    --c-stone-800: #292524;
+    --c-stone-900: #1C1917;
+    --c-stone-950: #0C0A09;
 
     /* Semantic */
     --bg-main: var(--c-slate-950);
