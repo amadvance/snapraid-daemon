@@ -200,8 +200,8 @@ if test "x$init_type" = "xbsd"; then
   esac
   AC_ARG_WITH([rcdir],
     [AS_HELP_STRING([--with-rcdir=DIR], [directory for BSD init scripts (default: PREFIX/etc/rc.d)])],
-    [RCDIR=$withval],
-    [RCDIR='$default_rcdir']
+    [RCDIR="$with_rcdir"],
+    [RCDIR="$default_rcdir"]
   )
   AC_SUBST([RCDIR])
 fi
