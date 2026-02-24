@@ -539,9 +539,11 @@ const app = {
     },
 
     triggerDiff: async () => {
-        await API.startDiff();
-        showToast('Diff Command Triggered', 'success');
-        setTimeout(app.loadDifferences, 500);
+        if (await showConfirm('Trigger a new differences check?', 'Differences')) {
+            await API.startDiff();
+            showToast('Diff Command Triggered', 'success');
+            setTimeout(app.loadDifferences, 500);
+        }
     },
 
     toggleHidePeriodic: (checked) => {
