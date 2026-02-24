@@ -78,9 +78,9 @@ void config_schedule_str(const struct snapraid_config* config, char* buf, size_t
 {
 	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
 	if (config->maintenance_run == RUN_DAILY) {
-		snprintf(buf, size, "daily %02d:%02d", config->maintenance_hour, config->maintenance_minute);
+		snprintf(buf, size, "%02d:%02d", config->maintenance_hour, config->maintenance_minute);
 	} else if (config->maintenance_run == RUN_WEEKLY && config->maintenance_day_of_week >= 0 && config->maintenance_day_of_week < 7) {
-		snprintf(buf, size, "weekly %s %02d:%02d", days[config->maintenance_day_of_week], config->maintenance_hour, config->maintenance_minute);
+		snprintf(buf, size, "%s %02d:%02d", days[config->maintenance_day_of_week], config->maintenance_hour, config->maintenance_minute);
 	} else {
 		buf[0] = '\0';
 	}
@@ -116,7 +116,7 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 	config->maintenance_minute = 0;
 	config->maintenance_day_of_week = -1;
 
-	if (sscanf(input, "daily %2d:%2d", &hour, &minute) == 2) {
+	if (sscanf(input, "%2d:%2d", &hour, &minute) == 2) {
 		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
 			return -1;
 		config->maintenance_run = RUN_DAILY;
@@ -125,7 +125,7 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 		return 0;
 	}
 
-	if (sscanf(input, "weekly %9s %2d:%2d", day_str, &hour, &minute) == 3) {
+	if (sscanf(input, "%9s %2d:%2d", day_str, &hour, &minute) == 3) {
 		int day_of_week = get_day_index(day_str);
 		if (day_of_week == -1)
 			return -1;

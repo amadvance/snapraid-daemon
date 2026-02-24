@@ -36,7 +36,7 @@ int config_parse_level(const char* input, int* out);
 
 /**
  * Parse maintenance_schedule string.
- * Format supported: "daily HH:MM" or "weekly <day> HH:MM"
+ * Format supported: "HH:MM" or "<day> HH:MM"
  * @param input Input string to parse
  * @param config Configuration to update with parsed values
  * @return 0 on success, -1 on error

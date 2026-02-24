@@ -324,7 +324,7 @@ Configuration
 	consists of a sync, followed by a scrub, and concluding with a report.
 	If this option is unset, automated maintenance is disabled.
 
-	The format must be either "daily HH:MM" or "weekly [Day] HH:MM".
+	The format must be either "HH:MM" or "[Day] HH:MM".
 	Hours are specified in a 24-hour format (00-23), and days are
 	represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 

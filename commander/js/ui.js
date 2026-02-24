@@ -891,7 +891,7 @@ export const renderSettings = (config) => {
             <div class="grid-2">
             <div class="card">
                 <h3 class="font-bold mb-4 text-cyan">Automation</h3>
-                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'e.g., daily 02:00')}
+                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'e.g., 02:00, Mon 03:00')}
                 <div class="form-row">
                     ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number')}
                     ${inputField('sync_threshold_updates', 'Updates Threshold', 'number')}

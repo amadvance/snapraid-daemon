@@ -1329,10 +1329,10 @@ components:
             manually editing the 'snapraidd.conf' file and reloading the daemon.
         maintenance_schedule:
           type: string
-          example: "daily 02:00"
+          example: "02:00"
           description: >
             Execution schedule for the automated 'sync' and 'scrub' sequence.
-            Accepted formats: "daily HH:MM" or "weekly <day> HH:MM". If empty,
+            Accepted formats: "HH:MM" or "<day> HH:MM". If empty,
             background maintenance is disabled.
         sync_threshold_deletes:
           type: integer

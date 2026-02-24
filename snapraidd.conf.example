@@ -151,14 +151,14 @@ net_web_root = commander.zip
 # Use maintenance_schedule to define when the automated maintenance
 # sequence—consisting of a sync, a scrub, and a report—should occur.
 # Automated maintenance is disabled if this is unset.
-# Format: "daily HH:MM" or "weekly <Day> HH:MM".
+# Format: "HH:MM" or "<Day> HH:MM".
 # Hours (HH) use 24-hour format (00-23).
 # Day is the short name (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 #
 # Examples:
-#   "daily 02:00"              - Run every night at 2 AM.
-#   "weekly Mon 03:00"         - Run every Monday morning at 3 AM.
-maintenance_schedule = daily 02:00
+#   "02:00"       - Run every night at 2 AM.
+#   "Mon 03:00"   - Run every Monday morning at 3 AM.
+maintenance_schedule = 02:00
 
 # Defines the maximum number of deleted or missing files allowed before
 # a 'sync' operation is aborted to prevent accidental parity loss.

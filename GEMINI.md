@@ -298,7 +298,7 @@ sudo journalctl -u snapraidd -f
 curl -X POST http://127.0.0.1:7627/snapraid/v1/maintenance
 
 # Via schedule (in snapraidd.conf)
-maintenance_schedule = daily 02:00
+maintenance_schedule = 02:00
 ```
 
 #### Monitoring Task Progress
