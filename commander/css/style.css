@@ -751,6 +751,12 @@ body {
     line-height: 1.6;
 }
 
+.health-banner.pending {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    border-left: 4px solid var(--c-sky-500);
+}
+
 .health-banner.prefail {
     background: rgba(245, 158, 11, 0.1);
     border: 1px solid rgba(245, 158, 11, 0.3);
@@ -778,6 +784,10 @@ body {
     align-items: center;
     gap: 0.5rem;
     text-transform: uppercase;
+}
+
+.health-banner.pending .health-banner-title {
+    color: var(--c-sky-500);
 }
 
 .health-banner.prefail .health-banner-title {

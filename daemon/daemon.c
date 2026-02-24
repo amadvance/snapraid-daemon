@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
 	 */
 	if (runner(state, 0, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the first probe command");
-		exit(EXIT_FAILURE);
+		/* continue anyway to provide an interface */
 	}
 
 	/*
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 	if (state->global.content[0] == 0) {
 		if (runner(state, 0, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
 			log_msg(LVL_ERROR, "failed to run the first status command");
-			exit(EXIT_FAILURE);
+			/* continue anyway to provide an interface */
 		}
 	}
 

@@ -384,14 +384,14 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Bad</div>
                     <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">
-                        ${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}
+                        ${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : healthBadge('pending')}
                         ${arrayInfo.blocks_bad > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_bad * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Unsynced</div>
                     <div class="property-value ${arrayInfo.blocks_unsynced > 0 ? 'text-yellow' : 'text-emerald'}">
-                        ${arrayInfo.blocks_unsynced != null ? arrayInfo.blocks_unsynced : '?'}
+                        ${arrayInfo.blocks_unsynced != null ? arrayInfo.blocks_unsynced : healthBadge('pending')}
                         ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
@@ -404,12 +404,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.blocks_count != null ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) : '?'}%
+                        ${arrayInfo.blocks_count && arrayInfo.blocks_unscrubbed ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) + '%' : healthBadge('pending')}
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Total Files</div>
-                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count.toLocaleString() : '?'}</div>
+                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count.toLocaleString() : healthBadge('pending')}</div>
                 </div>
             </div>
         </div>
@@ -429,15 +429,15 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                  </div>
                  <div class="property-row">
                     <div class="property-label">Engine</div>
-                    <div class="property-value">${arrayInfo.engine_version}</div>
+                    <div class="property-value">${arrayInfo.engine_version ? arrayInfo.engine_version : healthBadge('pending')}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Config</div>
-                    <div class="property-value font-mono text-xs">${arrayInfo.engine_conf}</div>
+                    <div class="property-value font-mono text-xs">${arrayInfo.engine_conf ? arrayInfo.engine_conf : healthBadge('pending')}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Content</div>
-                    <div class="property-value font-mono text-xs">${arrayInfo.engine_content}</div>
+                    <div class="property-value font-mono text-xs">${arrayInfo.engine_content ? arrayInfo.engine_content : healthBadge('pending')}</div>
                  </div>
             </div>
         </div>
@@ -523,7 +523,7 @@ export const renderDifferences = (arrayInfo) => {
                 <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
                         <div class="property-label">Equal</div>
-                        <div class="property-value">${arrayInfo.diff_equal != null ? arrayInfo.diff_equal : '?'}</div>
+                        <div class="property-value">${arrayInfo.diff_equal != null ? arrayInfo.diff_equal : healthBadge('pending')}</div>
                     </div>
                     ${arrayInfo.diff_restored > 0 ? `
                     <div class="property-row">
@@ -996,7 +996,7 @@ export const renderRecovery = (arrayInfo) => {
                     <div class="property-list mt-0 pt-0 border-t-0 mb-6">
                         <div class="property-row">
                             <div class="property-label">Bad</div>
-                            <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : '?'}</div>
+                            <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : healthBadge('pending')}</div>
                         </div>
                     </div>
                     
@@ -1061,6 +1061,8 @@ export const renderHealthBanner = (state) => {
         title = 'CRITICAL: ARRAY FAILING';
     else if (state.health === 'corrupt')
         title = 'WARNING: ARRAY CORRUPTED';
+    else if (state.health === 'pending')
+        title = 'Array state pending';
     else
         return '';
 

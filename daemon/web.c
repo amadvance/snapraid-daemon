@@ -517,6 +517,7 @@ int web_init(struct snapraid_state* state)
 			return -1;
 		mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
 	} else {
+		log_msg(LVL_INFO, "serving web root %s", state->config.net_web_root);
 		mg_set_request_handler(state->rest_context, "**", handler_real_file, state);
 	}
 

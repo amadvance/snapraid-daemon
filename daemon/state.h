@@ -137,7 +137,7 @@ struct smart_attr {
 	int flags; /**< SMART_ATTR_* flags */
 };
 
-#define HEALTH_REASON_MAX 128
+#define HEALTH_REASON_MAX 256
 
 /**
  * Device info entry.

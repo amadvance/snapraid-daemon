@@ -31,6 +31,7 @@ struct snapraid_state* state_init(void)
 
 	thread_mutex_init(&state->lock);
 	state->daemon_running = DAEMON_STARTING;
+	state->global.health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
 	return state;
 }
@@ -40,7 +41,7 @@ void state_done(struct snapraid_state* state)
 	assert(state == &STATE);
 
 	tommy_list_foreach(&state->runner.waiting_list, task_free);
-	if (state->runner.latest->running) /* if running it isn't in the lists */
+	if (state->runner.latest && state->runner.latest->running) /* if running it isn't in the lists */
 		task_free(state->runner.latest);
 	tommy_list_foreach(&state->runner.history_list, task_free);
 	tommy_list_foreach(&state->global.diff_parse.file_list, file_free);

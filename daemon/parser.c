@@ -191,6 +191,7 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	device->flags = SMART_UNASSIGNED;
 	device->power = POWER_PENDING;
 	device->health = HEALTH_PENDING;
+	sncpy(device->health_reason, sizeof(device->health_reason), "SMART telemetry not yet obtained because the device is in stand-by");
 	device->split_index = split_index;
 	sncpy(device->file, sizeof(device->file), file);
 	tommy_list_insert_tail(list, &device->node, device);

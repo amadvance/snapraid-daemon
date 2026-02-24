@@ -442,7 +442,7 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (state->global.health == HEALTH_CORRUPT || state->global.health == HEALTH_PREFAIL || state->global.health == HEALTH_FAILING)
+	if (state->global.health != HEALTH_PASSED)
 		ss_json_str(&s, level, "health_reason", state->global.health_reason);
 	ss_json_close(&s, &level);
 
@@ -1693,18 +1693,20 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (*global->version) {
+	if (*global->version) { /* engine was run */
 		ss_json_str(&s, level, "engine_version", global->version);
 		ss_json_str(&s, level, "engine_conf", global->conf_engine);
 		if (*global->content)
 			ss_json_str(&s, level, "engine_content", global->content);
+	}
+	if (global->last_time)
+		ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
+	if (*global->last_cmd)
+		ss_json_str(&s, level, "last_command", global->last_cmd);
+	if (global->blocksize) { /* engine was run and it has a configuration file */
 		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
 		ss_json_int(&s, level, "data_disks_count", tommy_list_count(&state->data_list));
 		ss_json_int(&s, level, "parity_disks_count", tommy_list_count(&state->parity_list));
-		if (global->last_time)
-			ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
-		if (*global->last_cmd)
-			ss_json_str(&s, level, "last_command", global->last_cmd);
 		if (total_space_bytes != 0)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
 		if (free_space_bytes != 0)
@@ -1761,8 +1763,6 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		}
 		ss_json_array_close(&s, &level);
 		json_scrub_list(&s, level, &state->global.bucket_list, state->global.last_time);
-	} else {
-		ss_json_str(&s, level, "health", health_name(HEALTH_PENDING));
 	}
 	ss_json_close(&s, &level);
 
