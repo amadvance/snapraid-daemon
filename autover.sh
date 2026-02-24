@@ -1,14 +1,14 @@
 #!/bin/sh
 #
 
-if [ -d .git ]; then
-    # Get version from git tags, removing the 'v' prefix
-    VERSION=$(git describe --tags --match 'v*' 2>/dev/null | sed 's/^v//')
-fi
-
-if [ -f .version ] && [ -z "$VERSION" ]; then
+if [ -f .version ]; then
     # Get version from the .version file
     VERSION=$(cat .version)
+fi
+
+if [ -z "$VERSION" ] && [ -d .git ]; then
+    # Get version from git tags, removing the 'v' prefix
+    VERSION=$(git describe --match 'v*' 2>/dev/null | sed 's/^v//')
 fi
 
 if [ -z "$VERSION" ] && [ -d .git ]; then
