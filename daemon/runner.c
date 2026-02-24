@@ -436,11 +436,11 @@ bail:
 		/* if lastest was PROBE, and completed without change, remove it */
 		if (last->cmd == CMD_PROBE
 			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
-			log_msg_locked(LVL_INFO, "task %d removed probe for no change", last->number);
+			log_msg(LVL_INFO, "task %d removed probe for no change", last->number);
 			/* delete its log file */
 			if (last->log_file[0]) {
 				if (remove(last->log_file) != 0) {
-					log_msg_locked(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", last->log_file, strerror(errno), errno);
+					log_msg(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", last->log_file, strerror(errno), errno);
 				}
 			}
 			/* remove from the list */
@@ -643,7 +643,7 @@ static void* runner_thread(void* arg)
 		if (!state->daemon_running)
 			break;
 
-		thread_cond_wait(&state->runner.cond, &state->lock);
+		thread_cond_wait(&state->runner.cond, &state->state_lock);
 	}
 
 	state_unlock();
@@ -701,7 +701,7 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 {
 	const char* snapraid = find_snapraid();
 	if (!snapraid) {
-		log_msg_locked(LVL_ERROR, "snapraid executable not found");
+		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		*status = 500;
 		return -1;

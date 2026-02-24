@@ -63,28 +63,28 @@ void config_schedule_str(const struct snapraid_config* config, char* buf, size_t
  * @param config Configuration to initialize
  * @param argv0 Program name for defaults
  */
-void config_init(struct snapraid_config* config, const char* argv0);
+void config_init(struct snapraid_state* state, const char* argv0);
 
 /**
  * Load configuration from file.
  * @param state Current snapraid state
  * @return 0 on success, -1 on error
  */
-int config_load(struct snapraid_state* state);
+int config_load_locked(struct snapraid_state* state);
 
 /**
  * Reload configuration from file.
  * @param state Current snapraid state
  * @return 0 on success, -1 on error
  */
-int config_reload(struct snapraid_state* state);
+int config_reload_locked(struct snapraid_state* state);
 
 /**
  * Save configuration to file.
  * @param config Configuration to save
  * @return 0 on success, -1 on error
  */
-int config_save(struct snapraid_config* config);
+int config_save_locked(struct snapraid_config* config);
 
 /**
  * Set string configuration value.

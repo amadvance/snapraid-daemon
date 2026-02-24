@@ -181,7 +181,7 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 		task->state = PROCESS_STATE_CANCEL;
 		task->unix_start_time = now;
 		task->unix_end_time = now;
-		log_msg_locked(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
+		log_msg(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
 
 		/* insert in the history */
 		tommy_list_insert_tail(history_list, &task->node, task);

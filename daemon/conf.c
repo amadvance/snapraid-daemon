@@ -155,7 +155,7 @@ int config_parse_level(const char* input, int* out)
 	return -1;
 }
 
-int config_load(struct snapraid_state* state)
+int config_load_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 	char buffer[CONFIG_LINE_MAX];
@@ -275,13 +275,18 @@ int config_load(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
-				config->notify_syslog_enabled = atoi(val);
-				if (parse_int(val, 0, 1, &config->notify_syslog_enabled) == 0) {
+				int syslog;
+				if (parse_int(val, 0, 1, &syslog) == 0) {
+					log_lock();
+					state->log.syslog = syslog;
+					log_unlock();
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_level") == 0) {
-				if (config_parse_level(val, &config->notify_syslog_level) == 0) {
+				int level;
+				if (config_parse_level(val, &level) == 0) {
+					state->log.syslog_level = level;
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -324,7 +329,7 @@ int config_load(struct snapraid_state* state)
 	return 0;
 }
 
-int config_reload(struct snapraid_state* state)
+int config_reload_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 	int net_enabled;
@@ -335,7 +340,7 @@ int config_reload(struct snapraid_state* state)
 	sncpy(net_port, sizeof(net_port), config->net_port);
 	sncpy(net_acl, sizeof(net_acl), config->net_acl);
 
-	if (config_load(state) != 0)
+	if (config_load_locked(state) != 0)
 		return -1;
 
 	/* restart web server */
@@ -450,14 +455,14 @@ void config_set_double(struct snapraid_config* config, const char* key, double v
 	}
 }
 
-int config_save(struct snapraid_config* config)
+int config_save_locked(struct snapraid_config* config)
 {
 	tommy_node* i;
 	struct snapraid_config_line* line;
 
 	FILE *fp = fopen(config->conf, "wte");
 	if (!fp) {
-		log_msg_locked(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
 
@@ -465,7 +470,7 @@ int config_save(struct snapraid_config* config)
 	while (i) {
 		line = i->data;
 		if (fputs(line->text, fp) == EOF) {
-			log_msg_locked(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 			fclose(fp);
 			return -1;
 		}
@@ -479,17 +484,18 @@ int config_save(struct snapraid_config* config)
 	}
 
 	if (fclose(fp) != 0) {
-		log_msg_locked(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
 
-	log_msg_locked(LVL_INFO, "config saved successfully");
+	log_msg(LVL_INFO, "config saved successfully");
 
 	return 0;
 }
 
-void config_init(struct snapraid_config* config, const char* argv0)
+void config_init(struct snapraid_state* state, const char* argv0)
 {
+	struct snapraid_config* config = &state->config;
 	(void)argv0;
 
 	memset(config, 0, sizeof(*config));
@@ -519,8 +525,10 @@ void config_init(struct snapraid_config* config, const char* argv0)
 	config->script_post_run[0] = 0;
 	sncpy(config->log_directory, sizeof(config->log_directory), "/var/log/snapraid");
 	config->log_retention_days = 0;
-	config->notify_syslog_enabled = 0;
-	config->notify_syslog_level = LVL_ERROR;
+	log_lock();
+	state->log.syslog = 0;
+	state->log.syslog_level = LVL_ERROR;
+	log_unlock();
 	config->notify_run_as_user[0] = 0;
 	config->notify_heartbeat[0] = 0;
 	config->notify_result[0] = 0;

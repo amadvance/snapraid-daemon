@@ -72,7 +72,7 @@ static void run(struct snapraid_state* state)
 
 			state_lock();
 
-			if (config_reload(state) != 0) {
+			if (config_reload_locked(state) != 0) {
 				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
 			}
 
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 
 	struct snapraid_state* state = state_init();
 
-	config_init(&state->config, argv[0]);
+	config_init(state, argv[0]);
 
 	while ((c =
 #if HAVE_GETOPT_LONG
@@ -145,19 +145,19 @@ int main(int argc, char *argv[])
 		!= EOF) {
 		switch (c) {
 		case 'f' :
-			state->foreground = 1;
+			state->log.foreground = 1;
 			break;
 		case 'c' :
 			sncpy(state->config.conf, sizeof(state->config.conf), optarg);
 			break;
 		case 'N' :
-			state->page_nocache = 1;
+			state->web.page_nocache = 1;
 			break;
 		case 'p' :
 			arg_pidfile = optarg;
 			break;
 		case 'v' :
-			state->verbose = 1;
+			state->log.verbose = 1;
 			break;
 		case 'h' :
 			usage(state->config.conf);
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 	}
 
 	int pidfd = -1;
-	if (!state->foreground) {
+	if (!state->log.foreground) {
 		pidfd = daemon_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
 		if (pidfd == -1)
 			exit(EXIT_FAILURE);
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	log_msg(LVL_INFO, "version=%s", VERSION);
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
 
-	if (config_load(state) != 0) {
+	if (config_load_locked(state) != 0) {
 		log_msg(LVL_ERROR, "failed to load config from %s", state->config.conf);
 		exit(EXIT_FAILURE);
 	}

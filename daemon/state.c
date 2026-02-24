@@ -29,7 +29,9 @@ struct snapraid_state* state_init(void)
 	memset(&STATE, 0, sizeof(STATE));
 	struct snapraid_state* state = &STATE;
 
-	thread_mutex_init(&state->lock);
+	thread_mutex_init(&state->state_lock);
+	thread_mutex_init(&state->log_lock);
+	thread_rwlock_init(&state->web_lock);
 	state->daemon_running = DAEMON_STARTING;
 	state->global.health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
@@ -52,9 +54,11 @@ void state_done(struct snapraid_state* state)
 	tommy_list_foreach(&state->global.bucket_list, bucket_free);
 	tommy_list_foreach(&state->data_list, disk_free);
 	tommy_list_foreach(&state->parity_list, disk_free);
-	tommy_list_foreach(&state->page_list, page_free);
+	tommy_list_foreach(&state->web.page_list, page_free);
 	tommy_list_foreach(&state->config.line_list, config_line_free);
-	thread_mutex_destroy(&state->lock);
+	thread_mutex_destroy(&state->state_lock);
+	thread_mutex_destroy(&state->log_lock);
+	thread_rwlock_destroy(&state->web_lock);
 
 	memset(&STATE, 0, sizeof(STATE)); /* clear to have leaks reported */
 }
@@ -66,26 +70,36 @@ struct snapraid_state* state_ptr(void)
 
 void state_lock(void)
 {
-	thread_mutex_lock(&STATE.lock);
+	thread_mutex_lock(&STATE.state_lock);
 }
 
 void state_unlock(void)
 {
-	thread_mutex_unlock(&STATE.lock);
+	thread_mutex_unlock(&STATE.state_lock);
 }
 
-void page_rdlock(void)
+void log_lock(void)
 {
-	thread_rwlock_rdlock(&STATE.page_lock);
+	thread_mutex_lock(&STATE.log_lock);
 }
 
-void page_wrlock(void)
+void log_unlock(void)
 {
-	thread_rwlock_wrlock(&STATE.page_lock);
+	thread_mutex_unlock(&STATE.log_lock);
 }
 
-void page_unlock(void)
+void web_rdlock(void)
 {
-	thread_rwlock_unlock(&STATE.page_lock);
+	thread_rwlock_rdlock(&STATE.web_lock);
+}
+
+void web_wrlock(void)
+{
+	thread_rwlock_wrlock(&STATE.web_lock);
+}
+
+void web_unlock(void)
+{
+	thread_rwlock_unlock(&STATE.web_lock);
 }
 

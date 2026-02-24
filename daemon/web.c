@@ -405,40 +405,40 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 		target_uri = "/index.html";
 	}
 
-	page_rdlock();
+	web_rdlock();
 
-	time_t page_time = state->page_time;
+	time_t page_time = state->web.page_time;
 
-	tommy_node* i = tommy_list_head(&state->page_list);
+	tommy_node* i = tommy_list_head(&state->web.page_list);
 	while (i) {
 		struct snapraid_page* page = i->data;
 
 		if (strcmp(target_uri, page->path) == 0) {
 			if (strcmp(ri->request_method, "OPTIONS") == 0) {
-				page_unlock();
+				web_unlock();
 				return send_no_content(conn);
 			}
 
 			if (strcmp(ri->request_method, "GET") != 0) {
-				page_unlock();
+				web_unlock();
 				return send_error(conn, 405);
 			}
 
 			/* check if browser already has the latest version */
 			if (is_not_modified(conn, page_time)) {
-				page_unlock();
+				web_unlock();
 				return send_error(conn, 304);
 			}
 
 			int status = send_file(conn, page_time, page->content, page->size, page->mime_type);
-			page_unlock();
+			web_unlock();
 			return status;
 		}
 
 		i = i->next;
 	}
 
-	page_unlock();
+	web_unlock();
 
 	return 0;
 }
@@ -512,7 +512,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 
 int web_init(struct snapraid_state* state)
 {
-	if (!state->page_nocache) {
+	if (!state->web.page_nocache) {
 		if (web_reload(state, state->config.net_web_root) != 0)
 			return -1;
 		mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
@@ -531,14 +531,14 @@ void web_done(struct snapraid_state* state)
 
 int web_reload(struct snapraid_state* state, const char* root)
 {
-	page_wrlock();
+	web_wrlock();
 
 	/* cleaup all pages */
-	tommy_list_foreach(&state->page_list, page_free);
-	tommy_list_init(&state->page_list);
+	tommy_list_foreach(&state->web.page_list, page_free);
+	tommy_list_init(&state->web.page_list);
 
 	if (root[0] == 0) {
-		page_unlock();
+		web_unlock();
 		return 0;
 	}
 
@@ -562,9 +562,9 @@ int web_reload(struct snapraid_state* state, const char* root)
 			sncpy(zip, sizeof(zip), root);
 		}
 
-		state->page_time = time(0);
+		state->web.page_time = time(0);
 		log_msg(LVL_INFO, "crawling zip %s", zip);
-		crawl_zip(&state->page_list, zip);
+		crawl_zip(&state->web.page_list, zip);
 	} else {
 		if (root[0] != '/') {
 			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
@@ -581,17 +581,17 @@ int web_reload(struct snapraid_state* state, const char* root)
 			goto bail;
 		}
 
-		state->page_time = time(0);
+		state->web.page_time = time(0);
 		log_msg(LVL_INFO, "crawling directory %s", root);
-		crawl_directory(&state->page_list, len, root);
+		crawl_directory(&state->web.page_list, len, root);
 	}
 
-	page_unlock();
+	web_unlock();
 
 	return 0;
 
 bail:
-	page_unlock();
+	web_unlock();
 	return -1;
 }
 

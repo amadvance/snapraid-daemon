@@ -678,8 +678,13 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_enabled")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.notify_syslog_enabled) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_syslog_enabled);
+				int syslog;
+				if (json_boolean(js, &jv[j], &syslog) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), syslog);
+
+					log_lock();
+					state->log.syslog = syslog;
+					log_unlock();
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -687,9 +692,14 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_level")) == 0) {
 				++j;
+				int level;
 				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_level(buf, &state->config.notify_syslog_level) == 0) {
+					&& config_parse_level(buf, &level) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
+
+					log_lock();
+					state->log.syslog_level = level;
+					log_unlock();
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -764,7 +774,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	(void)config_save(&state->config); /* error logged inside */
+	(void)config_save_locked(&state->config); /* error logged inside */
 
 	state_unlock();
 
@@ -772,7 +782,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	return send_json_success(conn, 200);
 
 bad:
-	(void)config_save(&state->config); /* error logged inside */
+	(void)config_save_locked(&state->config); /* error logged inside */
 
 	state_unlock();
 
@@ -780,7 +790,7 @@ bad:
 	return send_json_error(conn, 400, msg);
 
 forbidden:
-	(void)config_save(&state->config); /* error logged inside */
+	(void)config_save_locked(&state->config); /* error logged inside */
 
 	state_unlock();
 
@@ -826,8 +836,10 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_str(&s, level, "log_directory", config->log_directory);
 	ss_json_int(&s, level, "log_retention_days", config->log_retention_days);
 
-	ss_json_bool(&s, level, "notify_syslog_enabled", config->notify_syslog_enabled);
-	ss_json_str(&s, level, "notify_syslog_level", config_level_str(config->notify_syslog_level));
+	log_lock();
+	ss_json_bool(&s, level, "notify_syslog_enabled", state->log.syslog);
+	ss_json_str(&s, level, "notify_syslog_level", config_level_str(state->log.syslog_level));
+	log_unlock();
 
 	ss_json_str(&s, level, "notify_run_as_user", config->notify_run_as_user);
 	ss_json_str(&s, level, "notify_heartbeat", config->notify_heartbeat);

@@ -455,8 +455,6 @@ struct snapraid_config {
 	char script_post_run[CONFIG_MAX];
 	char log_directory[CONFIG_MAX];
 	int log_retention_days;
-	int notify_syslog_enabled;
-	int notify_syslog_level;
 	char notify_run_as_user[CONFIG_MAX];
 	char notify_heartbeat[CONFIG_MAX];
 	char notify_result[CONFIG_MAX];
@@ -489,13 +487,26 @@ struct snapraid_system {
 #define DAEMON_RUNNING 2
 #define DAEMON_RELOAD 3
 
+struct snapraid_log {
+	int foreground; /**< Daemon running in foreground */
+	int verbose; /**< Verbose output */
+	int syslog;
+	int syslog_level;
+};
+
+struct snapraid_web {
+	int page_nocache; /**< If pages are not cached but read at runtime */
+	tommy_list page_list; /**< List of web pages */
+	time_t page_time; /**< Time of the pages loaded from disk */
+};
+
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
-	thread_mutex_t lock; /**< Main lock for accessing the state */
+
+	/**< Data protected by the state lock */
+	thread_mutex_t state_lock; /**< Protection for the following data */
 	struct snapraid_pulse pulse; /**< Pulse counters. */
-	int foreground; /**< Daemon running in foreground */
-	int verbose; /**< Verbose output */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks;
 	struct snapraid_runner runner;
@@ -505,10 +516,14 @@ struct snapraid_state {
 	struct snapraid_system system;
 	tommy_list data_list;
 	tommy_list parity_list;
-	int page_nocache; /**< If pages are not cached but read at runtime */
-	thread_rwlock_t page_lock;
-	tommy_list page_list; /**< List of web pages */
-	time_t page_time; /**< Time of the pages loaded from disk */
+
+	/**< Data protected by the web lock */
+	thread_rwlock_t web_lock; /**< Protection for the following data */
+	struct snapraid_web web;
+
+	/**< Data protected by the log lock */
+	thread_mutex_t log_lock; /**< Protection for the following data */
+	struct snapraid_log log;
 };
 
 /****************************************************************************/
@@ -541,22 +556,35 @@ void state_lock(void);
 void state_unlock(void);
 
 /****************************************************************************/
+/* log */
+
+/**
+ * Acquire lock for accessing the log.
+ */
+void log_lock(void);
+
+/**
+ * Release lock for accessing the log.
+ */
+void log_unlock(void);
+
+/****************************************************************************/
 /* page */
 
 /**
  * Acquire lock for accessing the web.
  */
-void page_rdlock(void);
+void web_rdlock(void);
 
 /**
  * Acquire lock for accessing the web.
  */
-void page_wrlock(void);
+void web_wrlock(void);
 
 /**
  * Release lock for accessing the web.
  */
-void page_unlock(void);
+void web_unlock(void);
 
 #endif
 

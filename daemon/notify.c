@@ -197,7 +197,7 @@ static void result_locked(struct snapraid_state* state, int high_cmd, int report
 	ss_init(&ss, strlen(report_text) + 128);
 
 	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
-		log_msg_locked(LVL_ERROR, "command string overflow, notification not sent");
+		log_msg(LVL_ERROR, "command string overflow, notification not sent");
 		goto bail;
 	}
 

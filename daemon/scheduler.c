@@ -302,7 +302,7 @@ void* scheduler_thread(void* arg)
 			}
 		}
 
-		thread_cond_wait(&state->scheduler.cond, &state->lock);
+		thread_cond_wait(&state->scheduler.cond, &state->state_lock);
 	}
 
 	state_unlock();
