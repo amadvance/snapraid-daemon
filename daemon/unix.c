@@ -820,10 +820,10 @@ static int daemon_pidfile(char* pidfile_path, size_t pidfile_size, const char* p
 	} else {
 		if (geteuid() == 0) {
 			/* standard for root-level daemons */
-			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", PACKAGE_NAME);
+			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON);
 		} else {
 			/* standard for user-level processes */
-			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", PACKAGE_NAME);
+			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON);
 		}
 	}
 
@@ -847,7 +847,7 @@ static int daemon_pidfile(char* pidfile_path, size_t pidfile_size, const char* p
 
 	if (fcntl(fd, F_SETLK, &fl) == -1) {
 		if (errno == EACCES || errno == EAGAIN) {
-			fprintf(stderr, "%s is already running.\n", PACKAGE_NAME);
+			fprintf(stderr, "%s is already running.\n", DAEMON);
 		} else {
 			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
 		}

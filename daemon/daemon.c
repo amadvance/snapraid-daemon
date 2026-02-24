@@ -39,7 +39,7 @@ static void usage(const char* conf)
 {
 	version();
 
-	printf("Usage: " PACKAGE " [options]\n");
+	printf("Usage: " DAEMON " [options]\n");
 	printf("\n");
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
-	log_init(PACKAGE);
+	log_init(DAEMON);
 	log_msg(LVL_INFO, "daemon starting");
 	log_msg(LVL_INFO, "version=%s", VERSION);
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());

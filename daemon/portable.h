@@ -269,5 +269,7 @@ static inline int close_range_impl(unsigned int first, unsigned int last, unsign
 #define HAVE_CLOSE_RANGE 1
 #endif
 
+#define DAEMON "snapraidd"
+
 #endif
 

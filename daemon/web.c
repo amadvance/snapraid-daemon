@@ -26,7 +26,7 @@
 
 void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers, const char* net_allowed_origin)
 {
-	ss_printf(s, "Server: %s/%s\r\n", PACKAGE_NAME, PACKAGE_VERSION);
+	ss_printf(s, "Server: %s/%s\r\n", DAEMON, PACKAGE_VERSION);
 
 	char date_buf[64];
 	struct tm tm_gmt;
@@ -552,11 +552,11 @@ int web_reload(struct snapraid_state* state, const char* root)
 		if (strchr(root, '/') == 0) {
 			/* if it's just the file name, search it in DATADIR (note that PACKAGE is snapraid-daemon) */
 #ifdef DATADIR
-			snprintf(zip, sizeof(zip), DATADIR "/snapraidd/%s", root);
+			snprintf(zip, sizeof(zip), DATADIR "/" DAEMON "/%s", root);
 			if (access(zip, F_OK) != 0)
 #endif
 			/* otherwise use  /usr/share/snapraidd */
-			snprintf(zip, sizeof(zip), "/usr/share/snapraidd/%s", root);
+			snprintf(zip, sizeof(zip), "/usr/share/" DAEMON "/%s", root);
 		} else {
 			sncpy(zip, sizeof(zip), root);
 		}
