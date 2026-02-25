@@ -588,10 +588,12 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 
 	if (state->global.version[0] == 0 || find_snapraid() == 0) { /* never run or uninstalled */
 		health = HEALTH_PENDING;
-		snprintf(reason, reason_size, "The snapraid binary was not found in the system PATH. Please install SnapRAID and restart the daemon.");
+		if (reason)
+			snprintf(reason, reason_size, "The snapraid binary was not found in the system PATH. Please install SnapRAID and restart the daemon.");
 	} else if (tommy_list_empty(&state->data_list) || tommy_list_empty(&state->parity_list)) {
 		health = HEALTH_PENDING;
-		snprintf(reason, reason_size, "The array is not configured. The /etc/snapraid.conf is missing or empty. Copy the snapraid.conf.example to /etc/snapraid.conf and define your disks to begin.");
+		if (reason)
+			snprintf(reason, reason_size, "The array is not configured. The /etc/snapraid.conf is missing or empty. Copy the snapraid.conf.example to /etc/snapraid.conf and define your disks to begin.");
 	}
 
 	if (state->global.block_bad != 0) {

@@ -514,13 +514,14 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			device->power = power;
 		}
 	} else if (strcmp(tag, "flags") == 0) {
-		/* update the time, but do not pulse on this */
-		device->smart_time = state->global.last_time;
-
-		int health = HEALTH_PENDING;
-		char health_reason[HEALTH_REASON_MAX];
 		uint64_t flags;
 		if (stru64(&flags, val) == 0) {
+			int health = HEALTH_PENDING;
+			char health_reason[HEALTH_REASON_MAX];
+
+			/* update the time, but do not pulse on this */
+			device->smart_time = state->global.last_time;
+
 			if (flags & SMARTCTL_FLAG_FAIL) {
 				snprintf(health_reason, sizeof(health_reason), "SMART reports a FAILING condition for disk %s", disk);
 				health = HEALTH_FAILING;
@@ -531,12 +532,13 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				health_reason[0] = 0;
 				health = HEALTH_PASSED;
 			}
-		}
-		if (device->health != health || device->flags != flags) {
-			pulse(state, PULSE_DISKS);
-			device->health = health;
-			sncpy(device->health_reason, sizeof(health_reason), health_reason);
-			device->flags = flags;
+
+			if (device->health != health || device->flags != flags) {
+				pulse(state, PULSE_DISKS);
+				device->health = health;
+				sncpy(device->health_reason, sizeof(device->health_reason), health_reason);
+				device->flags = flags;
+			}
 		}
 	} else {
 		if (mac < 13)
