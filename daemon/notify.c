@@ -263,13 +263,15 @@ void notify_locked(struct snapraid_state* state, int high_cmd, int report_level,
 	if (!high_cmd)
 		high_cmd = CMD_REPORT;
 
+	/* result is notified on ALL reports */
 	if (state->config.notify_result[0] != 0
 		&& report_level <= state->config.notify_result_level)
 		result_locked(state, high_cmd, report_level, report_text);
 
+	/* heartbeat is notified only on MAINTENANCE reports */
 	if (state->config.notify_heartbeat[0] != 0
 		&& high_cmd == CMD_MAINTENANCE
-		&& report_level == LVL_INFO)
+		&& report_level >= LVL_INFO)
 		heartbeat_locked(state);
 }
 
