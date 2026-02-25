@@ -548,13 +548,13 @@ static void print_device_wide(struct snapraid_device* device, ss_t* ss, struct d
 	ss_prints(ss, "   Interface: ");
 	ss_printl(ss, device->interf[0] ? device->interf : "-", sp->interf_len);
 	ss_prints(ss, "\n");
-	if (device->error_medium != SMART_UNASSIGNED && device->error_medium != 0) {
+	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium);
+		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
 	}
-	if (device->error_protocol != SMART_UNASSIGNED && device->error_protocol != 0) {
+	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol);
+		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_wide(device->flags);
@@ -580,11 +580,11 @@ static void print_device_narrow(struct snapraid_device* device, ss_t* ss, int ha
 
 	ss_printf(ss, " %s\n", device->serial[0] ? device->serial : "-");
 
-	if (device->error_medium != SMART_UNASSIGNED && device->error_medium != 0) {
-		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium);
+	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
+		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
 	}
-	if (device->error_protocol != SMART_UNASSIGNED && device->error_protocol != 0) {
-		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol);
+	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
+		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_narrow(device->flags);

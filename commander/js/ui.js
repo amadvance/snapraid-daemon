@@ -1,5 +1,5 @@
 
-import { formatBytes, formatTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, Icons } from './utils.js';
+import { formatBytes, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
@@ -287,7 +287,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="flex justify-between mb-4">
                     <div>
                         <h3 class="text-xl font-bold text-cyan">ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
-                        <div class="text-sm text-muted">Started: ${formatTime(activity.started_at, pulseAt)}</div>
+                        <div class="text-sm text-muted">Started: ${formatFullTime(activity.started_at, pulseAt)}</div>
                     </div>
                     <div>${statusBadge(activity)}</div>
                 </div>
@@ -332,7 +332,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                         <span class="flex gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
                         <span class="flex flex-wrap gap-4">
                             <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
-                            <span class="text-muted">Ended: ${formatTime(last.finished_at, pulseAt)}</span>
+                            <span class="text-muted">Ended: ${formatFullTime(last.finished_at, pulseAt)}</span>
                         </span>
                     </div>
                 ` : '<p class="text-muted">No history available.</p>'}
@@ -398,7 +398,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Failure Probability</div>
                     <div class="property-value text-cyan">${arrayInfo.failure_probability
-            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">(for one year)</span>`
+            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">per year</span>`
             : healthBadge('pending')}</div>
                 </div>
                 <div class="property-row">
@@ -451,13 +451,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Oldest</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0} <span class="text-sm">days ago</span>
+                        ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0}<span class="text-xs text-muted ml-2">days ago</span>
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Median</div>
                     <div class="property-value text-cyan">
-                        ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0} <span class="text-sm">days ago</span>
+                        ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0}<span class="text-xs text-muted ml-2">days ago</span>
                     </div>
                 </div>
             </div>
@@ -518,7 +518,7 @@ export const renderDifferences = (arrayInfo) => {
                     <div class="text-sm text-muted mt-2 italic">
                         The changes since the last sync. They will be cleared once the next maintenance cycle completes.
                     </div>
-                    <div class="text-sm text-muted mt-1">Last updated: ${formatRelativeTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
+                    <div class="text-sm text-muted mt-1">Last updated: ${formatFullTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 <div class="property-list mt-0 pt-0 border-t-0">
                     <div class="property-row">
@@ -583,13 +583,16 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
     const errorBadges = [];
     let errorStatus = null;
-    if (disk.error_io > 0)
-        errorStatus = '<span class="badge badge-yellow">DATA PREFAIL</span>';
     if (disk.error_data > 0)
         errorStatus = '<span class="badge badge-purple">DATA CORRUPT</span>';
-    if (errorStatus != null) errorBadges.push(errorStatus);
-    if (disk.error_io > 0) errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
-    if (disk.error_data > 0) errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
+    if (disk.error_io > 0)
+        errorStatus = '<span class="badge badge-yellow">DATA PREFAIL</span>'; /* overwrite CORRUPT */
+    if (errorStatus != null) 
+	errorBadges.push(errorStatus);
+    if (disk.error_io > 0) 
+	errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
+    if (disk.error_data > 0) 
+	errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
 
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
@@ -599,16 +602,16 @@ const renderDiskCard = (disk, type, pulseAt) => {
     const devicesHtml = disk.devices.map(dev => {
         const smartIssues = [];
         if (dev.error_medium > 0) {
-            smartIssues.push(`medium_errors: ${dev.error_medium}`);
+            smartIssues.push(`medium_errors: ${dev.error_medium} ${formatHistory(dev.error_medium, dev.error_medium_history, pulseAt)}`);
         }
         if (dev.error_protocol > 0) {
-            smartIssues.push(`protocol_errors: ${dev.error_protocol}`);
+            smartIssues.push(`protocol_errors: ${dev.error_protocol} ${formatHistory(dev.error_protocol, dev.error_protocol_history, pulseAt)}`);
         }
         if (dev.smart) {
             if (dev.smart.attributes) {
                 dev.smart.attributes.forEach(attr => {
                     if (attr.type === 'prefail' && attr.raw !== 0) {
-                        const label = `${attr.name.toLowerCase()}: ${attr.raw}`;
+                        let label = `${attr.name.toLowerCase()}: ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
                 });
@@ -729,7 +732,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="font-mono text-muted">#${t.number}</td>
             <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
             <td>${statusBadge(t)}</td>
-            <td class="text-muted">${formatTime(t.scheduled_at, pulseAt)}</td>
+            <td class="text-muted">${formatFullTime(t.scheduled_at, pulseAt)}</td>
         </tr>
     `).join('') : `<tr><td colspan="4" class="text-center text-muted p-4">No tasks in queue</td></tr>`;
 
@@ -742,7 +745,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 <td class="font-mono text-muted">#${t.number}</td>
                 <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
                 <td>${statusBadge(t)}</td>
-                <td class="text-muted">${formatTime(t.started_at, pulseAt)}</td>
+                <td class="text-muted">${formatFullTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
             </tr>
         `;
@@ -762,7 +765,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
-            <td class="text-muted text-xs">${formatTime(t.started_at, pulseAt)}</td>
+            <td class="text-muted text-xs">${formatFullTime(t.started_at, pulseAt)}</td>
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
                 <button class="btn btn-secondary btn-xs" data-tooltip="View execution logs and exit status"
@@ -1017,7 +1020,7 @@ export const renderRecovery = (arrayInfo) => {
                      <div class="text-sm text-muted mt-2 italic">
                         The fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
-                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatTime(arrayInfo.last_fix_at, arrayInfo.pulse?.current_at) : formatTime(arrayInfo.last_sync_at, arrayInfo.pulse?.current_at)}</div>
+                     <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatFullTime(arrayInfo.last_fix_at, arrayInfo.pulse?.current_at) : formatFullTime(arrayInfo.last_sync_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 
                  <div class="property-list mt-0 pt-0 border-t-0">

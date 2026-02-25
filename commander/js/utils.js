@@ -8,7 +8,7 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-export const formatTime = (isoString, referenceIsoString) => {
+export const formatFullTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
         return '-';
 
@@ -42,35 +42,29 @@ export const formatTime = (isoString, referenceIsoString) => {
 
 export const formatRelativeTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
-        return 'Unknown';
+        return 'unknown';
 
     const date = new Date(isoString);
     const reference = new Date(referenceIsoString);
     const diffSeconds = Math.floor((reference - date) / 1000);
 
-    if (diffSeconds < 60) return 'Now';
+    if (diffSeconds < 60) return 'now';
     if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
     if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
-    if (diffSeconds < 172800) return 'Yesterday';
-    if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
-
-    return date.toLocaleDateString();
+    return `${Math.floor(diffSeconds / 86400)}d ago`;
 };
 
-export const formatAgo = (seconds) => {
-    if (seconds < 60) return 'Now';
+export const formatAgoMins = (mins) => {
+    const seconds = mins * 60;
+    if (seconds < 60) return 'now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)} days ago`;
 };
 
-export const formatAgoMins = (mins) => {
-    return formatAgo(mins * 60);
-};
-
 export const formatAgoDays = (days) => {
     if (days < 7)
-        return "Past week";
+        return "past week";
     return `${Math.floor(days / 7)} weeks ago`;
 };
 
@@ -108,6 +102,18 @@ export const formatSignal = (sig) => {
     };
     return signals[sig] || sig;
 };
+
+export const formatHistory = (value, history, pulseAt) => {
+    let label = '';
+    if (history?.prev && history?.prev_at) {
+        if (history.prev < value) {
+            label += ` (+${value - history.prev}, ${formatRelativeTime(history.prev_at, pulseAt)})`;
+        } else if (history.prev > value) {
+            label += ` (-${history.prev - value}, ${formatRelativeTime(history.prev_at, pulseAt)})`;
+        }
+    }
+    return label;
+}
 
 // SVG Icons (Strings)
 export const Icons = {

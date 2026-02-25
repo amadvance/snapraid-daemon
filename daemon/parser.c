@@ -178,13 +178,14 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
 	for (j = 0; j < SMART_COUNT; ++j) {
-		device->smart[j].raw = SMART_UNASSIGNED;
+		tracked_init(&device->smart[j].raw);
 		device->smart[j].norm = 0;
 		device->smart[j].worst = 0;
 		device->smart[j].thresh = 0;
+		device->smart[j].flags = 0;
 	}
-	device->error_protocol = SMART_UNASSIGNED;
-	device->error_medium = SMART_UNASSIGNED;
+	tracked_init(&device->error_protocol);
+	tracked_init(&device->error_medium);
 	device->wear_level = SMART_UNASSIGNED;
 	device->size = SMART_UNASSIGNED;
 	device->rotational = SMART_UNASSIGNED;
@@ -496,11 +497,17 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			struct snapraid_temp* temp = temperature_alloc(device->temperature, state->global.last_time);
 			temperature_insert(device, temp);
 		}
-	} else if (strcmp(tag, "error_protocol") == 0)
-		pulse_stru64(state, PULSE_DISKS, &device->error_protocol, val);
-	else if (strcmp(tag, "error_medium") == 0)
-		pulse_stru64(state, PULSE_DISKS, &device->error_medium, val);
-	else if (strcmp(tag, "wear_level") == 0)
+	} else if (strcmp(tag, "error_protocol") == 0) {
+		uint64_t old = device->error_protocol.value;
+		if (pulse_stru64(state, PULSE_DISKS, &device->error_protocol.value, val) == 0) {
+			tracked_update(&device->error_protocol, old, 0, state->global.last_time);
+		}
+	} else if (strcmp(tag, "error_medium") == 0) {
+		uint64_t old = device->error_medium.value;
+		if (pulse_stru64(state, PULSE_DISKS, &device->error_medium.value, val) == 0) {
+			tracked_update(&device->error_medium, old, 0, state->global.last_time);
+		}
+	} else if (strcmp(tag, "wear_level") == 0)
 		pulse_stru64(state, PULSE_DISKS, &device->wear_level, val);
 	else if (strcmp(tag, "power") == 0) {
 		int power = POWER_PENDING;
@@ -570,24 +577,31 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		else if (strcmp(when_failed, "never") == 0)
 			flags |= SMART_ATTR_WHEN_FAILED_NEVER;
 
-		if (strint(&index, tag) == 0) {
-			int kind = smart_kind(index, name);
+		if (strint(&index, tag) == 0 && index >= 0 && index < 256) {
+			uint64_t mask;
+			int kind = smart_kind(index, name, &mask);
+			uint64_t old_raw = device->smart[index].raw.value;
+			int got_raw;
+
 			if ((kind & SMART_KIND_PULSE) != 0) {
-				pulse_stru64(state, PULSE_DISKS, &device->smart[index].raw, raw);
+				got_raw = pulse_stru64(state, PULSE_DISKS, &device->smart[index].raw.value, raw);
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].norm, norm);
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].worst, worst);
 				pulse_stru64(state, PULSE_DISKS, &device->smart[index].thresh, thresh);
 				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
 				device->smart[index].flags = flags;
-			} else if (index >= 0 && index < 256) {
+			} else {
 				/* these values are not reported with pulse */
-				stru64(&device->smart[index].raw, raw);
+				got_raw = stru64(&device->smart[index].raw.value, raw);
 				stru64(&device->smart[index].norm, norm);
 				stru64(&device->smart[index].worst, worst);
 				stru64(&device->smart[index].thresh, thresh);
 				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
 				device->smart[index].flags = flags;
 			}
+
+			if (got_raw == 0 && (kind & SMART_KIND_PREFAIL) != 0)
+				tracked_update(&device->smart[index].raw, old_raw, mask, state->global.last_time);
 		}
 	}
 }

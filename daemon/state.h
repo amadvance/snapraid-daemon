@@ -117,6 +117,14 @@ struct snapraid_temp {
 	tommy_node node;
 };
 
+struct snapraid_tracked {
+	uint64_t value; /**< current value */
+	uint64_t prev; /**< previous value */
+	uint64_t lowest; /**< lowest ever seen */
+	int64_t prev_last; /**< Time of when the attribute got the current value */
+	int64_t lowest_last; /**< Time of when the lowest attribute was last seen */
+};
+
 /**
  * SMART Attribute flags
  */
@@ -130,7 +138,7 @@ struct snapraid_temp {
 
 struct smart_attr {
 	char name[128]; /**< SMART attribute name. */
-	uint64_t raw; /**< SMART attributes raw. */
+	struct snapraid_tracked raw; /**< SMART attributes raw. */
 	uint64_t norm; /**< SMART attributes normalized. */
 	uint64_t worst; /**< SMART attributes worst. */
 	uint64_t thresh; /**< SMART attributes threshold. */
@@ -152,8 +160,8 @@ struct snapraid_device {
 	struct smart_attr smart[SMART_COUNT]; /**< SMART attributes. */
 	uint64_t size;
 	uint64_t rotational;
-	uint64_t error_protocol;
-	uint64_t error_medium;
+	struct snapraid_tracked error_protocol;
+	struct snapraid_tracked error_medium;
 	uint64_t wear_level;
 	uint64_t flags; /**< Smartctl flags */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */

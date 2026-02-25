@@ -33,12 +33,17 @@
 /**
  * Get SMART_KIND_* flags. 0 if none
  */
-int smart_kind(int index, const char* name);
+int smart_kind(int index, const char* name, uint64_t* mask);
 
 /**
  * Get the historic temperature range from SMART attributes
  */
 void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64_t* temp_min, uint64_t* temp_max);
+
+/**
+ * Output tracked value
+ */
+void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, uint64_t mask);
 
 /**
  * Output smart attributes in JSON format

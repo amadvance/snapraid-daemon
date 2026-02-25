@@ -730,6 +730,38 @@ void temperature_insert(struct snapraid_device* device, struct snapraid_temp* te
 }
 
 /****************************************************************************/
+/* tracked */
+
+void tracked_init(struct snapraid_tracked* tracked)
+{
+	tracked->value = SMART_UNASSIGNED;
+	tracked->prev = SMART_UNASSIGNED;
+	tracked->lowest = SMART_UNASSIGNED;
+	tracked->prev_last = 0;
+	tracked->lowest_last = 0;
+}
+
+void tracked_update(struct snapraid_tracked* tracked, uint64_t old, uint64_t mask, int64_t last_time)
+{
+	if (tracked->value == SMART_UNASSIGNED)
+		return;
+	if (mask == 0)
+		mask = SMART_UNASSIGNED; /* all 1 */
+	if (tracked->lowest == SMART_UNASSIGNED
+		|| (tracked->value & mask) < (tracked->lowest & mask)) {
+		tracked->lowest = tracked->value;
+		tracked->lowest_last = last_time;
+	} else if ((tracked->lowest & mask) == (tracked->value & mask)) {
+		tracked->lowest_last = last_time;
+	}
+	if (old != SMART_UNASSIGNED
+		&& (old & mask) != (tracked->value & mask)) {
+		tracked->prev = old;
+		tracked->prev_last = last_time;
+	}
+}
+
+/****************************************************************************/
 /* page */
 
 struct snapraid_page* page_alloc(const char* path, size_t content_size)

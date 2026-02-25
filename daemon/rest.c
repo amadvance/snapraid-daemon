@@ -1340,10 +1340,10 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_u64(s, level, "size_bytes", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "rotational", dev->rotational);
-		if (dev->error_protocol != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "error_protocol", dev->error_protocol);
-		if (dev->error_medium != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "error_medium", dev->error_medium);
+		if (dev->error_protocol.value != SMART_UNASSIGNED)
+			json_tracked(s, level, "error_protocol", &dev->error_protocol, 0);
+		if (dev->error_medium.value != SMART_UNASSIGNED)
+			json_tracked(s, level, "error_medium", &dev->error_medium, 0);
 		if (dev->wear_level != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "wear_level", dev->wear_level);
 		if (dev->afr != 0)
@@ -1356,8 +1356,8 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
 		/* low level attributes */
 		json_smart_list(s, level, dev);
-		if (dev->smart[9].raw != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw & 0xFFFFFF);
+		if (dev->smart[9].raw.value != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw.value & 0xFFFFFF);
 		/* high level attributes */
 		uint64_t temp = SMART_UNASSIGNED;
 		uint64_t temp_min = SMART_UNASSIGNED;

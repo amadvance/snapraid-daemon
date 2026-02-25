@@ -534,6 +534,34 @@ components:
                   Process ID of the task stopped.
 
   schemas:
+    ValueHistory:
+      type: object
+      description: >
+        Historical metadata and change tracking for a parent value.
+        The entire object is omitted if the value has never changed
+        since the daemon started.
+      properties:
+        prev:
+          type: integer
+          description: >
+            The immediate previous value held before the latest change.
+        prev_at:
+          type: string
+          example: "2026-02-26T10:30:00"
+          description: >
+            The timestamp when the value transitioned from 'prev'
+            to the current value.
+        lowest:
+          type: integer
+          description: >
+            The historical minimum value observed by the daemon.
+        lowest_at:
+          type: string
+          example: "2026-02-20T14:15:00"
+          description: >
+            The timestamp of the most recent occurrence where
+            the value reached the 'lowest' record.
+
     CommandRequest:
       type: object
       description: >
@@ -989,6 +1017,8 @@ components:
             power-related errors).
             This counter is cumulative and never resets to zero, even if
             the underlying error condition is resolved.
+        error_protocol_history:
+            $ref: '#/components/schemas/ValueHistory'
         error_medium:
           type: integer
           description: >
@@ -997,6 +1027,8 @@ components:
             flash failures and may imply data loss.
             This counter is cumulative and never resets to zero, even if
             the underlying error condition is resolved.
+        error_medium_history:
+            $ref: '#/components/schemas/ValueHistory'
         wear_level:
           type: integer
           description: >
@@ -1085,6 +1117,8 @@ components:
                       The raw value processed by the daemon.
                       This is the actual data point (e.g., total hours or
                       degrees Celsius).
+                  raw_history:
+                    $ref: '#/components/schemas/ValueHistory'
                   norm:
                     type: integer
                     description: >

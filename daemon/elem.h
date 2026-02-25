@@ -137,6 +137,12 @@ int temperature_cleanup(struct snapraid_device* device, time_t last_time);
 int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time);
 
 /****************************************************************************/
+/* tracked */
+
+void tracked_init(struct snapraid_tracked* tracked);
+void tracked_update(struct snapraid_tracked* tracked, uint64_t old, uint64_t mask, int64_t last_time);
+
+/****************************************************************************/
 /* page */
 
 struct snapraid_page {

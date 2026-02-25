@@ -149,13 +149,26 @@ struct smart_entry {
 	{ 0 }
 };
 
-int smart_kind(int index, const char* name)
+static uint64_t smart_mask(int bit)
+{
+	if (bit < 0)
+		return 0xFFFF;
+
+	return (1ULL << bit) - 1;
+}
+
+int smart_kind(int index, const char* name, uint64_t* mask)
 {
 	for (int i = 0; SMART_ENTRIES[i].index; ++i) {
-		if (SMART_ENTRIES[i].index == index && strcmp(SMART_ENTRIES[i].name, name) == 0)
+		if (SMART_ENTRIES[i].index == index && strcmp(SMART_ENTRIES[i].name, name) == 0) {
+			if (mask)
+				*mask = smart_mask(SMART_ENTRIES[i].bit);
 			return SMART_ENTRIES[i].flags;
+		}
 	}
 
+	if (mask)
+		*mask = SMART_UNASSIGNED; /* all 1 */
 	return 0;
 }
 
@@ -164,7 +177,7 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 	uint64_t l, h, r;
 
 	/* first 190 */
-	r = dev->smart[190].raw;
+	r = dev->smart[190].raw.value;
 	if (r != SMART_UNASSIGNED) {
 		*temp = r & 0xFFFF;
 		l = (r >> 16) & 0xFFFF;
@@ -176,7 +189,7 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 	}
 
 	/* then 194 that overwrite 190 */
-	r = dev->smart[194].raw;
+	r = dev->smart[194].raw.value;
 	if (r != SMART_UNASSIGNED) {
 		*temp = r & 0xFFFF;
 		l = (r >> 16) & 0xFFFF;
@@ -188,13 +201,36 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 	}
 }
 
+void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, uint64_t mask)
+{
+	if (mask == 0)
+		mask = SMART_UNASSIGNED; /* all 1 */
+
+	ss_json_u64(s, level, name, tracked->value & mask);
+
+	if (tracked->prev != SMART_UNASSIGNED) {
+		char history[128];
+		snprintf(history, sizeof(history), "%s_history", name);
+		ss_json_object_open(s, &level, history);
+		ss_json_u64(s, level, "prev", tracked->prev & mask);
+		ss_json_pair_iso8601(s, level, "prev_at", tracked->prev_last);
+		if (tracked->lowest != SMART_UNASSIGNED
+			&& (tracked->lowest & mask) != (tracked->value & mask)) {
+			ss_json_u64(s, level, "lowest", tracked->lowest & mask);
+			ss_json_pair_iso8601(s, level, "lowest_at", tracked->lowest_last);
+		}
+		ss_json_close(s, &level);
+	}
+}
+
 void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 {
 	ss_json_array_open(s, &level, "attributes");
 
 	for (int i = 1; i < SMART_COUNT; ++i) {
 		struct smart_attr* attr = &dev->smart[i];
-		if (attr->raw == SMART_UNASSIGNED)
+
+		if (attr->raw.value == SMART_UNASSIGNED)
 			continue;
 
 		int j;
@@ -206,59 +242,37 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		struct smart_entry* entry = &SMART_ENTRIES[j];
 
 		if (entry->index != 0) {
-			uint64_t value = SMART_UNASSIGNED;
+			uint64_t mask = smart_mask(entry->bit);
 
-			switch (entry->bit) {
-			case 8 :
-				value = attr->raw & 0xFFUL;
-				break;
-			case 16 :
-				value = attr->raw & 0xFFFFUL;
-				break;
-			case 24 :
-				value = attr->raw & 0xFFFFFFUL;
-				break;
-			case 32 :
-				value = attr->raw & 0xFFFFFFFFUL;
-				break;
-			case 48 :
-				value = attr->raw & 0xFFFFFFFFFFFFUL;
-				break;
-			case -1 :
-				value = attr->raw & 0xFFFFUL;
-				break;
-			}
-
-			if (value != SMART_UNASSIGNED) {
-				ss_json_open(s, &level);
-				ss_json_str(s, level, "name", attr->name);
-				int flags = entry->flags;
-				if (flags & SMART_KIND_PREFAIL)
-					ss_json_str(s, level, "type", "prefail");
-				else if (flags & SMART_KIND_TEMP)
-					ss_json_str(s, level, "type", "temperature");
-				else
-					ss_json_str(s, level, "type", "oldage");
-				if (attr->flags & SMART_ATTR_WHEN_FAILED_NOW)
-					ss_json_str(s, level, "when_failed", "now");
-				else if (attr->flags & SMART_ATTR_WHEN_FAILED_PAST)
-					ss_json_str(s, level, "when_failed", "past");
-				else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
-					ss_json_str(s, level, "when_failed", "never");
-				ss_json_u64(s, level, "raw", value);
-				ss_json_u64(s, level, "norm", attr->norm);
-				ss_json_u64(s, level, "worst", attr->worst);
-				ss_json_u64(s, level, "thresh", attr->thresh);
-				if (entry->bit == -1) {
-					uint64_t min = (attr->raw >> 16) & 0xFFFFUL;
-					uint64_t max = (attr->raw >> 32) & 0xFFFFUL;
-					if (min <= value && value <= max) {
-						ss_json_u64(s, level, "min", min);
-						ss_json_u64(s, level, "max", max);
-					}
+			ss_json_open(s, &level);
+			ss_json_str(s, level, "name", attr->name);
+			int flags = entry->flags;
+			if (flags & SMART_KIND_PREFAIL)
+				ss_json_str(s, level, "type", "prefail");
+			else if (flags & SMART_KIND_TEMP)
+				ss_json_str(s, level, "type", "temperature");
+			else
+				ss_json_str(s, level, "type", "oldage");
+			if (attr->flags & SMART_ATTR_WHEN_FAILED_NOW)
+				ss_json_str(s, level, "when_failed", "now");
+			else if (attr->flags & SMART_ATTR_WHEN_FAILED_PAST)
+				ss_json_str(s, level, "when_failed", "past");
+			else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
+				ss_json_str(s, level, "when_failed", "never");
+			json_tracked(s, level, "raw", &attr->raw, mask);
+			ss_json_u64(s, level, "norm", attr->norm);
+			ss_json_u64(s, level, "worst", attr->worst);
+			ss_json_u64(s, level, "thresh", attr->thresh);
+			if (entry->bit == -1) {
+				uint64_t value = attr->raw.value & 0xFFFF;
+				uint64_t min = (attr->raw.value >> 16) & 0xFFFF;
+				uint64_t max = (attr->raw.value >> 32) & 0xFFFF;
+				if (min <= value && value <= max) {
+					ss_json_u64(s, level, "min", min);
+					ss_json_u64(s, level, "max", max);
 				}
-				ss_json_close(s, &level);
 			}
+			ss_json_close(s, &level);
 		}
 	}
 
