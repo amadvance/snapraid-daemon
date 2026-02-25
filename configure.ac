@@ -24,6 +24,53 @@ AC_CHECK_CC_OPT([-rdynamic], CFLAGS="$CFLAGS -rdynamic", [])
 # This the new default for gcc 10
 AC_CHECK_CC_OPT([-fno-common], CFLAGS="$CFLAGS -fno-common", [])
 
+dnl Hardening Flags
+# -D_FORTIFY_SOURCE=2: 
+# Adds checks for buffer overflows in common standard library functions. 
+# Level 2 provides the most comprehensive checks available in modern glibc/gcc.
+AC_CHECK_CC_OPT([-D_FORTIFY_SOURCE=2], CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2", [])
+
+# -fstack-protector-strong: 
+# Inserts a canary value before the stack return address. 
+# "Strong" balances security and performance by protecting functions with 
+# local arrays or address-taking of local variables.
+AC_CHECK_CC_OPT([-fstack-protector-strong], CFLAGS="$CFLAGS -fstack-protector-strong", [])
+
+# -fPIE / -pie: 
+# Position Independent Executable. 
+# Required for Address Space Layout Randomization (ASLR) to effectively 
+# randomize the binary's location in memory.
+AC_CHECK_CC_OPT([-fPIE], CFLAGS="$CFLAGS -fPIE", [])
+AC_CHECK_CC_OPT([-pie], LDFLAGS="$LDFLAGS -pie", [])
+
+# -Wl,-z,relro: 
+# Read-Only Relocations. 
+# Makes the Global Offset Table (GOT) read-only after the linker finishes.
+AC_CHECK_CC_OPT([-z,relro], LDFLAGS="$LDFLAGS -z relro", [])
+
+# -Wl,-z,now: 
+# Immediate Binding (Full RELRO). 
+# Works with 'relro' to resolve all symbols at startup, preventing 
+# attackers from overwriting PLT/GOT entries later.
+AC_CHECK_CC_OPT([-z,now], LDFLAGS="$LDFLAGS -z now", [])
+
+# -Wl,-z,noexecstack: 
+# Marks the stack as non-executable. 
+# Prevents code execution even if an attacker successfully injects 
+# shellcode onto the stack.
+AC_CHECK_CC_OPT([-z,noexecstack], LDFLAGS="$LDFLAGS -z noexecstack", [])
+
+# -fstack-clash-protection: 
+# Prevents "stack clash" attacks by ensuring the stack 
+# cannot grow into other memory regions without hitting a guard page.
+AC_CHECK_CC_OPT([-fstack-clash-protection], CFLAGS="$CFLAGS -fstack-clash-protection", [])
+
+# -fcf-protection: 
+# Enables Intel CET (Control-flow Enforcement Technology). 
+# Hardware-assisted protection against ROP (Return Oriented Programming) 
+# and COP/JOP (Call/Jump Oriented Programming) on x86_64.
+AC_CHECK_CC_OPT([-fcf-protection], CFLAGS="$CFLAGS -fcf-protection", [])
+
 dnl Checks for system.
 AC_SYS_LARGEFILE
 
