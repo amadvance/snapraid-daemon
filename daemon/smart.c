@@ -178,6 +178,22 @@ struct smart_entry {
 	{ 201, FORMAT_48, "Unc_Read_Error_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ 201, FORMAT_48, "Uncorr_Soft_Read_Err_Rt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 
+	/* temperature, 190 */
+	{ 190, FORMAT_TEMPERATURE, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
+	{ 190, FORMAT_TEMPERATURE, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_TEMPERATURE, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
+
+	/* temperature, 194 */
+	{ 194, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
+	{ 194, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 194, FORMAT_TEMPERATURE, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
+
+	/* power on, 9 */
+	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME }, /* default entry */
+	{ 9, FORMAT_32, "Power_On_Hours_and_Msec", SMART_KIND_TIME }, /* hours are in the lower 32 bit */
+
 	/* size 241, 242 */
 	{ -1, FORMAT_48_512, "Total_LBAs_Read", SMART_KIND_SIZE }, /* default entry */
 	{ -1, FORMAT_48_512, "Total_LBAs_Written", SMART_KIND_SIZE }, /* default entry */
@@ -200,21 +216,7 @@ struct smart_entry {
 	{ -1, FORMAT_48_GB, "Total_Writes_GB", SMART_KIND_SIZE },
 	{ -1, FORMAT_48_GIB, "Total_Writes_GiB", SMART_KIND_SIZE },
 
-	/* temperature, 190 */
-	{ 190, FORMAT_TEMPERATURE, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
-	{ 190, FORMAT_TEMPERATURE, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
-
-	/* temperature, 194 */
-	{ 194, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
-	{ 194, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 194, FORMAT_TEMPERATURE, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
-
 	/* other entries */
-	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME }, /* default entry */
-	{ 9, FORMAT_32, "Power_On_Hours_and_Msec", SMART_KIND_TIME }, /* hours are in the lower 32 bit */
 	{ 12, FORMAT_48, "Power_Cycle_Count", 0 }, /* default entry */
 	{ 4, FORMAT_48, "Start_Stop_Count", 0 }, /* default entry */
 	{ 193, FORMAT_48, "Load_Cycle_Count", 0 }, /* default entry */
@@ -229,7 +231,6 @@ struct smart_entry {
 
 	/* from SnapRAID NVME mapping, see smartctl_attribute() */
 	{ 194, FORMAT_16, "Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME },
 	{ 12, FORMAT_48, "Power_Cycles", 0 },
 	{ -1, FORMAT_CRITICAL_WARNINGS, "Critical_Warning", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ -1, FORMAT_64, "Available_Spare", SMART_KIND_PERC },
@@ -348,14 +349,26 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 {
 	ss_json_array_open(s, &level, "attributes");
 
-	for (int i = 1; i < SMART_COUNT; ++i) {
-		struct smart_attr* attr = &dev->smart[i];
+	for (int i = 0; SMART_ENTRIES[i].index; ++i) {
+		struct smart_entry* entry = &SMART_ENTRIES[i];
+		struct smart_attr* attr = 0;
 
-		if (attr->raw.value == SMART_UNASSIGNED)
-			continue;
-
-		struct smart_entry* entry = find_entry(i, attr->name);
-		if (!entry)
+		if (entry->index >= 0) {
+			struct smart_attr* pos = &dev->smart[entry->index];
+			if (strcmp(pos->name, entry->name) == 0)
+				attr = pos;
+		} else {
+			for (int j = 1; j < SMART_COUNT; ++j) {
+				struct smart_attr* pos = &dev->smart[j];
+				if (pos->raw.value == SMART_UNASSIGNED)
+					continue;
+				if (strcmp(pos->name, entry->name) == 0) {
+					attr = pos;
+					break;
+				}
+			}
+		}
+		if (!attr)
 			continue;
 
 		int kind = entry->kind | entry->format;
