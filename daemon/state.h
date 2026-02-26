@@ -165,17 +165,17 @@ struct snapraid_device {
 	char interf[SMART_MAX]; /**< Interface. */
 	int64_t smart_time; /**< Time of the latest smart measure */
 	struct smart_attr smart[SMART_COUNT]; /**< SMART attributes. */
-	uint64_t size;
-	uint64_t rotational;
-	struct snapraid_tracked error_protocol;
-	struct snapraid_tracked error_medium;
-	uint64_t wear_level;
+	uint64_t size; /**< Physical size in bytes. */
+	uint64_t rotational; /**< 1 if rotational, 0 if SSD. */
+	struct snapraid_tracked error_protocol; /**< Protocol error counter. */
+	struct snapraid_tracked error_medium; /**< Medium error counter. */
+	uint64_t wear_level; /**< Device wear level percentage (SSD only). */
 	uint64_t flags; /**< Smartctl flags */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
 	int power; /**< POWER mode. */
 	int health; /**< HEALTH code. */
-	char health_reason[HEALTH_REASON_MAX];
+	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. */
 	int temperature; /**< Latest measured temperature, 0 if none */
 	int split_index; /**< Index of the split */
 	tommy_list temp_list; /**< Temperature measures */
@@ -308,8 +308,8 @@ struct snapraid_task {
 };
 
 struct snapraid_schedule {
-	int cmd;
-	sl_t args;
+	int cmd; /**< Command to schedule */
+	sl_t args; /**< Arguments for the command */
 	tommy_node node;
 };
 
@@ -350,19 +350,19 @@ struct snapraid_file {
 struct snapraid_diff_stat {
 	/* diff counters. Updated in diff and sync */
 	int64_t diff_equal; /**< Comparison of the content state with the real state of the array */
-	int64_t diff_added;
-	int64_t diff_removed;
-	int64_t diff_updated;
-	int64_t diff_moved;
-	int64_t diff_copied;
-	int64_t diff_restored;
+	int64_t diff_added; /**< Number of added files */
+	int64_t diff_removed; /**< Number of removed files */
+	int64_t diff_updated; /**< Number of updated files */
+	int64_t diff_moved; /**< Number of moved files */
+	int64_t diff_copied; /**< Number of copied files */
+	int64_t diff_restored; /**< Number of restored files */
 	tommy_list file_list; /**< List of snapraid_file entries */
 };
 
 struct snapraid_fix_stat {
 	/* fix counters. Updated in fix and sync */
-	int64_t fix_recovered;
-	int64_t fix_unrecoverable;
+	int64_t fix_recovered; /**< Number of recovered files */
+	int64_t fix_unrecoverable; /**< Number of unrecoverable files */
 	tommy_list file_list; /**< List of snapraid_file entries */
 };
 
@@ -375,8 +375,8 @@ struct snapraid_bucket {
 
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
-	int version_major;
-	int version_minor;
+	int version_major; /**< Major version number */
+	int version_minor; /**< Minor version number */
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	unsigned blocksize; /**< Block size */
@@ -438,7 +438,7 @@ static inline int level_mix(int level, int new_level)
 #define CONFIG_LINE_MAX 1024
 
 struct snapraid_config_line {
-	char text[CONFIG_LINE_MAX];
+	char text[CONFIG_LINE_MAX]; /**< Raw configuration string. */
 	tommy_node node;
 };
 
@@ -446,35 +446,35 @@ struct snapraid_config {
 	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
 	tommy_list line_list; /**< List of snapraid_config_line */
 	/* empty string or 0 value means value not set and/or disabled */
-	int net_enabled;
-	char net_port[CONFIG_MAX];
-	char net_acl[CONFIG_MAX];
-	int net_security_headers;
-	char net_allowed_origin[CONFIG_MAX];
-	int net_config_full_access;
+	int net_enabled; /**< 1 if network interface is enabled, 0 otherwise */
+	char net_port[CONFIG_MAX]; /**< Network port to bind to */
+	char net_acl[CONFIG_MAX]; /**< IP access control list */
+	int net_security_headers; /**< 1 to enable security headers, 0 otherwise */
+	char net_allowed_origin[CONFIG_MAX]; /**< Allowed origin for CORS */
+	int net_config_full_access; /**< 1 if full configuration access is allowed from network, 0 otherwise */
 	char net_web_root[PATH_MAX]; /**< Web pages directory */
-	int maintenance_run;
-	int maintenance_hour;
-	int maintenance_minute;
-	int maintenance_day_of_week;
-	int sync_threshold_deletes;
-	int sync_threshold_updates;
-	int sync_prehash;
-	int sync_force_zero;
-	double scrub_percentage;
-	int scrub_older_than;
-	int probe_interval_minutes;
-	int spindown_idle_minutes;
-	char script_run_as_user[CONFIG_MAX];
-	char script_pre_run[CONFIG_MAX];
-	char script_post_run[CONFIG_MAX];
-	char log_directory[CONFIG_MAX];
-	int log_retention_days;
-	char notify_run_as_user[CONFIG_MAX];
-	char notify_heartbeat[CONFIG_MAX];
-	char notify_result[CONFIG_MAX];
-	int notify_result_level;
-	int notify_differences;
+	int maintenance_run; /**< 1 to enable automated maintenance, 0 otherwise */
+	int maintenance_hour; /**< Hour for scheduled maintenance */
+	int maintenance_minute; /**< Minute for scheduled maintenance */
+	int maintenance_day_of_week; /**< Day of week for scheduled maintenance */
+	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
+	int sync_threshold_updates; /**< Threshold for updates before sync fails */
+	int sync_prehash; /**< 1 to enable prehash, 0 otherwise */
+	int sync_force_zero; /**< 1 to force sync with zero size, 0 otherwise */
+	double scrub_percentage; /**< Percentage of array to scrub */
+	int scrub_older_than; /**< Scrub blocks older than this many days */
+	int probe_interval_minutes; /**< Interval for disk probing in minutes */
+	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
+	char script_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
+	char script_pre_run[CONFIG_MAX]; /**< Pre-run script path */
+	char script_post_run[CONFIG_MAX]; /**< Post-run script path */
+	char log_directory[CONFIG_MAX]; /**< Directory for log files */
+	int log_retention_days; /**< Number of days to keep logs */
+	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */
+	char notify_heartbeat[CONFIG_MAX]; /**< Heartbeat notification URL */
+	char notify_result[CONFIG_MAX]; /**< Result notification URL/script */
+	int notify_result_level; /**< Minimum level for result notification */
+	int notify_differences; /**< 1 to include differences in notification, 0 otherwise */
 };
 
 #include <stdint.h>
@@ -482,7 +482,8 @@ struct snapraid_config {
 
 /**
  * @brief Structure containing host system metadata for the SnapRAID dashboard.
- * * This structure maps to the 'System' object in the OpenAPI specification
+ *
+ * This structure maps to the 'System' object in the OpenAPI specification
  * and is used to provide hardware and OS context to the web interface.
  */
 struct snapraid_system {
@@ -490,7 +491,7 @@ struct snapraid_system {
 	char os_distribution[MSG_MAX]; /**< Operating system name and version (e.g., "Ubuntu 24.04 LTS") */
 	char kernel_version[KEYWORD_MAX]; /**< Running Linux kernel version string */
 	char motherboard[MSG_MAX]; /**< Manufacturer and model of the motherboard */
-	char cpu_model[MSG_MAX]; /**< Total physical RAM available in kilobytes */
+	char cpu_model[MSG_MAX]; /**< CPU model string */
 	uint64_t memory_total_bytes; /**< Total physical RAM available */
 	uint64_t memory_free_bytes; /**< Currently unused physical RAM */
 	uint64_t uptime_seconds; /**< Number of seconds the system has been powered on */
@@ -505,8 +506,8 @@ struct snapraid_system {
 struct snapraid_log {
 	int foreground; /**< Daemon running in foreground */
 	int verbose; /**< Verbose output */
-	int syslog;
-	int syslog_level;
+	int syslog; /**< 1 if syslog is enabled, 0 otherwise */
+	int syslog_level; /**< Minimum level for syslog messages */
 };
 
 struct snapraid_web {
@@ -523,22 +524,22 @@ struct snapraid_state {
 	thread_mutex_t state_lock; /**< Protection for the following data */
 	struct snapraid_pulse pulse; /**< Pulse counters. */
 	struct mg_context* rest_context; /**< The context of the rest support */
-	struct mg_callbacks rest_callbacks;
-	struct snapraid_runner runner;
-	struct snapraid_scheduler scheduler;
-	struct snapraid_global global;
-	struct snapraid_config config;
-	struct snapraid_system system;
-	tommy_list data_list;
-	tommy_list parity_list;
+	struct mg_callbacks rest_callbacks; /**< CivetWeb callbacks */
+	struct snapraid_runner runner; /**< Task runner system */
+	struct snapraid_scheduler scheduler; /**< Maintenance scheduler */
+	struct snapraid_global global; /**< Global array metadata */
+	struct snapraid_config config; /**< Runtime configuration */
+	struct snapraid_system system; /**< Host system information */
+	tommy_list data_list; /**< List of data disks */
+	tommy_list parity_list; /**< List of parity disks */
 
 	/**< Data protected by the web lock */
 	thread_rwlock_t web_lock; /**< Protection for the following data */
-	struct snapraid_web web;
+	struct snapraid_web web; /**< Web asset cache */
 
 	/**< Data protected by the log lock */
 	thread_mutex_t log_lock; /**< Protection for the following data */
-	struct snapraid_log log;
+	struct snapraid_log log; /**< Logging configuration */
 };
 
 /****************************************************************************/
@@ -546,11 +547,13 @@ struct snapraid_state {
 
 /**
  * Initialize the global state system.
+ * @return Pointer to global state structure
  */
 struct snapraid_state* state_init(void);
 
 /**
  * Cleanup the global state system.
+ * @param state State structure to cleanup
  */
 void state_done(struct snapraid_state* state);
 

@@ -39,7 +39,7 @@ void log_done(void);
  * @param fmt Format string
  * @param ... Format arguments
  */
-void log_msg(int level, const char *fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
+void log_msg(int level, const char* fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
 
 /**
  * Get string representation of signal number.

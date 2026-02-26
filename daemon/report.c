@@ -766,7 +766,7 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	return 0;
 }
 
-static int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
+int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,

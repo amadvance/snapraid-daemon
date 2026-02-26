@@ -25,6 +25,11 @@
 
 #define MIME_BINARY "application/octet-stream"
 
+/**
+ * Get MIME type for a file path based on its extension.
+ * @param path File path or name
+ * @return MIME type string
+ */
 const char* get_mime_type(const char* path);
 
 
@@ -133,25 +138,39 @@ ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap);
  * @param fmt Format string
  * @return Number of characters written
  */
-ssize_t ss_printf(ss_t* s, const char* fmt, ...)  __attribute__((format(attribute_printf, 2, 3)));
+ssize_t ss_printf(ss_t* s, const char* fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
 
 /**
  * Write a repeated char.
+ * @param s String stream
+ * @param c Character to repeat
+ * @param pad Number of repetitions
+ * @return Number of characters written
  */
 ssize_t ss_printc(ss_t* s, char c, size_t pad);
 
 /**
  * Write a string with right space padding.
+ * @param s String stream
+ * @param str String to print
+ * @param pad Minimum width (padded with spaces on the right)
+ * @return Number of characters written
  */
 ssize_t ss_printr(ss_t* s, const char* str, size_t pad);
 
 /**
  * Write a string with left space padding.
+ * @param s String stream
+ * @param str String to print
+ * @param pad Minimum width (padded with spaces on the left)
+ * @return Number of characters written
  */
 ssize_t ss_printl(ss_t* s, const char* str, size_t pad);
 
 /**
  * Write JSON tabs.
+ * @param s String stream
+ * @param level Indentation level (tabs count)
  */
 void ss_json_tab(ss_t* s, int level);
 
@@ -170,50 +189,98 @@ void ss_jsons(ss_t* s, int level, const char* arg);
  * @param fmt Format string
  * @return Number of characters written
  */
-int ss_jsonf(ss_t* s, int level, const char* fmt, ...)  __attribute__((format(attribute_printf, 3, 4)));
+int ss_jsonf(ss_t* s, int level, const char* fmt, ...) __attribute__((format(attribute_printf, 3, 4)));
 
+/**
+ * Open a JSON root object.
+ */
 void ss_json_open(ss_t* s, int* level);
+
+/**
+ * Open a JSON object field.
+ */
 void ss_json_object_open(ss_t* s, int* level, const char* field);
+
+/**
+ * Close a JSON object/list.
+ */
 void ss_json_close(ss_t* s, int* level);
+
+/**
+ * Open a JSON list.
+ */
 void ss_json_list_open(ss_t* s, int* level);
+
+/**
+ * Open a JSON array field.
+ */
 void ss_json_array_open(ss_t* s, int* level, const char* field);
+
+/**
+ * Close a JSON array.
+ */
 void ss_json_array_close(ss_t* s, int* level);
 
 /**
  * Write a formatted JSON array element as string.
+ * @param s String stream
+ * @param level Indentation level
+ * @param arg Value string
  */
 void ss_json_elem(ss_t* s, int level, const char* arg);
 
 /**
  * Write a formatted JSON pair.
+ * @param s String stream
+ * @param level Indentation level
+ * @param field Field name
+ * @param arg Value string
  */
 void ss_json_str(ss_t* s, int level, const char* field, const char* arg);
 
+/**
+ * Write a JSON boolean pairing.
+ */
 static inline void ss_json_bool(ss_t* s, int level, const char* field, int arg)
 {
 	ss_jsonf(s, level, "\"%s\": %s,\n", field, arg ? "true" : "false");
 }
 
+/**
+ * Write a JSON integer pairing.
+ */
 static inline void ss_json_int(ss_t* s, int level, const char* field, int arg)
 {
 	ss_jsonf(s, level, "\"%s\": %d,\n", field, arg);
 }
 
+/**
+ * Write a JSON unsigned integer pairing.
+ */
 static inline void ss_json_uint(ss_t* s, int level, const char* field, unsigned arg)
 {
 	ss_jsonf(s, level, "\"%s\": %u,\n", field, arg);
 }
 
+/**
+ * Write a JSON 64-bit integer pairing.
+ */
 static inline void ss_json_i64(ss_t* s, int level, const char* field, int64_t arg)
 {
 	ss_jsonf(s, level, "\"%s\": %" PRIi64 ",\n", field, arg);
 }
 
+/**
+ * Write a JSON 64-bit unsigned integer pairing.
+ */
 static inline void ss_json_u64(ss_t* s, int level, const char* field, uint64_t arg)
 {
 	ss_jsonf(s, level, "\"%s\": %" PRIu64 ",\n", field, arg);
 }
 
+/**
+ * Write a JSON double pairing.
+ */
 static inline void ss_json_double(ss_t* s, int level, const char* field, double arg)
 {
 	ss_jsonf(s, level, "\"%s\": %.2g,\n", field, arg);
@@ -221,29 +288,48 @@ static inline void ss_json_double(ss_t* s, int level, const char* field, double 
 
 /**
  * Write a formatted JSON pair with a ISO8601 timestamp.
+ * @param s String stream
+ * @param level Indentation level
+ * @param field Field name
+ * @param arg Timestamp
  */
 void ss_json_pair_iso8601(ss_t* s, int level, const char* field, time_t arg);
 
+/**
+ * Get current length of the string stream.
+ */
 static inline ssize_t ss_len(ss_t* s)
 {
 	return s->len;
 }
 
+/**
+ * Get pointer to the beginning of the buffer.
+ */
 static inline char* ss_ptr(ss_t* s)
 {
 	return s->ptr;
 }
 
+/**
+ * Get pointer to the current end of the string.
+ */
 static inline char* ss_top(ss_t* s)
 {
 	return s->ptr + s->len;
 }
 
+/**
+ * Advance the string stream length.
+ */
 static inline void ss_forward(ss_t* s, size_t written)
 {
 	s->len += written;
 }
 
+/**
+ * Get available space in the buffer.
+ */
 static inline ssize_t ss_avail(ss_t* s)
 {
 	return s->size - s->len;
@@ -259,11 +345,17 @@ typedef struct sn {
 	char str[];
 } sn_t;
 
+/**
+ * Initialize a string list.
+ */
 static inline void sl_init(sl_t* list)
 {
 	tommy_list_init(list);
 }
 
+/**
+ * Free a string list and all its content.
+ */
 static inline void sl_free(sl_t* list)
 {
 	tommy_list_foreach(list, free);
@@ -299,13 +391,16 @@ void sl_insert_double(sl_t* list, double add);
 
 /**
  * Compare alphabetically two string nodes
- **/
+ */
 int sl_compare(const void* void_a, const void* void_b);
 
 /****************************************************************************/
 /* string */
 
 #ifndef HAVE_STRLCPY
+/**
+ * Copy string with size limit.
+ */
 size_t sncpy(char* dst, size_t dst_size, const char* src);
 #else
 static inline size_t sncpy(char* dst, size_t dst_size, const char* src)
@@ -314,25 +409,91 @@ static inline size_t sncpy(char* dst, size_t dst_size, const char* src)
 }
 #endif
 
+/**
+ * Convert string to integer.
+ * @return 0 on success, -1 on error
+ */
 int strint(int* out, const char* src);
+
+/**
+ * Convert string to unsigned integer.
+ * @return 0 on success, -1 on error
+ */
 int struint(unsigned* out, const char* src);
+
+/**
+ * Convert string to 64-bit integer.
+ * @return 0 on success, -1 on error
+ */
 int stri64(int64_t* out, const char* src);
+
+/**
+ * Convert string to 64-bit unsigned integer.
+ * @return 0 on success, -1 on error
+ */
 int stru64(uint64_t* out, const char* src);
+
+/**
+ * Convert string to double.
+ * @return 0 on success, -1 on error
+ */
 int strdouble(double* out, const char* src);
+
+/**
+ * Trim leading and trailing whitespace.
+ * @return Pointer to trimmed string
+ */
 char* strtrim(char* str);
+
+/**
+ * Convert string to uppercase.
+ */
 void strupr(char* str);
 
 /****************************************************************************/
 /* pulse */
 
+/**
+ * Update pulse counters from a task pulse mask.
+ * @param state Current snapraid state
+ * @param pulse Task pulse structure
+ * @return Combined pulse mask
+ */
 unsigned pulse_rev(struct snapraid_state* state, struct snapraid_pulse* pulse);
+
+/**
+ * Trigger a pulse for the specified mask.
+ */
 void pulse(struct snapraid_state* state, unsigned mask);
 
+/**
+ * Convert string to integer and trigger pulse if changed.
+ */
 int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const char* src);
+
+/**
+ * Convert string to unsigned integer and trigger pulse if changed.
+ */
 int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, const char* src);
+
+/**
+ * Convert string to 64-bit integer and trigger pulse if changed.
+ */
 int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, const char* src);
+
+/**
+ * Convert string to 64-bit unsigned integer and trigger pulse if changed.
+ */
 int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src);
+
+/**
+ * Convert string to double and trigger pulse if changed.
+ */
 int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const char* src);
+
+/**
+ * Update string and trigger pulse if changed.
+ */
 void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src);
 
 /****************************************************************************/
@@ -382,7 +543,7 @@ void thread_rwlock_destroy(thread_rwlock_t* rwlock);
 void thread_rwlock_rdlock(thread_rwlock_t* rwlock);
 void thread_rwlock_wrlock(thread_rwlock_t* rwlock);
 void thread_rwlock_unlock(thread_rwlock_t* rwlock);
-void thread_create(thread_id_t* thread, void* (*func)(void *), void *arg);
+void thread_create(thread_id_t* thread, void* (*func)(void*), void* arg);
 void thread_join(thread_id_t thread, void** retval);
 void thread_yield(void);
 
@@ -393,9 +554,20 @@ void thread_yield(void);
 #define Z_ZLIB 1
 #define Z_ZSTD 2
 
+/**
+ * Determine supported compression for a connection.
+ */
 int mg_accept_z(struct mg_connection* conn);
+
+/**
+ * Write gzipped data to connection.
+ */
 int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size);
-int mg_write_zstd(struct mg_connection* conn, const char *src, size_t src_size);
+
+/**
+ * Write zstd compressed data to connection.
+ */
+int mg_write_zstd(struct mg_connection* conn, const char* src, size_t src_size);
 
 #endif
 

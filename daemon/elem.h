@@ -29,26 +29,74 @@
  */
 int command_parse(const char* str);
 
+/**
+ * Get the string representation of a command.
+ * @param cmd Command ID (one of CMD_*)
+ * @return Command name string
+ */
 const char* command_name(int cmd);
 
 /****************************************************************************/
 /* disk/split/device */
 
+/**
+ * Free a disk entry and its associated device and split lists.
+ * @param void_disk Pointer to the disk entry
+ */
 void disk_free(void* void_disk);
+
+/**
+ * Free a device entry.
+ * @param void_device Pointer to the device entry
+ */
 void device_free(void* void_device);
+
+/**
+ * Free a split entry.
+ * @param void_split Pointer to the split entry
+ */
 void split_free(void* void_split);
 
 /****************************************************************************/
 /* message */
 
+/**
+ * Allocate and initialize a new message.
+ * @param level Logging level
+ * @param type Message type
+ * @param msg Message text
+ * @return Pointer to newly allocated message
+ */
 struct snapraid_message* message_alloc(int level, int type, const char* msg);
+
+/**
+ * Free a message entry.
+ * @param void_message Pointer to the message entry
+ */
 void message_free(void* void_message);
+
+/**
+ * Insert a message into a message list.
+ * @param list Destination message list
+ * @param level Logging level
+ * @param type Message type
+ * @param msg Message text
+ */
 void message_insert(tommy_list* list, int level, int type, const char* msg);
 
 /****************************************************************************/
 /* task */
 
+/**
+ * Allocate and initialize a new task.
+ * @return Pointer to newly allocated task
+ */
 struct snapraid_task* task_alloc(void);
+
+/**
+ * Free a task and its associated message and fix lists.
+ * @param void_task Pointer to the task entry
+ */
 void task_free(void* void_task);
 
 /**
@@ -70,55 +118,196 @@ int task_level(struct snapraid_task* task);
 /****************************************************************************/
 /* schedule */
 
+/**
+ * Allocate a new schedule entry.
+ * @return Pointer to newly allocated schedule
+ */
 struct snapraid_schedule* schedule_alloc(void);
+
+/**
+ * Free a schedule entry and its associated arguments.
+ * @param void_sched Pointer to the schedule entry
+ */
 void schedule_free(void* void_sched);
 
 /****************************************************************************/
 /* file */
 
+/**
+ * Get the string representation of a file change type.
+ * @param change Change type ID (one of FILE_CHANGE_*)
+ * @return String representation of change type
+ */
 const char* change_name(int change);
 
+/**
+ * Allocate a new file entry for tracking changes.
+ * @param reason Change type ID
+ * @param disk Name of the disk
+ * @param path File path
+ * @return Pointer to newly allocated file entry
+ */
 struct snapraid_file* file_alloc(int reason, const char* disk, const char* path);
+
+/**
+ * Duplicate a file entry.
+ * @param dup File entry to duplicate
+ * @return Pointer to newly allocated copy of the file entry
+ */
 struct snapraid_file* file_dup(struct snapraid_file* dup);
+
+/**
+ * Allocate a new file entry with source information (for moves/copies).
+ * @param reason Change type ID
+ * @param disk Destination disk name
+ * @param path Destination file path
+ * @param source_disk Source disk name
+ * @param source_path Source file path
+ * @return Pointer to newly allocated file entry
+ */
 struct snapraid_file* file_alloc_source(int reason, const char* disk, const char* path, const char* source_disk, const char* source_path);
+
+/**
+ * Free a file entry.
+ * @param void_file Pointer to the file entry
+ */
 void file_free(void* void_file);
 
 /****************************************************************************/
 /* diff */
 
+/**
+ * Clean up a difference statistics structure, freeing its file list.
+ * @param diff Pointer to difference statistics structure
+ * @param equal New value for equal files counter
+ */
 void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal);
+
+/**
+ * Move difference statistics from source to destination.
+ * @param diff_src Source difference statistics
+ * @param diff_dest Destination difference statistics
+ */
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
 
 /****************************************************************************/
 /* fix */
 
+/**
+ * Clean up a fix statistics structure, freeing its file list.
+ * @param fix Pointer to fix statistics structure
+ */
 void fix_cleanup(struct snapraid_fix_stat* fix);
+
+/**
+ * Accumulate fix results from a list into a fix statistics structure.
+ * @param fix_src Source list of file entries
+ * @param fix_dest Destination fix statistics structure
+ */
 void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest);
 
 /****************************************************************************/
 /* bucket */
 
+/**
+ * Allocate a new bucket entry for scrub statistics.
+ * @param time_at Timestamp
+ * @param count_scrubbed Number of blocks scrubbed
+ * @param count_justsynced Number of blocks just synced
+ * @return Pointer to newly allocated bucket
+ */
 struct snapraid_bucket* bucket_alloc(uint64_t time_at, uint64_t count_scrubbed, uint64_t count_justsynced);
+
+/**
+ * Free a bucket entry.
+ * @param void_bucket Pointer to the bucket entry
+ */
 void bucket_free(void* void_bucket);
 
+/**
+ * Clean up a list of buckets.
+ * @param bucket List of buckets to clean up
+ */
 void bucket_cleanup(tommy_list* bucket);
+
+/**
+ * Move buckets from source to destination.
+ * @param bucket_src Source list
+ * @param bucket_dest Destination list
+ */
 void bucket_move(tommy_list* bucket_src, tommy_list* bucket_dest);
 
 /****************************************************************************/
 /* health */
 
+/**
+ * Get the string representation of a power state.
+ * @param power Power state ID
+ * @return String representation
+ */
 const char* power_name(int power);
+
+/**
+ * Get the string representation of a health status.
+ * @param health Health status ID
+ * @return String representation
+ */
 const char* health_name(int health);
+
+/**
+ * Determine health status for a task result.
+ * @param task Completed task
+ * @return Health status ID
+ */
 int health_task(struct snapraid_task* task);
+
+/**
+ * Analyze disk health and return health status.
+ * @param disk Disk to analyze
+ * @param reason Buffer to store health reason
+ * @param reason_size Size of reason buffer
+ * @return Health status ID
+ */
 int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size);
+
+/**
+ * Analyze overall array health.
+ * @param state Current snapraid state
+ * @param reason Buffer to store health reason
+ * @param reason_size Size of reason buffer
+ * @return Health status ID
+ */
 int health_array(struct snapraid_state* state, char* reason, size_t reason_size);
+
+/**
+ * Calculate Annual Failure Rate (AFR) for the array.
+ * @param state Current snapraid state
+ * @return AFR value
+ */
 double afr_array(struct snapraid_state* state);
+
+/**
+ * Calculate failure probability for the array.
+ * @param state Current snapraid state
+ * @return Failure probability (0.0 to 1.0)
+ */
 double fp_array(struct snapraid_state* state);
 
 /****************************************************************************/
 /* temperature */
 
+/**
+ * Allocate a new temperature record.
+ * @param temperature Temperature in Celsius
+ * @param time_at Timestamp
+ * @return Pointer to newly allocated record
+ */
 struct snapraid_temp* temperature_alloc(int temperature, time_t time_at);
+
+/**
+ * Free a temperature record.
+ * @param void_temp Pointer to the record
+ */
 void temperature_free(void* void_temp);
 
 /**
@@ -139,7 +328,19 @@ int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time);
 /****************************************************************************/
 /* tracked */
 
+/**
+ * Initialize a tracked metric.
+ * @param tracked Metric to initialize
+ */
 void tracked_init(struct snapraid_tracked* tracked);
+
+/**
+ * Update a tracked metric with new value.
+ * @param tracked Metric to update
+ * @param old Previous value
+ * @param kind Metric kind
+ * @param last_time Current timestamp
+ */
 void tracked_update(struct snapraid_tracked* tracked, uint64_t old, int kind, int64_t last_time);
 
 /****************************************************************************/
@@ -154,7 +355,18 @@ struct snapraid_page {
 	char str[];
 };
 
+/**
+ * Allocate and initialize a new web page entry.
+ * @param path URL path
+ * @param content_size Size of file content
+ * @return Pointer to newly allocated page
+ */
 struct snapraid_page* page_alloc(const char* path, size_t content_size);
+
+/**
+ * Free a web page entry.
+ * @param void_page Pointer to the page entry
+ */
 void page_free(void* void_page);
 
 #endif

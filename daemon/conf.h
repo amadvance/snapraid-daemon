@@ -23,7 +23,16 @@
 /****************************************************************************/
 /* config */
 
+/**
+ * Allocate a new configuration line entry.
+ * @return Pointer to newly allocated line entry
+ */
 struct snapraid_config_line* config_line_alloc(void);
+
+/**
+ * Free a configuration line entry.
+ * @param void_line Pointer to line entry to free
+ */
 void config_line_free(void* void_line);
 
 /**
@@ -60,7 +69,7 @@ void config_schedule_str(const struct snapraid_config* config, char* buf, size_t
 
 /**
  * Initialize configuration with defaults.
- * @param config Configuration to initialize
+ * @param state Current snapraid state
  * @param argv0 Program name for defaults
  */
 void config_init(struct snapraid_state* state, const char* argv0);

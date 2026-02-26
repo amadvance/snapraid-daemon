@@ -73,7 +73,16 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
  */
 void daemon_signal_restore_after_fork(void);
 
+/**
+ * Gather static system information.
+ * @param system Pointer to system structure to populate
+ */
 void daemon_system(struct snapraid_system* system);
+
+/**
+ * Refresh dynamic system information (uptime, memory).
+ * @param system Pointer to system structure to update
+ */
 void daemon_system_refresh(struct snapraid_system* system);
 
 #endif

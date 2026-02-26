@@ -42,27 +42,52 @@ void scheduler_done(struct snapraid_state* state);
 void scheduler_pulse(struct snapraid_state* state);
 
 /**
- * Schedule a maintenance
+ * Schedule a maintenance operation (sync followed by optional scrub).
+ * @param state Current snapraid state
+ * @param spindown 1 to spindown disks after completion, 0 otherwise
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
  */
 void schedule_maintenance(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status);
 
 /**
- * Schedule a heal
+ * Schedule a heal operation (fix errors).
+ * @param state Current snapraid state
+ * @param spindown 1 to spindown disks after completion, 0 otherwise
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
  */
 void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status);
 
 /**
- * Schedule a heal
+ * Schedule an undelete operation.
+ * @param state Current snapraid state
+ * @param spindown 1 to spindown disks after completion, 0 otherwise
+ * @param filter_list List of filters for undelete
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
  */
 void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, char* msg, size_t msg_size, int* status);
 
 /**
- * Schedule a spindown of idle disks
+ * Schedule a spindown of idle disks.
+ * @param state Current snapraid state
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
  */
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
- * Schedule a sequence of commands with argumets
+ * Schedule a custom sequence of commands.
+ * @param state Current snapraid state
+ * @param scheds List of schedule entries
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
  */
 void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* msg, size_t msg_size, int* status);
 

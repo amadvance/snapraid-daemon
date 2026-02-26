@@ -23,6 +23,10 @@
 /****************************************************************************/
 /* runner */
 
+/**
+ * Find the SnapRAID binary in the system.
+ * @return Path to SnapRAID binary, or NULL if not found
+ */
 const char* find_snapraid(void);
 
 /**
@@ -45,9 +49,11 @@ void runner_done(struct snapraid_state* state);
 const char* runner_cmd(int cmd);
 
 /**
- * Execute a SnapRAID command with arguments.
+ * Execute a SnapRAID command with arguments in a new task.
  * @param state Current snapraid state
- * @param cmd Command ID to execute
+ * @param high_cmd High-level command ID
+ * @param cmd SnapRAID command ID to execute
+ * @param now Current timestamp
  * @param arg_list List of command arguments
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
@@ -55,6 +61,19 @@ const char* runner_cmd(int cmd);
  * @return Exit status of command
  */
 int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status);
+
+/**
+ * Execute a SnapRAID command with state lock already held.
+ * @param state Current snapraid state
+ * @param high_cmd High-level command ID
+ * @param cmd SnapRAID command ID to execute
+ * @param now Current timestamp
+ * @param arg_list List of command arguments
+ * @param msg Buffer for error message
+ * @param msg_size Size of message buffer
+ * @param status Pointer to store HTTP status code
+ * @return Exit status of command
+ */
 int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status);
 
 /**

@@ -22,16 +22,28 @@
 #include "support.h"
 
 /**
- * Generate a text report containing the result of the latest sync and scrub tasks.
- *
- * @param state Pointer to the global snapraid state
+ * Generate a text report containing the result of the latest tasks.
+ * @param state Current snapraid state
  * @param ss String stream to write the report to
- * @param latest_sync Pointer to the latest fix task, or NULL if not available
- * @param latest_sync Pointer to the latest sync task, or NULL if not available
- * @param latest_scrub Pointer to the latest scrub task, or NULL if not available
+ * @param latest_fix Pointer to the latest fix task
+ * @param latest_sync Pointer to the latest sync task
+ * @param latest_scrub Pointer to the latest scrub task
+ * @param diff_stat Pointer to difference statistics
  * @return 0 on success, -1 on error
  */
 int report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
+
+/**
+ * Generate a narrow text report (suitable for small screens).
+ * @param state Current snapraid state
+ * @param ss String stream to write the report to
+ * @param latest_fix Pointer to the latest fix task
+ * @param latest_sync Pointer to the latest sync task
+ * @param latest_scrub Pointer to the latest scrub task
+ * @param diff_stat Pointer to difference statistics
+ * @return 0 on success, -1 on error
+ */
+int report_narrow_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
 
 #endif
 
