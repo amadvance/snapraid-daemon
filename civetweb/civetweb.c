@@ -3973,7 +3973,7 @@ get_http_version(const struct mg_connection *conn)
 static const char *
 next_option(const char *list, struct vec *val, struct vec *eq_val)
 {
-	int end;
+	size_t end;
 
 reparse:
 	if (val == NULL || list == NULL || *list == '\0') {
@@ -3997,10 +3997,10 @@ reparse:
 	}
 
 	/* Adjust length for trailing LWS */
-	end = (int)val->len - 1;
-	while (end >= 0 && ((val->ptr[end] == ' ') || (val->ptr[end] == '\t')))
+	end = val->len;
+	while (end > 0 && ((val->ptr[end - 1] == ' ') || (val->ptr[end - 1] == '\t')))
 		end--;
-	val->len = (size_t)(end) + (size_t)(1);
+	val->len = end;
 
 	if (val->len == 0) {
 		/* Ignore any empty entries. */
