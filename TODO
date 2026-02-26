@@ -1,11 +1,12 @@
 SnapRAID Daemon TODO
 ====================
 
-- Evaluate Mongoose as a replacement for CivetWeb: https://github.com/cesanta/mongoose
-
-- Show disks that are not part of the array in the inventory
+- Show disks that are not part of the array
 
 - Support maintenance scheduling for multiple days of the week
+
+- Send a notification report every time a PREFAIL attribute change
+  - Allow to ignore some attributes
 
 - Implement initial configuration of SnapRAID directly through the Web UI
 
