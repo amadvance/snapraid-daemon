@@ -23,6 +23,7 @@
 #include "parser.h"
 #include "daemon.h"
 #include "runner.h"
+#include "smart.h"
 #include "elem.h"
 
 /****************************************************************************/
@@ -741,21 +742,20 @@ void tracked_init(struct snapraid_tracked* tracked)
 	tracked->lowest_last = 0;
 }
 
-void tracked_update(struct snapraid_tracked* tracked, uint64_t old, uint64_t mask, int64_t last_time)
+void tracked_update(struct snapraid_tracked* tracked, uint64_t old, int kind, int64_t last_time)
 {
 	if (tracked->value == SMART_UNASSIGNED)
 		return;
-	if (mask == 0)
-		mask = SMART_UNASSIGNED; /* all 1 */
+
 	if (tracked->lowest == SMART_UNASSIGNED
-		|| (tracked->value & mask) < (tracked->lowest & mask)) {
+		|| smart_conv(tracked->value, kind) < smart_conv(tracked->lowest, kind)) {
 		tracked->lowest = tracked->value;
 		tracked->lowest_last = last_time;
-	} else if ((tracked->lowest & mask) == (tracked->value & mask)) {
+	} else if (smart_conv(tracked->lowest, kind) == smart_conv(tracked->value, kind)) {
 		tracked->lowest_last = last_time;
 	}
 	if (old != SMART_UNASSIGNED
-		&& (old & mask) != (tracked->value & mask)) {
+		&& smart_conv(old, kind) != smart_conv(tracked->value, kind)) {
 		tracked->prev = old;
 		tracked->prev_last = last_time;
 	}

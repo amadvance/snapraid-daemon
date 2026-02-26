@@ -1119,6 +1119,37 @@ components:
                       degrees Celsius).
                   raw_history:
                     $ref: '#/components/schemas/ValueHistory'
+                  min:
+                    type: integer
+                    description: >
+                      The absolute lifetime minimum recorded by the drive
+                      firmware itself. This is a hardware-persisted
+                      record of the 'raw' value that spans the entire life
+                      of the disk, independent of the daemon's tracking.
+                  max:
+                    type: integer
+                    description: >
+                      The absolute lifetime maximum recorded by the drive
+                      firmware itself. This is a hardware-persisted
+                      record of the 'raw' value that spans the entire life
+                      of the disk, independent of the daemon's tracking.
+                  measure:
+                    type: string
+                    enum: [bytes, time, temperature, count, percentage]
+                    description: >
+                      The category of measurement for the 'raw' value.
+                      This defines how the value should be interpreted and
+                      formatted by the consumer.
+                  unit:
+                    type: integer
+                    description: >
+                      The multiplier to convert the 'raw' value into the
+                      base SI unit for the specified 'measure'.
+                      For 'bytes', results in total bytes.
+                      For 'time', results in total seconds.
+                      For 'temperature', results in Celsius degrees.
+                      For 'count', it is a scale factor (usually 1).
+                      For 'percentage', it is a scale factor (usually 1).
                   norm:
                     type: integer
                     description: >
@@ -1134,16 +1165,6 @@ components:
                     description: >
                       The manufacturer-defined limit. If 'norm' drops below
                       this value, the attribute is considered failed.
-                  min:
-                    type: integer
-                    description: >
-                      The minimum recorded value for this specific attribute
-                      session (commonly used for temperature tracking).
-                  max:
-                    type: integer
-                    description: >
-                      The maximum recorded value for this specific attribute
-                      session (commonly used for temperature tracking).
             power_on_hours:
               type: integer
               description: >

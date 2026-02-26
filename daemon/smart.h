@@ -24,16 +24,24 @@
 /****************************************************************************/
 /* smart */
 
+#define SMART_KIND_PULSE 0x01
+#define SMART_KIND_PREFAIL 0x02
 
-#define SMART_KIND_PREFAIL 1
-#define SMART_KIND_INFO 2
-#define SMART_KIND_TEMP 4
-#define SMART_KIND_PULSE 8
+#define SMART_KIND_TEMP 0x08 /**< It's a temperature measure */
+#define SMART_KIND_SIZE 0x10 /**< It's a size measure */
+#define SMART_KIND_TIME 0x20 /**< It's a time measure */
+#define SMART_KIND_PERC 0x40 /**< It's a percentage measure */
+#define SMART_KIND_COUNT 0x80 /**< It's a counter measure (NOT USED BEING THE DEFAULT) */
+
+/**
+ * Adjust a raw value doing the required conversion
+ */
+uint64_t smart_conv(uint64_t raw, int kind);
 
 /**
  * Get SMART_KIND_* flags. 0 if none
  */
-int smart_kind(int index, const char* name, uint64_t* mask);
+int smart_kind(int index, const char* name);
 
 /**
  * Get the historic temperature range from SMART attributes
@@ -43,7 +51,7 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 /**
  * Output tracked value
  */
-void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, uint64_t mask);
+void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int kind);
 
 /**
  * Output smart attributes in JSON format

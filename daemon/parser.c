@@ -578,8 +578,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			flags |= SMART_ATTR_WHEN_FAILED_NEVER;
 
 		if (strint(&index, tag) == 0 && index >= 0 && index < 256) {
-			uint64_t mask;
-			int kind = smart_kind(index, name, &mask);
+			int kind = smart_kind(index, name);
 			uint64_t old_raw = device->smart[index].raw.value;
 			int got_raw;
 
@@ -601,7 +600,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			}
 
 			if (got_raw == 0 && (kind & SMART_KIND_PREFAIL) != 0)
-				tracked_update(&device->smart[index].raw, old_raw, mask, state->global.last_time);
+				tracked_update(&device->smart[index].raw, old_raw, kind, state->global.last_time);
 		}
 	}
 }

@@ -54,6 +54,28 @@ export const formatRelativeTime = (isoString, referenceIsoString) => {
     return `${Math.floor(diffSeconds / 86400)}d ago`;
 };
 
+export const formatElapsedTime = (seconds) => {
+    if (seconds < 60) return 'now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours`;
+    if (seconds < 86400*30) return `${Math.floor(seconds / 86400)} days`;
+    if (seconds < 86400*365) return `${Math.floor(seconds / (86400*30))} months`;
+    return `${(seconds / (86400*365)).toFixed(1)} years`;
+};
+
+export const formatSize = (bytes) => {
+    if (bytes === 0) return '0 bytes';
+    if (bytes === 1) return '1 byte';
+
+    if (bytes < 1000) return `${bytes} bytes`;
+    if (bytes < 1000 ** 2) return `${(bytes / 1000).toFixed(1)} kB`;
+    if (bytes < 1000 ** 3) return `${(bytes / 1000 ** 2).toFixed(1)} MB`;
+    if (bytes < 1000 ** 4) return `${(bytes / 1000 ** 3).toFixed(1)} GB`;
+    if (bytes < 1000 ** 5) return `${(bytes / 1000 ** 4).toFixed(1)} TB`;   
+
+    return `${(bytes / 1000 ** 5).toFixed(1)} PB`;
+};
+
 export const formatAgoMins = (mins) => {
     const seconds = mins * 60;
     if (seconds < 60) return 'now';
