@@ -124,7 +124,7 @@ struct option long_options[] = {
 
 #define OPTIONS "fc:Np:vHV"
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	int c;
 	char msg[MSG_MAX];

@@ -56,7 +56,7 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 	va_end(ap2);
 }
 
-void log_msg(int level, const char *fmt, ...)
+void log_msg(int level, const char* fmt, ...)
 {
 	int syslog;
 	int termlog;

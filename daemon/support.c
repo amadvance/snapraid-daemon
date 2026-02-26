@@ -475,7 +475,7 @@ int sl_compare(const void* void_a, const void* void_b)
 #ifndef HAVE_STRLCPY
 size_t sncpy(char* dst, size_t dst_size, const char* src)
 {
-	const char *s = src;
+	const char* s = src;
 	size_t n = dst_size;
 
 	if (n != 0) {
@@ -903,7 +903,7 @@ void thread_rwlock_unlock(thread_rwlock_t* rwlock)
 	}
 }
 
-void thread_create(thread_id_t* thread, void* (*func)(void*), void *arg)
+void thread_create(thread_id_t* thread, void* (*func)(void*), void* arg)
 {
 	if (pthread_create(thread, 0, func, arg) != 0) {
 		/* LCOV_EXCL_START */
@@ -1065,7 +1065,7 @@ int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size)
 #endif
 
 #if HAVE_ZSTD
-int mg_write_zstd(struct mg_connection* conn, const char *src, size_t src_size)
+int mg_write_zstd(struct mg_connection* conn, const char* src, size_t src_size)
 {
 	ZSTD_CCtx* cctx = ZSTD_createCCtx();
 	if (!cctx)

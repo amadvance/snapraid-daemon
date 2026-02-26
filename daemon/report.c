@@ -251,7 +251,7 @@ static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
 
 		/* print all changes of this type */
 		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
-			struct snapraid_file *file = i->data;
+			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
 
@@ -284,7 +284,7 @@ static void print_fix_narrow(ss_t* ss, tommy_list* fix_list)
 
 		/* print all changes of this type */
 		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
-			struct snapraid_file *file = i->data;
+			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
 
@@ -319,7 +319,7 @@ static struct snapraid_message* has_reason(tommy_list* list)
 /**
  * Print task information (sync or scrub).
  */
-static void print_task_wide(ss_t *ss, const char *task_name, struct snapraid_task *task)
+static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_task* task)
 {
 	tommy_node* i;
 

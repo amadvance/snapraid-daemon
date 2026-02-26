@@ -460,7 +460,7 @@ int config_save_locked(struct snapraid_config* config)
 	tommy_node* i;
 	struct snapraid_config_line* line;
 
-	FILE *fp = fopen(config->conf, "wte");
+	FILE* fp = fopen(config->conf, "wte");
 	if (!fp) {
 		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;

@@ -1833,7 +1833,7 @@ void civetweb_log_access(const struct mg_connection* conn, int status_code, int 
 /**
  * Internal hook of CivetWeb
  */
-void civetweb_log_message(const struct mg_connection *conn, const char* str)
+void civetweb_log_message(const struct mg_connection* conn, const char* str)
 {
 	log_internal_callback(conn, str);
 }

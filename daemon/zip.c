@@ -65,12 +65,12 @@
 
 /* Helper Functions for Unaligned Access */
 
-static inline uint16_t read16(const uint8_t *p)
+static inline uint16_t read16(const uint8_t* p)
 {
 	return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
 }
 
-static inline uint32_t read32(const uint8_t *p)
+static inline uint32_t read32(const uint8_t* p)
 {
 	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
@@ -127,9 +127,9 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 		strm.zfree = Z_NULL;
 		strm.opaque = Z_NULL;
 		strm.avail_in = (uInt)compressed_size;
-		strm.next_in = (Bytef *)compressed_data;
+		strm.next_in = (Bytef*)compressed_data;
 		strm.avail_out = (uInt)uncompressed_size;
-		strm.next_out = (Bytef *)out_buf;
+		strm.next_out = (Bytef*)out_buf;
 
 		/*
 		 * inflateInit2 with -15 is the "Raw Deflate" mode.
@@ -235,7 +235,7 @@ int crawl_zip(tommy_list* page_list, const char* path)
 			goto bail;
 		}
 
-		uint8_t *cd_ptr = buffer + current_cd_pos;
+		uint8_t* cd_ptr = buffer + current_cd_pos;
 
 		if (read32(cd_ptr + OFF_CD_SIGNATURE) != CD_SIGNATURE) {
 			log_msg(LVL_ERROR, "crawler zip %s bad central directory signature at record %d ", path, i);

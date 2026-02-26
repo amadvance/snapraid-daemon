@@ -1354,7 +1354,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	}
 }
 
-int parse_timestamp(const char *name, int64_t* out)
+int parse_timestamp(const char* name, int64_t* out)
 {
 	int Y, M, D, h, m, s;
 	char dash;
@@ -1420,7 +1420,7 @@ int parse_past_log(struct snapraid_state* state)
 	int64_t cutoff_seconds = now - log_retention_days * SECONDS_IN_A_DAY;
 
 	sl_init(&log_list);
-	struct dirent *ent;
+	struct dirent* ent;
 	while ((ent = readdir(dir)) != 0) {
 		if (ent->d_name[0] == '.')
 			continue;

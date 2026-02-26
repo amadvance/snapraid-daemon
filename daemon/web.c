@@ -381,14 +381,14 @@ static int send_file(struct mg_connection* conn, time_t page_time, const char* b
 	return 200;
 }
 
-static int is_not_modified(struct mg_connection *conn, time_t file_mtime)
+static int is_not_modified(struct mg_connection* conn, time_t file_mtime)
 {
-	const char *if_mod_since = mg_get_header(conn, "If-Modified-Since");
+	const char* if_mod_since = mg_get_header(conn, "If-Modified-Since");
 	if (!if_mod_since)
 		return 0;
 
 	char date_buf[64];
-	struct tm *tm = gmtime(&file_mtime);
+	struct tm* tm = gmtime(&file_mtime);
 	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", tm);
 
 	/* if the strings match exactly, the browser's cache is still valid */

@@ -29,7 +29,7 @@
  * Scrubbed environment
  * Only provide the bare essentials.
  */
-static char *const envp_scrubbed[] = {
+static char* const envp_scrubbed[] = {
 	"PATH="
 #ifdef __APPLE__
 	"/opt/homebrew/bin:"
@@ -390,7 +390,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 		/* drop privileges first (if configured) */
 		if (run_as_user && run_as_user[0] != '\0') {
 			errno = 0;
-			struct passwd *pw = getpwnam(run_as_user);
+			struct passwd* pw = getpwnam(run_as_user);
 			if (!pw) {
 				/* if errno is 0, user simply wasn't found. Otherwise, it's a real error */
 				if (errno == 0)
@@ -442,7 +442,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 		 * Direct Execution via File Descriptor
 		 * The kernel uses the shebang in the FD to find the interpreter.
 		 */
-		char* const argv[] = { (char *)script_path, 0 };
+		char* const argv[] = { (char*)script_path, 0 };
 
 #if HAVE_FEXECVE
 		fexecve(fd, argv, envp_scrubbed);
@@ -535,7 +535,7 @@ int daemon_command(const char* command, const char* target_user, const char* std
 		/* drop privileges first (if configured) */
 		if (target_user && target_user[0] != '\0') {
 			errno = 0;
-			struct passwd *pw = getpwnam(target_user);
+			struct passwd* pw = getpwnam(target_user);
 			if (!pw) {
 				/* if errno is 0, user simply wasn't found. Otherwise, it's a real error */
 				if (errno == 0)
@@ -591,7 +591,7 @@ int daemon_command(const char* command, const char* target_user, const char* std
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
 
-		char* const argv[] = { "sh", "-c", (char *)command, 0 };
+		char* const argv[] = { "sh", "-c", (char*)command, 0 };
 
 		execve("/bin/sh", argv, envp_scrubbed);
 
@@ -956,7 +956,7 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
  */
 char* sysattr(const char* path, const char* tag, char separator, int position, char* out, size_t out_size)
 {
-	FILE *fp = fopen(path, "r");
+	FILE* fp = fopen(path, "r");
 	if (!fp)
 		return 0;
 

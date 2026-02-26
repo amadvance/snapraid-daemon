@@ -608,7 +608,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 	/* no count, nothing to do */
 	if (count == 0) {
 		/* set the latest task from the history, if any */
-		tommy_node * tail = tommy_list_tail(&state->runner.history_list);
+		tommy_node* tail = tommy_list_tail(&state->runner.history_list);
 		if (tail) {
 			state->runner.latest = tail->data;
 		} else {
