@@ -87,8 +87,8 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
 
     // Min/Max Lines
     [
-        { val: minTemp, label: 'MIN' },
-        { val: maxTemp, label: 'MAX' }
+        { val: minTemp, label: 'lowest' },
+        { val: maxTemp, label: 'highest' }
     ].forEach(item => {
         if (item.val == null || item.val <= 0) return;
         const yPos = getY(item.val);
@@ -96,7 +96,7 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
         svg += `
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
                   stroke="${color}" stroke-opacity="0.5" stroke-width="2.5"
-                  data-tooltip="${item.label}: ${item.val}°C" />
+                  data-tooltip="${item.val}°C, ${item.label}" />
         `;
     });
 
@@ -111,7 +111,7 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
 
         const minsAgo = Math.floor((maxIndex - i) * (1440 / maxIndex));
 
-        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}" data-tooltip="${formatAgoMins(minsAgo)}: ${temp}°C"></circle>`;
+        svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${getColor(temp)}" data-tooltip="${temp}°C, ${formatAgoMins(minsAgo)}"></circle>`;
     });
 
     svg += `</svg>`;
@@ -206,10 +206,10 @@ export function renderScrubHistory(containerId, history) {
         const yNew = chartHeight - hScrubbed - hNew + margin.top;
 
         if (p.scrubbed > 0) {
-            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${formatAgoDays(p.ago)}: ${p.scrubbed.toFixed(1)}% scrub"></rect>`;
+            svg += `<rect x="${x}" y="${yScrubbed}" width="${barWidth}" height="${hScrubbed}" fill="#10b981" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.scrubbed.toFixed(1)}% scrub, ${formatAgoDays(p.ago)}"></rect>`;
         }
         if (p.new > 0) {
-            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${formatAgoDays(p.ago)}: ${p.new.toFixed(1)}% sync"></rect>`;
+            svg += `<rect x="${x}" y="${yNew}" width="${barWidth}" height="${hNew}" fill="#3b82f6" stroke="rgba(0,0,0,0.5)" stroke-width="1" data-tooltip="${p.new.toFixed(1)}% sync, ${formatAgoDays(p.ago)}"></rect>`;
         }
     });
 
