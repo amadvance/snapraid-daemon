@@ -35,21 +35,21 @@
  * Special format for attributes
  */
 #define FORMAT_MASK 0xFF0000
-#define FORMAT_8  0x10000
-#define FORMAT_16 0x20000
-#define FORMAT_24 0x30000
-#define FORMAT_32 0x40000
-#define FORMAT_48 0x50000
-#define FORMAT_64 0x60000
-#define FORMAT_TEMPERATURE 0x70000
-#define FORMAT_SIZE_1000_512 0x80000
-#define FORMAT_MINUTES 0x90000
-#define FORMAT_CRITICAL_WARNINGS 0xA0000
-#define FORMAT_48_GB 0xB0000
-#define FORMAT_48_GIB 0xC0000
-#define FORMAT_48_MIB 0xD0000
-#define FORMAT_48_32MIB 0xE0000
-#define FORMAT_48_512 0xF0000
+#define FORMAT_8  0x10000 /**< 8 bits */
+#define FORMAT_16 0x20000 /**< 16 bits */
+#define FORMAT_24 0x30000 /**< 24 bits */
+#define FORMAT_32 0x40000 /**< 32 bits */
+#define FORMAT_48 0x50000 /**< 48 bits */
+#define FORMAT_64 0x60000 /**< 64 bits */
+#define FORMAT_16_MAXMINVAL 0x70000 /**< 16 bits nibbles MAX-MIN-VAL */
+#define FORMAT_64_60 0x80000 /**< 64 bits * 60 (minutes) */
+#define FORMAT_8_BM 0x90000 /**< Bit masks of lower 8 bits */
+#define FORMAT_64_1000_512 0xA0000 /**< 64 bits * 1000 * 512 */
+#define FORMAT_48_GB 0xB0000 /**< 48 bits * 1000^3 */
+#define FORMAT_48_GIB 0xC0000 /**< 48 bits * 1024^3 */
+#define FORMAT_48_MIB 0xD0000 /**< 48 bits * 1024^2 */
+#define FORMAT_48_32MIB 0xE0000 /**< 48 bits * 32 * 1024^2 */
+#define FORMAT_48_512 0xF0000 /**< 48 bits * 512 */
 
 /* From: https://github.com/smartmontools/smartmontools/blob/main/drivedb/drivedb.h */
 struct smart_entry {
@@ -179,16 +179,16 @@ struct smart_entry {
 	{ 201, FORMAT_48, "Uncorr_Soft_Read_Err_Rt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 
 	/* temperature, 190 */
-	{ 190, FORMAT_TEMPERATURE, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
-	{ 190, FORMAT_TEMPERATURE, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_16_MAXMINVAL, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
+	{ 190, FORMAT_16_MAXMINVAL, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_16_MAXMINVAL, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 190, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
 
 	/* temperature, 194 */
-	{ 194, FORMAT_TEMPERATURE, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
-	{ 194, FORMAT_TEMPERATURE, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 194, FORMAT_TEMPERATURE, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 194, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
+	{ 194, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ 194, FORMAT_16_MAXMINVAL, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
 
 	/* power on, 9 */
 	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME }, /* default entry */
@@ -232,16 +232,16 @@ struct smart_entry {
 	/* from SnapRAID NVME mapping, see smartctl_attribute() */
 	{ 194, FORMAT_16, "Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ 12, FORMAT_48, "Power_Cycles", 0 },
-	{ -1, FORMAT_CRITICAL_WARNINGS, "Critical_Warning", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ -1, FORMAT_8_BM, "Critical_Warning", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ -1, FORMAT_64, "Available_Spare", SMART_KIND_PERC },
-	{ -1, FORMAT_SIZE_1000_512, "Data_Units_Read", SMART_KIND_SIZE },
-	{ -1, FORMAT_SIZE_1000_512, "Data_Units_Written", SMART_KIND_SIZE },
+	{ -1, FORMAT_64_1000_512, "Data_Units_Read", SMART_KIND_SIZE },
+	{ -1, FORMAT_64_1000_512, "Data_Units_Written", SMART_KIND_SIZE },
 	{ -1, FORMAT_64, "Host_Read_Commands", 0 },
 	{ -1, FORMAT_64, "Host_Write_Commands", 0 },
-	{ -1, FORMAT_MINUTES, "Controller_Busy_Time", SMART_KIND_TIME },
+	{ -1, FORMAT_64_60, "Controller_Busy_Time", SMART_KIND_TIME },
 	{ -1, FORMAT_64, "Unsafe_Shutdowns", 0 },
-	{ -1, FORMAT_MINUTES, "Warning_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ -1, FORMAT_MINUTES, "Critical_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ -1, FORMAT_64_60, "Warning_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ -1, FORMAT_64_60, "Critical_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ 0 }
 };
 
@@ -250,22 +250,28 @@ uint64_t smart_conv(uint64_t raw, int format)
 	format &= FORMAT_MASK;
 
 	switch (format) {
-	case FORMAT_8 : return raw & 0xFFU;
-	case FORMAT_16 : return raw & 0xFFFFU;
-	case FORMAT_24 : return raw & 0xFFFFFFU;
-	case FORMAT_32 : return raw & MASK_32;
+	case FORMAT_8 :
+		return raw & 0xFF;
+	case FORMAT_16 :
+	case FORMAT_16_MAXMINVAL :
+		return raw & 0xFFFF;
+	case FORMAT_24 :
+		return raw & 0xFFFFFF;
+	case FORMAT_32 :
+		return raw & MASK_32;
 	case FORMAT_48_GB :
 	case FORMAT_48_GIB :
 	case FORMAT_48_MIB :
 	case FORMAT_48_32MIB :
 	case FORMAT_48_512 :
-	case FORMAT_48 : return raw & MASK_48;
-	case FORMAT_64 : return raw;
-	case FORMAT_TEMPERATURE : return raw & 0xFFFF;
-	case FORMAT_SIZE_1000_512 : return raw;
-	case FORMAT_MINUTES : return raw;
-	case FORMAT_CRITICAL_WARNINGS :
-		/* coutn bits */
+	case FORMAT_48 :
+		return raw & MASK_48;
+	case FORMAT_64 :
+	case FORMAT_64_1000_512 :
+	case FORMAT_64_60 :
+		return raw;
+	case FORMAT_8_BM :
+		/* count bits */
 		unsigned counter = 0;
 		for (int i = 0; i < 8; ++i)
 			if (raw & (1ULL << i))
@@ -331,7 +337,7 @@ void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked*
 	ss_json_u64(s, level, name, smart_conv(tracked->value, kind));
 
 	if (tracked->prev != SMART_UNASSIGNED) {
-		char history[128];
+		char history[KEYWORD_MAX];
 		snprintf(history, sizeof(history), "%s_history", name);
 		ss_json_object_open(s, &level, history);
 		ss_json_u64(s, level, "prev", smart_conv(tracked->prev, kind));
@@ -392,7 +398,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 			ss_json_u64(s, level, "worst", attr->worst);
 			ss_json_u64(s, level, "thresh", attr->thresh);
 		}
-		if (format == FORMAT_TEMPERATURE) {
+		if (format == FORMAT_16_MAXMINVAL) {
 			uint64_t value = attr->raw.value & 0xFFFF;
 			uint64_t min = (attr->raw.value >> 16) & 0xFFFF;
 			uint64_t max = (attr->raw.value >> 32) & 0xFFFF;
@@ -404,7 +410,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		if (kind & SMART_KIND_SIZE) {
 			ss_json_str(s, level, "measure", "bytes");
 			switch (format) {
-			case FORMAT_SIZE_1000_512 :
+			case FORMAT_64_1000_512 :
 				ss_json_u64(s, level, "unit", 1000 * 512);
 				break;
 			case FORMAT_48_GB :
@@ -429,7 +435,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		} else if (kind & SMART_KIND_TIME) {
 			ss_json_str(s, level, "measure", "time");
 			switch (format) {
-			case FORMAT_MINUTES :
+			case FORMAT_64_60 :
 				ss_json_u64(s, level, "unit", 60);
 				break;
 			default :

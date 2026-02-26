@@ -24,9 +24,8 @@
 /****************************************************************************/
 /* smart */
 
-#define SMART_KIND_PULSE 0x01
-#define SMART_KIND_PREFAIL 0x02
-
+#define SMART_KIND_PULSE 0x01 /**< Needs a pulse when it changes */
+#define SMART_KIND_PREFAIL 0x02 /**< It's a PREFAIL attribute, otherwise OLDAGE */
 #define SMART_KIND_TEMP 0x08 /**< It's a temperature measure */
 #define SMART_KIND_SIZE 0x10 /**< It's a size measure */
 #define SMART_KIND_TIME 0x20 /**< It's a time measure */
@@ -34,7 +33,7 @@
 #define SMART_KIND_COUNT 0x80 /**< It's a counter measure (NOT USED BEING THE DEFAULT) */
 
 /**
- * Adjust a raw value doing the required conversion
+ * Convert a raw value masking out extra bits
  */
 uint64_t smart_conv(uint64_t raw, int kind);
 

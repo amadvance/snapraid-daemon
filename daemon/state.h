@@ -30,9 +30,16 @@ typedef tommy_list sl_t;
 #define EXIT_NEED_SYNC 2
 
 /**
- * Max disk name length
+ * Max keyword length
+ *
+ * It's the size of all the fields/commands/configuration options lengths.
  */
-#define DISK_MAX 128
+#define KEYWORD_MAX 128
+
+/**
+ * Max length of a free text message
+ **/
+#define MSG_MAX 256
 
 /**
  * Max UUID length.
@@ -137,7 +144,7 @@ struct snapraid_tracked {
 #define SMART_ATTR_WHEN_FAILED_NEVER 64
 
 struct smart_attr {
-	char name[128]; /**< SMART attribute name. */
+	char name[KEYWORD_MAX]; /**< SMART attribute name. */
 	struct snapraid_tracked raw; /**< SMART attributes raw. */
 	uint64_t norm; /**< SMART attributes normalized. */
 	uint64_t worst; /**< SMART attributes worst. */
@@ -190,7 +197,7 @@ struct snapraid_split {
 };
 
 struct snapraid_disk {
-	char name[DISK_MAX]; /**< Name of the disk. */
+	char name[KEYWORD_MAX]; /**< Name of the disk. */
 	uint64_t total_space_bytes; /**< Size of the disk stored in the content file or obtained from the filesystem. */
 	uint64_t free_space_bytes; /**< Free size of the disk stored in the content file or obtained from the filesystem. */
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
@@ -277,7 +284,7 @@ struct snapraid_task {
 	pid_t pid; /**< Process ID of the running task */
 	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
 	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
-	char exit_msg[128]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
+	char exit_msg[MSG_MAX]; /** Exit message. Valid only for PROCESS_STATE_CANCEL */
 	unsigned pulse; /**< Pulse flags triggered by the task */
 
 	sl_t arg_list; /**< List of arguments */
@@ -479,11 +486,11 @@ struct snapraid_config {
  * and is used to provide hardware and OS context to the web interface.
  */
 struct snapraid_system {
-	char hostname[256]; /**< Network hostname of the machine */
-	char os_distribution[256]; /**< Operating system name and version (e.g., "Ubuntu 24.04 LTS") */
-	char kernel_version[128]; /**< Running Linux kernel version string */
-	char motherboard[256]; /**< Manufacturer and model of the motherboard */
-	char cpu_model[256]; /**< Total physical RAM available in kilobytes */
+	char hostname[KEYWORD_MAX]; /**< Network hostname of the machine */
+	char os_distribution[MSG_MAX]; /**< Operating system name and version (e.g., "Ubuntu 24.04 LTS") */
+	char kernel_version[KEYWORD_MAX]; /**< Running Linux kernel version string */
+	char motherboard[MSG_MAX]; /**< Manufacturer and model of the motherboard */
+	char cpu_model[MSG_MAX]; /**< Total physical RAM available in kilobytes */
 	uint64_t memory_total_bytes; /**< Total physical RAM available */
 	uint64_t memory_free_bytes; /**< Currently unused physical RAM */
 	uint64_t uptime_seconds; /**< Number of seconds the system has been powered on */

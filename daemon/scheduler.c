@@ -219,7 +219,7 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 
 void* scheduler_thread(void* arg)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	int status;
 	struct snapraid_state* state = arg;
 	int last_minute;

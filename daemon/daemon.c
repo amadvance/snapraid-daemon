@@ -127,7 +127,7 @@ struct option long_options[] = {
 int main(int argc, char *argv[])
 {
 	int c;
-	char msg[128];
+	char msg[MSG_MAX];
 	int status;
 	const char* arg_pidfile = 0;
 	char pidfile[PATH_MAX];

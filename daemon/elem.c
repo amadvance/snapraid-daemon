@@ -538,7 +538,7 @@ static int health_device_list(tommy_list* list, char* reason, size_t reason_size
 
 int health_disk(struct snapraid_disk* data, char* reason, size_t reason_size)
 {
-	char msg[HEALTH_REASON_MAX + DISK_MAX];
+	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
 
 	if (data->error_data != 0) {

@@ -1034,7 +1034,7 @@ char* sysattr(const char* path, const char* tag, char separator, int position, c
 
 void daemon_system(struct snapraid_system* system)
 {
-	char buf[256];
+	char buf[MSG_MAX];
 	struct utsname un;
 
 	memset(system, 0, sizeof(struct snapraid_system));
@@ -1058,8 +1058,8 @@ void daemon_system(struct snapraid_system* system)
 		sncpy(system->cpu_model, sizeof(system->cpu_model), buf);
 	}
 
-	char board_vendor[128];
-	char board_name[128];
+	char board_vendor[KEYWORD_MAX];
+	char board_name[KEYWORD_MAX];
 	if (sysattr("/sys/class/dmi/id/board_vendor", 0, 0, -1, board_vendor, sizeof(board_vendor)) == 0)
 		board_vendor[0] = 0;
 	if (sysattr("/sys/class/dmi/id/board_name", 0, 0, -1, board_name, sizeof(board_name)) == 0)
@@ -1083,7 +1083,7 @@ void daemon_system(struct snapraid_system* system)
 
 void daemon_system_refresh(struct snapraid_system* system)
 {
-	char buf[256];
+	char buf[KEYWORD_MAX];
 	struct sysinfo si;
 
 	if (sysinfo(&si) == 0) {

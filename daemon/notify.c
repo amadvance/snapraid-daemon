@@ -133,12 +133,12 @@ static void result_locked(struct snapraid_state* state, int high_cmd, int report
 	char template[CONFIG_MAX];
 	char run_as_user[CONFIG_MAX];
 	char command[32];
-	char subject[128];
+	char subject[MSG_MAX];
 	char level[32];
 	const char* ntfy_priority;
 	const char* ntfy_tag;
-	char from[128];
-	char to[128];
+	char from[KEYWORD_MAX];
+	char to[KEYWORD_MAX];
 	int email_format = 0;
 	const char* placeholders[7] = {
 		"%s",

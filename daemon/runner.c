@@ -62,7 +62,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 
 		/* if no report, schedule a new one */
 		if (!has_report) {
-			char msg[256];
+			char msg[MSG_MAX];
 			int status;
 			runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
 		}
@@ -182,8 +182,8 @@ static void runner_go(struct snapraid_state* state)
 	char script_pre_run[CONFIG_MAX];
 	char script_post_run[CONFIG_MAX];
 	char script_run_as_user[CONFIG_MAX];
-	char msg[128];
-	char exit_neg_msg[128];
+	char msg[MSG_MAX];
+	char exit_neg_msg[MSG_MAX];
 	char log_directory[PATH_MAX];
 	time_t unix_start_time;
 	time_t unix_queue_time;
@@ -574,7 +574,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 		int unused_minutes = (data->access_count_latest_time - data->access_count_initial_time) / 60;
 		if (active && unused_minutes >= spindown_idle_minutes) {
-			char msg[256];
+			char msg[MSG_MAX];
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", data->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");
@@ -596,7 +596,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 		int unused_minutes = (parity->access_count_latest_time - parity->access_count_initial_time) / 60;
 		if (active && unused_minutes >= spindown_idle_minutes) {
-			char msg[256];
+			char msg[MSG_MAX];
 			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", parity->name, unused_minutes);
 			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 			sl_insert_str(&task->arg_list, "-d");

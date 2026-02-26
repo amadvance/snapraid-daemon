@@ -330,7 +330,7 @@ static int send_json_success(struct mg_connection* conn, int status)
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
 
-	char body[256];
+	char body[KEYWORD_MAX];
 	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": true\n}\n");
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
@@ -353,7 +353,7 @@ static int send_json_error(struct mg_connection* conn, int status, const char* m
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
 
-	char body[256];
+	char body[KEYWORD_MAX + MSG_MAX];
 	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
@@ -498,7 +498,7 @@ static int handler_system(struct mg_connection* conn, void* cbdata)
  */
 static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
@@ -528,11 +528,11 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 		int c0 = jv[j++].size;
 		while (c0-- > 0) {
-			char buf[128];
+			char keyword[KEYWORD_MAX];
 			if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
 				++j;
-				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_maintenance_schedule(buf, &state->config) == 0) {
+				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
+					&& config_parse_maintenance_schedule(keyword, &state->config) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -693,8 +693,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_level")) == 0) {
 				++j;
 				int level;
-				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_level(buf, &level) == 0) {
+				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
+					&& config_parse_level(keyword, &level) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 
 					log_lock();
@@ -746,8 +746,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_result_level")) == 0) {
 				++j;
-				if (json_string(js, &jv[j], buf, sizeof(buf)) == 0
-					&& config_parse_level(buf, &state->config.notify_result_level) == 0) {
+				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
+					&& config_parse_level(keyword, &state->config.notify_result_level) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -875,7 +875,7 @@ static int handler_config(struct mg_connection* conn, void* cbdata)
  */
 static int handler_action(struct mg_connection* conn, void* cbdata)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	const char* path = ri->local_uri;
@@ -997,7 +997,7 @@ bad:
  */
 static int handler_schedule(struct mg_connection* conn, void* cbdata)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
@@ -1051,7 +1051,7 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 								goto bad;
 							}
 							++j;
-							char cmd[128];
+							char cmd[KEYWORD_MAX];
 							if (json_string(js, &jv[j], cmd, sizeof(cmd)) == 0) {
 								sched->cmd = command_parse(cmd);
 								if (!sched->cmd) {
@@ -1123,7 +1123,7 @@ bad:
  */
 static int handler_stop(struct mg_connection* conn, void* cbdata)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
@@ -1162,7 +1162,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
  */
 static int handler_report(struct mg_connection* conn, void* cbdata)
 {
-	char msg[128];
+	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
