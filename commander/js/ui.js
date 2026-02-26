@@ -941,7 +941,7 @@ export const renderSettings = (config) => {
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Result</h4>
                 <div class="form-row">
                     ${boolField('notify_differences', 'Include Differences')}
-                    ${selectField('notify_result_level', 'Log Level', logLevels, !fullAccess)}
+                    ${selectField('notify_result_level', 'Log Level', logLevels)}
                 </div>                
                 <div class="form-row mt-2">
                     ${inputField('notify_result', 'Result Command (Always)', 'text', '', !fullAccess)}
