@@ -87,7 +87,7 @@ export const formatAgoMins = (mins) => {
 export const formatAgoDays = (days) => {
     if (days < 7)
         return "past week";
-    return `${Math.floor(days / 7)} weeks ago`;
+    return `${Math.floor(days)} days ago`;
 };
 
 export const formatDuration = (start, end) => {
