@@ -94,15 +94,18 @@ If you are installing from source, it is recommended to run
 `./configure --sysconfdir=/etc` during the build process to ensure the
 configuration is placed in the standard `/etc` directory.
 
-Using this default configuration file, the services are accessible via
-a web browser at the following address:
+Using this default configuration file, the UI is accessible via	a web
+browser at the following address:
 
     http://127.0.0.1:7627
 
+The default port, 7627, was chosen as a mnemonic, representing the
+word "SNAP" as typed on a standard telephone keypad.
+
 At startup, the daemon parses historical logs from `/var/log/snapraid`
-to reconstruct the current state of the array. These
-logs are generated and saved by the daemon itself during the execution
-of SnapRAID commands. Consequently, on the very first run, this
+to reconstruct the current state of the array. These logs are
+generated and saved by the daemon itself during the execution
+of SnapRAID CLI commands. Consequently, on the very first run, this
 directory will be empty.
 
 In this initial scenario, the daemon automatically triggers a SnapRAID
@@ -110,9 +113,11 @@ In this initial scenario, the daemon automatically triggers a SnapRAID
 files and provide the daemon with the necessary metadata to establish
 the array's baseline state.
 
-Once the service is running, you should review `/etc/snapraidd.conf` to
-tailor the behavior to your environment. Typical post-installation
-steps include:
+Once the service is running, you should review `/etc/snapraidd.conf`
+or use the Settings panel in the UI to tailor the behavior to your
+environment.
+
+Typical post-installation steps include:
 
 * Defining a `maintenance_schedule` for automated sync and scrub
   operations.
@@ -121,11 +126,18 @@ steps include:
 * Configuring the `notify_result` system to receive alerts
   regarding array health and task outcomes.
 
-To make changes to the `/etc/snapraidd.conf` file effective, you must
-either restart the daemon or send a `SIGHUP` signal to the running process.
+To make manual changes to the `/etc/snapraidd.conf` file effective,
+you must either restart the daemon or send a `SIGHUP` signal to the
+running process. Unlike manual file edits, changes made through the UI
+are applied to the running process and saved to the configuration file
+pressing the `Save` button.
 
 Example:
-    killall -HUP snapraidd
+    sudo killall -HUP snapraidd
+
+By default, the daemon binds to the loopback interface, meaning the
+UI is accessible only from the local machine and not from other devices
+on the network.
 
 
 5 HEALTH
@@ -159,9 +171,10 @@ CORRUPT - Silent errors (hash or parity mismatches) were detected, though
     no physical hardware issues were identified.
     In this state, scheduled maintenance remains active.
 PREFAIL - The SMART telemetry reports a pre-failing condition (e.g.,
-    reallocated sectors), or a task encountered I/O errors while
-    accessing files. File access errors are
-    temporary and clear automatically after a successful scrub.
+    reallocated sectors), or a task encountered input/output errors
+    while accessing files.
+    File input/output errors are temporary and they are cleared
+    automatically after a successful sync.
     Automated maintenance is suspended in this state, and manual
     intervention is required.
 FAILING - The SMART telemetry reports a critical failing condition, or a
@@ -172,7 +185,7 @@ FAILING - The SMART telemetry reports a critical failing condition, or a
 Individual tasks also maintain a health state reflecting only the
 problems identified during that specific operation.
 For example, an array in a CORRUPT state may still produce a PASSED
-result for a `down` task if that operation encountered no specific
+result for a `probe` task if that operation encountered no specific
 errors.
 
 
@@ -188,31 +201,42 @@ the configure script).
 This file governs the behavior of the automation engine, network
 accessibility, safety interlocks, and hardware monitoring parameters.
 
-The configuration system is designed with a "hybrid" management
-philosophy to balance convenience with system security:
+The configuration system is designed with a "triple-tier" management
+philosophy to balance operational convenience with rigorous system
+security:
 
-Static_Parameters - Critical security and networking settings, such
-    as the listening port (net_port) and the system user for
-    scripts (script_run_as_user), are immutable via the REST API.
-    These require manual file edits followed by a SIGHUP signal
-    (e.g., systemctl reload snapraidd) to take effect.
+Tier 1 Core Network (Immutable) -
+    This tier includes critical security and networking parameters,
+    such as the master API toggle, port bindings, and access
+    control lists. These settings are completely inaccessible via
+    the REST API. To modify them, you must perform a manual file
+    edit followed by a SIGHUP signal to reload the configuration into memory.
+Tier 2 Protected Operations (Secured) - These parameters involve
+    security-sensitive automation, such as system user assignments,
+    external script paths, and logging policies. By default, these
+    options are read-only via the REST API. They can only be
+    modified via API PATCH requests if the `net_config_full_access`
+    flag is manually enabled in this file.
+Tier 3 Dynamic Logic (Live) - This tier consists of standard
+    operational settings like maintenance schedules, scrub intensities,
+    and disk monitoring intervals. These parameters are fully
+    accessible and can be modified in real-time via the API.
+    Changes made through the REST interface are instantly applied
+    to the running process and persisted back to this file while
+    preserving all existing manual comments.
 
-Dynamic_Parameters - Operational settings, like the maintenance
-    schedule or scrub percentages, can be modified in real-time
-    via the PATCH /snapraid/v1/config endpoint. Changes made through
-    the API are instantly applied to the running process and
-    persisted back to the configuration file, preserving any
-    manual comments.
+To make changes to the `/etc/snapraidd.conf` file effective, you must
+either restart the daemon or send a SIGHUP signal to the running process.
+This is required for any manual edit to ensure the daemon's memory state
+stays in sync with the file and to prevent the API from accidentally
+overwriting your changes.
 
-To prevent race conditions, users should avoid editing the
-configuration file manually while simultaneously issuing configuration
-updates via the REST API. If a manual edit is performed while the
-daemon is active, ensure a reload is triggered immediately to
-synchronize the daemon's internal memory state with the disk.
+Example:
+    sudo killall -HUP snapraidd
 
 For a comprehensive view of how these settings are applied in a
-real-world environment, refer to the `snapraidd.conf.example` file
-typically located in the documentation directory of the installation.
+real-world environment, refer to the comments in the `snapraidd.conf`
+file installed.
 
 6.1 Network & REST API
 ----------------------
