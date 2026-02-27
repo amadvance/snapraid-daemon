@@ -86,7 +86,7 @@
 
     /* Semantic */
     --bg-main: var(--c-slate-950);
-    --bg-card: var(--c-slate-900);
+    --bg-card: var(--c-slate-910);
     --bg-card-hover: var(--c-slate-800);
     --text-primary: var(--c-slate-200);
     --text-secondary: var(--c-slate-400);
@@ -476,7 +476,7 @@ body {
 /* Floating JavaScript Tooltip */
 .tooltip-floating {
     position: fixed;
-    background-color: var(--c-slate-900);
+    background-color: var(--bg-card);
     color: var(--text-primary);
     padding: 0.6rem 0.9rem;
     border-radius: 10px;
