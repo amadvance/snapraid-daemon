@@ -4,11 +4,52 @@ SnapRAID Daemon TODO
 - Show disks that are not part of the array
 
 - Support maintenance scheduling for multiple days of the week
+  Like: maintenance_schedule = Mon 02:00, Wed 03:00
 
 - Send a notification report every time a PREFAIL attribute change
-  - Allow to ignore some attributes
+  Messages can be generated in the parser, and then a dedicated report can be
+  scheduled at the end of each task.
+  However, a system is needed to ignore some of them.
+  If done via CLI, they will no longer be visible. It would be better to do it from the daemon.
+  New configurations option are required.
+    notify_smartignore = DISK/DEVICE/* ATTRS...
+    notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
+    smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
+
+- Stress Test Utility
+  Provide a way to stress-test new disks before adding them to the array.
+  A "Badblocks" or "Long SMART Test" trigger from the UI.
+  UI Integration: A dedicated "Maintenance" tab for non-array disks 
+  to ensure they are healthy before they become critical to data integrity.
+
+- SMART Trend Analysis
+  Extend the SMART attribute history to allow to draw a graph of the attribute trend
+  Instead of just a notification, the daemon reports full history of the attrinute.
+  The Web UI could then render a trend graph. 
+
+- Spin-down Analytics.
+  Track how many hours each disk spends in "Standby" vs "Active" over a week.
+  UI Integration: A "Power Savings" widget on the Dashboard showing the percentage
+  of time the array was successfully spun down
+
+- Searchable Task Archives
+  In the Tasks page, add a search bar that filters historical logs for specific filenames or error codes.
+
+- Speedometer
+  During an active task, show the same speed stats line "snapraid -A"
+
+Future Releases
+===============
 
 - Implement initial configuration of SnapRAID directly through the Web UI
+
+- Disk Replacement Wizard
+  Replacing a failed disk is the most stressful time for a SnapRAID user.
+  - Step-by-Step Recovery UI.
+  - Select/detect the failed disk.
+  - Select the new empty disk.
+  - The UI generates the exact snapraid fix -d [diskname] command and monitors
+    progress with a high-priority "Recovery" progress bar on the Dashboard.
 
 - Windows version of the daemon:
   - Native Service + NSIS installer
