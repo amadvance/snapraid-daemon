@@ -1111,16 +1111,19 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	}
 }
 
-static void process_line(struct snapraid_state* state, char** map, size_t mac)
+static int process_line(struct snapraid_state* state, char** map, size_t mac)
 {
 	const char* cmd;
+	int ignore_this_line = 0;
 
 	if (mac == 0)
-		return;
+		return ignore_this_line;
 
 	cmd = map[0];
 
-	if (strcmp(cmd, "data") == 0) {
+	if (strcmp(cmd, "smartctl") == 0) {
+		ignore_this_line = 1;
+	} else if (strcmp(cmd, "data") == 0) {
 		state_lock();
 		process_data(state, map, mac);
 		state_unlock();
@@ -1251,6 +1254,8 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 		process_daemon(state, map, mac);
 		state_unlock();
 	}
+
+	return ignore_this_line;
 }
 
 #define RUN_INPUT_MAX 4096
@@ -1259,14 +1264,16 @@ static void process_line(struct snapraid_state* state, char** map, size_t mac)
 void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path)
 {
 	char buf[RUN_INPUT_MAX];
-	char line[RUN_INPUT_MAX];
+	char plain[RUN_INPUT_MAX];
+	char dup[RUN_INPUT_MAX];
 	char* map[RUN_FIELD_MAX];
-	size_t len = 0;
+	size_t plain_len = 0;
+	size_t dup_len = 0;
 	size_t mac = 0;
 	int escape = 0;
 	int disable = 0;
 
-	map[mac++] = line;
+	map[mac++] = plain;
 
 	/* clear the engine version */
 	state->global.version_major = 0;
@@ -1277,21 +1284,21 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 		if (n > 0) {
 			ssize_t i;
 
-			if (log_f) {
-				if (fwrite(buf, n, 1, log_f) != 1) {
-					log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
-				}
-			}
-
 			for (i = 0; i < n; i++) {
 				char c = buf[i];
 
+				/* insert in the duplicate plain */
+				if (dup_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
+					dup[dup_len++] = c;
+				}
+
+				/* insert in the de-escaped plain */
 				if (escape) {
-					if (len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
+					if (plain_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
 						switch (c) {
-						case '\\' : line[len++] = '\\'; break;
-						case 'n' :  line[len++] = '\n'; break;
-						case 'd' : line[len++] = ':'; break;
+						case '\\' : plain[plain_len++] = '\\'; break;
+						case 'n' :  plain[plain_len++] = '\n'; break;
+						case 'd' : plain[plain_len++] = ':'; break;
 						default : /* ignore if unknown */
 						}
 					}
@@ -1306,19 +1313,21 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 
 				if (c == ':') {
 					if (mac + 1 < RUN_FIELD_MAX) {
-						line[len++] = '\0';
-						map[mac++] = &line[len];
+						plain[plain_len++] = '\0';
+						map[mac++] = &plain[plain_len];
 						continue;
 					}
 					/* do not split if too many fields */
 				}
 
 				if (c == '\n') {
-					line[len] = '\0';
+					int ignore_this_line = 0;
+
+					plain[plain_len] = '\0';
 					map[mac] = 0;
 
 					if (!disable) {
-						process_line(state, map, mac);
+						ignore_this_line = process_line(state, map, mac);
 
 						/* version 14 is the minimal supported one */
 						if (state->global.version_major != 0 && state->global.version_major < 14) {
@@ -1331,15 +1340,25 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 						}
 					}
 
-					len = 0;
+					dup[dup_len] = 0; /* it contains the \n */
+
+					/* write dup to the log */
+					if (!ignore_this_line && log_f) {
+						if (fwrite(dup, dup_len, 1, log_f) != 1) {
+							log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+						}
+					}
+
+					plain_len = 0;
+					dup_len = 0;
 					mac = 0;
 					escape = 0;
-					map[mac++] = line;
+					map[mac++] = plain;
 					continue;
 				}
 
-				if (len + 1 < RUN_INPUT_MAX) /* ignore if too long */
-					line[len++] = c;
+				if (plain_len + 1 < RUN_INPUT_MAX) /* ignore if too long */
+					plain[plain_len++] = c;
 			}
 		} else if (n == 0) {
 			/* EOF, discard partial read not ending with \n */
