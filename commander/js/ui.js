@@ -688,7 +688,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
     return `
         <div class="card card-disk ${borderClass}">
             <div class="flex justify-between mb-2">
-                <h3 class="font-bold text-lg">${disk.name}</h3>
+                <h4 class="font-bold text-lg">${disk.name}</h3>
                 ${healthBadge(disk.health)}
             </div>
            
@@ -710,10 +710,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
 export const renderDisks = (data) => {
     const pulseAt = data.pulse?.current_at;
     return `
-        <h3 class="text-xl font-bold mb-4">Parity Disks</h3>
+        <h2 class="text-xl font-bold mb-4">Parity Disks</h3>
         <div class="grid-fill-2 mb-8">${data.parity_disks.map(d => renderDiskCard(d, 'parity', pulseAt)).join('')}</div>
         
-        <h3 class="text-xl font-bold mb-4">Data Disks</h3>
+        <h2 class="text-xl font-bold mb-4">Data Disks</h3>
         <div class="grid-fill-2">${data.data_disks.map(d => renderDiskCard(d, 'data', pulseAt)).join('')}</div>
     `;
 };
