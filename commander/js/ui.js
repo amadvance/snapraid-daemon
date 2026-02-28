@@ -836,7 +836,10 @@ export const renderTasks = (data, hidePeriodic) => {
                     <span class="badge badge-grey text-xs">${filteredHistory.length}</span>
                 </h3>
                 <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" data-action="toggle-periodic" ${hidePeriodic ? 'checked' : ''}>
+                    <label class="switch switch-sm">
+                        <input type="checkbox" data-action="toggle-periodic" ${hidePeriodic ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
                     Hide automatic probes
                 </label>
             </div>
@@ -856,10 +859,13 @@ export const renderSettings = (config) => {
     const boolField = (key, label, desc = "", disabled = false, extra = "") => `
         <div class="form-group ${disabled ? 'disabled-control' : ''}">
             <div class="flex items-center gap-4">
-                <input type="checkbox" id="${key}" name="${key}" ${config[key] ? 'checked' : ''} ${disabled ? 'disabled' : ''} ${extra}>
-                <label for="${key}" class="mb-0 ${disabled ? '' : 'cursor-pointer'}">${label}</label>
+                <label class="switch">
+                    <input type="checkbox" id="${key}" name="${key}" ${config[key] ? 'checked' : ''} ${disabled ? 'disabled' : ''} ${extra}>
+                    <span class="slider"></span>
+                </label>
+                <label for="${key}" class="mb-0 ${disabled ? '' : 'cursor-pointer'} font-bold">${label}</label>
             </div>
-            ${desc ? `<div class="text-xs text-muted mt-1 ml-8">${desc}</div>` : ''}
+            ${desc ? `<div class="text-xs text-muted mt-1" style="margin-left: 58px;">${desc}</div>` : ''}
         </div>
     `;
 
