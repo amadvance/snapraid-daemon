@@ -587,12 +587,12 @@ const renderDiskCard = (disk, type, pulseAt) => {
         errorStatus = '<span class="badge badge-purple">DATA CORRUPT</span>';
     if (disk.error_io > 0)
         errorStatus = '<span class="badge badge-yellow">DATA PREFAIL</span>'; /* overwrite CORRUPT */
-    if (errorStatus != null) 
-	errorBadges.push(errorStatus);
-    if (disk.error_io > 0) 
-	errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
-    if (disk.error_data > 0) 
-	errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
+    if (errorStatus != null)
+        errorBadges.push(errorStatus);
+    if (disk.error_io > 0)
+        errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
+    if (disk.error_data > 0)
+        errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
 
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
@@ -853,10 +853,13 @@ export const renderTasks = (data, hidePeriodic) => {
 /* --- Settings --- */
 export const renderSettings = (config) => {
     const fullAccess = config.config_full_access !== false;
-    const boolField = (key, label, disabled = false) => `
-        <div class="form-group flex items-center gap-4 ${disabled ? 'disabled-control' : ''}">
-            <input type="checkbox" id="${key}" name="${key}" ${config[key] ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
-            <label for="${key}" class="mb-0 ${disabled ? '' : 'cursor-pointer'}">${label}</label>
+    const boolField = (key, label, desc = "", disabled = false, extra = "") => `
+        <div class="form-group ${disabled ? 'disabled-control' : ''}">
+            <div class="flex items-center gap-4">
+                <input type="checkbox" id="${key}" name="${key}" ${config[key] ? 'checked' : ''} ${disabled ? 'disabled' : ''} ${extra}>
+                <label for="${key}" class="mb-0 ${disabled ? '' : 'cursor-pointer'}">${label}</label>
+            </div>
+            ${desc ? `<div class="text-xs text-muted mt-1 ml-8">${desc}</div>` : ''}
         </div>
     `;
 
@@ -868,12 +871,13 @@ export const renderSettings = (config) => {
         </div>
     `;
 
-    const selectField = (key, label, options, disabled = false) => `
+    const selectField = (key, label, options, desc = "", disabled = false, extra = "") => `
         <div class="form-group ${disabled ? 'disabled-control' : ''}">
             <label for="${key}">${label}</label>
-            <select id="${key}" name="${key}" class="form-control" ${disabled ? 'disabled' : ''}>
+            <select id="${key}" name="${key}" class="form-control" ${disabled ? 'disabled' : ''} ${extra}>
                 ${options.map(opt => `<option value="${escAttr(opt)}" ${config[key] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
             </select>
+            ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
         </div>
     `;
 
@@ -894,32 +898,30 @@ export const renderSettings = (config) => {
             <div class="grid-2">
             <div class="card">
                 <h3 class="font-bold mb-4 text-cyan">Automation</h3>
-                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'e.g., 02:00, Mon 03:00')}
-                <div class="form-row">
-                    ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number')}
-                    ${inputField('sync_threshold_updates', 'Updates Threshold', 'number')}
-                </div>
-                ${inputField('scrub_percentage', 'Scrub %', 'number', '', false, 'step="0.1"')}
-                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number')}
-                ${boolField('sync_prehash', 'Enable Pre-hash')}
-                ${boolField('sync_force_zero', 'Enable Force Zero')}
+                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the sync, scrub, and report sequence (e.g., 02:00, Mon 03:00).')}
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Aborts the scheduled sync if the number of deleted files exceeds this limit to prevent accidental data loss')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Aborts the scheduled sync if the number of modified files exceeds this limit to prevent mass unintended changes.')}
+                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'Sets the fraction of the array to be verified for data integrity after each successful sync.', false, 'step="0.1"')}
+                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Restricts the integrity check to data blocks that have not been scrubbed for the specified number of days.')}
+                ${boolField('sync_prehash', 'Enable Pre-hash', 'Calculate hashes before syncing, providing an extra layer of protection against faulty memory corruption.')}
+                ${boolField('sync_force_zero', 'Enable Force Zero', 'Allows the sync to proceed even if files that previously contained data have shrunk to zero size.')}
             </div>
 
             <!-- Monitor & Log -->
             <div class="card">
                 <h3 class="font-bold mb-4 text-cyan">Monitor & Log</h3>
-                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number')}
-                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number')}
-                ${inputField('log_directory', 'Log Directory', 'text', '', !fullAccess)}
-                ${inputField('log_retention_days', 'Log Retention (Days)', 'number', '', !fullAccess)}
+                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning.')}
+                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity.')}
+                ${inputField('log_directory', 'Log Directory', 'text', 'The folder where task outputs are saved; this is required for the daemon to remember previous run results.', !fullAccess)}
+                ${inputField('log_retention_days', 'Log Retention (Days)', 'number', 'The number of days to keep old task logs before they are automatically deleted to save space.', !fullAccess)}
             </div>
 
             <!-- Script -->
             <div class="card">
                 <h3 class="font-bold mb-4 text-cyan">Script</h3>
-                ${inputField('script_pre_run', 'Script Pre-Run', 'text', '', !fullAccess)}
-                ${inputField('script_post_run', 'Script Post-Run', 'text', '', !fullAccess)}
-                ${inputField('script_run_as_user', 'Run Scripts As User', 'text', '', !fullAccess)}
+                ${inputField('script_pre_run', 'Script Pre-Run', 'text', 'The absolute path to a custom script that will execute immediately before any task begins.', !fullAccess)}
+                ${inputField('script_post_run', 'Script Post-Run', 'text', 'The absolute path to a custom script that will execute immediately after any task completes.', !fullAccess)}
+                ${inputField('script_run_as_user', 'Run Scripts As User', 'text', 'The specific system user account used to execute your custom pre-run and post-run scripts.', !fullAccess)}
             </div>
             </div>
 
@@ -930,24 +932,24 @@ export const renderSettings = (config) => {
               
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-1">Syslog</h4>
                 <div class="form-row">
-                     ${boolField('notify_syslog_enabled', 'Enable Syslog')}
-                     ${selectField('notify_syslog_level', 'Log Level', logLevels)}
+                     ${boolField('notify_syslog_enabled', 'Enable Syslog', 'Sends daemon activity and task status messages to the operating system\'s standard system log')}
+                     ${selectField('notify_syslog_level', 'Log Level', logLevels, 'Filters the system log to only include task messages that meet or exceed this severity level.')}
                 </div>
 
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Heartbeat</h4>
                 <div class="form-row">
-                    ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', '', !fullAccess)}
+                    ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', 'A custom command (like a URL ping) triggered only after successful maintenance to verify the server is alive.', !fullAccess)}
                 </div>
                 <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Result</h4>
                 <div class="form-row">
-                    ${boolField('notify_differences', 'Include Differences')}
-                    ${selectField('notify_result_level', 'Log Level', logLevels)}
+                    ${boolField('notify_differences', 'Include Differences', 'Includes a detailed list of all detected file changes in the report before the synchronization starts.')}
+                    ${selectField('notify_result_level', 'Log Level', logLevels, 'Determines the minimum task severity (e.g., Error) required to trigger the result notification command.')}
                 </div>                
                 <div class="form-row mt-2">
-                    ${inputField('notify_result', 'Result Command (Always)', 'text', '', !fullAccess)}
+                    ${inputField('notify_result', 'Result Command (Always)', 'text', 'The command used to deliver the full task report via email or push notification services.', !fullAccess)}
                 </div>
                 <div class="mt-2 text-sm">
-                    ${inputField('notify_run_as_user', 'Run Notification As User', 'text', '', !fullAccess, '', 'w-1-2')}
+                    ${inputField('notify_run_as_user', 'Run Notification As User', 'text', 'The system user account responsible for executing heartbeat pings and notification commands.', !fullAccess, '', 'w-1-2')}
                 </div>
             </div>
             </div>
@@ -977,7 +979,7 @@ export const renderRecovery = (arrayInfo) => {
                 <!-- Undelete Card -->
                 <div class="card">
                     <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
-                        <span class="icon-sm">${Icons.trash}</span> Undelete Files
+                        Undelete Files
                     </h3>
                     <p class="text-sm text-muted mb-4">
                         Recover accidentally deleted files. Enter file path patterns/globbing (e.g. *.mp4), one per line.
@@ -991,7 +993,7 @@ export const renderRecovery = (arrayInfo) => {
                 <!-- Silent Errors Card -->
                 <div class="card">
                      <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
-                        <span class="icon-sm">${Icons.shield}</span> Silent Data Errors
+                        Silent Data Errors
                     </h3>
                     <p class="text-sm text-muted mb-4">
                         Detect and heal silent data corruption using parity information.
