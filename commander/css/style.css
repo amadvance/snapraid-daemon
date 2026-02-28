@@ -89,6 +89,7 @@
     --bg-sub: var(--c-slate-930);
     --bg-card: var(--c-slate-910);
     --bg-card-hover: var(--c-slate-800);
+    --border: var(--c-slate-800);
     --text-primary: var(--c-slate-200);
     --text-secondary: var(--c-slate-400);
     --accent: var(--c-sky-400);
@@ -678,7 +679,7 @@ body {
     height: 200px;
     overflow-y: auto;
     color: var(--c-slate-200);
-    border: 1px solid var(--c-slate-800);
+    border: 1px solid var(--border);
 }
 
 .log-line {
@@ -847,14 +848,14 @@ body {
 .data-table th {
     text-align: left;
     padding: 1rem;
-    border-bottom: 1px solid var(--c-slate-800);
+    border-bottom: 1px solid var(--border);
     color: var(--text-secondary);
     font-size: 0.85rem;
 }
 
 .data-table td {
     padding: 1rem;
-    border-bottom: 1px solid var(--c-slate-800);
+    border-bottom: 1px solid var(--border);
     font-size: 0.9rem;
 }
 
@@ -873,7 +874,7 @@ body {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: var(--bg-sub);
 }
 
 .data-table.v-dense th,
@@ -950,14 +951,14 @@ body {
 }
 
 .temp-sparkline-container {
-    border: 1px solid var(--c-slate-800);
+    border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg-sub);
     width: 100%;
 }
 
 .scrub-history-container {
-    border: 1px solid var(--c-slate-800);
+    border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg-sub);
     height: 200px;
@@ -969,8 +970,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    border-top: 1px solid var(--c-slate-800);
-    border-bottom: 1px solid var(--c-slate-800);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
     padding: 1.25rem 0;
     margin: 1.5rem 0;
 }
@@ -1182,7 +1183,7 @@ body {
 
 /* Loading */
 .loading-spinner {
-    border: 4px solid var(--c-slate-800);
+    border: 4px solid var(--border);
     border-top: 4px solid var(--c-sky-500);
     border-radius: 50%;
     width: 40px;
