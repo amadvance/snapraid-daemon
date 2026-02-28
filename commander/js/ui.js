@@ -227,7 +227,7 @@ const renderSystemCard = (system) => {
 
     return `
         <div class="card">
-            <h3 class="font-bold mb-4 border-b border-slate-700 pb-2 text-cyan">System</h3>
+            <h3>System</h3>
             <div class="property-list">
                  <div class="property-row">
                     <div class="property-label">Uptime</div>
@@ -286,7 +286,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="card glow">
                 <div class="flex justify-between mb-4">
                     <div>
-                        <h3 class="text-xl font-bold text-cyan">ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
+                        <h3>ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
                         <div class="text-sm text-muted">Started: ${formatFullTime(activity.started_at, pulseAt)}</div>
                     </div>
                     <div>${statusBadge(activity)}</div>
@@ -323,11 +323,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         // Show Last Activity
         const last = activity;
         heroHtml = `
+            <div class="grid-1">
             <div class="card">
-                <h3 class="text-lg font-bold mb-2 text-cyan">System Idle</h3>
+                <h3>System Idle</h3>
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
-                    <div class="flex flex-wrap items-center gap-4 text-sm bg-slate-800 p-3 rounded">
+                    <div class="flex flex-wrap items-center gap-4 text-sm">
                         <span class="font-bold text-cyan">${formatFullCommand(last).toUpperCase()}</span>
                         <span class="flex gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
                         <span class="flex flex-wrap gap-4">
@@ -336,6 +337,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                         </span>
                     </div>
                 ` : '<p class="text-muted">No history available.</p>'}
+            </div>
             </div>
         `;
     }
@@ -363,7 +365,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const arrayStatusHtml = `
         <div class="card">
             <div class="flex gap-4 items-center mb-4">
-                <h3 class="text-xl font-bold text-cyan">Array</h3>
+                <h3>Array</h3>
                 <div class="text-2xl font-bold flex gap-4 items-center">${healthBadge(arrayInfo.health)} ${parityBadgeHtml}</div>
             </div>
 
@@ -375,7 +377,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="progress-container">
                     <div class="progress-bar" data-style-width="${percentUsed}%"></div>
                 </div>
-                <div class="text-right text-xs text-muted mt-1">
+                <div class="text-right text-xs text-muted">
                     ${formatBytes(freeSpace)} free
                 </div>
             </div>
@@ -417,7 +419,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
     const configHtml = `
         <div class="card">
-            <h3 class="font-bold mb-4 border-b border-slate-700 pb-2 text-cyan">Configuration</h3>
+            <h3>Configuration</h3>
             <div class="property-list">
                  <div class="property-row">
                     <div class="property-label">Daemon</div>
@@ -444,10 +446,10 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     `;
 
     const scrubHistoryHtml = arrayInfo.scrub_history ? `
-        <div class="card mt-4">
-            <h3 class="font-bold mb-4 text-cyan">Maintenance History</h3>
+        <div class="card">
+            <h3>Maintenance History</h3>
             <div id="scrub-history-graph" class="scrub-history-container"></div>
-            <div class="property-list mt-4 border-t border-slate-800 pt-4">
+            <div class="property-list">
                 <div class="property-row">
                     <div class="property-label">Oldest</div>
                     <div class="property-value text-cyan">
@@ -513,14 +515,14 @@ export const renderDifferences = (arrayInfo) => {
     return `
         <div class="fade-in">
             <div class="card">
-                <div class="mb-4 border-b border-slate-700 pb-2">
-                    <h3 class="font-bold text-cyan">Change Summary</h3>
-                    <div class="text-sm text-muted mt-2 italic">
+                <div class="mb-4">
+                    <h3>Change Summary</h3>
+                    <div class="text-sm text-muted mt-2">
                         The changes since the last sync. They will be cleared once the next maintenance cycle completes.
                     </div>
-                    <div class="text-sm text-muted mt-1">Last updated: ${formatFullTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
+                    <div class="text-sm text-muted">Last updated: ${formatFullTime(arrayInfo.last_diff_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
-                <div class="property-list mt-0 pt-0 border-t-0">
+                <div class="property-list">
                     <div class="property-row">
                         <div class="property-label">Equal</div>
                         <div class="property-value">${arrayInfo.diff_equal != null ? arrayInfo.diff_equal : healthBadge('pending')}</div>
@@ -557,7 +559,7 @@ export const renderDifferences = (arrayInfo) => {
                     </div>` : ''}
                 </div>
 
-                <h4 class="text-xs font-bold text-muted uppercase mb-2 mt-6">Changed Files</h4>
+                <h4 class="text-xs font-bold text-muted uppercase mb-2">Changed Files</h4>
                 <div class="overflow-x-auto">
                     <table class="data-table dense">
                         <thead>
@@ -568,7 +570,7 @@ export const renderDifferences = (arrayInfo) => {
                             </tr>
                         </thead>
                         <tbody>
-                            ${diffFilesRows || '<tr><td colspan="3" class="text-center text-muted p-4">No file changes recorded</td></tr>'}
+                            ${diffFilesRows || '<tr><td colspan="3" class="text-muted p-4">No file changes recorded</td></tr>'}
                         </tbody>
                     </table>
                 </div>
@@ -659,7 +661,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
         }
 
         return `
-            <div class="bg-slate-950 p-3 rounded mt-2 border border-slate-800 text-sm">
+            <div class="mt-2 border text-sm">
                 <div class="flex justify-between mb-1">
                      <span class="font-mono text-sm font-bold text-cyan">${dev.serial || 'Unknown Model'}</span>
                      <div>${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
@@ -710,10 +712,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
 export const renderDisks = (data) => {
     const pulseAt = data.pulse?.current_at;
     return `
-        <h2 class="text-xl font-bold mb-4">Parity Disks</h3>
+        <h2>Parity Disks</h2>
         <div class="grid-fill-2 mb-8">${data.parity_disks.map(d => renderDiskCard(d, 'parity', pulseAt)).join('')}</div>
         
-        <h2 class="text-xl font-bold mb-4">Data Disks</h3>
+        <h2>Data Disks</h2>
         <div class="grid-fill-2">${data.data_disks.map(d => renderDiskCard(d, 'data', pulseAt)).join('')}</div>
     `;
 };
@@ -734,7 +736,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td>${statusBadge(t)}</td>
             <td class="text-muted">${formatFullTime(t.scheduled_at, pulseAt)}</td>
         </tr>
-    `).join('') : `<tr><td colspan="4" class="text-center text-muted p-4">No tasks in queue</td></tr>`;
+    `).join('') : `<tr><td colspan="4" class="text-muted p-4">No tasks in queue</td></tr>`;
 
     const activeRows = active.length ? active.map(t => {
         const now = new Date();
@@ -749,7 +751,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 <td class="text-muted">${duration}</td>
             </tr>
         `;
-    }).join('') : `<tr><td colspan="5" class="text-center text-muted p-4">No active tasks</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="text-muted p-4">No active tasks</td></tr>`;
 
     const historyRows = filteredHistory.length ? filteredHistory.reverse().map(t => {
         let exitStatus = '';
@@ -774,12 +776,12 @@ export const renderTasks = (data, hidePeriodic) => {
                 </button>
             </td>
         </tr>
-        <tr id="log-${t.number}" class="hidden bg-slate-900">
-            <td colspan="7" class="p-0">
-                <div class="text-xs font-mono bg-slate-950 p-4 border-b border-slate-800 shadow-inner">
+        <tr id="log-${t.number}" class="hidden">
+            <td colspan="7">
+                <div class="text-xs font-mono p-4 shadow-inner">
                      ${exitStatus}
                       ${t.log_file && t.log_file !== 'N/A' ? `
-                      <div class="text-muted mb-2 border-b border-slate-800 pb-2">
+                      <div class="text-muted mb-2">
                          <span class="font-bold">Log File: ${t.log_file}</span>
                       </div>
                       ` : ''}
@@ -793,19 +795,20 @@ export const renderTasks = (data, hidePeriodic) => {
                 }).join('')
                 : (t.report_output ? '' : '<div class="text-cyan">No logged messages.</div>')}
                         ${t.report_output ? `
-                        <div class="mt-4 pt-4 border-t border-slate-800 font-mono text-cyan whitespace-pre-wrap">${t.report_output}</div>
+                        <div class="font-mono text-cyan whitespace-pre-wrap">${t.report_output}</div>
                         ` : ''}
                      </div>
                 </div>
             </td>
         </tr>
     `;
-    }).join('') : `<tr><td colspan="7" class="text-center text-muted p-4">No tasks in history</td></tr>`;
+    }).join('') : `<tr><td colspan="7" class="text-muted p-4">No tasks in history</td></tr>`;
 
     return `
+        <div class="grid-1">
         <div class="card">
-            <h3 class="font-bold mb-4 flex items-center gap-2 text-cyan">
-                <span class="icon-sm">${Icons.activity}</span> Queue
+            <h3 class="flex items-center gap-2">
+                Queue
                 <span class="badge badge-grey text-xs ml-auto">${pending.length}</span>
             </h3>
             <div class="overflow-x-auto">
@@ -815,10 +818,12 @@ export const renderTasks = (data, hidePeriodic) => {
                 </table>
             </div>
         </div>
+        </div>
 
+        <div class="grid-1">
         <div class="card">
-            <h3 class="font-bold mb-4 flex items-center gap-2 text-cyan">
-                <span class="icon-sm">${Icons.activity}</span> Active
+            <h3 class="flex items-center gap-2">
+                Active
                 <span class="badge badge-grey text-xs ml-auto">${active.length}</span>
             </h3>
             <div class="overflow-x-auto">
@@ -828,11 +833,13 @@ export const renderTasks = (data, hidePeriodic) => {
                 </table>
             </div>
         </div>
+        </div>
 
+        <div class="grid-1">
         <div class="card">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold flex items-center gap-2 text-cyan">
-                    <span class="icon-sm">${Icons.activity}</span> History
+                <h3 class="flex items-center gap-2">
+                    History
                     <span class="badge badge-grey text-xs">${filteredHistory.length}</span>
                 </h3>
                 <label class="text-xs font-normal text-muted flex items-center gap-2 cursor-pointer">
@@ -849,6 +856,7 @@ export const renderTasks = (data, hidePeriodic) => {
                     <tbody>${historyRows}</tbody>
                 </table>
             </div>
+        </div>
         </div>
     `;
 };
@@ -903,7 +911,7 @@ export const renderSettings = (config) => {
             <!-- Automation -->
             <div class="grid-2">
             <div class="card">
-                <h3 class="font-bold mb-4 text-cyan">Automation</h3>
+                <h3>Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the sync, scrub, and report sequence (e.g., 02:00, Mon 03:00).')}
                 ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Aborts the scheduled sync if the number of deleted files exceeds this limit to prevent accidental data loss')}
                 ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Aborts the scheduled sync if the number of modified files exceeds this limit to prevent mass unintended changes.')}
@@ -915,7 +923,7 @@ export const renderSettings = (config) => {
 
             <!-- Monitor & Log -->
             <div class="card">
-                <h3 class="font-bold mb-4 text-cyan">Monitor & Log</h3>
+                <h3>Monitor & Log</h3>
                 ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning.')}
                 ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity.')}
                 ${inputField('log_directory', 'Log Directory', 'text', 'The folder where task outputs are saved; this is required for the daemon to remember previous run results.', !fullAccess)}
@@ -924,7 +932,7 @@ export const renderSettings = (config) => {
 
             <!-- Script -->
             <div class="card">
-                <h3 class="font-bold mb-4 text-cyan">Script</h3>
+                <h3>Script</h3>
                 ${inputField('script_pre_run', 'Script Pre-Run', 'text', 'The absolute path to a custom script that will execute immediately before any task begins.', !fullAccess)}
                 ${inputField('script_post_run', 'Script Post-Run', 'text', 'The absolute path to a custom script that will execute immediately after any task completes.', !fullAccess)}
                 ${inputField('script_run_as_user', 'Run Scripts As User', 'text', 'The specific system user account used to execute your custom pre-run and post-run scripts.', !fullAccess)}
@@ -934,19 +942,19 @@ export const renderSettings = (config) => {
             <!-- Notifications -->
             <div class="grid-fit-2">
             <div class="card grid-span-2">
-                <h3 class="font-bold mb-4 text-cyan">Notifications</h3>
+                <h3>Notifications</h3>
               
-                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-1">Syslog</h4>
+                <h4 class="font-bold mb-3 mt-1">Syslog</h4>
                 <div class="form-row">
                      ${boolField('notify_syslog_enabled', 'Enable Syslog', 'Sends daemon activity and task status messages to the operating system\'s standard system log')}
                      ${selectField('notify_syslog_level', 'Log Level', logLevels, 'Filters the system log to only include task messages that meet or exceed this severity level.')}
                 </div>
 
-                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Heartbeat</h4>
+                <h4 class="font-bold mb-3">Heartbeat</h4>
                 <div class="form-row">
                     ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', 'A custom command (like a URL ping) triggered only after successful maintenance to verify the server is alive.', !fullAccess)}
                 </div>
-                <h4 class="font-bold border-b border-slate-700 pb-2 mb-3 mt-4">Result</h4>
+                <h4 class="font-bold mb-3">Result</h4>
                 <div class="form-row">
                     ${boolField('notify_differences', 'Include Differences', 'Includes a detailed list of all detected file changes in the report before the synchronization starts.')}
                     ${selectField('notify_result_level', 'Log Level', logLevels, 'Determines the minimum task severity (e.g., Error) required to trigger the result notification command.')}
@@ -977,61 +985,61 @@ export const renderRecovery = (arrayInfo) => {
                 <td class="text-xs break-all">${(f && f.path) || ''}</td>
             </tr>
         `;
-    }).join('') : `<tr><td colspan="3" class="text-center text-muted p-4">No recent recovery history</td></tr>`;
+    }).join('') : `<tr><td colspan="3" class="text-muted p-4">No recent recovery history</td></tr>`;
 
     return `
         <div class="fade-in">
              <div class="grid-2">
                 <!-- Undelete Card -->
                 <div class="card">
-                    <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
+                    <h3 class="flex items-center gap-2">
                         Undelete Files
                     </h3>
                     <p class="text-sm text-muted mb-4">
                         Recover accidentally deleted files. Enter file path patterns/globbing (e.g. *.mp4), one per line.
                     </p>
-                    <textarea id="undelete-patterns" class="form-control mb-4 font-mono text-sm bg-slate-950 border-slate-700 text-slate-200" rows="5" placeholder="*.mp4&#10;family_docs/*&#10;lost_file.txt"></textarea>
-                    <button class="btn btn-primary w-full" data-tooltip="Undelete the specified file patterns in all disks" data-action="undelete-batch">
+                    <textarea id="undelete-patterns" class="form-control mb-4 font-mono text-sm" rows="5" placeholder="*.mp4&#10;family_docs/*&#10;lost_file.txt"></textarea>
+                    <button class="btn btn-primary" data-tooltip="Undelete the specified file patterns in all disks" data-action="undelete-batch">
                         Undelete Files
                     </button>
                 </div>
 
                 <!-- Silent Errors Card -->
                 <div class="card">
-                     <h3 class="font-bold mb-4 text-cyan flex items-center gap-2">
+                     <h3 class="flex items-center gap-2">
                         Silent Data Errors
                     </h3>
                     <p class="text-sm text-muted mb-4">
                         Detect and heal silent data corruption using parity information.
                     </p>
-                    <div class="property-list mt-0 pt-0 border-t-0 mb-6">
+                    <div class="property-list">
                         <div class="property-row">
                             <div class="property-label">Bad</div>
                             <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : healthBadge('pending')}</div>
                         </div>
                     </div>
                     
-                    <button class="btn ${arrayInfo.blocks_bad > 0 ? 'btn-danger w-full' : 'btn-disabled w-full'}" 
+                    <button class="btn ${arrayInfo.blocks_bad > 0 ? 'btn-danger' : 'btn-disabled'}" 
                             data-tooltip="Repair silent data corruption on all data disks"
                             data-action="${arrayInfo.blocks_bad > 0 ? 'heal' : ''}"
                             ${arrayInfo.blocks_bad === 0 ? 'disabled' : ''}>
                         Heal Silent Errors
                     </button>
-                    ${arrayInfo.blocks_bad === 0 ? '<p class="text-xs text-center text-muted mt-2">No silent errors detected. Array is healthy.</p>' : ''}
+                    ${arrayInfo.blocks_bad === 0 ? '<p class="text-xs text-muted mt-2">No silent errors detected. Array is healthy.</p>' : ''}
                 </div>
             </div>
 
             <!-- Recovery Summary -->
-            <div class="card mt-4">
-                <div class="mb-4 border-b border-slate-700 pb-2">
-                     <h3 class="font-bold text-cyan">Recovery Summary</h3>
-                     <div class="text-sm text-muted mt-2 italic">
+            <div class="card">
+                <div class="mb-4">
+                     <h3>Recovery Summary</h3>
+                     <div class="text-sm text-muted mt-2">
                         The fixes since the last sync. They will be cleared once the next maintenance cycle completes.
                      </div>
                      <div class="text-sm text-muted mt-1">Last updated: ${arrayInfo.last_fix_at ? formatFullTime(arrayInfo.last_fix_at, arrayInfo.pulse?.current_at) : formatFullTime(arrayInfo.last_sync_at, arrayInfo.pulse?.current_at)}</div>
                 </div>
                 
-                 <div class="property-list mt-0 pt-0 border-t-0">
+                 <div class="property-list">
                     <div class="property-row">
                         <div class="property-label">Fixed</div>
                         <div class="property-value text-emerald">${arrayInfo.fix_recovered || 0}</div>

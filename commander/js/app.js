@@ -359,7 +359,7 @@ const app = {
                     await app.loadSettings();
                     break;
                 default:
-                    view.innerHTML = '<p class="text-center mt-4">Page Not Found</p>';
+                    view.innerHTML = '<p>Page Not Found</p>';
             }
         } catch (e) {
             view.innerHTML = `<div class="card border-red-500"><h3 class="text-red">Error</h3><p>${e.message}</p></div>`;
@@ -404,7 +404,7 @@ const app = {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
                 actions.innerHTML = `
-                    ${active ? `<button class="btn btn-danger mr-2" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
+                    ${active ? `<button class="btn btn-danger" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
                     <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                 `;
 
@@ -751,7 +751,7 @@ const app = {
             ${criticalRows.length ? `
                 <h4 class="text-xs font-bold text-muted uppercase mb-1">Critical Metrics</h4>
                 <div class="overflow-x-auto mb-2">
-                    <table class="data-table v-dense table-critical">
+                    <table class="data-table v-dense">
                         <thead>
                             <tr>
                                 <th>Attribute</th>
