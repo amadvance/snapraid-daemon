@@ -880,18 +880,19 @@ export const renderSettings = (config) => {
     const inputField = (key, label, type = "text", desc = "", disabled = false, extra = "", cls = "") => `
         <div class="form-group ${disabled ? 'disabled-control' : ''} ${cls}">
             <label for="${key}">${label}</label>
+            ${desc ? `<div class="text-xs text-muted mb-2">${desc}</div>` : ''}
             <input type="${type}" id="${key}" name="${key}" class="form-control" value="${escAttr(config[key])}" ${disabled ? 'disabled' : ''} ${extra}>
-            ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
+            
         </div>
     `;
 
     const selectField = (key, label, options, desc = "", disabled = false, extra = "") => `
         <div class="form-group ${disabled ? 'disabled-control' : ''}">
             <label for="${key}">${label}</label>
+            ${desc ? `<div class="text-xs text-muted mb-2">${desc}</div>` : ''}
             <select id="${key}" name="${key}" class="form-control" ${disabled ? 'disabled' : ''} ${extra}>
                 ${options.map(opt => `<option value="${escAttr(opt)}" ${config[key] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
             </select>
-            ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
         </div>
     `;
 

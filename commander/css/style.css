@@ -706,7 +706,7 @@ body {
 
 .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.1rem;
     font-size: 0.9rem;
     color: var(--text-secondary);
     font-weight: bold;
