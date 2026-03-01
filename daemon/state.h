@@ -238,12 +238,12 @@ struct snapraid_disk {
 #define PROCESS_STATE_TERM 4 /**< The task set a "end" log (running!=0) or it's terminated (running==0) and exit_code has the status code */
 #define PROCESS_STATE_CANCEL 5 /**< The task is canceled */
 
-#define HISTORY_PAST_DAYS 31 /**< Number of days the history is kept in memory (not affecting log files) */
-#define HISTORY_TASKS_MAX 10000 /**< Max number of tasks in the history kept in memory */
+#define HISTORY_PAST_DAYS 120 /**< Number of days the history is kept in memory (not affecting log files) */
+#define HISTORY_TASKS_MAX 5000 /**< Max number of tasks in the history kept in memory */
 
 #define SECONDS_IN_A_DAY (24 * 3600)
 
-#define MESSAGES_MAX 1000 /**< Max number of messages and errors before stop colleting messages */
+#define MESSAGES_MAX 1000 /**< Max number of messages and errors kept in memory for each task */
 
 #define MESSAGE_LEVEL_FATAL 0
 #define MESSAGE_LEVEL_ERROR 1
