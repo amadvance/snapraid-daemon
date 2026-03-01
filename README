@@ -1,10 +1,6 @@
 SnapRAID-Daemon
 ===============
 
-DEVELOPMENT STATUS: BETA. This documentation serves as a roadmap for the
-project. While the core daemon is under active development, many features
-are not yet ready for production use.
-
 SnapRAID-Daemon is a specialized companion service designed to move SnapRAID
 from a manual, command-line interface (CLI) workflow to an 'always-on'
 background service.
