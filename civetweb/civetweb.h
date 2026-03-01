@@ -1305,7 +1305,11 @@ CIVETWEB_API int mg_handle_form_request(struct mg_connection *conn,
 
 /* Convenience function -- create detached thread.
    Return: 0 on success, non-0 on error. */
+#ifdef __MINGW32__
+typedef void (*mg_thread_func_t)(void *);
+#else
 typedef void *(*mg_thread_func_t)(void *);
+#endif
 CIVETWEB_API int mg_start_thread(mg_thread_func_t f, void *p);
 
 
