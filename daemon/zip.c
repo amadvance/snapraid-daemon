@@ -168,7 +168,7 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 
 int crawl_zip(tommy_list* page_list, const char* path)
 {
-	int f = open(path, O_RDONLY);
+	int f = open(path, O_RDONLY | O_BINARY);
 	if (f == -1) {
 		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
 		return -1;

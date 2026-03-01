@@ -469,7 +469,7 @@ static int handler_system(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	daemon_system_refresh(&state->system);
+	os_system_refresh(&state->system);
 
 	ss_json_open(&s, &level);
 	ss_json_str(&s, level, "hostname", system->hostname);

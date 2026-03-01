@@ -24,12 +24,6 @@
 /* runner */
 
 /**
- * Find the SnapRAID binary in the system.
- * @return Path to SnapRAID binary, or NULL if not found
- */
-const char* find_snapraid(void);
-
-/**
  * Initialize the runner system.
  * @param state Current snapraid state
  */

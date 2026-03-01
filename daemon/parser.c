@@ -1341,7 +1341,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 						/* version 14 is the minimal supported one */
 						if (state->global.version_major != 0 && state->global.version_major < 14) {
 							/* don't log error in syslog if it's a past log */
-							if (log_f)
+							if (log_f != 0)
 								log_msg(LVL_ERROR, "requires SnapRAID 14.0 or newer");
 							if (state->runner.latest)
 								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
@@ -1352,7 +1352,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 					dup[dup_len] = 0; /* it contains the \n */
 
 					/* write dup to the log */
-					if (!ignore_this_line && log_f) {
+					if (!ignore_this_line && log_f != 0) {
 						if (fwrite(dup, dup_len, 1, log_f) != 1) {
 							log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 						}
@@ -1453,8 +1453,11 @@ int parse_past_log(struct snapraid_state* state)
 	while ((ent = readdir(dir)) != 0) {
 		if (ent->d_name[0] == '.')
 			continue;
+
+#ifndef _WIN32
 		if (ent->d_type != DT_REG)
 			continue;
+#endif
 
 		/* only files matching the pattern */
 		int64_t ntime;
@@ -1480,7 +1483,7 @@ int parse_past_log(struct snapraid_state* state)
 
 		snprintf(path, sizeof(path), "%s/%s", log_directory, sn->str);
 
-		int f = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+		int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
 		if (f == -1) {
 			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", log_directory, strerror(errno), errno);
 			continue;

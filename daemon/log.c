@@ -23,6 +23,7 @@
 /****************************************************************************/
 /* log */
 
+#ifndef _WIN32
 static int level_map[] = {
 	LOG_CRIT,
 	LOG_ERR,
@@ -30,14 +31,19 @@ static int level_map[] = {
 	LOG_INFO,
 	LOG_DEBUG
 };
+#endif
 
 int log_init(const char* ident)
 {
+#ifndef _WIN32
 	openlog(ident, LOG_PID | LOG_NDELAY, LOG_DAEMON);
+#else
+	(void)ident;
+#endif
 	return 0;
 }
 
-
+#ifndef _WIN32
 static void log_out(int level, int syslog, int termlog, const char* fmt, va_list ap)
 {
 	va_list ap2;
@@ -55,6 +61,19 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 
 	va_end(ap2);
 }
+#else
+static void log_out(int level, int syslog, int termlog, const char* fmt, va_list ap)
+{
+	(void)level;
+	(void)syslog;
+
+	if (termlog) {
+		vfprintf(stderr, fmt, ap);
+		fprintf(stderr, "\n");
+		fflush(stderr);
+	}
+}
+#endif
 
 void log_msg(int level, const char* fmt, ...)
 {
@@ -80,27 +99,59 @@ void log_msg(int level, const char* fmt, ...)
 
 void log_done(void)
 {
+#ifndef _WIN32
 	closelog();
+#endif
 }
 
 const char* signal_name(int sig)
 {
 	switch (sig) {
+#ifdef SIGHUP
 	case SIGHUP : return "SIGHUP";
+#endif
+#ifdef SIGINT
 	case SIGINT : return "SIGINT";
+#endif
+#ifdef SIGQUIT
 	case SIGQUIT : return "SIGQUIT";
+#endif
+#ifdef SIGILL
 	case SIGILL : return "SIGILL";
+#endif
+#ifdef SIGTRAP
 	case SIGTRAP : return "SIGTRAP";
+#endif
+#ifdef SIGABRT
 	case SIGABRT : return "SIGABRT";
+#endif
+#ifdef SIGBUS
 	case SIGBUS : return "SIGBUS";
+#endif
+#ifdef SIGFPE
 	case SIGFPE : return "SIGFPE";
+#endif
+#ifdef SIGKILL
 	case SIGKILL : return "SIGKILL";
+#endif
+#ifdef SIGUSR1
 	case SIGUSR1 : return "SIGUSR1";
+#endif
+#ifdef SIGSEGV
 	case SIGSEGV : return "SIGSEGV";
+#endif
+#ifdef SIGUSR2
 	case SIGUSR2 : return "SIGUSR2";
+#endif
+#ifdef SIGPIPE
 	case SIGPIPE : return "SIGPIPE";
+#endif
+#ifdef SIGALRM
 	case SIGALRM : return "SIGALRM";
+#endif
+#ifdef SIGTERM
 	case SIGTERM : return "SIGTERM";
+#endif
 	}
 
 	return "UNKNOWN";

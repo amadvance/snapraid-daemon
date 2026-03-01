@@ -132,9 +132,11 @@ int main(int argc, char* argv[])
 	const char* arg_pidfile = 0;
 	char pidfile[PATH_MAX];
 
+	os_init();
+
 	struct snapraid_state* state = state_init();
 
-	config_init(state, argv[0]);
+	config_init(state);
 
 	while ((c =
 #if HAVE_GETOPT_LONG
@@ -173,7 +175,7 @@ int main(int argc, char* argv[])
 
 	int pidfd = -1;
 	if (!state->log.foreground) {
-		pidfd = daemon_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
+		pidfd = os_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
 		if (pidfd == -1)
 			exit(EXIT_FAILURE);
 	}
@@ -181,7 +183,9 @@ int main(int argc, char* argv[])
 	log_init(DAEMON);
 	log_msg(LVL_INFO, "daemon starting");
 	log_msg(LVL_INFO, "version=%s", VERSION);
+#ifndef _WIN32
 	log_msg(LVL_INFO, "uid=%d gid=%d euid=%d egid=%d", getuid(), getgid(), geteuid(), getegid());
+#endif
 
 	if (config_load_locked(state) != 0) {
 		log_msg(LVL_ERROR, "failed to load config from %s", state->config.conf);
@@ -191,17 +195,17 @@ int main(int argc, char* argv[])
 	/**
 	 * Load system information
 	 */
-	daemon_system(&state->system);
+	os_system(&state->system);
 
 	/*
 	 * Install signal handlers
 	 */
-	daemon_signal_init();
+	os_signal_init();
 
 	/*
 	 * Block signals in the main thread
 	 */
-	daemon_signal_set(0);
+	os_signal_set(0);
 
 	/**
 	 * Parse existing log files
@@ -247,7 +251,7 @@ int main(int argc, char* argv[])
 	 * Unblock signals ONLY in main thread
 	 * Worker threads keep them blocked forever.
 	 */
-	daemon_signal_set(1);
+	os_signal_set(1);
 
 	/*
 	 * Main loop
@@ -271,6 +275,8 @@ int main(int argc, char* argv[])
 		unlink(pidfile);
 		close(pidfd);
 	}
+
+	os_done();
 
 	return 0;
 }

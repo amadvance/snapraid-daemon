@@ -258,7 +258,7 @@ static void runner_go(struct snapraid_state* state)
 	FILE* log_f = 0;
 
 	if (log_path[0] != 0) {
-		log_f = fopen(log_path, "wte");
+		log_f = fopen(log_path, "w" FOPEN_TEXT FOPEN_CLOEXEC);
 		if (log_f == 0) {
 			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
@@ -280,7 +280,7 @@ static void runner_go(struct snapraid_state* state)
 		log_msg(LVL_INFO, "task %d run %s", number, script_pre_run);
 		if (log_f != 0)
 			fprintf(log_f, "daemon:pre:%s\n", script_pre_run);
-		script_ret = daemon_script(script_pre_run, script_run_as_user);
+		script_ret = os_script(script_pre_run, script_run_as_user);
 		if (script_ret < 0) {
 			log_msg(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, script_pre_run, strerror(errno), errno);
 			if (log_f != 0)
@@ -311,7 +311,7 @@ static void runner_go(struct snapraid_state* state)
 			fflush(log_f);
 	}
 
-	pid = daemon_spawn(argv, &f);
+	pid = os_spawn(argv, &f);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
@@ -331,9 +331,7 @@ static void runner_go(struct snapraid_state* state)
 		parse_log(state, f, log_f, log_path);
 
 		/* wait for the child process to terminate */
-		do {
-			pid_ret = waitpid(pid, &status, 0);
-		} while (pid_ret == -1 && errno == EINTR);
+		pid_ret = os_wait(pid, &status);
 
 		if (pid_ret == -1) {
 			log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
@@ -383,7 +381,7 @@ static void runner_go(struct snapraid_state* state)
 		if (log_f != 0)
 			fprintf(log_f, "daemon:post:%s\n", script_post_run);
 
-		script_ret = daemon_script(script_post_run, script_run_as_user);
+		script_ret = os_script(script_post_run, script_run_as_user);
 		if (script_ret < 0) {
 			log_msg(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, script_post_run, strerror(errno), errno);
 			if (log_f != 0)
@@ -698,30 +696,9 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-static const char* snapraid_paths[] = {
-	/* Linux & BSD */
-	"/usr/bin/snapraid",
-	"/usr/local/bin/snapraid",
-#ifdef __APPLE__
-	/* macOS (Intel & Apple Silicon) */
-	"/opt/homebrew/bin/snapraid",
-#endif
-	0
-};
-
-const char* find_snapraid(void)
-{
-	for (int i = 0; snapraid_paths[i]; ++i) {
-		if (access(snapraid_paths[i], X_OK) == 0)
-			return snapraid_paths[i];
-	}
-
-	return 0;
-}
-
 static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	const char* snapraid = find_snapraid();
+	const char* snapraid = os_find_snapraid();
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
@@ -936,12 +913,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	*stop_number = number;
 
 	if (pid > 0) {
-		/*
-		 * Send signal to the negative PID to target the entire Process Group.
-		 * This ensures that SnapRAID and any programs it may have spawned are
-		 * terminated together, preventing orphaned worker processes.
-		 */
-		if (kill(-pid, SIGTERM) != 0) {
+		if (os_term(pid) != 0) {
 			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
 			sncpy(msg, msg_size, "Failed to stop task");
 			*status = 500;

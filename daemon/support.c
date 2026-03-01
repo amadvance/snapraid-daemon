@@ -610,6 +610,7 @@ char* strtrim(char* str)
 	return str;
 }
 
+#ifndef _WIN32
 void strupr(char* str)
 {
 	while (*str) {
@@ -617,6 +618,7 @@ void strupr(char* str)
 		++str;
 	}
 }
+#endif
 
 /****************************************************************************/
 /* pulse */
@@ -1037,7 +1039,7 @@ int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size)
 
 		if (compressed_len > 0 || res == Z_STREAM_END) {
 			char hex[Z_HEADER_RESERVE + 1];
-			int hex_len = snprintf(hex, sizeof(hex), "%zX\r\n", compressed_len);
+			int hex_len = snprintf(hex, sizeof(hex), "%" PRIxPTR "\r\n", compressed_len);
 
 			char* send_start = (buf + Z_HEADER_RESERVE) - hex_len;
 			memcpy(send_start, hex, hex_len);

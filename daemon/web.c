@@ -21,6 +21,7 @@
 #include "log.h"
 #include "elem.h"
 #include "support.h"
+#include "daemon.h"
 #include "zip.h"
 #include "web.h"
 
@@ -152,8 +153,9 @@ static ssize_t read_fd(int fd, void* buffer, ssize_t size)
 	while (total < size) {
 		ssize_t r = read(fd, p + total, size - total);
 
-		if (r == 0) /* EOF */
+		if (r == 0) { /* EOF */
 			return -1;
+		}
 
 		if (r < 0) {
 			if (errno == EINTR)
@@ -169,7 +171,7 @@ static ssize_t read_fd(int fd, void* buffer, ssize_t size)
 
 static ssize_t read_file(const char* path, struct stat* st, char** body)
 {
-	int f = open(path, O_RDONLY);
+	int f = open(path, O_RDONLY | O_BINARY);
 	if (f == -1) {
 		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
 		return -1;
@@ -189,12 +191,25 @@ static ssize_t read_file(const char* path, struct stat* st, char** body)
 	return st->st_size;
 }
 
+#ifndef _WIN32
+#define FD_ARG(v) v
+#else
+#define FD_ARG(v) - 1
+#endif
+
 static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_fd, const char* current_path)
 {
+#ifdef _WIN32
+	(void)current_fd;
+	DIR* d = opendir(current_path);
+#else
 	DIR* d = fdopendir(current_fd);
+#endif
 	if (!d) {
 		log_msg(LVL_ERROR, "crawler error fdopendir %s, errno=%s(%d)", current_path, strerror(errno), errno);
+#ifndef _WIN32
 		close(current_fd);
+#endif
 		return;
 	}
 
@@ -214,9 +229,11 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 		if (dd->d_name[0] == '.')
 			continue;
 
-		char path[PATH_MAX];
+		char path[PATH_MAX + PATH_MAX];
 		snprintf(path, sizeof(path), "%s/%s", current_path, dd->d_name);
 
+		struct stat st;
+#ifndef _WIN32
 		int fd = openat(current_fd, dd->d_name, O_RDONLY | O_NOFOLLOW);
 		if (fd == -1) {
 			if (errno == ELOOP) {
@@ -227,20 +244,32 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			continue;
 		}
 
-		struct stat st;
 		if (fstat(fd, &st) != 0) {
 			log_msg(LVL_ERROR, "crawler error fstat %s, errno=%s(%d)", path, strerror(errno), errno);
 			close(fd);
 			continue;
 		}
+#else
+		if (lstat(path, &st) != 0) {
+			log_msg(LVL_ERROR, "crawler error fstat %s, errno=%s(%d)", path, strerror(errno), errno);
+			continue;
+		}
+#endif
 
 		if (S_ISDIR(st.st_mode)) {
-			crawl_directory_fd(page_list, skip, fd, path);
+			crawl_directory_fd(page_list, skip, FD_ARG(fd), path);
 			continue; /* fd consumed by recursion */
 		} else if (S_ISREG(st.st_mode)) {
 			const char* relative = path + skip;
 			struct snapraid_page* page = page_alloc(relative, st.st_size);
 
+#ifdef _WIN32
+			int fd = open(path, O_RDONLY | O_BINARY);
+			if (fd == -1) {
+				log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
+				return;
+			}
+#endif
 			if (read_fd(fd, page->content, page->size) != page->size) {
 				log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
 				close(fd);
@@ -257,7 +286,9 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			tommy_list_insert_tail(page_list, &page->node, page);
 		} else {
 			log_msg(LVL_WARNING, "crawler ignore special file %s", path);
+#ifndef _WIN32
 			close(fd);
+#endif
 		}
 	}
 
@@ -266,13 +297,15 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 
 static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
 {
+#ifndef _WIN32
 	int fd = open(current_path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
 	if (fd == -1) {
 		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", current_path, strerror(errno), errno);
 		return;
 	}
+#endif
 
-	crawl_directory_fd(page_list, skip, fd, current_path);
+	crawl_directory_fd(page_list, skip, FD_ARG(fd), current_path);
 }
 
 static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modified)
@@ -551,13 +584,8 @@ int web_reload(struct snapraid_state* state, const char* root)
 	if (dot != 0 && strcmp(dot, ".zip") == 0) {
 		char zip[PATH_MAX];
 		if (strchr(root, '/') == 0) {
-			/* if it's just the file name, search it in DATADIR (note that PACKAGE is snapraid-daemon) */
-#ifdef DATADIR
-			snprintf(zip, sizeof(zip), DATADIR "/" DAEMON "/%s", root);
-			if (access(zip, F_OK) != 0)
-#endif
-			/* otherwise use  /usr/share/snapraidd */
-			snprintf(zip, sizeof(zip), "/usr/share/" DAEMON "/%s", root);
+			/* if it's just the file name, use the default data dir */
+			os_default_data(zip, sizeof(zip), root);
 		} else {
 			sncpy(zip, sizeof(zip), root);
 		}

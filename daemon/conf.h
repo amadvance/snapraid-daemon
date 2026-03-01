@@ -70,9 +70,8 @@ void config_schedule_str(const struct snapraid_config* config, char* buf, size_t
 /**
  * Initialize configuration with defaults.
  * @param state Current snapraid state
- * @param argv0 Program name for defaults
  */
-void config_init(struct snapraid_state* state, const char* argv0);
+void config_init(struct snapraid_state* state);
 
 /**
  * Load configuration from file.

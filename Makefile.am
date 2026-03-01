@@ -65,6 +65,7 @@ snapraidd_SOURCES = \
 	daemon/notify.c \
 	daemon/smart.c \
 	daemon/unix.c \
+	daemon/mingw.c \
 	civetweb/civetweb.c \
 	tommyds/tommy.c
 
@@ -85,6 +86,8 @@ noinst_HEADERS = \
 	civetweb/response.inl \
 	civetweb/sort.inl \
 	daemon/portable.h \
+	daemon/unix.h \
+	daemon/mingw.h \
 	daemon/daemon.h \
 	daemon/state.h \
 	daemon/runner.h \

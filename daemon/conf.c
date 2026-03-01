@@ -19,6 +19,7 @@
 
 #include "state.h"
 #include "support.h"
+#include "daemon.h"
 #include "log.h"
 #include "rest.h"
 #include "conf.h"
@@ -161,7 +162,7 @@ int config_load_locked(struct snapraid_state* state)
 	char buffer[CONFIG_LINE_MAX];
 	FILE* fp;
 
-	fp = fopen(config->conf, "rte");
+	fp = fopen(config->conf, "r" FOPEN_TEXT FOPEN_CLOEXEC);
 	if (!fp) {
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
@@ -460,7 +461,7 @@ int config_save_locked(struct snapraid_config* config)
 	tommy_node* i;
 	struct snapraid_config_line* line;
 
-	FILE* fp = fopen(config->conf, "wte");
+	FILE* fp = fopen(config->conf, "w" FOPEN_TEXT FOPEN_CLOEXEC);
 	if (!fp) {
 		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
@@ -493,10 +494,9 @@ int config_save_locked(struct snapraid_config* config)
 	return 0;
 }
 
-void config_init(struct snapraid_state* state, const char* argv0)
+void config_init(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
-	(void)argv0;
 
 	memset(config, 0, sizeof(*config));
 
@@ -523,7 +523,7 @@ void config_init(struct snapraid_state* state, const char* argv0)
 	config->script_run_as_user[0] = 0;
 	config->script_pre_run[0] = 0;
 	config->script_post_run[0] = 0;
-	sncpy(config->log_directory, sizeof(config->log_directory), "/var/log/snapraid");
+	os_default_log(config->log_directory, sizeof(config->log_directory));
 	config->log_retention_days = 0;
 	log_lock();
 	state->log.syslog = 0;
@@ -534,13 +534,6 @@ void config_init(struct snapraid_state* state, const char* argv0)
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_ERROR;
 	config->notify_differences = 0;
-
-#ifdef SYSCONFDIR
-	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc (note that PACKAGE is snapraid-daemon) */
-	if (access(SYSCONFDIR "/" DAEMON ".conf", F_OK) == 0)
-		sncpy(config->conf, sizeof(config->conf), SYSCONFDIR "/" DAEMON ".conf");
-	else /* otherwise fallback to plain /etc */
-#endif
-	sncpy(config->conf, sizeof(config->conf), "/etc/" DAEMON ".conf");
+	os_default_conf(config->conf, sizeof(config->conf));
 }
 

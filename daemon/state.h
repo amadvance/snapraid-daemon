@@ -489,7 +489,7 @@ struct snapraid_config {
 struct snapraid_system {
 	char hostname[KEYWORD_MAX]; /**< Network hostname of the machine */
 	char os_distribution[MSG_MAX]; /**< Operating system name and version (e.g., "Ubuntu 24.04 LTS") */
-	char kernel_version[KEYWORD_MAX]; /**< Running Linux kernel version string */
+	char kernel_version[KEYWORD_MAX]; /**< Running Linux/Windoes kernel version string */
 	char motherboard[MSG_MAX]; /**< Manufacturer and model of the motherboard */
 	char cpu_model[MSG_MAX]; /**< CPU model string */
 	uint64_t memory_total_bytes; /**< Total physical RAM available */

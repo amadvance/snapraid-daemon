@@ -235,7 +235,6 @@ void* scheduler_thread(void* arg)
 	state_lock();
 
 	while (state->daemon_running) {
-		struct timespec ts;
 		time_t now = time(0);
 		struct tm* tm_info = localtime(&now);
 		int current_minute = tm_info->tm_min;
@@ -250,8 +249,7 @@ void* scheduler_thread(void* arg)
 		while (current_minute != last_minute) {
 			last_minute = current_minute;
 
-			clock_gettime(CLOCK_MONOTONIC, &ts);
-			mono_now_secs = ts.tv_sec;
+			mono_now_secs = os_tick_sec();
 
 			/* sync and scrub */
 			if (current_hour == state->config.maintenance_hour

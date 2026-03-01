@@ -25,6 +25,20 @@ AC_CHECK_CC_OPT([-rdynamic], CFLAGS="$CFLAGS -rdynamic", [])
 AC_CHECK_CC_OPT([-fno-common], CFLAGS="$CFLAGS -fno-common", [])
 
 dnl Hardening Flags
+
+# Check for Windows
+is_windows=no
+case "$host_os" in
+	mingw*|cygwin*|msys*)
+		is_windows=yes
+		;;
+	*)
+		is_windows=no
+		;;
+esac
+
+# Conditionally call macros
+if test "x$is_windows" = "xno"; then
 # -D_FORTIFY_SOURCE=2: 
 # Adds checks for buffer overflows in common standard library functions. 
 # Level 2 provides the most comprehensive checks available in modern glibc/gcc.
@@ -70,6 +84,7 @@ AC_CHECK_CC_OPT([-fstack-clash-protection], CFLAGS="$CFLAGS -fstack-clash-protec
 # Hardware-assisted protection against ROP (Return Oriented Programming) 
 # and COP/JOP (Call/Jump Oriented Programming) on x86_64.
 AC_CHECK_CC_OPT([-fcf-protection], CFLAGS="$CFLAGS -fcf-protection", [])
+fi
 
 dnl Checks for system.
 AC_SYS_LARGEFILE
@@ -126,6 +141,7 @@ AC_CHECK_CC_OPT([-pthread], CFLAGS="$CFLAGS -pthread", CFLAGS="$CFLAGS -D_REENTR
 AC_CHECK_FUNCS([pthread_create])
 AC_CHECK_FUNCS([fexecve pipe2])
 AC_SEARCH_LIBS([exp], [m])
+AC_SEARCH_LIBS([gethostbyname], [ws2_32])
 
 dnl Checks for architecture
 AC_C_BIGENDIAN

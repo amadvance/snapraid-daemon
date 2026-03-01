@@ -19,11 +19,30 @@
 #define __DAEMON_H
 
 /****************************************************************************/
-/* daemon */
+/* os */
 
 /**
- * OS specific
+ * Find the SnapRAID binary in the system.
+ * @return Path to SnapRAID binary, or NULL if not found
  */
+const char* os_find_snapraid(void);
+
+/**
+ * Default paths.
+ */
+void os_default_log(char* dst, size_t dst_size);
+void os_default_conf(char* dst, size_t dst_size);
+void os_default_data(char* dst, size_t dst_size, const char* root);
+
+/*
+ * Wait for the child process to terminate.
+ */
+int os_wait(pid_t pid, int* status);
+
+/**
+ * Terminate gracefully a process.
+ */
+int os_term(pid_t pid);
 
 /**
  * Spawn a new process with the specified argument vector.
@@ -31,7 +50,7 @@
  * @param stderr_fd Pointer to store file descriptor for stderr
  * @return Process ID of spawned process
  */
-pid_t daemon_spawn(char** argv, int* stderr_fd);
+pid_t os_spawn(char** argv, int* stderr_fd);
 
 /**
  * Execute a system command with optional user context and input.
@@ -40,7 +59,7 @@ pid_t daemon_spawn(char** argv, int* stderr_fd);
  * @param stdin_text Text to provide as stdin (NULL for no input)
  * @return Exit status of command
  */
-int daemon_command(const char* command, const char* target_user, const char* stdin_text);
+int os_command(const char* command, const char* target_user, const char* stdin_text);
 
 /**
  * Execute a script file with specified user context.
@@ -48,42 +67,42 @@ int daemon_command(const char* command, const char* target_user, const char* std
  * @param run_as_user User to run script as (NULL for current user)
  * @return Exit status of script
  */
-int daemon_script(const char* script_path, const char* run_as_user);
+int os_script(const char* script_path, const char* run_as_user);
 
 /**
  * Initialize signal handling for the daemon.
  */
-void daemon_signal_init(void);
+void os_signal_init(void);
 
 /**
  * Enable or disable signal handling.
  * @param enable 1 to enable signals, 0 to disable
  */
-void daemon_signal_set(int enable);
+void os_signal_set(int enable);
 
 /**
  * Daemonize the current process.
  * @return The PID file descriptor on success, -1 on error
  */
-int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg);
+int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg);
 
 /**
  * Restore signal handlers after fork in child process.
  * This resets signals to default handling for the daemon.
  */
-void daemon_signal_restore_after_fork(void);
+void os_signal_restore_after_fork(void);
 
 /**
  * Gather static system information.
  * @param system Pointer to system structure to populate
  */
-void daemon_system(struct snapraid_system* system);
+void os_system(struct snapraid_system* system);
 
 /**
  * Refresh dynamic system information (uptime, memory).
  * @param system Pointer to system structure to update
  */
-void daemon_system_refresh(struct snapraid_system* system);
+void os_system_refresh(struct snapraid_system* system);
 
 #endif
 

@@ -218,7 +218,7 @@ static void result_locked(struct snapraid_state* state, int high_cmd, int report
 	/* report text */
 	ss_prints(&ss, report_text);
 
-	int ret = daemon_command(cmd, run_as_user, ss_extract(&ss));
+	int ret = os_command(cmd, run_as_user, ss_extract(&ss));
 	if (ret != 0) {
 		report_level = level_mix(report_level, LVL_ERROR); /* mix the levels, if it's CRITICAL, log as CRITICAL */
 		log_msg(report_level, "failed to send %s report", config_level_str(report_level));
@@ -246,7 +246,7 @@ static void heartbeat_locked(struct snapraid_state* state)
 
 	sncpy(cmd, sizeof(cmd), template);
 
-	int ret = daemon_command(cmd, run_as_user, 0);
+	int ret = os_command(cmd, run_as_user, 0);
 	if (ret != 0) {
 		log_msg(LVL_ERROR, "failed to hearbeat");
 		goto bail;

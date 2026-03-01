@@ -448,7 +448,9 @@ char* strtrim(char* str);
 /**
  * Convert string to uppercase.
  */
+#ifndef _WIN32
 void strupr(char* str);
+#endif
 
 /****************************************************************************/
 /* pulse */

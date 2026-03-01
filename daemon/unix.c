@@ -17,6 +17,8 @@
 
 #include "portable.h"
 
+#ifndef __MINGW32__ /* Only for Unix */
+
 #include "state.h"
 #include "log.h"
 #include "support.h"
@@ -24,6 +26,54 @@
 
 /****************************************************************************/
 /* exec */
+
+static const char* snapraid_paths[] = {
+	/* Linux & BSD */
+	"/usr/bin/snapraid",
+	"/usr/local/bin/snapraid",
+#ifdef __APPLE__
+	/* macOS (Intel & Apple Silicon) */
+	"/opt/homebrew/bin/snapraid",
+#endif
+	0
+};
+
+const char* os_find_snapraid(void)
+{
+	for (int i = 0; snapraid_paths[i]; ++i) {
+		if (access(snapraid_paths[i], X_OK) == 0)
+			return snapraid_paths[i];
+	}
+
+	return 0;
+}
+
+void os_default_log(char* dst, size_t dst_size)
+{
+	sncpy(dst, dst_size, "/var/log/snapraid");
+}
+
+void os_default_conf(char* dst, size_t dst_size)
+{
+#ifdef SYSCONFDIR
+	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc (note that PACKAGE is snapraid-daemon) */
+	sncpy(dst, dst_size, SYSCONFDIR "/" DAEMON ".conf");
+	if (access(dst, F_OK) == 0)
+		return;
+#endif
+	sncpy(dst, dst_size, "/etc/" DAEMON ".conf");
+}
+
+void os_default_data(char* dst, size_t dst_size, const char* root)
+{
+#ifdef DATADIR
+	snprintf(dst, dst_size, DATADIR "/" DAEMON "/%s", root);
+	if (access(dst, F_OK) != 0)
+		return;
+#endif
+	/* otherwise use  /usr/share/snapraidd */
+	snprintf(dst, dst_size, "/usr/share/" DAEMON "/%s", root);
+}
 
 /*
  * Scrubbed environment
@@ -235,7 +285,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 /**
  * Executes a script directly via its file descriptor.
  */
-int daemon_script(const char* script_path, const char* run_as_user)
+int os_script(const char* script_path, const char* run_as_user)
 {
 	int fd;
 	struct stat st;
@@ -433,7 +483,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 #endif
 
 		/* restore and unblock signals */
-		daemon_signal_restore_after_fork();
+		os_signal_restore_after_fork();
 
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
@@ -490,7 +540,7 @@ int daemon_script(const char* script_path, const char* run_as_user)
 	}
 }
 
-int daemon_command(const char* command, const char* target_user, const char* stdin_text)
+int os_command(const char* command, const char* target_user, const char* stdin_text)
 {
 	pid_t pid;
 	int ret;
@@ -586,7 +636,7 @@ int daemon_command(const char* command, const char* target_user, const char* std
 #endif
 
 		/* restore and unblock signals */
-		daemon_signal_restore_after_fork();
+		os_signal_restore_after_fork();
 
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
@@ -673,7 +723,7 @@ bail:
 #endif
 }
 
-pid_t daemon_spawn(char** argv, int* stderr_fd)
+pid_t os_spawn(char** argv, int* stderr_fd)
 {
 	int err_pipe[2];
 	pid_t pid;
@@ -720,7 +770,7 @@ pid_t daemon_spawn(char** argv, int* stderr_fd)
 			close(null_fd);
 
 		/* restore and unblock signals */
-		daemon_signal_restore_after_fork();
+		os_signal_restore_after_fork();
 
 		execve(argv[0], (char* const*)argv, envp_scrubbed);
 		_exit(127);
@@ -740,12 +790,32 @@ pid_t daemon_spawn(char** argv, int* stderr_fd)
 	return pid;
 }
 
+int os_wait(pid_t pid, int* status)
+{
+	int ret;
+
+	do {
+		ret = waitpid(pid, status, 0);
+	} while (ret == -1 && errno == EINTR);
+
+	return ret;
+}
+
+int os_term(pid_t pid)
+{
+	/*
+	 * Send signal to the negative PID to target the entire Process Group.
+	 * This ensures that SnapRAID and any programs it may have spawned are
+	 * terminated together, preventing orphaned worker processes.
+	 */
+	return kill(-pid, SIGTERM);
+}
+
 /****************************************************************************/
 /* signal */
 
 static void signal_handler_term(int sig)
 {
-	(void)sig;
 	state_ptr()->daemon_running = DAEMON_QUIT;
 	state_ptr()->daemon_sig = sig;
 }
@@ -756,7 +826,7 @@ static void signal_handler_hup(int sig)
 	state_ptr()->daemon_running = DAEMON_RELOAD;
 }
 
-void daemon_signal_restore_after_fork(void)
+void os_signal_restore_after_fork(void)
 {
 	struct sigaction sa;
 
@@ -770,13 +840,13 @@ void daemon_signal_restore_after_fork(void)
 	sigaction(SIGHUP, &sa, 0);
 	/* do not restore SIGPIPE */
 
-	/* Ensure signals are unblocked */
+	/* ensure signals are unblocked */
 	sigset_t mask;
 	sigemptyset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, NULL); /* cannot use pthread_sigmask after fork */
 }
 
-void daemon_signal_set(int enable)
+void os_signal_set(int enable)
 {
 	sigset_t set;
 
@@ -788,7 +858,7 @@ void daemon_signal_set(int enable)
 	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
 }
 
-void daemon_signal_init(void)
+void os_signal_init(void)
 {
 	struct sigaction sa;
 
@@ -812,7 +882,7 @@ void daemon_signal_init(void)
 	sigaction(SIGPIPE, &sa, 0);
 }
 
-static int daemon_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
 {
 	/* determine the path if not explicitly provided */
 	if (pidfile_arg) {
@@ -880,7 +950,7 @@ static int daemon_pidfile(char* pidfile_path, size_t pidfile_size, const char* p
  * Detaches the process from the controlling terminal and runs it in the background.
  * Follows the "double-fork" method to ensure the daemon cannot re-acquire a TTY.
  */
-int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
 {
 	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
@@ -908,7 +978,7 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
 	 * We do this BEFORE closing I/O so we can still report errors to stderr
 	 * if another instance is already running.
 	 */
-	int pidfd = daemon_pidfile(pidfile_path, pidfile_size, pidfile_arg);
+	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
 	if (pidfd < 0)
 		return -1;
 
@@ -942,6 +1012,23 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
 	return pidfd;
 }
 
+void os_init(void)
+{
+}
+
+void os_done(void)
+{
+}
+
+uint64_t os_tick_sec(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	return ts.tv_sec;
+}
+
 /****************************************************************************/
 /* system */
 
@@ -956,7 +1043,7 @@ int daemon_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfil
  */
 char* sysattr(const char* path, const char* tag, char separator, int position, char* out, size_t out_size)
 {
-	FILE* fp = fopen(path, "r");
+	FILE* fp = fopen(path, "re");
 	if (!fp)
 		return 0;
 
@@ -1032,7 +1119,7 @@ char* sysattr(const char* path, const char* tag, char separator, int position, c
 	return result;
 }
 
-void daemon_system(struct snapraid_system* system)
+void os_system(struct snapraid_system* system)
 {
 	char buf[MSG_MAX];
 	struct utsname un;
@@ -1078,10 +1165,10 @@ void daemon_system(struct snapraid_system* system)
 	else
 		system->is_ecc = 0;
 
-	daemon_system_refresh(system);
+	os_system_refresh(system);
 }
 
-void daemon_system_refresh(struct snapraid_system* system)
+void os_system_refresh(struct snapraid_system* system)
 {
 	char buf[KEYWORD_MAX];
 	struct sysinfo si;
@@ -1096,4 +1183,6 @@ void daemon_system_refresh(struct snapraid_system* system)
 		system->memory_free_bytes *= 1024;
 	}
 }
+
+#endif
 
