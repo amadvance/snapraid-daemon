@@ -140,6 +140,12 @@ net_config_full_access = 0
 # The daemon recursively crawls the directory or archive at startup to
 # provide high-performance, compressed delivery of the UI.
 #
+# When a directory is specified, assets are cached in memory, as a result,
+# manual changes to asset files on the disk will not be reflected in the
+# UI until the daemon is restarted. This behavior can be bypassed by using
+# the -N, --no-cache option during daemon startup, which is recommended
+# for development environments only.
+#
 # If left unset or empty, the built-in web dashboard will be unavailable.
 #
 # This option is not accessible from the REST API.
@@ -150,7 +156,7 @@ net_web_root = commander.zip
 # Use maintenance_schedule to define when the automated maintenance
 # sequence—consisting of a sync, a scrub, and a report—should occur.
 # Automated maintenance is disabled if this is unset.
-# Format: "HH:MM" or "<Day> HH:MM".
+# Format: "HH:MM" or "Day HH:MM".
 # Hours (HH) use 24-hour format (00-23).
 # Day is the short name (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 #
@@ -177,15 +183,19 @@ sync_threshold_deletes = 50
 # Set to 0 to disable this check.
 sync_threshold_updates = 100
 
-# If set to 1 run sync with the prehash option to prevent silent errors due
-# faulty memory on files not yet hashed.
+# If set to 1, the sync command runs with the --prehash option. This calculates
+# hashes before starting the sync process to protect against silent errors
+# caused by faulty memory, which is often triggered by the critical system
+# load and high I/O stress occurring during synchronization.
 # If this is missing or set to 0, no prehash is used.
 #sync_prehash = 1
 
-# If set to 1 run sync also in presence of files with zero size that were no
-# zero before
-# If this is missing or set to 0, the sync doesn't run in presence of such
-# files.
+# If set to 1, the sync command will run even if files are detected that have
+# shrunk to zero size since the last successful run. This allows the daemon
+# to proceed while making it easy to detect files that were truncated, a
+# common occurrence for files being accessed during a system crash.
+# If this is missing or set to 0, the sync is halted to prevent overwriting
+# parity with empty file data.
 #sync_force_zero = 1
 
 # After a sync completes, the scrub_percentage determines how much of the
@@ -203,11 +213,17 @@ scrub_older_than = 10
 # The probe_interval_minutes setting controls how often the daemon checks
 # SMART attributes, provided the disks are already spinning. If this is
 # set to 0 or left blank, SMART monitoring is disabled.
-probe_interval_minutes = 5
+probe_interval_minutes = 3
 
 # To save power, spindown_idle_minutes will automatically spin down disks
-# after the specified period of inactivity. If unset, the daemon will not
-# manage disk power states.
+# after the specified period of inactivity.
+#
+# This timer monitors the global activity of the disks across the entire
+# operating system. A disk will only be spun down if it has remained
+# completely idle for the specified period. If any other application, service,
+# or system process accesses the disk, the idle timer is reset.
+#
+# If unset, the daemon will not manage disk power states.
 spindown_idle_minutes = 15
 
 # Specify absolute paths for script_pre_run and script_post_run to trigger

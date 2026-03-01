@@ -14,7 +14,7 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'up', 'diff'
+        Initiates the automated maintenance workflow, executing 'up', 'diff',
         and 'sync' followed by 'scrub'. The process is concluded by a 'report'
         task to notify the result.
 
@@ -27,7 +27,7 @@ paths:
         Regardless, the 'scrub' phase is not bypassed.
 
         This is an asynchronous operation. Monitor progress via the
-        '/snapraid/v1/activity' endpoint.
+        /activity endpoint.
       requestBody:
         content:
           application/json:
@@ -45,7 +45,7 @@ paths:
       summary: Execute automated silent error recovery sequence
       description: >
         Initiates a recovery operation to resolve data corruption by
-        executing 'up', followed by 'fix -e' and followed by 'scrub -p bad'.
+        executing 'up', followed by 'fix -e', and followed by 'scrub -p bad'.
         The process is concluded by a 'report' task to notify the result.
 
         The '-e fix' command utilizes parity data to reconstruct blocks
@@ -58,7 +58,7 @@ paths:
         status of the array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/snapraid/v1/activity' endpoint.
+        /activity endpoint.
       requestBody:
         content:
           application/json:
@@ -88,7 +88,7 @@ paths:
         missing files across the entire array.
 
         This is an asynchronous operation. Monitor progress via the
-        '/snapraid/v1/activity' endpoint.
+        /activity endpoint.
       requestBody:
         content:
           application/json:
@@ -116,7 +116,7 @@ paths:
         issues a targeted 'down_idle' command to those specific devices.
 
         This is an asynchronous operation. Monitor progress and view the
-        resulting command sequence via the '/snapraid/v1/activity' endpoint.
+        resulting command sequence via the /activity endpoint.
       responses:
         '202':
           $ref: '#/components/responses/CommandResult'
@@ -134,11 +134,11 @@ paths:
         - Commands are executed in the exact order provided in the 'tasks' array.
         - If a command fails, all subsequent tasks in the queue are automatically
           cancelled to prevent operating on inconsistent data.
-        - Exception: The 'report' and 'down' commands are treated as a finalizers.
+        - Exception: The 'report' and 'down' commands are treated as finalizers.
           If they are present in the sequence, they will be executed regardless
           of the success or failure of preceding commands.
 
-        Clients should monitor /v1/state to track the progress of the
+        Clients should monitor /state endpoint to track the progress of the
         currently active command and the overall queue status via pulse counters.
       requestBody:
         required: true
@@ -581,7 +581,7 @@ components:
           default: false
           description: >
             If true, the daemon will command all disks in the array to enter
-            STANDBY mode once the task finishes succesfully or not.
+            STANDBY mode once the task finishes succesfully or fails.
 
     TaskSchedule:
       type: object
@@ -594,7 +594,7 @@ components:
           oneOf:
             - const: probe
               description: >
-                Verifies the power status of all configured disks, and gather.
+                Verifies the power status of all configured disks, and gathers.
                 SMART information and attributes for the ones already spinning.
             - const: up
               description: >
@@ -742,7 +742,8 @@ components:
         number:
           type: integer
           description: >
-            Incremental number of task. It can be used to identify tasks when moved from queue to process to history.
+            The incremental number of task. It can be used to identify tasks
+            when moved from queue to process to history.
         command:
           type: string
           enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
@@ -776,15 +777,15 @@ components:
           description: >
             The current status of the task:
             queued - Waiting to be executed.
-            starting - The task started and it's executing it's initialization phase, like loading the content file.
+            starting - The task started and it's executing its initialization phase, like loading the content file.
             processing - The task is executing and you'll get progress information like `percentage`.
             finalizing - The task finished and it's doing the final phase, like saving the content file.
-            stopping - The task received a signal, and it's doing the final phase.
-            terminated - The task terminated, `exit_code` contains it's return code.
-            signaled - The task terminated by a signal. `exit_sig` contains it's signal code.
+            stopping - The task received a signal, and it is performing the final phase.
+            terminated - The task terminated, `exit_code` contains its return code.
+            signaled - The task terminated by a signal. `exit_sig` contains its signal code.
             canceled - The task was never executed because a previous operation failed.
               For example, a canceled scrub because the previous sync failed.
-              `exit_msg` contains the reason of the cancelation.
+              `exit_msg` contains the reason for the cancellation.
         exit_code:
           type: integer
           description: >
@@ -1198,32 +1199,26 @@ components:
             failing:
               type: boolean
               description: >
-                Corresponds to SMARTCTL_FLAG_FAIL. The drive firmware
-                explicitly reports that the disk is currently failing
-                the health status check.
+                The drive firmware explicitly reports that the disk is
+                currently failing the health status check.
             prefail:
               type: boolean
               description: >
-                Corresponds to SMARTCTL_FLAG_PREFAIL. One or more
-                critical 'Prefail' attributes are currently at or
+                One or more critical 'Prefail' attributes are currently at or
                 below the manufacturer's threshold.
             prefail_logged:
               type: boolean
               description: >
-                Corresponds to SMARTCTL_FLAG_PREFAIL_LOGGED. The status
-                is 'OK', but attributes have dropped below the
+                The status is 'OK', but attributes have dropped below the
                 threshold at some point in the device's history.
             error_logged:
               type: boolean
               description: >
-                Corresponds to SMARTCTL_FLAG_ERROR_LOGGED. The internal
-                device error log contains records of summary errors.
+                The internal device error log contains records of summary errors.
             selftest_error_logged:
               type: boolean
               description: >
-                Corresponds to SMARTCTL_FLAG_SELFERROR_LOGGED. The
-                self-test log contains records of failed or
-                aborted tests.
+                The self-test log contains records of failed or aborted tests.
 
     Split:
       type: object
