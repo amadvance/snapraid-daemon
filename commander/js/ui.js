@@ -413,7 +413,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 </div>
                 <div class="property-row">
                     <div class="property-label">Total Files</div>
-                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count.toLocaleString() : healthBadge('pending')}</div>
+                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count : healthBadge('pending')}</div>
                 </div>
             </div>
         </div>
@@ -672,7 +672,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row items-center">
                     <div class="flex-shrink-0 whitespace-nowrap text-xs text-muted">
-                         <div><span class="${tempClass}">${tempStr}</span> <span class="text-muted ml-1">${tempTime}</span></div>
+                         <div><span class="${dev.power === 'active' ? tempClass : ''}">${tempStr}</span> <span class="text-muted ml-1">${tempTime}</span></div>
                          <div class="text-muted mt-1">
                             ${failureProb}
                          </div>
@@ -916,12 +916,12 @@ export const renderSettings = (config) => {
             <div class="card">
                 <h3>Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the sync, scrub, and report sequence (e.g., 02:00, Mon 03:00).')}
-                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Aborts the scheduled sync if the number of deleted files exceeds this limit to prevent accidental data loss')}
-                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Aborts the scheduled sync if the number of modified files exceeds this limit to prevent mass unintended changes.')}
-                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'Sets the fraction of the array to be verified for data integrity after each successful sync.', false, 'step="0.1"')}
-                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Restricts the integrity check to data blocks that have not been scrubbed for the specified number of days.')}
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of file deletions before a scheduled sync aborts to prevent accidental data loss.')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates before a scheduled sync aborts to prevent unintended mass changes.')}
+                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'The fraction of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%).', false, 'step="0.1"')}
+                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Only scrubs data blocks that haven\'t been verified within this many days.')}
                 ${boolField('sync_prehash', 'Enable Pre-hash', 'Calculate hashes before syncing, providing an extra layer of protection against faulty memory corruption.')}
-                ${boolField('sync_force_zero', 'Enable Force Zero', 'Allows the sync to proceed even if files that previously contained data have shrunk to zero size.')}
+                ${boolField('sync_force_zero', 'Enable Force Zero', 'Allows the sync to proceed even if files that previously held data have become empty.')}
             </div>
 
             <!-- Monitor & Log -->
@@ -950,7 +950,7 @@ export const renderSettings = (config) => {
                 <h4 class="font-bold mb-3 mt-1">Syslog</h4>
                 <div class="form-row">
                      ${boolField('notify_syslog_enabled', 'Enable Syslog', 'Sends daemon activity and task status messages to the operating system\'s standard system log')}
-                     ${selectField('notify_syslog_level', 'Log Level', logLevels, 'Filters the system log to only include task messages that meet or exceed this severity level.')}
+                     ${selectField('notify_syslog_level', 'Log Level', logLevels, 'The minimum task severity required to trigger a system log entry.')}
                 </div>
 
                 <h4 class="font-bold mb-3">Heartbeat</h4>
@@ -960,7 +960,7 @@ export const renderSettings = (config) => {
                 <h4 class="font-bold mb-3">Result</h4>
                 <div class="form-row">
                     ${boolField('notify_differences', 'Include Differences', 'Includes a detailed list of all detected file changes in the report before the synchronization starts.')}
-                    ${selectField('notify_result_level', 'Log Level', logLevels, 'Determines the minimum task severity (e.g., Error) required to trigger the result notification command.')}
+                    ${selectField('notify_result_level', 'Log Level', logLevels, 'The minimum task severity required to trigger the result notification command.')}
                 </div>                
                 <div class="form-row mt-2">
                     ${inputField('notify_result', 'Result Command (Always)', 'text', 'The command used to deliver the full task report via email or push notification services.', !fullAccess)}
