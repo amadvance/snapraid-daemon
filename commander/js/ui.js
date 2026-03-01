@@ -941,8 +941,8 @@ export const renderSettings = (config) => {
             </div>
 
             <!-- Notifications -->
-            <div class="grid-fit-2">
-            <div class="card grid-span-2">
+            <div class="grid-1">
+            <div class="card">
                 <h3>Notifications</h3>
               
                 <h4 class="font-bold mb-3 mt-1">Syslog</h4>
