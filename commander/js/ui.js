@@ -283,6 +283,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
     if (active) {
         heroHtml = `
+            <div class="grid-1">
             <div class="card glow">
                 <div class="flex justify-between mb-4">
                     <div>
@@ -317,6 +318,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             return `<div class="log-line ${colorClass}">${typeBadge} ${m.text}</div>`;
         }).join('')}
                 </div>
+            </div>
             </div>
         `;
     } else {

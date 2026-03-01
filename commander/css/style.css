@@ -93,7 +93,7 @@
     --text-primary: var(--c-slate-200);
     --text-secondary: var(--c-slate-400);
     --accent: var(--c-sky-400);
-    --accent-glow: rgba(34, 211, 238, 0.2);
+    --accent-glow: var(--c-sky-400);
 
     /* Spacing */
     --gap-sm: 0.5rem;
