@@ -1270,6 +1270,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	size_t plain_len = 0;
 	size_t dup_len = 0;
 	size_t mac = 0;
+	size_t mac_limit = 0; /* no limit */
 	int escape = 0;
 	int disable = 0;
 
@@ -1311,13 +1312,21 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 					continue;
 				}
 
-				if (c == ':') {
+				if (c == ':' && (mac_limit == 0 || mac <= mac_limit)) {
 					if (mac + 1 < RUN_FIELD_MAX) {
 						plain[plain_len++] = '\0';
+						if (mac == 1) {
+							if (strcmp(map[0], "msg") == 0)
+								mac_limit = 2; /* the command has two tags, no more */
+						}
 						map[mac++] = &plain[plain_len];
 						continue;
 					}
 					/* do not split if too many fields */
+				}
+
+				if (c == '\r') {
+					continue; /* ignore Windows CR */
 				}
 
 				if (c == '\n') {
@@ -1352,6 +1361,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 					plain_len = 0;
 					dup_len = 0;
 					mac = 0;
+					mac_limit = 0;
 					escape = 0;
 					map[mac++] = plain;
 					continue;
