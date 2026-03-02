@@ -102,24 +102,7 @@ noinst_HEADERS = \
 	daemon/elem.h \
 	daemon/report.h \
 	daemon/notify.h \
-	daemon/smart.h \
-	snapraidd.yaml \
-	snapraidd.service.in \
-	rc.snapraidd.in \
-	snapraidd.conf.example \
-	commander/index.html \
-	commander/site.webmanifest \
-	commander/image/favicon-16x16.png \
-	commander/image/android-chrome-512x512.png \
-	commander/image/apple-touch-icon.png \
-	commander/image/android-chrome-192x192.png \
-	commander/image/favicon-32x32.png \
-	commander/image/favicon.ico \
-	commander/css/style.css \
-	commander/js/ui.js \
-	commander/js/api.js \
-	commander/js/app.js \
-	commander/js/utils.js
+	daemon/smart.h
 
 # Add the .version file in the distribution
 dist-hook:
@@ -145,6 +128,7 @@ EXTRA_DIST = \
 	tommyds/LICENSE \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
+	configure.windows-x64 \
 	snapraidd.service.in rc.snapraidd.in \
 	makeslackware.sh.in \
 	makeslackdist.sh.in \
@@ -159,7 +143,27 @@ EXTRA_DIST = \
 	pkg/prerm \
 	pkg/postrm \
 	makerpm.sh.in \
-	pkg/snapraid-daemon.spec.in
+	pkg/snapraid-daemon.spec.in \
+	makensis.sh.in \
+	pkg/snapraid-daemon.nsis.in \
+	pkg/snapraid-daemon.ico \
+	snapraidd.yaml \
+	snapraidd.service.in \
+	rc.snapraidd.in \
+	snapraidd.conf.example \
+	commander/index.html \
+	commander/site.webmanifest \
+	commander/image/favicon-16x16.png \
+	commander/image/android-chrome-512x512.png \
+	commander/image/apple-touch-icon.png \
+	commander/image/android-chrome-192x192.png \
+	commander/image/favicon-32x32.png \
+	commander/image/favicon.ico \
+	commander/css/style.css \
+	commander/js/ui.js \
+	commander/js/api.js \
+	commander/js/app.js \
+	commander/js/utils.js
 
 man1_MANS = doc/snapraidd.1
 

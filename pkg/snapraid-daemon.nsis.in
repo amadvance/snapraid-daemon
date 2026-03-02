@@ -1,0 +1,191 @@
+# -------------------------------------------------------------------------
+# SnapRAID Daemon Installer Script
+# -------------------------------------------------------------------------
+
+# --- Header Includes ---
+!include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "StrFunc.nsh"
+
+${StrStr}
+${UnStrStr}
+
+# --- General Project Settings ---
+Name "SnapRAID Daemon"
+OutFile "snapraid-daemon-@PACKAGE_VERSION@.exe"
+InstallDir "$PROGRAMFILES64\SnapRAID-Daemon"
+RequestExecutionLevel admin
+
+# --- Visual Assets ---
+# These files must exist in your Slackware build directory
+Icon "snapraid-daemon.ico"
+UninstallIcon "snapraid-daemon.ico"
+
+# --- Version Information ---
+# Product version must be in X.X.X.X format
+VIProductVersion "1.0.0.0"
+VIAddVersionKey "ProductName" "SnapRAID Daemon"
+VIAddVersionKey "FileDescription" "SnapRAID Daemon"
+VIAddVersionKey "LegalCopyright" "© 2026 Andrea Mazzoleni"
+VIAddVersionKey "FileVersion" "@PACKAGE_VERSION@"
+VIAddVersionKey "ProductVersion" "@PACKAGE_VERSION@"
+
+# --- MUI Settings ---
+!define MUI_ABORTWARNING
+!define MUI_ICON "snapraid-daemon.ico"
+!define MUI_UNICON "snapraid-daemon.ico"
+
+# Installer Pages
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+
+# Finish Page
+!define MUI_FINISHPAGE_LINK "Open SnapRAID Web Interface now"
+!define MUI_FINISHPAGE_LINK_LOCATION "http://127.0.0.1:7627/"
+!insertmacro MUI_PAGE_FINISH
+
+# Uninstaller Pages
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+# Languages
+!insertmacro MUI_LANGUAGE "English"
+
+# --- Functions ---
+
+!macro StopServiceLogic UN
+Function ${UN}StopSnapRAIDService
+    DetailPrint "Checking SnapRAID Daemon status..."
+
+    # nsExec::Exec pushes the return code to the stack
+    nsExec::Exec 'sc query snapraidd'
+    Pop $1
+
+    ${If} $1 == 0
+        DetailPrint "Service found. Stopping..."
+        ExecWait 'sc stop snapraidd'
+
+        StrCpy $0 0
+        LoopStopCheck:
+            IntOp $0 $0 + 1
+            ${If} $0 > 30
+                Goto ServiceTimeout
+            ${EndIf}
+
+            # Get raw status text
+            nsExec::ExecToStack 'sc query snapraidd'
+            Pop $1
+            Pop $2
+
+            Push "$2"
+            Push "STOPPED"
+!ifdef __UNINSTALL__
+            Call un.StrStr
+!else
+            Call StrStr
+!endif
+            Pop $3
+
+            ${If} $3 != ""
+                Goto ServiceIsDown
+            ${EndIf}
+
+            DetailPrint "Waiting for service to stop... (Second: $0/30)"
+
+            Sleep 1000
+            Goto LoopStopCheck
+
+        ServiceTimeout:
+            DetailPrint "Stop timed out. Forcing taskkill..."
+            ExecWait 'taskkill /F /IM snapraidd.exe'
+            Sleep 1000
+    ${EndIf}
+    ServiceIsDown:
+FunctionEnd
+!macroend
+
+# Generate two versions of the function
+!insertmacro StopServiceLogic ""
+!insertmacro StopServiceLogic "un."
+
+# --- Installation Section ---
+
+Section "Install"
+    # STOP THE SERVICE (IF ANY)
+    Call StopSnapRAIDService
+
+    # FILES
+    SetOutPath $INSTDIR
+    File "snapraidd.exe"
+    File "snapraidd.conf.example"
+    File "snapraid-daemon.ico"
+
+    # DOCUMENTATION
+    SetOutPath $INSTDIR\doc
+    File "snapraidd.txt"
+
+    # CONFIGURATION
+    SetOutPath $INSTDIR
+    # Check if snapraidd.conf already exists on the Windows machine
+    IfFileExists "$INSTDIR\snapraidd.conf" SkipConfig
+        DetailPrint "No configuration found. Installing default..."
+        File "/oname=$INSTDIR\snapraidd.conf" "snapraidd.conf.example"
+        Goto ConfigDone
+    SkipConfig:
+        DetailPrint "Existing configuration detected. Skipping overwrite."
+    ConfigDone:
+
+    # SERVICE REGISTRATION
+    ExecWait 'sc create snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto DisplayName= "SnapRAID Daemon"'
+    ExecWait 'sc config snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto'
+    ExecWait 'sc start snapraidd'
+
+    # CREATE DESKTOP SHORTCUT
+    CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-daemon.ico" 0
+
+    # WRITE THE UNINSTALL KEYS FOR WINDOWS CONTROL PANEL
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "DisplayName" "SnapRAID Daemon"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "DisplayIcon" "$INSTDIR\snapraid-daemon.ico"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "Publisher" "Andrea Mazzoleni"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "NoRepair" 1
+
+    # FIREWALL
+    DetailPrint "Adding Firewall exception for SnapRAID Daemon..."
+    nsExec::Exec 'netsh advfirewall firewall add rule name="SnapRAID Daemon" dir=in action=allow protocol=TCP localport=7627 profile=any enable=yes'
+    Pop $1
+
+    # WRITE UNINSTALLER
+    WriteUninstaller "$INSTDIR\uninstall.exe"
+SectionEnd
+
+# --- Uninstaller Section ---
+
+Section "Uninstall"
+    # STOP THE SERVICE
+    Call un.StopSnapRAIDService
+
+    # DELETE THE SERVICE
+    ExecWait 'sc delete snapraidd'
+
+    # FIREWALL
+    DetailPrint "Removing Firewall exception..."
+    nsExec::Exec 'netsh advfirewall firewall delete rule name="SnapRAID Daemon"'
+    Pop $1
+
+    # DELETE KEYS
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon"
+
+    # REMOVE SHORTCUT
+    Delete "$DESKTOP\SnapRAID Commander.lnk"
+
+    # REMOVE FILES
+    Delete "$INSTDIR\snapraidd.exe"
+    Delete "$INSTDIR\snapraidd.conf.example"
+    Delete "$INSTDIR\README.txt"
+    Delete "$INSTDIR\snapraid-daemon.ico"
+    Delete "$INSTDIR\uninstall.exe"
+
+    RMDir "$INSTDIR"
+SectionEnd

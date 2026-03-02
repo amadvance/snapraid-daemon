@@ -312,12 +312,13 @@ AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec])
+AC_CONFIG_FILES([pkg/snapraid-daemon.info pkg/control pkg/snapraid-daemon.spec pkg/snapraid-daemon.nsis])
 AC_CONFIG_FILES([makeslackware.sh], [chmod a+x makeslackware.sh])
 AC_CONFIG_FILES([makeslackdist.sh], [chmod a+x makeslackdist.sh])
 AC_CONFIG_FILES([pkg/snapraid-daemon.SlackBuild], [chmod a+x pkg/snapraid-daemon.SlackBuild])
 AC_CONFIG_FILES([makedeb.sh], [chmod a+x makedeb.sh])
 AC_CONFIG_FILES([makerpm.sh], [chmod a+x makerpm.sh])
+AC_CONFIG_FILES([makensis.sh], [chmod a+x makensis.sh])
 
 # Override datadir to be snapraidd and not snapraid-daemon
 datadir='${prefix}/share/snapraidd'

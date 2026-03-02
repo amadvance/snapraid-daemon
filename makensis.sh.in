@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# Script to manually build a Debian .deb package for @PACKAGE_NAME@ on Slackware
+# (using only dpkg-deb; no dpkg-buildpackage or debhelper needed)
+#
+# This avoids the /var/lib/dpkg/status issue entirely by:
+# - Building the source directly
+# - Installing into a temporary package root directory
+# - Creating minimal DEBIAN/control manually
+# - Packaging with dpkg-deb --root-owner-group
+#
+
+set -euo pipefail
+
+VERSION="@PACKAGE_VERSION@"
+TARBALL="@PACKAGE@-${VERSION}.tar.gz"
+SOURCE_URL="https://github.com/amadvance/@PACKAGE@/releases/download/v${VERSION}/${TARBALL}"
+PKG_NAME="@PACKAGE@"
+PKG_ROOT="@PACKAGE@-${VERSION}-nsis"
+
+# Prefer local tarball
+if [[ -f "./${TARBALL}" ]]; then
+  echo "Using local ${TARBALL}"
+else
+  echo "Downloading ${TARBALL}..."
+  curl -L -O "$SOURCE_URL"
+fi
+
+# Clean previous builds
+rm -rf "${PKG_ROOT}" ${PKG_NAME}-${VERSION}
+
+# Create dirs
+mkdir "${PKG_ROOT}"
+
+# Extract source
+echo "Extracting source..."
+tar -xzf "${TARBALL}"
+
+# Build the software
+echo "Configuring and building ${PKG_NAME}..."
+cd ${PKG_NAME}-${VERSION}
+./configure.windows-x64
+make -j4
+
+# Copy files
+cp snapraidd.exe "../${PKG_ROOT}"
+cp pkg/snapraid-daemon.ico "../${PKG_ROOT}"
+cp pkg/snapraid-daemon.nsis "../${PKG_ROOT}"
+todos < snapraidd.conf.example > "../${PKG_ROOT}/snapraidd.conf.example"
+todos < snapraidd.yaml > "../${PKG_ROOT}/snapraidd.yaml"
+todos < COPYING > "../${PKG_ROOT}/copying.txt"
+todos < AUTHORS > "../${PKG_ROOT}/authors.txt"
+todos < HISTORY > "../${PKG_ROOT}/history.txt"
+todos < README > "../${PKG_ROOT}/readme.txt"
+cp doc/snapraidd.txt "../${PKG_ROOT}/snapraidd.txt"
+
+cd ../${PKG_ROOT}
+
+echo "Building NSIS installer..."
+../../nsis/Bin/makensis snapraid-daemon.nsis
+
+cd ..
+
+cp "${PKG_ROOT}/${PKG_NAME}-${VERSION}.exe" .
+
+# Cleanup
+rm -rf "${PKG_ROOT}" ${PKG_NAME}-${VERSION}
+
+echo ""
+echo "Build complete!"
+echo "Package created: ${PKG_NAME}-${VERSION}.exe"
+echo ""
