@@ -23,6 +23,89 @@
 #include "log.h"
 #include "support.h"
 #include "daemon.h"
+#include "conf.h"
+
+/****************************************************************************/
+/* signal */
+
+static void signal_handler_term(int sig)
+{
+	state_ptr()->daemon_running = DAEMON_QUIT;
+	state_ptr()->daemon_sig = sig;
+}
+
+static void signal_handler_hup(int sig)
+{
+	(void)sig;
+	state_ptr()->daemon_running = DAEMON_RELOAD;
+}
+
+/**
+ * Restore signal handlers after fork in child process.
+ * This resets signals to default handling for the daemon.
+ */
+static void os_signal_restore_after_fork(void)
+{
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = SIG_DFL;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+
+	sigaction(SIGTERM, &sa, 0);
+	sigaction(SIGINT, &sa, 0);
+	sigaction(SIGHUP, &sa, 0);
+	/* do not restore SIGPIPE */
+
+	/* ensure signals are unblocked */
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigprocmask(SIG_SETMASK, &mask, NULL); /* cannot use pthread_sigmask after fork */
+}
+
+/**
+ * Enable or disable signal handling.
+ * @param enable 1 to enable signals, 0 to disable
+ */
+static void os_signal_set(int enable)
+{
+	sigset_t set;
+
+	sigemptyset(&set);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGHUP);
+
+	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
+}
+
+/**
+ * Initialize signal handling for the daemon.
+ */
+static void os_signal_init(void)
+{
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = signal_handler_term;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
+
+	sigaction(SIGTERM, &sa, 0);
+	sigaction(SIGINT, &sa, 0);
+
+	sa.sa_handler = signal_handler_hup;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
+
+	sigaction(SIGHUP, &sa, 0);
+
+	sa.sa_handler = SIG_IGN; /* ignore the signal */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGPIPE, &sa, 0);
+}
 
 /****************************************************************************/
 /* exec */
@@ -812,224 +895,6 @@ int os_term(pid_t pid)
 }
 
 /****************************************************************************/
-/* signal */
-
-static void signal_handler_term(int sig)
-{
-	state_ptr()->daemon_running = DAEMON_QUIT;
-	state_ptr()->daemon_sig = sig;
-}
-
-static void signal_handler_hup(int sig)
-{
-	(void)sig;
-	state_ptr()->daemon_running = DAEMON_RELOAD;
-}
-
-void os_signal_restore_after_fork(void)
-{
-	struct sigaction sa;
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = SIG_DFL;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-
-	sigaction(SIGTERM, &sa, 0);
-	sigaction(SIGINT, &sa, 0);
-	sigaction(SIGHUP, &sa, 0);
-	/* do not restore SIGPIPE */
-
-	/* ensure signals are unblocked */
-	sigset_t mask;
-	sigemptyset(&mask);
-	sigprocmask(SIG_SETMASK, &mask, NULL); /* cannot use pthread_sigmask after fork */
-}
-
-void os_signal_set(int enable)
-{
-	sigset_t set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGTERM);
-	sigaddset(&set, SIGINT);
-	sigaddset(&set, SIGHUP);
-
-	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
-}
-
-void os_signal_init(void)
-{
-	struct sigaction sa;
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = signal_handler_term;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
-
-	sigaction(SIGTERM, &sa, 0);
-	sigaction(SIGINT, &sa, 0);
-
-	sa.sa_handler = signal_handler_hup;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART; /* use the SA_RESTART to automatically restart interrupted system calls */
-
-	sigaction(SIGHUP, &sa, 0);
-
-	sa.sa_handler = SIG_IGN; /* ignore the signal */
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGPIPE, &sa, 0);
-}
-
-static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
-{
-	/* determine the path if not explicitly provided */
-	if (pidfile_arg) {
-		sncpy(pidfile_path, pidfile_size, pidfile_arg);
-	} else {
-		if (geteuid() == 0) {
-			/* standard for root-level daemons */
-			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON);
-		} else {
-			/* standard for user-level processes */
-			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON);
-		}
-	}
-
-	/* open the file, create if missing, open for reading/writing */
-	int fd = open(pidfile_path, O_RDWR | O_CREAT, 0644);
-	if (fd == -1) {
-		fprintf(stderr, "Error: Could not open PID file %s: %s\n", pidfile_path, strerror(errno));
-		return -1;
-	}
-
-	/*
-	 * Apply a lock to the file (Mandatory for reliability)
-	 * This ensures that even if a stale PID file exists,
-	 * a second instance cannot start if the first one holds the lock.
-	 */
-	struct flock fl;
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = 0;
-	fl.l_len = 0;
-
-	if (fcntl(fd, F_SETLK, &fl) == -1) {
-		if (errno == EACCES || errno == EAGAIN) {
-			fprintf(stderr, "%s is already running.\n", DAEMON);
-		} else {
-			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
-		}
-		close(fd);
-		return -1;
-	}
-
-	/* clear any previous content, but after obtaining the lock */
-	if (ftruncate(fd, 0) == -1) {
-		fprintf(stderr, "Error truncating PID file: %s\n", strerror(errno));
-		unlink(pidfile_path);
-		close(fd);
-		return -1;
-	}
-
-	/* write the current PID to the file */
-	char buf[32];
-	int buf_len = snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
-	if (write(fd, buf, buf_len) != buf_len) {
-		fprintf(stderr, "Error writing to PID file: %s\n", strerror(errno));
-		unlink(pidfile_path);
-		close(fd);
-		return -1;
-	}
-
-	return fd;
-}
-
-/**
- * Detaches the process from the controlling terminal and runs it in the background.
- * Follows the "double-fork" method to ensure the daemon cannot re-acquire a TTY.
- */
-int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
-{
-	/* clear the parent and allow the child to call setsid() */
-	pid_t pid = fork();
-	if (pid < 0)
-		return -1;
-	if (pid > 0)
-		exit(EXIT_SUCCESS);
-
-	/* create a new session and become the session leader */
-	if (setsid() < 0)
-		return -1;
-
-	/* ensures the child doesn't die when the session leader exits */
-	signal(SIGHUP, SIG_IGN);
-
-	/* ensures the daemon is not a session leader and cannot acquire a controlling terminal again */
-	pid = fork();
-	if (pid < 0)
-		return -1;
-	if (pid > 0)
-		exit(EXIT_SUCCESS);
-
-	/*
-	 * PID File Management
-	 * We do this BEFORE closing I/O so we can still report errors to stderr
-	 * if another instance is already running.
-	 */
-	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
-	if (pidfd < 0)
-		return -1;
-
-	/* allow daemon total control over its files */
-	umask(0);
-
-	/* ensure the daemon doesn't block any filesystem unmounting */
-	if (chdir("/") != 0) {
-		close(pidfd);
-		return -1;
-	}
-
-	/* redirect Standard I/O to /dev/null */
-	int fd = open("/dev/null", O_RDWR);
-	if (fd == -1) {
-		close(pidfd);
-		return -1;
-	}
-
-	if (dup2(fd, STDIN_FILENO) < 0
-		|| dup2(fd, STDOUT_FILENO) < 0
-		|| dup2(fd, STDERR_FILENO) < 0) {
-		close(fd);
-		close(pidfd);
-		return -1;
-	}
-
-	if (fd > STDERR_FILENO)
-		close(fd);
-
-	return pidfd;
-}
-
-void os_init(void)
-{
-}
-
-void os_done(void)
-{
-}
-
-uint64_t os_tick_sec(void)
-{
-	struct timespec ts;
-
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-
-	return ts.tv_sec;
-}
-
-/****************************************************************************/
 /* system */
 
 /**
@@ -1184,5 +1049,194 @@ void os_system_refresh(struct snapraid_system* system)
 	}
 }
 
+uint64_t os_tick_sec(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	return ts.tv_sec;
+}
+
+/****************************************************************************/
+/* daemon */
+
+static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+{
+	/* determine the path if not explicitly provided */
+	if (pidfile_arg && pidfile_arg[0]) {
+		sncpy(pidfile_path, pidfile_size, pidfile_arg);
+	} else {
+		if (geteuid() == 0) {
+			/* standard for root-level daemons */
+			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON);
+		} else {
+			/* standard for user-level processes */
+			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON);
+		}
+	}
+
+	/* open the file, create if missing, open for reading/writing */
+	int fd = open(pidfile_path, O_RDWR | O_CREAT, 0644);
+	if (fd == -1) {
+		fprintf(stderr, "Error: Could not open PID file %s: %s\n", pidfile_path, strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Apply a lock to the file (Mandatory for reliability)
+	 * This ensures that even if a stale PID file exists,
+	 * a second instance cannot start if the first one holds the lock.
+	 */
+	struct flock fl;
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+
+	if (fcntl(fd, F_SETLK, &fl) == -1) {
+		if (errno == EACCES || errno == EAGAIN) {
+			fprintf(stderr, "%s is already running.\n", DAEMON);
+		} else {
+			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
+		}
+		close(fd);
+		return -1;
+	}
+
+	/* clear any previous content, but after obtaining the lock */
+	if (ftruncate(fd, 0) == -1) {
+		fprintf(stderr, "Error truncating PID file: %s\n", strerror(errno));
+		unlink(pidfile_path);
+		close(fd);
+		return -1;
+	}
+
+	/* write the current PID to the file */
+	char buf[32];
+	int buf_len = snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
+	if (write(fd, buf, buf_len) != buf_len) {
+		fprintf(stderr, "Error writing to PID file: %s\n", strerror(errno));
+		unlink(pidfile_path);
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+/**
+ * Daemonize the current process.
+ * @return The PID file descriptor on success, -1 on error
+ */
+static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+{
+	/* clear the parent and allow the child to call setsid() */
+	pid_t pid = fork();
+	if (pid < 0)
+		return -1;
+	if (pid > 0)
+		exit(EXIT_SUCCESS);
+
+	/* create a new session and become the session leader */
+	if (setsid() < 0)
+		return -1;
+
+	/* ensures the child doesn't die when the session leader exits */
+	signal(SIGHUP, SIG_IGN);
+
+	/* ensures the daemon is not a session leader and cannot acquire a controlling terminal again */
+	pid = fork();
+	if (pid < 0)
+		return -1;
+	if (pid > 0)
+		exit(EXIT_SUCCESS);
+
+	/*
+	 * PID File Management
+	 * We do this BEFORE closing I/O so we can still report errors to stderr
+	 * if another instance is already running.
+	 */
+	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
+	if (pidfd < 0)
+		return -1;
+
+	/* allow daemon total control over its files */
+	umask(0);
+
+	/* ensure the daemon doesn't block any filesystem unmounting */
+	if (chdir("/") != 0) {
+		close(pidfd);
+		return -1;
+	}
+
+	/* redirect Standard I/O to /dev/null */
+	int fd = open("/dev/null", O_RDWR);
+	if (fd == -1) {
+		close(pidfd);
+		return -1;
+	}
+
+	if (dup2(fd, STDIN_FILENO) < 0
+		|| dup2(fd, STDOUT_FILENO) < 0
+		|| dup2(fd, STDERR_FILENO) < 0) {
+		close(fd);
+		close(pidfd);
+		return -1;
+	}
+
+	if (fd > STDERR_FILENO)
+		close(fd);
+
+	return pidfd;
+}
+
+int main(int argc, char* argv[])
+{
+	char pidfile[PATH_MAX] = { 0 }; /**< PID file. */
+
+	struct snapraid_state* state = state_init();
+
+	daemon_options(state, argc, argv);
+
+	int pidfd = -1;
+	if (!state->log.foreground) {
+		pidfd = os_daemonize(pidfile, sizeof(pidfile), state->config.pidfile_arg);
+		if (pidfd == -1)
+			exit(EXIT_FAILURE);
+	}
+
+	/*
+	 * Install signal handlers
+	 */
+	os_signal_init();
+
+	/*
+	 * Block signals in the main thread
+	 */
+	os_signal_set(0);
+
+	daemon_init(state);
+
+	/*
+	 * Unblock signals ONLY in main thread
+	 * Worker threads keep them blocked forever.
+	 */
+	os_signal_set(1);
+
+	daemon_run(state);
+
+	daemon_done(state);
+
+	state_done(state);
+
+	if (pidfd != -1) {
+		/* first delete then close */
+		unlink(pidfile);
+		close(pidfd);
+	}
+
+	return 0;
+}
 #endif
 

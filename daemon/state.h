@@ -444,6 +444,7 @@ struct snapraid_config_line {
 
 struct snapraid_config {
 	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
+	const char* pidfile_arg; /**< PID file specified as argument, or 0 */
 	tommy_list line_list; /**< List of snapraid_config_line */
 	/* empty string or 0 value means value not set and/or disabled */
 	int net_enabled; /**< 1 if network interface is enabled, 0 otherwise */

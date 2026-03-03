@@ -241,29 +241,6 @@ static inline int close_range_impl(unsigned int first, unsigned int last, unsign
 #endif
 
 /****************************************************************************/
-/* os */
-
-/**
- * Get the os_tick counter value in seconds.
- */
-uint64_t os_tick_sec(void);
-
-/**
- * Initializes the system.
- */
-void os_init(void);
-
-/**
- * Deinitialize the system.
- */
-void os_done(void);
-
-/**
- * Abort the process with a stacktrace.
- */
-void os_abort(void) __noreturn;
-
-/****************************************************************************/
 /* app */
 
 #define DAEMON "snapraidd"

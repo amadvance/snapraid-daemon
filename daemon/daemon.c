@@ -124,17 +124,9 @@ struct option long_options[] = {
 
 #define OPTIONS "fc:Np:vHV"
 
-int main(int argc, char* argv[])
+void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 {
 	int c;
-	char msg[MSG_MAX];
-	int status;
-	const char* arg_pidfile = 0;
-	char pidfile[PATH_MAX];
-
-	os_init();
-
-	struct snapraid_state* state = state_init();
 
 	config_init(state);
 
@@ -156,7 +148,7 @@ int main(int argc, char* argv[])
 			state->web.page_nocache = 1;
 			break;
 		case 'p' :
-			arg_pidfile = optarg;
+			state->config.pidfile_arg = optarg;
 			break;
 		case 'v' :
 			state->log.verbose = 1;
@@ -172,13 +164,12 @@ int main(int argc, char* argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+}
 
-	int pidfd = -1;
-	if (!state->log.foreground) {
-		pidfd = os_daemonize(pidfile, sizeof(pidfile), arg_pidfile);
-		if (pidfd == -1)
-			exit(EXIT_FAILURE);
-	}
+void daemon_init(struct snapraid_state* state)
+{
+	char msg[MSG_MAX];
+	int status;
 
 	log_init(DAEMON);
 	log_msg(LVL_INFO, "daemon starting");
@@ -197,28 +188,18 @@ int main(int argc, char* argv[])
 	 */
 	os_system(&state->system);
 
-	/*
-	 * Install signal handlers
+	/**
+	 * Create runner worker threads while signals are still BLOCKED
 	 */
-	os_signal_init();
-
-	/*
-	 * Block signals in the main thread
-	 */
-	os_signal_set(0);
+	runner_init(state);
 
 	/**
 	 * Parse existing log files
 	 */
 	parse_past_log(state);
 
-	/**
-	 * Create worker threads while signals are still BLOCKED
-	 */
-	runner_init(state);
-
 	/*
-	 * Load initial info into the state
+	 * Trigger initial probe to load info into the state
 	 */
 	if (runner(state, 0, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the first probe command");
@@ -226,7 +207,7 @@ int main(int argc, char* argv[])
 	}
 
 	/*
-	 * Read the content file if is the first run
+	 * Trigger read of the content file if is the first run
 	 */
 	if (state->global.content[0] == 0) {
 		if (runner(state, 0, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
@@ -235,6 +216,9 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	/**
+	 * Create scheduler worker threads while signals are still BLOCKED
+	 */
 	scheduler_init(state);
 
 	if (rest_init(state) != 0) {
@@ -242,24 +226,27 @@ int main(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/**
+	 * Create web worker threads while signals are still BLOCKED
+	 */
 	if (web_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to start the web server");
 		exit(EXIT_FAILURE);
 	}
+}
 
-	/*
-	 * Unblock signals ONLY in main thread
-	 * Worker threads keep them blocked forever.
-	 */
-	os_signal_set(1);
-
+void daemon_run(struct snapraid_state* state)
+{
 	/*
 	 * Main loop
 	 *
 	 * It's stopped by signals
 	 */
 	run(state);
+}
 
+void daemon_done(struct snapraid_state* state)
+{
 	web_done(state);
 	rest_done(state);
 	scheduler_done(state);
@@ -268,16 +255,5 @@ int main(int argc, char* argv[])
 	log_msg(LVL_INFO, "daemon stopped");
 
 	log_done();
-	state_done(state);
-
-	if (pidfd != -1) {
-		/* first delete then close */
-		unlink(pidfile);
-		close(pidfd);
-	}
-
-	os_done();
-
-	return 0;
 }
 

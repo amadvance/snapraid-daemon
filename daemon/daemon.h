@@ -34,6 +34,16 @@ void os_default_log(char* dst, size_t dst_size);
 void os_default_conf(char* dst, size_t dst_size);
 void os_default_data(char* dst, size_t dst_size, const char* root);
 
+/**
+ * Get the os_tick counter value in seconds.
+ */
+uint64_t os_tick_sec(void);
+
+/**
+ * Abort the process with a stacktrace.
+ */
+void os_abort(void) __noreturn;
+
 /*
  * Wait for the child process to terminate.
  */
@@ -70,29 +80,6 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 int os_script(const char* script_path, const char* run_as_user);
 
 /**
- * Initialize signal handling for the daemon.
- */
-void os_signal_init(void);
-
-/**
- * Enable or disable signal handling.
- * @param enable 1 to enable signals, 0 to disable
- */
-void os_signal_set(int enable);
-
-/**
- * Daemonize the current process.
- * @return The PID file descriptor on success, -1 on error
- */
-int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg);
-
-/**
- * Restore signal handlers after fork in child process.
- * This resets signals to default handling for the daemon.
- */
-void os_signal_restore_after_fork(void);
-
-/**
  * Gather static system information.
  * @param system Pointer to system structure to populate
  */
@@ -103,6 +90,29 @@ void os_system(struct snapraid_system* system);
  * @param system Pointer to system structure to update
  */
 void os_system_refresh(struct snapraid_system* system);
+
+/****************************************************************************/
+/* daemon */
+
+/**
+ * Process the arguments
+ */
+void daemon_options(struct snapraid_state* state, int argc, char* argv[]);
+
+/**
+ * Initialize the daemon
+ */
+void daemon_init(struct snapraid_state* state);
+
+/**
+ * Run the daemon
+ */
+void daemon_run(struct snapraid_state* state);
+
+/**
+ * Deinitialize the daemon
+ */
+void daemon_done(struct snapraid_state* state);
 
 #endif
 

@@ -1403,66 +1403,6 @@ int os_script(const char* script_path, const char* run_as_user)
 }
 
 /****************************************************************************/
-/* signal */
-
-void os_signal_restore_after_fork(void)
-{
-}
-
-void os_signal_set(int enable)
-{
-	(void)enable;
-}
-
-/* Console control handler - forwards Ctrl+C, Ctrl+Break to child */
-static BOOL WINAPI console_handler(DWORD ctrl_type)
-{
-	switch (ctrl_type) {
-	case CTRL_C_EVENT :
-	case CTRL_BREAK_EVENT :
-		/*
-		 * Return TRUE to prevent parent termination. The child process
-		 * will receive these events automatically because it's attached
-		 * to the same console, so we don't need to forward them.
-		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
-		state_ptr()->daemon_sig = SIGINT;
-		return TRUE; /* signal handled, don't terminate parent */
-	case CTRL_CLOSE_EVENT :
-	case CTRL_LOGOFF_EVENT :
-	case CTRL_SHUTDOWN_EVENT :
-		/*
-		 * Return TRUE to prevent our termination while child handles shutdown.
-		 * The child receives these events automatically (same console).
-		 * Note: Windows will forcibly kill us after a timeout regardless
-		 * of returning TRUE: ~5 seconds for CLOSE_EVENT and LOGOFF_EVENT,
-		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
-		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
-		state_ptr()->daemon_sig = SIGTERM;
-		return TRUE; /* signal handled, but Windows will kill us after timeout */
-	default :
-		return FALSE;
-	}
-}
-
-void os_signal_init(void)
-{
-	/* install console control handler */
-	if (!SetConsoleCtrlHandler(console_handler, TRUE)) {
-		exit(EXIT_FAILURE);
-	}
-}
-
-int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
-{
-	(void)pidfile_path;
-	(void)pidfile_size;
-	(void)pidfile_arg;
-	return -1;
-}
-
-/****************************************************************************/
 /* system */
 
 void os_system(struct snapraid_system* system)
@@ -1517,5 +1457,63 @@ void os_system_refresh(struct snapraid_system* system)
 	}
 }
 
+/****************************************************************************/
+/* daemon */
+
+/* Console control handler - forwards Ctrl+C, Ctrl+Break to child */
+static BOOL WINAPI console_handler(DWORD ctrl_type)
+{
+	switch (ctrl_type) {
+	case CTRL_C_EVENT :
+	case CTRL_BREAK_EVENT :
+		/*
+		 * Return TRUE to prevent parent termination. The child process
+		 * will receive these events automatically because it's attached
+		 * to the same console, so we don't need to forward them.
+		 */
+		state_ptr()->daemon_running = DAEMON_QUIT;
+		state_ptr()->daemon_sig = SIGINT;
+		return TRUE; /* signal handled, don't terminate parent */
+	case CTRL_CLOSE_EVENT :
+	case CTRL_LOGOFF_EVENT :
+	case CTRL_SHUTDOWN_EVENT :
+		/*
+		 * Return TRUE to prevent our termination while child handles shutdown.
+		 * The child receives these events automatically (same console).
+		 * Note: Windows will forcibly kill us after a timeout regardless
+		 * of returning TRUE: ~5 seconds for CLOSE_EVENT and LOGOFF_EVENT,
+		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
+		 */
+		state_ptr()->daemon_running = DAEMON_QUIT;
+		state_ptr()->daemon_sig = SIGTERM;
+		return TRUE; /* signal handled, but Windows will kill us after timeout */
+	default :
+		return FALSE;
+	}
+}
+
+int main(int argc, char* argv[])
+{
+	struct snapraid_state* state = state_init();
+
+	daemon_options(state, argc, argv);
+
+	/*
+	 * Install console control handler
+	 */
+	if (!SetConsoleCtrlHandler(console_handler, TRUE)) {
+		exit(EXIT_FAILURE);
+	}
+
+	daemon_init(state);
+
+	daemon_run(state);
+
+	daemon_done(state);
+
+	state_done(state);
+
+	return 0;
+}
 #endif
 
