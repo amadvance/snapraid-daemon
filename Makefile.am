@@ -48,6 +48,21 @@ commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
 	cd $(srcdir)/commander && $(ZIP) -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
 endif
 
+# Windows
+if HOST_WINDOWS
+snapraidd_LDADD += messages_res.o -ladvapi32
+
+messages.h messages.rc: daemon/messages.mc
+	$(WINDMC) $<
+
+messages_res.o: messages.rc
+	$(WINDRES) $< -o $@
+
+daemon/snapraidd-daemon.$(OBJEXT): messages.h
+
+CLEANFILES += messages.h messages.rc messages_res.o MSG00401.bin
+endif
+
 snapraidd_SOURCES = \
 	daemon/daemon.c \
 	daemon/state.c \
@@ -128,6 +143,7 @@ EXTRA_DIST = \
 	tommyds/LICENSE \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
+	daemon/messages.mc \
 	configure.windows-x64 \
 	snapraidd.service.in rc.snapraidd.in \
 	makeslackware.sh.in \

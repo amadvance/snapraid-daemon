@@ -108,6 +108,9 @@ FunctionEnd
 !insertmacro StopServiceLogic ""
 !insertmacro StopServiceLogic "un."
 
+# Define the registry path for the Event Log
+!define LOG_REG "SYSTEM\CurrentControlSet\Services\EventLog\Application\snapraidd"
+
 # --- Installation Section ---
 
 Section "Install"
@@ -135,6 +138,10 @@ Section "Install"
         DetailPrint "Existing configuration detected. Skipping overwrite."
     ConfigDone:
 
+    # REGISTER THE EVENT SOURCE
+    WriteRegStr HKLM "${LOG_REG}" "EventMessageFile" "$INSTDIR\snapraidd.exe"
+    WriteRegDWORD HKLM "${LOG_REG}" "TypesSupported" 0x00000007 # Info, Warn, and Error
+
     # SERVICE REGISTRATION
     ExecWait 'sc create snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto DisplayName= "SnapRAID Daemon"'
     ExecWait 'sc config snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto'
@@ -144,12 +151,12 @@ Section "Install"
     CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-daemon.ico" 0
 
     # WRITE THE UNINSTALL KEYS FOR WINDOWS CONTROL PANEL
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "DisplayName" "SnapRAID Daemon"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "DisplayIcon" "$INSTDIR\snapraid-daemon.ico"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "Publisher" "Andrea Mazzoleni"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon" "NoRepair" 1
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayName" "SnapRAID Daemon"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayIcon" "$INSTDIR\snapraid-daemon.ico"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "Publisher" "Andrea Mazzoleni"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "NoRepair" 1
 
     # FIREWALL
     DetailPrint "Adding Firewall exception for SnapRAID Daemon..."
@@ -175,7 +182,10 @@ Section "Uninstall"
     Pop $1
 
     # DELETE KEYS
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\SnapRAIDDaemon"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd"
+
+    # Clean up the Event Source registry keys
+    DeleteRegKey HKLM "${LOG_REG}"
 
     # REMOVE SHORTCUT
     Delete "$DESKTOP\SnapRAID Commander.lnk"

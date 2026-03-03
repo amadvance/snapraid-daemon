@@ -17,6 +17,17 @@ AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
 AC_CHECK_PROG([ZIP],[zip],[zip],[])
 AM_CONDITIONAL(HAVE_ZIP, [test x"$ZIP" != x])
 
+# Check if we are targeting Windows
+is_windows=no
+AS_CASE([$host_os], [mingw*|msys*|cygwin*], [is_windows=yes])
+AM_CONDITIONAL([HOST_WINDOWS], [test "x$is_windows" = "xyes"])
+
+# Check for Windows-specific tools only if on Windows
+if test "x$is_windows" = "xyes"; then
+    AC_CHECK_TOOL([WINDMC], [windmc])
+    AC_CHECK_TOOL([WINDRES], [windres])
+fi
+
 dnl Options to improve stacktrace
 AC_CHECK_CC_OPT([-fno-omit-frame-pointer], CFLAGS="$CFLAGS -fno-omit-frame-pointer", [])
 AC_CHECK_CC_OPT([-fno-optimize-sibling-calls], CFLAGS="$CFLAGS -fno-optimize-sibling-calls", [])
@@ -25,19 +36,6 @@ AC_CHECK_CC_OPT([-rdynamic], CFLAGS="$CFLAGS -rdynamic", [])
 AC_CHECK_CC_OPT([-fno-common], CFLAGS="$CFLAGS -fno-common", [])
 
 dnl Hardening Flags
-
-# Check for Windows
-is_windows=no
-case "$host_os" in
-	mingw*|cygwin*|msys*)
-		is_windows=yes
-		;;
-	*)
-		is_windows=no
-		;;
-esac
-
-# Conditionally call macros
 if test "x$is_windows" = "xno"; then
 # -D_FORTIFY_SOURCE=2: 
 # Adds checks for buffer overflows in common standard library functions. 
