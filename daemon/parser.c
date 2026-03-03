@@ -1481,6 +1481,11 @@ int parse_past_log(struct snapraid_state* state)
 		char path[PATH_MAX];
 		sn_t* sn = i->data;
 
+#ifdef _WIN32
+		/* report that we are making progress */
+		windows_starting();
+#endif
+
 		snprintf(path, sizeof(path), "%s/%s", log_directory, sn->str);
 
 		int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);

@@ -1460,6 +1460,68 @@ void os_system_refresh(struct snapraid_system* system)
 /****************************************************************************/
 /* daemon */
 
+#include "messages.h"
+
+#define SERVICE_NAME "snapraidd"
+
+SERVICE_STATUS g_ServiceStatus = { 0 };
+SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
+static DWORD dwCheckPoint = 1;
+/**
+ * log_event - A printf-like wrapper for the Windows Event Log
+ * @type:   The Windows event type (EVENTLOG_INFORMATION_TYPE, etc.)
+ * @format: The format string (standard printf style)
+ */
+void windows_eventlog(int level, const char* msg)
+{
+	HANDLE h;
+	const char* strings[1];
+	DWORD id;
+	DWORD type;
+
+	if (!g_StatusHandle) {
+		fprintf(stderr, "%s\n", msg);
+		return;
+	}
+
+	/* determine the MessageId from messages.mc based on the log level */
+	switch (level) {
+	case LVL_CRITICAL :
+	case LVL_ERROR :
+		id = MSG_ERROR;
+		type = EVENTLOG_ERROR_TYPE;
+		break;
+	case LVL_WARNING :
+		id = MSG_WARN;
+		type = EVENTLOG_WARNING_TYPE;
+		break;
+	default :
+	case LVL_INFO :
+	case LVL_DEBUG :
+		id = MSG_INFO;
+		type = EVENTLOG_INFORMATION_TYPE;
+		break;
+	}
+
+	h = RegisterEventSource(NULL, SERVICE_NAME);
+	if (!h)
+		return;
+
+	strings[0] = msg;
+
+	ReportEvent(h,
+		type,
+		0,
+		id,
+		NULL,
+		1, /* one string */
+		0,
+		strings,
+		NULL);
+
+	DeregisterEventSource(h);
+}
+
 /* Console control handler - forwards Ctrl+C, Ctrl+Break to child */
 static BOOL WINAPI console_handler(DWORD ctrl_type)
 {
@@ -1492,26 +1554,137 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 	}
 }
 
+void report_progress(DWORD currentState, DWORD exitCode, DWORD waitHint)
+{
+	g_ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+	g_ServiceStatus.dwCurrentState = currentState;
+
+	if (currentState == SERVICE_START_PENDING) {
+		g_ServiceStatus.dwControlsAccepted = 0;
+	} else {
+		g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+	}
+
+	g_ServiceStatus.dwWin32ExitCode = exitCode;
+	if (exitCode == ERROR_SERVICE_SPECIFIC_ERROR) {
+		g_ServiceStatus.dwServiceSpecificExitCode = 1;
+	} else {
+		g_ServiceStatus.dwServiceSpecificExitCode = 0;
+	}
+
+	if (currentState == SERVICE_RUNNING || currentState == SERVICE_STOPPED) {
+		g_ServiceStatus.dwCheckPoint = 0;
+		g_ServiceStatus.dwWaitHint = 0;
+		dwCheckPoint = 1; /* reset value for the next pending case */
+	} else {
+		/* increment checkpoint to prove we aren't "frozen" during PENDING states */
+		g_ServiceStatus.dwCheckPoint = dwCheckPoint++;
+		g_ServiceStatus.dwWaitHint = waitHint;
+	}
+
+	SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
+}
+
+VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
+{
+	switch (CtrlCode) {
+	case SERVICE_CONTROL_STOP :
+	case SERVICE_CONTROL_SHUTDOWN :
+		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
+			/* signal the runner to stop */
+			state_ptr()->daemon_running = DAEMON_QUIT;
+			state_ptr()->daemon_sig = SIGTERM;
+
+			/* tell the OS we are trying to stop */
+			report_progress(SERVICE_STOP_PENDING, NO_ERROR, 5000);
+		}
+		break;
+	default :
+		break;
+	}
+}
+
+VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
+{
+	(void)argc;
+	(void)argv;
+
+	struct snapraid_state* state = state_ptr();
+
+	g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
+	if (g_StatusHandle == NULL)
+		return;
+
+	windows_eventlog(LVL_INFO, "Service starting");
+	report_progress(SERVICE_START_PENDING, NO_ERROR, 5000);
+
+	if (daemon_init(state) != 0) {
+		windows_eventlog(LVL_ERROR, "Service startup failed");
+		report_progress(SERVICE_STOPPED, ERROR_SERVICE_SPECIFIC_ERROR, 0);
+		return;
+	}
+
+	windows_eventlog(LVL_INFO, "Service started");
+	report_progress(SERVICE_RUNNING, NO_ERROR, 0);
+
+	daemon_run(state);
+
+	windows_eventlog(LVL_INFO, "Service stopping");
+	daemon_done(state);
+
+	state_done(state);
+
+	windows_eventlog(LVL_INFO, "Service stopped");
+	report_progress(SERVICE_STOPPED, NO_ERROR, 0);
+
+	os_done();
+}
+
+void windows_starting(void)
+{
+	if (!g_StatusHandle)
+		return;
+
+	report_progress(SERVICE_START_PENDING, NO_ERROR, 3000);
+}
+
 int main(int argc, char* argv[])
 {
 	struct snapraid_state* state = state_init();
 
+	os_init();
+
 	daemon_options(state, argc, argv);
 
-	/*
-	 * Install console control handler
-	 */
-	if (!SetConsoleCtrlHandler(console_handler, TRUE)) {
-		exit(EXIT_FAILURE);
+	if (state->log.foreground) {
+		if (!SetConsoleCtrlHandler(console_handler, TRUE)) {
+			exit(EXIT_FAILURE);
+		}
+
+		if (daemon_init(state) != 0)
+			exit(EXIT_FAILURE);
+
+		daemon_run(state);
+
+		daemon_done(state);
+
+		state_done(state);
+
+		os_done();
+	} else {
+		SERVICE_TABLE_ENTRY ServiceTable[] = {
+			{ (char*)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain },
+			{ NULL, NULL }
+		};
+
+		if (StartServiceCtrlDispatcher(ServiceTable) == FALSE) {
+			DWORD err = GetLastError();
+			if (err == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
+				fprintf(stderr, "This program must be run as a service. Use -f, --foreground to run as an application.\n");
+			}
+			return err;
+		}
 	}
-
-	daemon_init(state);
-
-	daemon_run(state);
-
-	daemon_done(state);
-
-	state_done(state);
 
 	return 0;
 }

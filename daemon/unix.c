@@ -1216,7 +1216,8 @@ int main(int argc, char* argv[])
 	 */
 	os_signal_set(0);
 
-	daemon_init(state);
+	if (daemon_init(state) != 0)
+		exit(EXIT_FAILURE);
 
 	/*
 	 * Unblock signals ONLY in main thread

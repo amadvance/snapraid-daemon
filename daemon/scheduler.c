@@ -22,6 +22,7 @@
 #include "runner.h"
 #include "log.h"
 #include "scheduler.h"
+#include "daemon.h"
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, char* msg, size_t msg_size, int* status)
 {

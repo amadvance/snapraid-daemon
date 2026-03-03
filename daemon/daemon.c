@@ -166,7 +166,7 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 	}
 }
 
-void daemon_init(struct snapraid_state* state)
+int daemon_init(struct snapraid_state* state)
 {
 	char msg[MSG_MAX];
 	int status;
@@ -180,7 +180,7 @@ void daemon_init(struct snapraid_state* state)
 
 	if (config_load_locked(state) != 0) {
 		log_msg(LVL_ERROR, "failed to load config from %s", state->config.conf);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	/**
@@ -223,7 +223,7 @@ void daemon_init(struct snapraid_state* state)
 
 	if (rest_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to start the rest api");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	/**
@@ -231,8 +231,10 @@ void daemon_init(struct snapraid_state* state)
 	 */
 	if (web_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to start the web server");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+
+	return 0;
 }
 
 void daemon_run(struct snapraid_state* state)

@@ -499,7 +499,17 @@ int windows_create(thread_id_t* thread, void* attr, void* (*func)(void*), void* 
 int windows_join(thread_id_t thread, void** retval);
 
 /****************************************************************************/
-/* handle */
+/* service */
+
+/**
+ * Log into Eventlog
+ */
+void windows_eventlog(int level, const char* msg);
+
+/**
+ * Signal that the service is starting and it needs more time.
+ */
+void windows_starting(void);
 
 #endif
 #endif

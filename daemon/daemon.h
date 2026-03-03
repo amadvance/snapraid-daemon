@@ -102,7 +102,7 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[]);
 /**
  * Initialize the daemon
  */
-void daemon_init(struct snapraid_state* state);
+int daemon_init(struct snapraid_state* state);
 
 /**
  * Run the daemon

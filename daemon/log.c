@@ -67,6 +67,12 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 	(void)level;
 	(void)syslog;
 
+	if (syslog) {
+		char buf[1024];
+		vsnprintf(buf, sizeof(buf), fmt, ap);
+		windows_eventlog(level, buf);
+	}
+
 	if (termlog) {
 		vfprintf(stderr, fmt, ap);
 		fprintf(stderr, "\n");
