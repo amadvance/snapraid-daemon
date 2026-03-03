@@ -61,7 +61,18 @@ echo "Building NSIS installer..."
 
 cd ..
 
-cp "${PKG_ROOT}/${PKG_NAME}-${VERSION}.exe" .
+# Sign and copy
+rm -f "${PKG_NAME}-${VERSION}.exe"
+osslsigncode sign \
+    -pkcs12 cert/am_code.p12 \
+    -pass "" \
+    -n "SnapRAID Daemon Installer" \
+    -i "https://www.snapraid.it" \
+    -ts "http://timestamp.digicert.com" \
+    -in "${PKG_ROOT}/${PKG_NAME}-${VERSION}.exe" \
+    -out "${PKG_NAME}-${VERSION}.exe"
+
+osslsigncode verify -CAfile am_ca.crt "${PKG_NAME}-${VERSION}.exe"
 
 # Cleanup
 rm -rf "${PKG_ROOT}" ${PKG_NAME}-${VERSION}

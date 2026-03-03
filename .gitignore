@@ -61,6 +61,11 @@ messages.rc
 *.epr
 *.geany
 
+# certificates
+*.key
+*.p12
+*.pfx
+
 # specific
 cov/
 contrib/
