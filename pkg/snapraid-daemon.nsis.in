@@ -119,13 +119,22 @@ Section "Install"
 
     # FILES
     SetOutPath $INSTDIR
-    File "snapraidd.exe"
-    File "snapraidd.conf.example"
-    File "snapraid-daemon.ico"
+    File "snapraid*.exe"
+    File "snapraid*.example"
+    File "snapraid*.ico"
+    File "authors.txt"
+    File "copying.txt"
+    File "history.txt"
+    File "readme.txt"
 
     # DOCUMENTATION
     SetOutPath $INSTDIR\doc
-    File "snapraidd.txt"
+    File "snapraid*.txt"
+
+    # DELETE OLD DOCUMENTATION
+    Delete "$INSTDIR\snapraid.txt"
+    Delete "$INSTDIR\install.txt"
+    Delete "$INSTDIR\todo.txt"
 
     # CONFIGURATION
     SetOutPath $INSTDIR
@@ -191,11 +200,19 @@ Section "Uninstall"
     Delete "$DESKTOP\SnapRAID Commander.lnk"
 
     # REMOVE FILES
-    Delete "$INSTDIR\snapraidd.exe"
-    Delete "$INSTDIR\snapraidd.conf.example"
-    Delete "$INSTDIR\README.txt"
-    Delete "$INSTDIR\snapraid-daemon.ico"
     Delete "$INSTDIR\uninstall.exe"
+    Delete "$INSTDIR\snapraid.exe"
+    Delete "$INSTDIR\snapraidd.exe"
+    Delete "$INSTDIR\smartctl.exe"
+    Delete "$INSTDIR\snapraid.conf.example"
+    Delete "$INSTDIR\snapraidd.conf.example"
+    Delete "$INSTDIR\snapraid-daemon.ico"
+    Delete "$INSTDIR\authors.txt"
+    Delete "$INSTDIR\copying.txt"
+    Delete "$INSTDIR\history.txt"
+    Delete "$INSTDIR\readme.txt"
+    Delete "$INSTDIR\doc\snapraid*.txt"
 
+    RMDir "$INSTDIR\doc"
     RMDir "$INSTDIR"
 SectionEnd

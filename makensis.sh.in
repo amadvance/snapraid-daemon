@@ -12,49 +12,96 @@
 
 set -euo pipefail
 
-VERSION="@PACKAGE_VERSION@"
-TARBALL="@PACKAGE@-${VERSION}.tar.gz"
-SOURCE_URL="https://github.com/amadvance/@PACKAGE@/releases/download/v${VERSION}/${TARBALL}"
-PKG_NAME="@PACKAGE@"
-PKG_ROOT="@PACKAGE@-${VERSION}-nsis"
+CLI_VERSION="14.0rc1"
+CLI_TARBALL="snapraid-${CLI_VERSION}.tar.gz"
+CLI_SOURCE_URL="https://github.com/amadvance/snapraid/releases/download/v${CLI_VERSION}/${CLI_TARBALL}"
+CLI_PKG_NAME="snapraid"
+
+DAEMON_VERSION="@PACKAGE_VERSION@"
+DAEMON_TARBALL="@PACKAGE@-${DAEMON_VERSION}.tar.gz"
+DAEMON_SOURCE_URL="https://github.com/amadvance/@PACKAGE@/releases/download/v${DAEMON_VERSION}/${DAEMON_TARBALL}"
+DAEMON_PKG_NAME="@PACKAGE@"
+
+NSIS_PKG_ROOT="@PACKAGE@-${DAEMON_VERSION}-nsis"
 
 # Prefer local tarball
-if [[ -f "./${TARBALL}" ]]; then
-  echo "Using local ${TARBALL}"
+if [[ -f "./${CLI_TARBALL}" ]]; then
+  echo "Using local ${CLI_TARBALL}"
 else
-  echo "Downloading ${TARBALL}..."
-  curl -L -O "$SOURCE_URL"
+  echo "Downloading ${CLI_TARBALL}..."
+  curl -L -O "$CLI_SOURCE_URL"
+fi
+
+if [[ -f "./${DAEMON_TARBALL}" ]]; then
+  echo "Using local ${DAEMON_TARBALL}"
+else
+  echo "Downloading ${DAEMON_TARBALL}..."
+  curl -L -O "$DAEMON_SOURCE_URL"
 fi
 
 # Clean previous builds
-rm -rf "${PKG_ROOT}" ${PKG_NAME}-${VERSION}
+rm -rf "${NSIS_PKG_ROOT}" 
+rm -rf "${CLI_PKG_NAME}-${CLI_VERSION}"
+rm -rf "${DAEMON_PKG_NAME}-${DAEMON_VERSION}"
 
 # Create dirs
-mkdir "${PKG_ROOT}"
+mkdir "${NSIS_PKG_ROOT}"
+
+#### CLI ###
 
 # Extract source
-echo "Extracting source..."
-tar -xzf "${TARBALL}"
+echo "Extracting ${CLI_PKG_NAME} source..."
+tar -xzf "${CLI_TARBALL}"
 
 # Build the software
-echo "Configuring and building ${PKG_NAME}..."
-cd ${PKG_NAME}-${VERSION}
+echo "Configuring and building ${CLI_PKG_NAME}..."
+cd ${CLI_PKG_NAME}-${CLI_VERSION}
 ./configure.windows-x64
 make -j4
 
 # Copy files
-cp snapraidd.exe "../${PKG_ROOT}"
-cp pkg/snapraid-daemon.ico "../${PKG_ROOT}"
-cp pkg/snapraid-daemon.nsis "../${PKG_ROOT}"
-todos < snapraidd.conf.example > "../${PKG_ROOT}/snapraidd.conf.example"
-todos < snapraidd.yaml > "../${PKG_ROOT}/snapraidd.yaml"
-todos < COPYING > "../${PKG_ROOT}/copying.txt"
-todos < AUTHORS > "../${PKG_ROOT}/authors.txt"
-todos < HISTORY > "../${PKG_ROOT}/history.txt"
-todos < README > "../${PKG_ROOT}/readme.txt"
-cp doc/snapraidd.txt "../${PKG_ROOT}/snapraidd.txt"
+cp snapraid.exe "../${NSIS_PKG_ROOT}"
+cp doc/*.txt "../${NSIS_PKG_ROOT}"
+todos < snapraid.conf.example > "../${NSIS_PKG_ROOT}/snapraid.conf.example"
+todos < AUTHORS > "../${NSIS_PKG_ROOT}/authors.txt"
+todos < COPYING > "../${NSIS_PKG_ROOT}/copying.txt"
+todos < HISTORY > "../${NSIS_PKG_ROOT}/history.txt"
+todos < README > "../${NSIS_PKG_ROOT}/readme.txt"
 
-cd ../${PKG_ROOT}
+cd ..
+
+### DAEMON ###
+
+# Extract source
+echo "Extracting ${DAEMON_PKG_NAME} source..."
+tar -xzf "${DAEMON_TARBALL}"
+
+# Build the software
+echo "Configuring and building ${DAEMON_PKG_NAME}..."
+cd ${DAEMON_PKG_NAME}-${DAEMON_VERSION}
+./configure.windows-x64
+make -j4
+
+# Copy files
+cp snapraidd.exe "../${NSIS_PKG_ROOT}"
+cp doc/*.txt "../${NSIS_PKG_ROOT}"
+cp pkg/snapraid-daemon.ico "../${NSIS_PKG_ROOT}"
+cp pkg/snapraid-daemon.nsis "../${NSIS_PKG_ROOT}"
+todos < snapraidd.conf.example > "../${NSIS_PKG_ROOT}/snapraidd.conf.example"
+todos < snapraidd.yaml > "../${NSIS_PKG_ROOT}/snapraidd.yaml"
+echo | todos >> "../${NSIS_PKG_ROOT}/history.txt"
+todos < HISTORY >> "../${NSIS_PKG_ROOT}/history.txt"
+echo | todos >> "../${NSIS_PKG_ROOT}/readme.txt"
+todos < README >> "../${NSIS_PKG_ROOT}/readme.txt"
+
+cd ..
+
+### NSIS ###
+
+# Copy smartctl from current dir
+cp support/smartctl.exe "${NSIS_PKG_ROOT}"
+
+cd ${NSIS_PKG_ROOT}
 
 echo "Building NSIS installer..."
 ../../nsis/Bin/makensis snapraid-daemon.nsis
@@ -62,22 +109,25 @@ echo "Building NSIS installer..."
 cd ..
 
 # Sign and copy
-rm -f "${PKG_NAME}-${VERSION}.exe"
+rm -f "${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe"
 osslsigncode sign \
     -pkcs12 cert/am_code.p12 \
     -pass "" \
     -n "SnapRAID Daemon Installer" \
     -i "https://www.snapraid.it" \
     -ts "http://timestamp.digicert.com" \
-    -in "${PKG_ROOT}/${PKG_NAME}-${VERSION}.exe" \
-    -out "${PKG_NAME}-${VERSION}.exe"
+    -in "${NSIS_PKG_ROOT}/${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe" \
+    -out "${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe"
 
-osslsigncode verify -CAfile am_ca.crt "${PKG_NAME}-${VERSION}.exe"
+osslsigncode verify -CAfile cert/am_ca.crt "${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe"
 
 # Cleanup
-rm -rf "${PKG_ROOT}" ${PKG_NAME}-${VERSION}
+rm -rf "${NSIS_PKG_ROOT}" 
+rm -rf "${CLI_PKG_NAME}-${CLI_VERSION}"
+rm -rf "${DAEMON_PKG_NAME}-${DAEMON_VERSION}"
 
 echo ""
 echo "Build complete!"
-echo "Package created: ${PKG_NAME}-${VERSION}.exe"
+echo "Package created: ${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe"
 echo ""
+echo "SHAR256: " `sha256sum "${DAEMON_PKG_NAME}-${DAEMON_VERSION}.exe"`
