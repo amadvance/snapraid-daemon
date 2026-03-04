@@ -22,6 +22,7 @@
 #include "state.h"
 #include "daemon.h"
 #include "support.h"
+#include "log.h"
 
 /**
  * Description of the last error.
@@ -340,10 +341,6 @@ const char* windows_strerror(int err)
 	const char* str = strerror(err);
 	size_t len = strlen(str);
 
-	/* set errno if not already set */
-	if (errno == 0 && GetLastError() != 0)
-		windows_errno(GetLastError());
-
 	/* adds space for GetLastError() */
 	len += 32;
 
@@ -365,6 +362,9 @@ const char* windows_strerror(int err)
 	free(previous);
 	return error;
 }
+
+/* restore the define used later */
+#define  strerror windows_strerror
 
 /**
  * Convert Windows attr to the Unix stat format.
@@ -880,15 +880,19 @@ char* windows_realpath(const char* path, char* resolved_path)
 {
 	wchar_t conv_buf[CONV_MAX];
 	HANDLE h = CreateFileW(convert(conv_buf, path), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-	if (h == INVALID_HANDLE_VALUE)
+	if (h == INVALID_HANDLE_VALUE) {
+		windows_errno(GetLastError());
 		return 0;
+	}
 
 	DWORD result = GetFinalPathNameByHandleW(h, conv_buf, CONV_MAX, FILE_NAME_NORMALIZED);
 
 	CloseHandle(h);
 
-	if (result == 0 || result >= CONV_MAX)
+	if (result == 0 || result >= CONV_MAX) {
+		windows_errno(GetLastError());
 		return 0;
+	}
 
 	resolved_path = u16tou8(resolved_path, conv_buf);
 
@@ -1268,6 +1272,9 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	HANDLE stderr_write_handle;
 	HANDLE stderr_read_handle;
 	SECURITY_ATTRIBUTES sa;
+	PROCESS_INFORMATION pi;
+	STARTUPINFOW si;
+	BOOL ret;
 
 	/* set the bInheritHandle flag so pipe handles are inherited */
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -1276,11 +1283,15 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 
 	/* create a pipe for the child process's STDERR */
 	if (!CreatePipe(&stderr_read_handle, &stderr_write_handle, &sa, 0)) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
 	/* ensure the reading handle to the pipe is not inherited */
 	if (!SetHandleInformation(stderr_read_handle, HANDLE_FLAG_INHERIT, 0)) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
 		CloseHandle(stderr_read_handle);
 		return -1;
@@ -1292,19 +1303,16 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	for (int i = 0; argv[i]; ++i) {
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
+			log_msg(LVL_ERROR, "command to long for spawn");
 			exit(EXIT_FAILURE);
 		}
 	}
 	cmd_buffer[pos] = 0;
 
-	PROCESS_INFORMATION pi;
-	STARTUPINFOW si;
-	BOOL ret;
-
 	/* set up members of the STARTUPINFO structure */
-	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-	ZeroMemory(&si, sizeof(STARTUPINFOA));
-	si.cb = sizeof(STARTUPINFOA);
+	ZeroMemory(&pi, sizeof(pi));
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
 	si.hStdError = stderr_write_handle;
 	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
@@ -1314,29 +1322,30 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	ret = CreateProcessW(
 		NULL,
 		cmd_buffer,
-		NULL,
-		NULL,
-		TRUE,
+		NULL, NULL,
+		TRUE, /* inherit pipe handles */
 		CREATE_NEW_PROCESS_GROUP,
-		NULL,
-		NULL,
-		&si,
-		&pi
+		NULL, NULL,
+		&si, &pi
 	);
-
-	/* close the write end of the pipe in the parent */
-	CloseHandle(stderr_write_handle);
-
 	if (!ret) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to create process for spawn, errno=%s(%d)", strerror(errno), errno);
+		CloseHandle(stderr_write_handle);
 		CloseHandle(stderr_read_handle);
 		return -1;
 	}
+
+	/* close the write end of the pipe in the parent */
+	CloseHandle(stderr_write_handle);
 
 	/* close the handle to the primary thread, we don't need it */
 	CloseHandle(pi.hThread);
 
 	int f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
 	if (f == -1) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_read_handle);
 		return -1;
 	}
@@ -1389,17 +1398,180 @@ int os_term(pid_t pid)
 
 int os_command(const char* command, const char* target_user, const char* stdin_text)
 {
-	(void)command;
+	wchar_t conv[CONV_MAX];
+	HANDLE stdin_read_handle;
+	HANDLE stdin_write_handle;
+	SECURITY_ATTRIBUTES sa;
+	PROCESS_INFORMATION pi;
+	STARTUPINFOW si;
+	BOOL ret;
+	int64_t start, stop;
+
 	(void)target_user;
-	(void)stdin_text;
-	return -1;
+
+	start = os_tick_sec();
+
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+
+	/* create pipe for child's STDIN */
+	if (!CreatePipe(&stdin_read_handle, &stdin_write_handle, &sa, 0)) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	/* ensure the parent's write end is NOT inherited */
+	if (!SetHandleInformation(stdin_write_handle, HANDLE_FLAG_INHERIT, 0)) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
+		CloseHandle(stdin_read_handle);
+		CloseHandle(stdin_write_handle);
+		return -1;
+	}
+
+	ZeroMemory(&pi, sizeof(pi));
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	si.hStdInput = stdin_read_handle;
+	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+	si.dwFlags |= STARTF_USESTDHANDLES;
+
+	/* create the child process */
+	ret = CreateProcessW(
+		NULL,
+		u8tou16(conv, command),
+		NULL, NULL,
+		TRUE, /* inherit pipe handles */
+		CREATE_NO_WINDOW,
+		NULL, NULL,
+		&si, &pi
+	);
+	if (!ret) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
+		CloseHandle(stdin_read_handle);
+		CloseHandle(stdin_write_handle);
+		return -1;
+	}
+
+	/* close the read end in the parent immediately */
+	CloseHandle(stdin_read_handle);
+
+	/* write the string to the child's STDIN */
+	if (stdin_text && strlen(stdin_text) > 0) {
+		DWORD written;
+		WriteFile(stdin_write_handle, stdin_text, (DWORD)strlen(stdin_text), &written, NULL);
+	}
+
+	/* closing the write handle sends EOF to the child */
+	CloseHandle(stdin_write_handle);
+
+	/* wait for completion and get exit code */
+	WaitForSingleObject(pi.hProcess, INFINITE);
+
+	DWORD status;
+	GetExitCodeProcess(pi.hProcess, &status);
+
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+
+	stop = os_tick_sec();
+	int64_t execution_time = stop - start;
+	if (execution_time > 30)
+		log_msg(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
+
+	if (WIFEXITED(status)) {
+		/* child's exit(code) or return from main */
+		log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, WEXITSTATUS(status));
+		return WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		/* child died from a signal */
+		int sig = WTERMSIG(status);
+		log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
+		return 128 + sig;
+	} else {
+		/* in Windows it can happen */
+		log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", command, execution_time, (unsigned)status);
+		return -1;
+	}
 }
 
 int os_script(const char* script_path, const char* run_as_user)
 {
-	(void)script_path;
+	wchar_t conv[CONV_MAX];
+	PROCESS_INFORMATION pi;
+	STARTUPINFOW si;
+	BOOL ret;
+	char resolved_path[PATH_MAX];
+	WCHAR command_line[PATH_MAX + 32];
+	int64_t start, stop;
+
 	(void)run_as_user;
-	return -1;
+
+	/* resolve the script path to prevent symlink attacks */
+	if (!realpath(script_path, resolved_path)) {
+		log_msg(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+		return -1;
+	}
+
+	start = os_tick_sec();
+
+	ZeroMemory(&pi, sizeof(pi));
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+
+	/*
+	 * We add an extra set of quotes: cmd /c " "path with spaces" arg1 "arg 2" "
+	 * This ensures cmd.exe parses the internal quotes correctly.
+	 */
+	swprintf(command_line, sizeof(command_line), L"cmd.exe /c \" %s \"", u8tou16(conv, resolved_path));
+
+	/* create the child process */
+	ret = CreateProcessW(
+		NULL,
+		command_line,
+		NULL, NULL,
+		FALSE, /* no need to inherit handles */
+		CREATE_NO_WINDOW,
+		NULL, NULL,
+		&si, &pi
+	);
+	if (!ret) {
+		windows_errno(GetLastError());
+		log_msg(LVL_ERROR, "failed to create process for script, errno=%s(%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+
+	DWORD status;
+	GetExitCodeProcess(pi.hProcess, &status);
+
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+
+	stop = os_tick_sec();
+	int64_t execution_time = stop - start;
+	if (execution_time > 30)
+		log_msg(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
+
+	if (WIFEXITED(status)) {
+		/* child's exit(code) or return from main */
+		log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, WEXITSTATUS(status));
+		return WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		/* child died from a signal */
+		int sig = WTERMSIG(status);
+		log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
+		return 128 + sig;
+	} else {
+		/* in Windows it can happen */
+		log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", resolved_path, execution_time, (unsigned)status);
+		return -1;
+	}
 }
 
 /****************************************************************************/

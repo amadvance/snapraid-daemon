@@ -140,34 +140,37 @@
 /* We have nano second support */
 #define STAT_NSEC(st) ((int)(st)->st_mtimensec)
 
-static inline int WIFEXITED(DWORD status)
-{
-	return status < 0xC0000000;
-}
-
 static inline int WEXITSTATUS(DWORD status)
 {
 	return status;
 }
 
-static inline int WIFSIGNALED(DWORD status)
-{
-	return status >= 0xC0000000;
-}
-
 static inline int WTERMSIG(DWORD status)
 {
+	/* identify most common crash reasons */
 	switch (status) {
+	case 0x40000015 : return SIGABRT; /* STATUS_FATAL_APP_EXIT */
 	case 0xC0000005 : return SIGSEGV; /* STATUS_ACCESS_VIOLATION */
-	case 0xC00000FD : return SIGSEGV; /* STATUS_STACK_OVERFLOW */
-	case 0xC0000409 : return SIGSEGV; /* STATUS_STACK_BUFFER_OVERRUN */
 	case 0xC0000006 : return SIGSEGV; /* STATUS_IN_PAGE_ERROR */
 	case 0xC000001D : return SIGILL; /* STATUS_ILLEGAL_INSTRUCTION */
+	case 0xC00000FD : return SIGSEGV; /* STATUS_STACK_OVERFLOW */
 	case 0xC0000090 : return SIGFPE; /* STATUS_FLOAT_INVALID_OPERATION */
 	case 0xC0000094 : return SIGFPE; /* STATUS_INTEGER_DIVIDE_BY_ZERO */
+	case 0xC000013A : return SIGINT; /* STATUS_CONTROL_C_EXIT */
+	case 0xC0000409 : return SIGSEGV; /* STATUS_STACK_BUFFER_OVERRUN */
 	}
 
-	return status;
+	return 0;
+}
+
+static inline int WIFEXITED(DWORD status)
+{
+	return status < 0xC0000000 && WTERMSIG(status) == 0;
+}
+
+static inline int WIFSIGNALED(DWORD status)
+{
+	return WTERMSIG(status) != 0;
 }
 
 /**
