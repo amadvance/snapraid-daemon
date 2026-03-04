@@ -1288,6 +1288,9 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 			for (i = 0; i < n; i++) {
 				char c = buf[i];
 
+				if (c == '\r')
+					continue; /* ignore Windows CR */
+
 				/* insert in the duplicate plain */
 				if (dup_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
 					dup[dup_len++] = c;
@@ -1323,10 +1326,6 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 						continue;
 					}
 					/* do not split if too many fields */
-				}
-
-				if (c == '\r') {
-					continue; /* ignore Windows CR */
 				}
 
 				if (c == '\n') {
