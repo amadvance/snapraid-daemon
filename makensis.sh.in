@@ -60,7 +60,14 @@ cd ${CLI_PKG_NAME}-${CLI_VERSION}
 make -j4
 
 # Copy files
-cp snapraid.exe "../${NSIS_PKG_ROOT}"
+osslsigncode sign \
+    -pkcs12 ../cert/am_code.p12 \
+    -pass "" \
+    -n "SnapRAID CLI" \
+    -i "https://www.snapraid.it" \
+    -ts "http://timestamp.digicert.com" \
+    -in "snapraid.exe" \
+    -out "../${NSIS_PKG_ROOT}/snapraid.exe"
 cp doc/*.txt "../${NSIS_PKG_ROOT}"
 todos < snapraid.conf.example > "../${NSIS_PKG_ROOT}/snapraid.conf.example"
 todos < AUTHORS > "../${NSIS_PKG_ROOT}/authors.txt"
@@ -83,7 +90,14 @@ cd ${DAEMON_PKG_NAME}-${DAEMON_VERSION}
 make -j4
 
 # Copy files
-cp snapraidd.exe "../${NSIS_PKG_ROOT}"
+osslsigncode sign \
+    -pkcs12 ../cert/am_code.p12 \
+    -pass "" \
+    -n "SnapRAID Daemon" \
+    -i "https://www.snapraid.it" \
+    -ts "http://timestamp.digicert.com" \
+    -in "snapraidd.exe" \
+    -out "../${NSIS_PKG_ROOT}/snapraidd.exe"
 cp doc/*.txt "../${NSIS_PKG_ROOT}"
 cp pkg/snapraid-daemon.ico "../${NSIS_PKG_ROOT}"
 cp pkg/snapraid-daemon.nsis "../${NSIS_PKG_ROOT}"
