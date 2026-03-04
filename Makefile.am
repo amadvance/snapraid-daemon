@@ -50,7 +50,7 @@ endif
 
 # Windows
 if HOST_WINDOWS
-snapraidd_LDADD += messages_res.o -ladvapi32 -luserenv
+snapraidd_LDADD += resource_res.o messages_res.o -ladvapi32 -luserenv
 
 messages.h messages.rc: daemon/messages.mc
 	$(WINDMC) $<
@@ -58,9 +58,12 @@ messages.h messages.rc: daemon/messages.mc
 messages_res.o: messages.rc
 	$(WINDRES) $< -o $@
 
+resource_res.o: daemon/resource.rc daemon/resource.manifest
+	$(WINDRES) --include-dir=. --include-dir=$(srcdir) $< -o $@
+
 daemon/snapraidd-daemon.$(OBJEXT): messages.h
 
-CLEANFILES += messages.h messages.rc messages_res.o MSG00401.bin
+CLEANFILES += resource_res.o messages.h messages.rc messages_res.o MSG00401.bin
 endif
 
 snapraidd_SOURCES = \
@@ -144,6 +147,8 @@ EXTRA_DIST = \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
 	daemon/messages.mc \
+	daemon/resource.rc \
+	daemon/resource.manifest \
 	configure.windows-x64 \
 	snapraidd.service.in rc.snapraidd.in \
 	makeslackware.sh.in \
