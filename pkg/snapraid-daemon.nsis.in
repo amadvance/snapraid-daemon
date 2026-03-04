@@ -13,7 +13,8 @@ ${UnStrStr}
 # --- General Project Settings ---
 Name "SnapRAID Daemon"
 OutFile "snapraid-daemon-@PACKAGE_VERSION@.exe"
-InstallDir "$PROGRAMFILES64\SnapRAID-Daemon"
+InstallDir "DEFAULT"
+InstallDirRegKey HKLM "Software\snapraid" "Install_Dir"
 RequestExecutionLevel admin
 
 # --- Visual Assets ---
@@ -52,6 +53,14 @@ VIAddVersionKey "ProductVersion" "@PACKAGE_VERSION@"
 !insertmacro MUI_LANGUAGE "English"
 
 # --- Functions ---
+
+Function .onInit
+    ${If} $INSTDIR == "DEFAULT"
+    ${OrIf} $INSTDIR == ""
+        StrCpy $1 $WINDIR 2
+        StrCpy $INSTDIR "$1\snapraid"
+    ${EndIf}
+FunctionEnd
 
 !macro StopServiceLogic UN
 Function ${UN}StopSnapRAIDService
@@ -120,6 +129,7 @@ Section "Install"
     # FILES
     SetOutPath $INSTDIR
     File "snapraid*.exe"
+    File "smartctl.exe"
     File "snapraid*.example"
     File "snapraid*.ico"
     File "authors.txt"
@@ -155,6 +165,9 @@ Section "Install"
     ExecWait 'sc create snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto DisplayName= "SnapRAID Daemon"'
     ExecWait 'sc config snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto'
     ExecWait 'sc start snapraidd'
+
+    # Save the installation directory to the registry
+    WriteRegStr HKLM "Software\snapraid" "Install_Dir" "$INSTDIR"
 
     # CREATE DESKTOP SHORTCUT
     CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-daemon.ico" 0
