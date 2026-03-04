@@ -37,6 +37,9 @@ VIAddVersionKey "ProductVersion" "@PACKAGE_VERSION@"
 !define MUI_UNICON "snapraid-daemon.ico"
 
 # Installer Pages
+!define MUI_PAGE_HEADER_TEXT "Choose Installation Location"
+!define MUI_PAGE_HEADER_SUBTEXT "Select the folder for SnapRAID and the Daemon."
+!define MUI_DIRECTORYPAGE_TEXT_TOP "IMPORTANT: If you already have SnapRAID installed, please select the SAME directory to ensure it is updated correctly. $\r$\n$\r$\nOtherwise, the installer will create a new installation of both SnapRAID and the Daemon in the folder below."
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 
