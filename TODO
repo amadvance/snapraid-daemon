@@ -1,11 +1,26 @@
 SnapRAID Daemon TODO
 ====================
 
+BREAKING COMPATIBILITY CHANGES
+
+- Replace separate script_pre_run + script_post_run with unified event-based script handler 
+  - single script + event type as first arg
+  - arg could be "maintenance pre" and "maintenance post", "undelete pre", "undelete post", "heal..."
+  - pass other context via env vars ? Like result status.
+
+NOT BREAKING COMPATIBILITY CHANGES
+
+- Add new config option snapraid_binary = /path/to/snapraid (or similar)
+  - overrides hardcoded path search completely when set
+  - allows using wrapper scripts (snapraid-btrfs, btrfssnapraid, custom dispatchers, …)
+
+- Implement a new "maintenance" command for CLI that implements sync+scrub,
+  run one after another.
+
 - Show disks that are not part of the array
 
 - Support maintenance scheduling for multiple days of the week
   Like: maintenance_schedule = Mon 02:00, Wed 03:00
-
 - Send a notification report every time a PREFAIL attribute change
   Messages can be generated in the parser, and then a dedicated report can be
   scheduled at the end of each task.
@@ -15,6 +30,12 @@ SnapRAID Daemon TODO
     notify_smartignore = DISK/DEVICE/* ATTRS...
     notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
     smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
+
+- Add Light Mode, toggle to switch between Dark and Light themes
+
+- Add configurable option to run "touch" at every maintenance. Makes sense to
+  implement as a new flag for "sync/maintenance" to avoid to run CLI multiple
+  times.
 
 - Stress Test Utility
   Provide a way to stress-test new disks before adding them to the array.
