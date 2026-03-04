@@ -1577,6 +1577,43 @@ int os_script(const char* script_path, const char* run_as_user)
 /****************************************************************************/
 /* system */
 
+void get_windows_version(struct snapraid_system* system)
+{
+	/* fallback */
+	snprintf(system->os_distribution, MSG_MAX, "Windows (Unknown)");
+	snprintf(system->kernel_version, KEYWORD_MAX, "(Unknown)");
+
+	HMODULE h = GetModuleHandleW(L"ntdll.dll");
+	if (!h)
+		return;
+
+	NTSTATUS(WINAPI * ptr_RtlGetVersion)(RTL_OSVERSIONINFOW*);
+	ptr_RtlGetVersion = (void*)GetProcAddress(h, "RtlGetVersion");
+	if (!ptr_RtlGetVersion)
+		return;
+
+	RTL_OSVERSIONINFOW rovi = { 0 };
+	rovi.dwOSVersionInfoSize = sizeof(rovi);
+	if (ptr_RtlGetVersion(&rovi) != 0)
+		return;
+
+	const char* name = "Windows";
+	if (rovi.dwMajorVersion == 10) {
+		/* Windows 11 is technically Major 10, but Build >= 22000 */
+		name = (rovi.dwBuildNumber >= 22000) ? "Windows 11" : "Windows 10";
+	} else if (rovi.dwMajorVersion == 6) {
+		if (rovi.dwMinorVersion == 3)
+			name = "Windows 8.1";
+		else if (rovi.dwMinorVersion == 2)
+			name = "Windows 8";
+		else if (rovi.dwMinorVersion == 1)
+			name = "Windows 7";
+	}
+
+	snprintf(system->os_distribution, MSG_MAX, "%s", name);
+	snprintf(system->kernel_version, KEYWORD_MAX, "Build %lu", rovi.dwBuildNumber);
+}
+
 void os_system(struct snapraid_system* system)
 {
 	DWORD size = KEYWORD_MAX;
@@ -1584,11 +1621,7 @@ void os_system(struct snapraid_system* system)
 		strncpy(system->hostname, "Unknown", KEYWORD_MAX);
 	}
 
-	snprintf(system->os_distribution, MSG_MAX, "Windows %d.%d",
-		(int)HIBYTE(LOWORD(GetVersion())),
-		(int)LOBYTE(LOWORD(GetVersion())));
-
-	snprintf(system->kernel_version, KEYWORD_MAX, "Build %lu", GetVersion() >> 16);
+	get_windows_version(system);
 
 	HKEY hKey;
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
