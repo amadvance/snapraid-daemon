@@ -1,6 +1,15 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+0.1beta2 31/03/2026
+===================
+ * Added Windows support with an .exe installer. The installer also contains
+   the latest version of SnapRAID required to run the daemon. If you already
+   have SnapRAID installed, simply select your existing installation
+   directory. Your existing snapraid.conf file will NOT be overwritten.
+   Once the installation is complete, open http://127.0.0.1:7267 in your web
+   browser to access the dashboard.
+
 0.1beta1 01/03/2026
 ===================
  * First public test release of SnapRAID-Daemon.
