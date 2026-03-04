@@ -134,7 +134,6 @@ Section "Install"
     File "snapraid*.exe"
     File "smartctl.exe"
     File "snapraid*.example"
-    File "snapraid*.ico"
     File "authors.txt"
     File "copying.txt"
     File "history.txt"
@@ -173,12 +172,12 @@ Section "Install"
     WriteRegStr HKLM "Software\snapraid" "Install_Dir" "$INSTDIR"
 
     # CREATE DESKTOP SHORTCUT
-    CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-daemon.ico" 0
+    CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-uninstall.exe" 0
 
     # WRITE THE UNINSTALL KEYS FOR WINDOWS CONTROL PANEL
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayName" "SnapRAID Daemon"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "UninstallString" '"$INSTDIR\uninstall.exe"'
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayIcon" "$INSTDIR\snapraid-daemon.ico"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "UninstallString" '"$INSTDIR\snapraid-uninstall.exe"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayIcon" "$INSTDIR\snapraid-uninstall.exe"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "Publisher" "Andrea Mazzoleni"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "NoRepair" 1
@@ -189,7 +188,7 @@ Section "Install"
     Pop $1
 
     # WRITE UNINSTALLER
-    WriteUninstaller "$INSTDIR\uninstall.exe"
+    WriteUninstaller "$INSTDIR\snapraid-uninstall.exe"
 SectionEnd
 
 # --- Uninstaller Section ---
@@ -216,13 +215,12 @@ Section "Uninstall"
     Delete "$DESKTOP\SnapRAID Commander.lnk"
 
     # REMOVE FILES
-    Delete "$INSTDIR\uninstall.exe"
+    Delete "$INSTDIR\snapraid-uninstall.exe"
     Delete "$INSTDIR\snapraid.exe"
     Delete "$INSTDIR\snapraidd.exe"
     Delete "$INSTDIR\smartctl.exe"
     Delete "$INSTDIR\snapraid.conf.example"
     Delete "$INSTDIR\snapraidd.conf.example"
-    Delete "$INSTDIR\snapraid-daemon.ico"
     Delete "$INSTDIR\authors.txt"
     Delete "$INSTDIR\copying.txt"
     Delete "$INSTDIR\history.txt"

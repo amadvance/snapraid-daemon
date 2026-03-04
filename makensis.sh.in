@@ -113,7 +113,14 @@ cd ..
 ### NSIS ###
 
 # Copy smartctl from current dir
-cp support/smartctl.exe "${NSIS_PKG_ROOT}"
+osslsigncode sign \
+    -pkcs12 cert/am_code.p12 \
+    -pass "" \
+    -n "SnapRAID SMARTCTL" \
+    -i "https://www.snapraid.it" \
+    -ts "http://timestamp.digicert.com" \
+    -in "support/smartctl.exe" \
+    -out "${NSIS_PKG_ROOT}/smartctl.exe"
 
 cd ${NSIS_PKG_ROOT}
 
