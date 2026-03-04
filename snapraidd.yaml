@@ -14,9 +14,9 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'up', 'diff',
-        and 'sync' followed by 'scrub'. The process is concluded by a 'report'
-        task to notify the result.
+        Initiates the automated maintenance workflow, executing 'up', 'sync',
+        and 'scrub'. The process is concluded by a 'report' task to notify the
+        result.
 
         This operation is subject to all safety thresholds defined in the
         daemon configuration, specifically 'sync_threshold_deletes' and
