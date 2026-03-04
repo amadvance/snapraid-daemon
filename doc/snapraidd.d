@@ -448,6 +448,12 @@ Configuration
 	scripts. If this is missing or blank, scripts are executed with the
 	same privileges as the daemon process.
 
+	On Linux, "nobody" is the standard choice for maximum isolation.
+	On Windows, "LocalService" is the preferred choice as it provides
+	minimal local access while maintaining network capabilities.
+	Alternatively, "NetworkService" can be used if the script specifically
+	requires the computer's network identity to access remote resources.
+
   Logging & Notifications
 	These settings control the logging and notification operations performed
 	by the SnapRAID Daemon.
@@ -534,6 +540,17 @@ Configuration
 	if the task result is equal to or more severe than this level.
 	Valid values are `info` (always send), `warning`, `error`, and `critical`.
 	The default is `error`.
+
+    notify_run_as_user
+	The user account used for notify_heartbeat, notify_result and mail
+	notifications. If missing or left blank, the task runs with the
+	daemon's current privileges.
+
+	On Linux, "nobody" is the standard choice for maximum isolation.
+	On Windows, "LocalService" is the preferred choice as it provides
+	minimal local access while maintaining network capabilities.
+	Alternatively, "NetworkService" can be used if the script specifically
+	requires the computer's network identity to access remote resources.
 
     notify_differences
 	If set to 1, the daemon logs a detailed list of file changes discovered

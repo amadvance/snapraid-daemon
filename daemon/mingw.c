@@ -24,6 +24,8 @@
 #include "support.h"
 #include "log.h"
 
+#include <userenv.h> /* CreateEnvironmentBlock */
+
 /**
  * Description of the last error.
  * It's stored in the thread local storage.
@@ -1318,6 +1320,12 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	si.dwFlags |= STARTF_USESTDHANDLES;
 
+	/*
+	 * Set the Working Directory to the root of the C drive.
+	 * For safety, we avoid defaulting to C:\Windows\System32.
+	 */
+	const wchar_t* cwd = L"C:\\";
+
 	/* create the child process */
 	ret = CreateProcessW(
 		NULL,
@@ -1325,7 +1333,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 		NULL, NULL,
 		TRUE, /* inherit pipe handles */
 		CREATE_NEW_PROCESS_GROUP,
-		NULL, NULL,
+		NULL, cwd,
 		&si, &pi
 	);
 	if (!ret) {
@@ -1396,7 +1404,7 @@ int os_term(pid_t pid)
 	return 0;
 }
 
-int os_command(const char* command, const char* target_user, const char* stdin_text)
+int os_command(const char* command, const char* run_as_user, const char* stdin_text)
 {
 	wchar_t conv[CONV_MAX];
 	HANDLE stdin_read_handle;
@@ -1406,8 +1414,6 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 	STARTUPINFOW si;
 	BOOL ret;
 	int64_t start, stop;
-
-	(void)target_user;
 
 	start = os_tick_sec();
 
@@ -1439,16 +1445,73 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 	si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 	si.dwFlags |= STARTF_USESTDHANDLES;
 
-	/* create the child process */
-	ret = CreateProcessW(
-		NULL,
-		u8tou16(conv, command),
-		NULL, NULL,
-		TRUE, /* inherit pipe handles */
-		CREATE_NO_WINDOW,
-		NULL, NULL,
-		&si, &pi
-	);
+	/*
+	 * Set the Working Directory to the root of the C drive.
+	 * For safety, we avoid defaulting to C:\Windows\System32.
+	 */
+	const wchar_t* cwd = L"C:\\";
+
+	/*
+	 * No drop of privilege requested
+	 * Run exactly as the parent daemon
+	 */
+	if (run_as_user == 0 || run_as_user[0] == 0) {
+		/* create the child process */
+		ret = CreateProcessW(
+			NULL,
+			u8tou16(conv, command),
+			NULL, NULL,
+			TRUE, /* inherit pipe handles */
+			CREATE_NO_WINDOW,
+			NULL, cwd,
+			&si, &pi
+		);
+	} else {
+		/*
+		 * Drop to restricted service account.
+		 */
+		HANDLE h_token = NULL;
+
+		/*
+		 * Validate that the requested user is actually a supported
+		 * Service Account before attempting logon.
+		 */
+		if (_stricmp(run_as_user, "LocalService") != 0 && _stricmp(run_as_user, "NetworkService") != 0) {
+			log_msg(LVL_ERROR, "only supported users are LocalService and NetworkService");
+			CloseHandle(stdin_read_handle);
+			CloseHandle(stdin_write_handle);
+			return -1;
+		}
+
+		if (!LogonUserW(u8tou16(conv, run_as_user), L"NT AUTHORITY", NULL, LOGON32_LOGON_SERVICE, LOGON32_PROVIDER_DEFAULT, &h_token)) {
+			windows_errno(GetLastError());
+			log_msg(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			CloseHandle(stdin_read_handle);
+			CloseHandle(stdin_write_handle);
+			return -1;
+		}
+
+		/*
+		 * Create an environment block to ensure PATH is loaded.
+		 */
+		LPVOID env = NULL;
+		CreateEnvironmentBlock(&env, h_token, FALSE);
+
+		ret = CreateProcessAsUserW(
+			h_token,
+			NULL,
+			u8tou16(conv, command),
+			NULL, NULL,
+			FALSE,
+			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+			env, cwd,
+			&si, &pi
+		);
+
+		if (env)
+			DestroyEnvironmentBlock(env);
+		CloseHandle(h_token);
+	}
 	if (!ret) {
 		windows_errno(GetLastError());
 		log_msg(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
@@ -1509,8 +1572,6 @@ int os_script(const char* script_path, const char* run_as_user)
 	WCHAR command_line[PATH_MAX + 32];
 	int64_t start, stop;
 
-	(void)run_as_user;
-
 	/* resolve the script path to prevent symlink attacks */
 	if (!realpath(script_path, resolved_path)) {
 		log_msg(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
@@ -1529,16 +1590,69 @@ int os_script(const char* script_path, const char* run_as_user)
 	 */
 	swprintf(command_line, sizeof(command_line), L"cmd.exe /c \" %s \"", u8tou16(conv, resolved_path));
 
-	/* create the child process */
-	ret = CreateProcessW(
-		NULL,
-		command_line,
-		NULL, NULL,
-		FALSE, /* no need to inherit handles */
-		CREATE_NO_WINDOW,
-		NULL, NULL,
-		&si, &pi
-	);
+	/*
+	 * Set the Working Directory to the root of the C drive.
+	 * For safety, we avoid defaulting to C:\Windows\System32.
+	 */
+	const wchar_t* cwd = L"C:\\";
+
+	/*
+	 * No drop of privilege requested
+	 * Run exactly as the parent daemon
+	 */
+	if (run_as_user == 0 || run_as_user[0] == 0) {
+		/* create the child process */
+		ret = CreateProcessW(
+			NULL,
+			command_line,
+			NULL, NULL,
+			FALSE, /* no need to inherit handles */
+			CREATE_NO_WINDOW,
+			NULL, cwd,
+			&si, &pi
+		);
+	} else {
+		/*
+		 * Drop to restricted service account.
+		 */
+		HANDLE h_token = NULL;
+
+		/*
+		 * Validate that the requested user is actually a supported
+		 * Service Account before attempting logon.
+		 */
+		if (_stricmp(run_as_user, "LocalService") != 0 && _stricmp(run_as_user, "NetworkService") != 0) {
+			log_msg(LVL_ERROR, "only supported users are LocalService and NetworkService");
+			return -1;
+		}
+
+		if (!LogonUserW(u8tou16(conv, run_as_user), L"NT AUTHORITY", NULL, LOGON32_LOGON_SERVICE, LOGON32_PROVIDER_DEFAULT, &h_token)) {
+			windows_errno(GetLastError());
+			log_msg(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			return -1;
+		}
+
+		/*
+		 * Create an environment block to ensure PATH is loaded.
+		 */
+		LPVOID env = NULL;
+		CreateEnvironmentBlock(&env, h_token, FALSE);
+
+		ret = CreateProcessAsUserW(
+			h_token,
+			NULL,
+			command_line,
+			NULL, NULL,
+			FALSE,
+			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+			env, cwd,
+			&si, &pi
+		);
+
+		if (env)
+			DestroyEnvironmentBlock(env);
+		CloseHandle(h_token);
+	}
 	if (!ret) {
 		windows_errno(GetLastError());
 		log_msg(LVL_ERROR, "failed to create process for script, errno=%s(%d)", strerror(errno), errno);

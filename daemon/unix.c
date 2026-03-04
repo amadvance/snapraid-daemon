@@ -623,7 +623,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	}
 }
 
-int os_command(const char* command, const char* target_user, const char* stdin_text)
+int os_command(const char* command, const char* run_as_user, const char* stdin_text)
 {
 	pid_t pid;
 	int ret;
@@ -666,9 +666,9 @@ int os_command(const char* command, const char* target_user, const char* stdin_t
 			close(pipe_fds[1]); /* Close unused write end */
 
 		/* drop privileges first (if configured) */
-		if (target_user && target_user[0] != '\0') {
+		if (run_as_user && run_as_user[0] != 0) {
 			errno = 0;
-			struct passwd* pw = getpwnam(target_user);
+			struct passwd* pw = getpwnam(run_as_user);
 			if (!pw) {
 				/* if errno is 0, user simply wasn't found. Otherwise, it's a real error */
 				if (errno == 0)

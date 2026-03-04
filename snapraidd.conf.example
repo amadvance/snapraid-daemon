@@ -246,6 +246,12 @@ spindown_idle_minutes = 15
 # The user account used for executing script_pre_run and script_post_run.
 # If missing or left blank, the scripts run with the daemon's current privileges.
 #
+# On Linux, "nobody" is the standard choice for maximum isolation.
+# On Windows, "LocalService" is the preferred choice as it provides minimal
+# local access while maintaining network capabilities.
+# Alternatively, "NetworkService" can be used if the script specifically
+# requires the computer's network identity to access remote resources.
+#
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
 script_run_as_user = nobody
@@ -361,6 +367,13 @@ notify_result_level = error
 
 # The user account used for notify_heartbeat, notify_result and mail notifications.
 # If missing or left blank, the task runs with the daemon's current privileges.
+#
+# On Linux, "nobody" is the standard choice for maximum isolation.
+# On Windows, "LocalService" is the preferred choice for tasks like heartbeats
+# or 'curl' commands as it provides minimal local access while maintaining
+# network capabilities.
+# Alternatively, "NetworkService" can be used if the script specifically
+# requires the computer's network identity to access remote resources.
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.

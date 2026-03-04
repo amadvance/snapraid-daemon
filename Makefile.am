@@ -50,7 +50,7 @@ endif
 
 # Windows
 if HOST_WINDOWS
-snapraidd_LDADD += messages_res.o -ladvapi32
+snapraidd_LDADD += messages_res.o -ladvapi32 -luserenv
 
 messages.h messages.rc: daemon/messages.mc
 	$(WINDMC) $<
