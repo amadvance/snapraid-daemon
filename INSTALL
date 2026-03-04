@@ -4,33 +4,6 @@ SnapRAID Daemon INSTALL
 To build and install SnapRAID-Daemon, download the source code from
 http://www.snapraid.it and unpack it with the following commands:
 
-    tar xf snapraidd-.tar.gz
-    cd snapraidd-*
-
-To configure and build SnapRAID-Daemon, run:
-
-    ./configure
-    make
-
-If the tests complete with "Success", install the application and documentation
-using:
-
-    sudo make install
-
-To start using SnapRAID-Daemon, modify the example configuration file
-snapraidd.conf.example to suit your needs and copy it to /etc/snapraidd.conf.
-
-For additional guidance, refer to the SnapRAID-Daemon manpage by typing:
-
-    man snapraidd
-
-
-SnapRAID Daemon INSTALL
-=======================
-
-To build and install SnapRAID-Daemon, download the source code from
-http://www.snapraid.it and unpack it with the following commands:
-
     tar xf snapraidd-*.tar.gz
     cd snapraidd-*
 
