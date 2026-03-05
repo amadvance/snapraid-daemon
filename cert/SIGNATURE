@@ -1,48 +1,55 @@
 SnapRAID Daemon Windows Signature verification
 ==============================================
 
-The SnapRAID Daemon Windows installer is digitally signed. 
-To ensure the integrity of this software, you have two
-options for verification. 
+The SnapRAID Daemon Windows installer is digitally signed by the author. 
+Verification is NOT a requirement for installation, but it is available 
+if you want to manually confirm the integrity and origin of the software
+before running it.
 
-IMPORTANT: Always obtain the 'am_ca.crt' file and the 
-SHA-256 checksums directly from the official website:
-https://www.snapraid.it
+Regardless of the signature or whether you have trusted the author, Windows
+SmartScreen may still display a "Blue Box" warning. To proceed, users must
+typically click "More info" and then select "Run anyway" on the SmartScreen
+prompt.
 
 OPTION 1: INSTALL THE ROOT CERTIFICATE
 
-By installing the 'am_ca.crt' file, Windows will be 
-able to automatically verify the digital signature of 
-this and all future SnapRAID Daemon installers.
+By installing the 'am_ca.crt' file, Windows will be able to automatically
+verify the digital signature of this and all future SnapRAID Daemon
+installers.
 
 Steps:
 1. Download 'am_ca.crt' from https://www.snapraid.it
 2. Right-click 'am_ca.crt' and select "Install Certificate".
 3. Select "Local Machine" and click Next (requires Admin).
 4. Select "Place all certificates in the following store".
-5. Click "Browse" and choose 
-   "Trusted Root Certification Authorities".
+5. Click "Browse" and choose "Trusted Root Certification Authorities".
 6. Click OK, then Next, then Finish.
 7. Accept the security confirmation.
 
-Once installed, right-click the installer .exe, select 
-Properties, and the "Digital Signatures" tab will show 
-"This digital signature is OK."
+Once installed, right-click the installer .exe, select Properties, and the
+"Digital Signatures" tab will show "This digital signature is OK."
+
+Installing a Root Certificate involves a high level of trust in the author.
+By adding 'am_rootCA.crt' to your Trusted Root Store, you are granting the
+author the ability to sign any software or certificate that your computer will
+then trust implicitly.
+
+- Recommended for: Home Labs, Personal Servers, and Testing environments.
+- NOT Recommended for: Mission-critical production machines or enterprise
+  environments where strict security policies are required.
 
 ---
 
 OPTION 2: MANUAL SHA-256 HASH VERIFICATION
-If you prefer not to install the certificate, you can 
-manually verify that the file has not been tampered 
-with by checking its hash against the official record.
+If you prefer not to install the certificate, you can manually verify that
+the file has not been tampered with by checking its hash against the official
+record.
 
 Steps:
 1. Obtain the official SHA-256 hash from https://www.snapraid.it
 2. Open PowerShell on your computer.
-3. Type the following command:
-   Get-FileHash .\snapraid-daemon-*.exe
+3. Type the following command: Get-FileHash .\snapraid-daemon-*.exe
 4. Compare the output to the official hash.
 
-If the hashes match exactly, the file is authentic and 
-safe to run, even if Windows displays an "Unknown 
-Publisher" warning.
+If the hashes match exactly, the file is authentic and safe to run, even if
+Windows displays an "Unknown Publisher" warning.
