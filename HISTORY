@@ -9,6 +9,7 @@ SnapRAID-Daemon HISTORY
    directory. Your existing snapraid.conf file will NOT be overwritten.
    Once the installation is complete, open http://127.0.0.1:7267 in your web
    browser to access the dashboard.
+ * Task numbers are now persistent and don't change if the daemon is restarted.
 
 0.1beta1 01/03/2026
 ===================

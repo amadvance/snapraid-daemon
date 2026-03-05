@@ -265,6 +265,7 @@ static void runner_go(struct snapraid_state* state)
 	}
 
 	if (log_f != 0) {
+		fprintf(log_f, "daemon:number:%d\n", number);
 		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
 		if (high_cmd != 0 && high_cmd != cmd)
 			fprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));

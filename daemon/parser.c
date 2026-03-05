@@ -1000,7 +1000,13 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 	/* these are always unique and always changing something */
 	pulse(state, PULSE_ACTIVITY);
 
-	if (strcmp(tag, "start") == 0) {
+	if (strcmp(tag, "number") == 0) {
+		if (strint(&task->number, val) == 0) {
+			/* push the allocator to this new task */
+			if (state->runner.number_allocator < task->number)
+				state->runner.number_allocator = task->number;
+		}
+	} else if (strcmp(tag, "start") == 0) {
 		stri64(&task->unix_start_time, val);
 	} else if (strcmp(tag, "end") == 0) {
 		stri64(&task->unix_end_time, val);
