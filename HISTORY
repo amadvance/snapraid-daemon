@@ -22,6 +22,9 @@ SnapRAID-Daemon HISTORY
    Legacy 'script_pre_run', 'script_post_run' and script_run_as_user
    configuration options are now deprecated and ignored in favor of the new
    'hook_script' architecture.
+* If a disk changes its UUID, the array now enters a 'failing' state 
+   because it is assumed the original disk has disappeared. This condition 
+   persists until the content file reports a UUID matching the effective one.
 
 0.1beta1 01/03/2026
 ===================

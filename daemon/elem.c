@@ -536,23 +536,50 @@ static int health_device_list(tommy_list* list, char* reason, size_t reason_size
 	return health;
 }
 
-int health_disk(struct snapraid_disk* data, char* reason, size_t reason_size)
+static int health_split_list(const char* disk, tommy_list* list, char* reason, size_t reason_size)
 {
 	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
 
-	if (data->error_data != 0) {
-		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " silent data errors", data->name, data->error_data);
+	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
+		struct snapraid_split* split = i->data;
+
+		if (split->uuid[0] != 0 && split->content_uuid[0] != 0) {
+			/* if the UUID change it's a FAIL condition because the disk disappeared */
+			if (strcmp(split->uuid, split->content_uuid) != 0) {
+				snprintf(msg, sizeof(msg), "Disk %s has split %d with UUID changed from %s to %s", disk, split->index, split->content_uuid, split->uuid);
+				health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
+			}
+			if (split->uuid[0] == 0 && split->content_uuid[0] != 0) {
+				snprintf(msg, sizeof(msg), "Disk %s has split %d with UUID changed from %s to nothing", disk, split->index, split->content_uuid);
+				health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
+			}
+		}
+	}
+
+	return health;
+}
+
+int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
+{
+	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
+	int health = HEALTH_PASSED;
+
+	if (disk->error_data != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " silent data errors", disk->name, disk->error_data);
 		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
-	if (data->error_io != 0) {
-		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " input/output errors", data->name, data->error_io);
+	if (disk->error_io != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " input/output errors", disk->name, disk->error_io);
 		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
 	}
 
-	int low_health = health_device_list(&data->device_list, msg, sizeof(msg));
-	health = health_worse(health, low_health, reason, reason_size, msg);
+	int device_health = health_device_list(&disk->device_list, msg, sizeof(msg));
+	health = health_worse(health, device_health, reason, reason_size, msg);
+
+	int split_health = health_split_list(disk->name, &disk->split_list, msg, sizeof(msg));
+	health = health_worse(health, split_health, reason, reason_size, msg);
 
 	return health;
 }
