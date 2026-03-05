@@ -485,7 +485,8 @@ Configuration
     log_directory
 	The log_directory defines where the output of individual SnapRAID
 	commands is stored. If left unset, the daemon defaults to
-	/var/log/snapraid.
+	/var/log/snapraid in Linux and /log in the installation directory in
+	Windows.
 
 	Setting this option to an empty value (log_directory = ) will
 	explicitly disable the saving of command output to persistent files.

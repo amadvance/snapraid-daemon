@@ -262,7 +262,8 @@ hook_run_as_user = nobody
 ### Logging & Retention
 # The log_directory defines where the output of individual SnapRAID
 # commands is stored. If left unset, the daemon defaults to
-# /var/log/snapraid.
+# /var/log/snapraid in Linux and /log in the installation directory in
+# Windows.
 #
 # Setting this option to an empty value (log_directory = ) will
 # explicitly disable the saving of command output to persistent files.
@@ -275,7 +276,7 @@ hook_run_as_user = nobody
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-log_directory = /var/log/snapraid
+#log_directory = /var/log/snapraid
 
 # To prevent your storage from filling up, log_retention_days sets the
 # age at which old command logs are deleted. Logs are kept indefinitely
