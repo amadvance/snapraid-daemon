@@ -368,7 +368,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 /**
  * Executes a script directly via its file descriptor.
  */
-int os_script(const char* script_path, const char* run_as_user)
+int os_script(char** argv, const char* run_as_user)
 {
 	int fd;
 	struct stat st;
@@ -380,6 +380,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	uid_t daemon_uid, daemon_euid;
 	gid_t daemon_gid, daemon_egid;
 	int64_t start, stop;
+	const char* script_path = argv[0];
 
 	daemon_uid = getuid();
 	daemon_euid = geteuid();
@@ -571,12 +572,13 @@ int os_script(const char* script_path, const char* run_as_user)
 		/* child will receive SIGALRM in 300 seconds (5 minutes) as a timeout */
 		alarm(300);
 
+		/* use the resolved path for execution */
+		argv[0] = resolved_path;
+
 		/*
 		 * Direct Execution via File Descriptor
 		 * The kernel uses the shebang in the FD to find the interpreter.
 		 */
-		char* const argv[] = { (char*)script_path, 0 };
-
 #if HAVE_FEXECVE
 		fexecve(fd, argv, envp_scrubbed);
 #else

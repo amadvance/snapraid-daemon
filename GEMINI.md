@@ -145,7 +145,7 @@ The configuration file supports:
 #### Restricted Parameters
 
 These require `net_config_full_access = 1` to modify via API:
-- `script_pre_run`, `script_post_run`, `script_run_as_user`
+- `hook_script`, `hook_run_as_user`
 - `log_directory`, `log_retention_days`
 - `notify_heartbeat`, `notify_result`, `notify_result_level`, `notify_run_as_user`
 
@@ -242,7 +242,7 @@ Generated reports include:
 
 ### Security Considerations
 
-1. **Script Sandboxing**: `script_run_as_user` / `notify_run_as_user` drop privileges
+1. **Script Sandboxing**: `hook_run_as_user` / `notify_run_as_user` drop privileges
 2. **Path Validation**: Absolute paths required, `..` rejected in web root
 3. **API Access Control**: `net_acl` IP filtering, CORS policy
 4. **Config Immutability**: Critical settings require manual file edit

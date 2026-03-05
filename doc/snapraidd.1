@@ -392,14 +392,11 @@ for modification via PATCH requests:
 .RS 0
 .PD 0
 .HP 4
-.I script_run_as_user
-The account used for executing pre/post scripts.
+.I hook_run_as_user
+The account used for executing hook_script.
 .HP 4
-.I script_pre_run
-The absolute path to the pre\-execution script.
-.HP 4
-.I script_post_run
-The absolute path to the post\-execution script.
+.I hook_script
+The absolute path to the hook script.
 .HP 4
 .I log_directory
 The persistent storage path for command outputs.
@@ -531,23 +528,53 @@ service, or system process accesses the disk, the idle timer is reset.
 .PP
 If this option is unset, the daemon will not manage disk power states,
 relying instead on the OS or hardware controllers.
-.SS script_pre_run/script_post_run 
-Defines absolute paths to custom scripts to be executed immediately before
-or after the sync, scrub, check, or fix commands. These scripts allow
-for custom logic such as mounting drives or sending custom alerts.
+.SS hook_script 
+Defines an absolute path to an executable script to be triggered by
+daemon events.
+.PP
+The script is executed with a single positional argument that
+represents the lifecycle stage of the task currently being processed
+by the daemon:
+.RS 0
 .PD 0
-.IP \(bu
-The path must be absolute (starting with /).
-.IP \(bu
-The script must not be world\-writable (recommended permissions: 700 or 755).
-.IP \(bu
-The script owner must match the daemon user or be root.
-.IP \(bu
-The script must contain a valid shebang (e.g., #!/bin/sh).
+.HP 4
+.I task\-begin
+Triggered immediately before the daemon begins a
+scheduled sequence of actions that access the array
+(e.g., sync, scrub, or maintenance).
+.HP 4
+.I task\-end
+Triggered after the entire sequence of actions has
+concluded successfully.
 .PD
-.SS script_run_as_user 
-Specifies the user account used to execute the pre\-run and post\-run
-scripts. If this is missing or blank, scripts are executed with the
+.RE
+task\-error: Triggered if the task sequence is aborted, interrupted,
+.PP
+.RS 4
+or encounters an operational failure.
+.RE
+.PP
+Note that \'task\-end\' reflects only whether the task finished its
+execution cycle. It does not necessarily reflect hardware or data
+integrity. For example, a sync command may return \'task\-end\' even if
+the array is technically in a corrupt state, provided the sync process
+itself finished without crashing.
+.PP
+Future versions of the daemon will introduce new event types that may
+not relate to array access or follow the \`task\-\` naming convention.
+It is strongly recommended to implement a default handler to ignore
+unrecognized events
+.PP
+SECURITY REQUIREMENTS:
+* The path MUST be absolute (starting with /).
+* The script file MUST NOT be world\-writable (recommended: 700 or 755).
+* The script owner MUST match the user running the daemon or be root.
+* The script MUST contain a valid shebang (e.g., #!/bin/sh).
+.PP
+This remains inactive if no path is defined.
+.SS hook_run_as_user 
+Specifies the user account used to execute the hook_script.
+If this is missing or blank, the script is executed with the
 same privileges as the daemon process.
 .PP
 On Linux, \[dq]nobody\[dq] is the standard choice for maximum isolation.

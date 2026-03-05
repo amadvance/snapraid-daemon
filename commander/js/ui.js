@@ -932,14 +932,6 @@ export const renderSettings = (config) => {
                 ${inputField('log_directory', 'Log Directory', 'text', 'The folder where task outputs are saved; this is required for the daemon to remember previous run results.', !fullAccess)}
                 ${inputField('log_retention_days', 'Log Retention (Days)', 'number', 'The number of days to keep old task logs before they are automatically deleted to save space.', !fullAccess)}
             </div>
-
-            <!-- Script -->
-            <div class="card">
-                <h3>Script</h3>
-                ${inputField('script_pre_run', 'Script Pre-Run', 'text', 'The absolute path to a custom script that will execute immediately before any task begins.', !fullAccess)}
-                ${inputField('script_post_run', 'Script Post-Run', 'text', 'The absolute path to a custom script that will execute immediately after any task completes.', !fullAccess)}
-                ${inputField('script_run_as_user', 'Run Scripts As User', 'text', 'The specific system user account used to execute your custom pre-run and post-run scripts.', !fullAccess)}
-            </div>
             </div>
 
             <!-- Notifications -->
@@ -968,6 +960,15 @@ export const renderSettings = (config) => {
                 <div class="mt-2 text-sm">
                     ${inputField('notify_run_as_user', 'Run Notification As User', 'text', 'The system user account responsible for executing heartbeat pings and notification commands.', !fullAccess, '', 'w-1-2')}
                 </div>
+            </div>
+            </div>
+            
+            <!-- Hook -->
+            <div class="grid-1">
+            <div class="card">
+                <h3>Hook</h3>
+                ${inputField('hook_script', 'Hook Script', 'text', 'The absolute path to a custom script to trigger custom logic for various daemon events.', !fullAccess)}
+                ${inputField('hook_run_as_user', 'Run Hook Script As User', 'text', 'The specific system user account used to execute your custom hook script.', !fullAccess)}
             </div>
             </div>
         </form>

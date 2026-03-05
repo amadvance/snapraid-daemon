@@ -611,39 +611,26 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("script_run_as_user")) == 0) {
+			} else if (json_entry(js, &jv[j], json_const("hook_run_as_user")) == 0) {
 				if (!state->config.net_config_full_access) {
 					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.script_run_as_user, sizeof(state->config.script_run_as_user)) == 0) {
+				if (json_string(js, &jv[j], state->config.hook_run_as_user, sizeof(state->config.hook_run_as_user)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("script_pre_run")) == 0) {
+			} else if (json_entry(js, &jv[j], json_const("hook_script")) == 0) {
 				if (!state->config.net_config_full_access) {
 					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.script_pre_run, sizeof(state->config.script_pre_run)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
-				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
-					goto bad;
-				}
-				++j;
-			} else if (json_entry(js, &jv[j], json_const("script_post_run")) == 0) {
-				if (!state->config.net_config_full_access) {
-					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
-					goto forbidden;
-				}
-				++j;
-				if (json_string(js, &jv[j], state->config.script_post_run, sizeof(state->config.script_post_run)) == 0) {
+				if (json_string(js, &jv[j], state->config.hook_script, sizeof(state->config.hook_script)) == 0) {
 					config_set_string(&state->config, json_token(js, &jv[j - 1]), json_token(js, &jv[j]));
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
@@ -825,9 +812,8 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_int(&s, level, "probe_interval_minutes", config->probe_interval_minutes);
 	ss_json_int(&s, level, "spindown_idle_minutes", config->spindown_idle_minutes);
 
-	ss_json_str(&s, level, "script_run_as_user", config->script_run_as_user);
-	ss_json_str(&s, level, "script_pre_run", config->script_pre_run);
-	ss_json_str(&s, level, "script_post_run", config->script_post_run);
+	ss_json_str(&s, level, "hook_run_as_user", config->hook_run_as_user);
+	ss_json_str(&s, level, "hook_script", config->hook_script);
 
 	ss_json_str(&s, level, "log_directory", config->log_directory);
 	ss_json_int(&s, level, "log_retention_days", config->log_retention_days);

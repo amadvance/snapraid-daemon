@@ -136,7 +136,7 @@ struct snapraid_task* task_alloc(void)
 	tommy_list_init(&task->message_list);
 	task->message_list_count = 0;
 	sl_init(&task->fix_list);
-	task->health = HEALTH_PASSED;
+	task->health = HEALTH_PENDING;
 	return task;
 }
 
@@ -559,7 +559,7 @@ int health_disk(struct snapraid_disk* data, char* reason, size_t reason_size)
 
 int health_task(struct snapraid_task* task)
 {
-	int health = task->health;
+	int health = HEALTH_PASSED;
 
 	if (task->error_data != 0)
 		health = health_worse(health, HEALTH_CORRUPT, 0, 0, 0);

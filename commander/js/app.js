@@ -606,7 +606,7 @@ const app = {
 
         const fullAccess = app.state.config?.config_full_access !== false;
         const protectedFields = [
-            'script_run_as_user', 'script_pre_run', 'script_post_run',
+            'hook_run_as_user', 'hook_script',
             'log_directory', 'log_retention_days', 'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level'
         ];
 

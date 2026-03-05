@@ -1216,6 +1216,14 @@ static int needs_quote(const WCHAR* arg)
 		cmd[pos++] = (c); \
 	} while (0)
 
+static int fixcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
+{
+	while (*arg)
+		charcat(*arg++);
+
+	return pos;
+}
+
 static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 {
 	int has_quote;
@@ -1562,7 +1570,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	}
 }
 
-int os_script(const char* script_path, const char* run_as_user)
+int os_script(char** argv, const char* run_as_user)
 {
 	wchar_t conv[CONV_MAX];
 	PROCESS_INFORMATION pi;
@@ -1571,6 +1579,7 @@ int os_script(const char* script_path, const char* run_as_user)
 	char resolved_path[PATH_MAX];
 	WCHAR command_line[PATH_MAX + 32];
 	int64_t start, stop;
+	const char* script_path = argv[0];
 
 	/* resolve the script path to prevent symlink attacks */
 	if (!realpath(script_path, resolved_path)) {
@@ -1584,11 +1593,33 @@ int os_script(const char* script_path, const char* run_as_user)
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 
+	/* prepare command line string (Windows uses a single string, not an array) */
+	WCHAR cmd_buffer[COMMAND_LINE_MAX];
+	int pos = 0;
+
 	/*
 	 * We add an extra set of quotes: cmd /c " "path with spaces" arg1 "arg 2" "
 	 * This ensures cmd.exe parses the internal quotes correctly.
 	 */
-	swprintf(command_line, sizeof(command_line), L"cmd.exe /c \" %s \"", u8tou16(conv, resolved_path));
+	pos = fixcat(cmd_buffer, COMMAND_LINE_MAX, pos, L"cmd.exe /c \" ");
+	pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, resolved_path));
+	if (pos < 0) {
+		log_msg(LVL_ERROR, "command to long for script");
+		exit(EXIT_FAILURE);
+	}
+	for (int i = 1; argv[i]; ++i) {
+		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
+		if (pos < 0) {
+			log_msg(LVL_ERROR, "command to long for script");
+			exit(EXIT_FAILURE);
+		}
+	}
+	pos = fixcat(cmd_buffer, COMMAND_LINE_MAX, pos, L" \"");
+	if (pos < 0) {
+		log_msg(LVL_ERROR, "command to long for script");
+		exit(EXIT_FAILURE);
+	}
+	cmd_buffer[pos] = 0;
 
 	/*
 	 * Set the Working Directory to the root of the C drive.
@@ -1604,7 +1635,7 @@ int os_script(const char* script_path, const char* run_as_user)
 		/* create the child process */
 		ret = CreateProcessW(
 			NULL,
-			command_line,
+			cmd_buffer,
 			NULL, NULL,
 			FALSE, /* no need to inherit handles */
 			CREATE_NO_WINDOW,

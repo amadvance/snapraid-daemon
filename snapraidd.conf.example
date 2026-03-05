@@ -89,9 +89,8 @@ net_allowed_origin = self
 # modified via the REST API.
 # When set to 0 (default), security-sensitive options are read-only.
 # When set to 1, the following options can be updated via PATCH requests:
-#   - script_run_as_user
-#   - script_pre_run
-#   - script_post_run
+#   - hook_run_as_user
+#   - hook_script
 #   - log_directory
 #   - log_retention_days
 #   - notify_run_as_user
@@ -226,24 +225,28 @@ probe_interval_minutes = 3
 # If unset, the daemon will not manage disk power states.
 spindown_idle_minutes = 15
 
-# Specify absolute paths for script_pre_run and script_post_run to trigger
-# custom logic immediately before or after the 'sync', 'scrub', 'check' and
-# 'fix' commands.
+# Specify an absolute path for 'hook_script' to trigger custom logic for various
+# daemon events.
+#
+# The script is executed with a single positional argument:
+# 1. EVENT: The lifecycle stage of an action accessing the array.
+#    - 'task-begin': Triggered before the daemon begins accessing the array.
+#    - 'task-end':   Triggered after the array access concludes successfully.
+#    - 'task-error': Triggered if the array access is interrupted or fails.
 #
 # SECURITY REQUIREMENTS:
 # 1. The path MUST be absolute (starting with /).
 # 2. The script file MUST NOT be world-writable (recommended: 700 or 755).
 # 3. The script owner MUST match the user running the daemon or be root.
-# 4. The script MUST contain a valid shebang (e.g., #!/bin/sh)
+# 4. The script MUST contain a valid shebang (e.g., #!/bin/sh).
 #
-# These remain inactive if no paths are defined.
+# This remains inactive if no path is defined.
 #
-# These options can only be modified via the REST API if 'net_config_full_access'
+# This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-#script_pre_run = /usr/local/bin/pre-snapraid.sh
-#script_post_run = /usr/local/bin/post-snapraid.sh
+#hook_script = /usr/local/bin/snapraid-hook.sh
 
-# The user account used for executing script_pre_run and script_post_run.
+# The user account used for executing hook_script.
 # If missing or left blank, the scripts run with the daemon's current privileges.
 #
 # On Linux, "nobody" is the standard choice for maximum isolation.
@@ -254,7 +257,7 @@ spindown_idle_minutes = 15
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-script_run_as_user = nobody
+hook_run_as_user = nobody
 
 ### Logging & Retention
 # The log_directory defines where the output of individual SnapRAID

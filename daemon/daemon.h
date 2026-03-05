@@ -65,19 +65,19 @@ pid_t os_spawn(char** argv, int* stderr_fd);
 /**
  * Execute a system command with optional user context and input.
  * @param command Command to execute
- * @param target_user User to run command as (NULL for current user)
+ * @param run_as_user User to run command as (NULL for current user)
  * @param stdin_text Text to provide as stdin (NULL for no input)
  * @return Exit status of command
  */
-int os_command(const char* command, const char* target_user, const char* stdin_text);
+int os_command(const char* command, const char* run_as_user, const char* stdin_text);
 
 /**
  * Execute a script file with specified user context.
- * @param script_path Path to script file
+ * @param argv Array of command line arguments
  * @param run_as_user User to run script as (NULL for current user)
  * @return Exit status of script
  */
-int os_script(const char* script_path, const char* run_as_user);
+int os_script(char** argv, const char* run_as_user);
 
 /**
  * Gather static system information.

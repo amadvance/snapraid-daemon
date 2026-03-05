@@ -10,6 +10,18 @@ SnapRAID-Daemon HISTORY
    Once the installation is complete, open http://127.0.0.1:7267 in your web
    browser to access the dashboard.
  * Task numbers are now persistent and don't change if the daemon is restarted.
+ * Added 'hook_script' and 'hook_run_as_user' to replace 'script_pre_run',
+   'script_post_run' and 'script_run_as_user'.
+   The new 'hook_script' uses a unified task-lifecycle model ('task-begin', 
+   'task-end', 'task-error') passed as a single positional argument. These
+   events are triggered whenever an action that accesses the array is
+   scheduled and executed.
+   Future versions will introduce new event types. Scripts should be 
+   designed to handle unknown events gracefully. Future releases will 
+   also provide additional information via environment variables.
+   Legacy 'script_pre_run', 'script_post_run' and script_run_as_user
+   configuration options are now deprecated and ignored in favor of the new
+   'hook_script' architecture.
 
 0.1beta1 01/03/2026
 ===================

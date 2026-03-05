@@ -1,15 +1,6 @@
 SnapRAID Daemon TODO
 ====================
 
-BREAKING COMPATIBILITY CHANGES
-
-- Replace separate script_pre_run + script_post_run with unified event-based script handler 
-  - single script + event type as first arg
-  - arg could be "maintenance pre" and "maintenance post", "undelete pre", "undelete post", "heal..."
-  - pass other context via env vars ? Like result status.
-
-NOT BREAKING COMPATIBILITY CHANGES
-
 - Add new config option snapraid_binary = /path/to/snapraid (or similar)
   - overrides hardcoded path search completely when set
   - allows using wrapper scripts (snapraid-btrfs, btrfssnapraid, custom dispatchers, …)

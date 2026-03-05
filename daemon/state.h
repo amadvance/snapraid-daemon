@@ -89,8 +89,8 @@ typedef tommy_list sl_t;
 /**
  * Health
  */
-#define HEALTH_PENDING 0
 #define HEALTH_PASSED 1
+#define HEALTH_PENDING 0
 #define HEALTH_CORRUPT -1
 #define HEALTH_PREFAIL -2
 #define HEALTH_FAILING -3
@@ -466,9 +466,8 @@ struct snapraid_config {
 	int scrub_older_than; /**< Scrub blocks older than this many days */
 	int probe_interval_minutes; /**< Interval for disk probing in minutes */
 	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
-	char script_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
-	char script_pre_run[CONFIG_MAX]; /**< Pre-run script path */
-	char script_post_run[CONFIG_MAX]; /**< Post-run script path */
+	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
+	char hook_script[CONFIG_MAX]; /**< Hook script path */
 	char log_directory[CONFIG_MAX]; /**< Directory for log files */
 	int log_retention_days; /**< Number of days to keep logs */
 	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */

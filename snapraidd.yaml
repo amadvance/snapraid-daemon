@@ -171,7 +171,7 @@ paths:
         the signal has been successfully sent. However, the actual termination
         of the SnapRAID process may take a few seconds to complete gracefully.
 
-        Note that the script_pre_run and script_post_run are never terminated.
+        Note that the hook_script is never terminated.
       responses:
         '202':
           $ref: '#/components/responses/CommandStopped'
@@ -1365,9 +1365,8 @@ components:
 
             If set to false, the following restricted options are forced into a
             read-only state for all API requests:
-            - script_run_as_user
-            - script_pre_run
-            - script_post_run
+            - hook_run_as_user
+            - hook_script
             - log_directory
             - log_retention_days
             - notify_run_as_user
@@ -1462,12 +1461,11 @@ components:
             physical read/write I/O. Power-state probes do not reset
             this timer but allow more frequent I/O detection.
             Set to 0 to disable.
-        script_run_as_user:
+        hook_run_as_user:
           type: string
           example: "nobody"
           description: >
-            The system user account utilized for the execution of 'script_pre_run'
-            and 'script_post_run' hooks.
+            The system user account utilized for the execution of 'hook_script'.
 
             If this parameter is null or empty, the scripts inherit the
             process privileges of the running daemon.
@@ -1475,24 +1473,12 @@ components:
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly
             enabled in the static configuration file.
-        script_pre_run:
+        hook_script:
           type: string
-          example: "/usr/local/bin/pre-snapraid.sh"
+          example: "/usr/local/bin/snapraid-hook.sh"
           description: >
-            Absolute path to an executable shell script invoked prior to
-            SnapRAID tasks. Must contain a valid shebang. Compiled binaries
-            are not supported.
-
-            For security enforcement, this parameter is immutable via
-            the REST API unless 'net_config_full_access' is explicitly
-            enabled in the static configuration file.
-        script_post_run:
-          type: string
-          example: "/usr/local/bin/post-snapraid.sh"
-          description: >
-            Absolute path to an executable shell script invoked after
-            SnapRAID tasks (on success or failure). Must contain a valid
-            shebang. Compiled binaries are not supported.
+            Absolute path to a custom script to trigger custom logic for
+            various daemon events.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly

@@ -330,9 +330,8 @@ through the web interface.
 When set to 1, the following configuration options become accessible
 for modification via PATCH requests:
 
-script_run_as_user - The account used for executing pre/post scripts.
-script_pre_run - The absolute path to the pre-execution script.
-script_post_run - The absolute path to the post-execution script.
+hook_run_as_user - The account used for executing hook_script.
+hook_script - The absolute path to the hook script.
 log_directory - The persistent storage path for command outputs.
 log_retention_days - The duration for which log files are kept.
 notify_run_as_user - The account used for notification commands.
@@ -458,19 +457,44 @@ service, or system process accesses the disk, the idle timer is reset.
 If this option is unset, the daemon will not manage disk power states,
 relying instead on the OS or hardware controllers.
 
----- 6.3.3 script_pre_run/script_post_run ----
-Defines absolute paths to custom scripts to be executed immediately before
-or after the sync, scrub, check, or fix commands. These scripts allow
-for custom logic such as mounting drives or sending custom alerts.
+---- 6.3.3 hook_script ----
+Defines an absolute path to an executable script to be triggered by
+daemon events.
 
-* The path must be absolute (starting with /).
-* The script must not be world-writable (recommended permissions: 700 or 755).
-* The script owner must match the daemon user or be root.
-* The script must contain a valid shebang (e.g., #!/bin/sh).
+The script is executed with a single positional argument that
+represents the lifecycle stage of the task currently being processed
+by the daemon:
 
----- 6.3.4 script_run_as_user ----
-Specifies the user account used to execute the pre-run and post-run
-scripts. If this is missing or blank, scripts are executed with the
+task-begin - Triggered immediately before the daemon begins a
+    scheduled sequence of actions that access the array
+    (e.g., sync, scrub, or maintenance).
+task-end - Triggered after the entire sequence of actions has
+    concluded successfully.
+task-error: Triggered if the task sequence is aborted, interrupted,
+    or encounters an operational failure.
+
+Note that 'task-end' reflects only whether the task finished its
+execution cycle. It does not necessarily reflect hardware or data
+integrity. For example, a sync command may return 'task-end' even if
+the array is technically in a corrupt state, provided the sync process
+itself finished without crashing.
+
+Future versions of the daemon will introduce new event types that may
+not relate to array access or follow the `task-` naming convention.
+It is strongly recommended to implement a default handler to ignore
+unrecognized events
+
+SECURITY REQUIREMENTS:
+* The path MUST be absolute (starting with /).
+* The script file MUST NOT be world-writable (recommended: 700 or 755).
+* The script owner MUST match the user running the daemon or be root.
+* The script MUST contain a valid shebang (e.g., #!/bin/sh).
+
+This remains inactive if no path is defined.
+
+---- 6.3.4 hook_run_as_user ----
+Specifies the user account used to execute the hook_script.
+If this is missing or blank, the script is executed with the
 same privileges as the daemon process.
 
 On Linux, "nobody" is the standard choice for maximum isolation.
