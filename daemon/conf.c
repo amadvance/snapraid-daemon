@@ -194,7 +194,9 @@ int config_load_locked(struct snapraid_state* state)
 			strtrim(key);
 			strtrim(val);
 
-			if (strcmp(key, "net_enabled") == 0) {
+			if (strcmp(key, "sys_engine") == 0) {
+				sncpy(config->sys_engine, sizeof(config->sys_engine), val);
+			} else if (strcmp(key, "net_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->net_enabled) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
@@ -499,6 +501,7 @@ void config_init(struct snapraid_state* state)
 	memset(config, 0, sizeof(*config));
 
 	/* set default */
+	config->sys_engine[0] = 0;
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:7627");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");

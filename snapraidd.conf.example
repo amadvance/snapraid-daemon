@@ -10,6 +10,17 @@
 #    the daemon from overwriting your manual edits with its memory state.
 #
 
+### System
+# Specify the absolute path to the SnapRAID CLI executable (the 'engine').
+# If omitted, the daemon automatically searches:
+# - Linux: /usr/bin, /usr/local/bin
+# - Wine: /usr/bin
+# - Windows: The directory containing the daemon executable.
+#
+# This option is not accessible from the REST API.
+# It requires a manual edit and a configuration reload (SIGHUP) to apply.
+#sys_engine = /usr/bin/snapraid
+
 ### Network & REST API
 # The net_enabled switch acts as the master toggle for the HTTP interface.
 # If this is set to 0 or left blank, the daemon operates in a secure,

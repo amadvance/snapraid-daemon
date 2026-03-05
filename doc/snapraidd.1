@@ -270,6 +270,16 @@ sudo killall \-HUP snapraidd
 For a comprehensive view of how these settings are applied in a
 real\-world environment, refer to the comments in the \`snapraidd.conf\`
 file installed.
+.SS System 
+These settings control the core execution environment and the
+underlying SnapRAID engine. These options are not visible or
+modifiable via the REST API. They require a manual edit of the
+configuration file and a configuration reload (SIGHUP) or daemon
+restart to apply.
+.SS sys_engine 
+Sets the absolute path to the SnapRAID executable. If omitted,
+the daemon searches /usr/bin and /usr/local/bin on Linux, /usr/bin
+in Wine, and the daemon\'s base directory on Windows.
 .SS Network & REST API 
 These settings control the network interface. These options are not
 visible from the REST API. They require a manual edit of the

@@ -116,7 +116,6 @@ static char* u16tou8(char* conv_buf, const wchar_t* src)
 	return u16tou8ex(conv_buf, src, wcslen(src) + 1, &len);
 }
 
-static WCHAR path_snapraidW[PATH_MAX];
 static char path_snapraid[PATH_MAX];
 static char path_conf[PATH_MAX];
 static char path_log[PATH_MAX];
@@ -158,8 +157,8 @@ void os_init(void)
 		snwprintf(conv, PATH_MAX, L"%ls", exedir);
 		u16tou8(path_data, conv);
 
-		snwprintf(path_snapraidW, PATH_MAX, L"%lssnapraid.exe", exedir);
-		u16tou8(path_snapraid, path_snapraidW);
+		snwprintf(conv, PATH_MAX, L"%lssnapraid.exe", exedir);
+		u16tou8(path_snapraid, conv);
 	}
 }
 
@@ -1169,15 +1168,24 @@ int windows_join(thread_id_t thread, void** retval)
 /****************************************************************************/
 /* exec */
 
-const char* os_find_snapraid(void)
+const char* os_find_engine(const char* sys_engine)
 {
-	DWORD attrib = GetFileAttributesW(path_snapraidW);
+	wchar_t conv[CONV_MAX];
+	DWORD attrib;
+	const char* path;
 
-	/* check for existence every time */
+	if (sys_engine && sys_engine[0])
+		path = sys_engine;
+	else
+		path = path_snapraid;
+
+	DWORD attrib = GetFileAttributesW(u8tou16(conv, path));
+
+	/* check for existence every time in case it's installed at later time */
 	if (attrib == INVALID_FILE_ATTRIBUTES)
 		return 0;
 
-	return path_snapraid;
+	return path;
 }
 
 void os_default_log(char* dst, size_t dst_size)

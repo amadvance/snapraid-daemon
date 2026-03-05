@@ -1,10 +1,6 @@
 SnapRAID Daemon TODO
 ====================
 
-- Add new config option snapraid_binary = /path/to/snapraid (or similar)
-  - overrides hardcoded path search completely when set
-  - allows using wrapper scripts (snapraid-btrfs, btrfssnapraid, custom dispatchers, …)
-
 - Implement a new "maintenance" command for CLI that implements sync+scrub,
   run one after another.
 
@@ -12,6 +8,7 @@ SnapRAID Daemon TODO
 
 - Support maintenance scheduling for multiple days of the week
   Like: maintenance_schedule = Mon 02:00, Wed 03:00
+
 - Send a notification report every time a PREFAIL attribute change
   Messages can be generated in the parser, and then a dedicated report can be
   scheduled at the end of each task.

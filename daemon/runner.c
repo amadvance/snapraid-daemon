@@ -724,7 +724,7 @@ void runner_done(struct snapraid_state* state)
 
 static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	const char* snapraid = os_find_snapraid();
+	const char* snapraid = os_find_engine(state->config.sys_engine);
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");

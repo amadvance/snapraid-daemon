@@ -121,11 +121,17 @@ static const char* snapraid_paths[] = {
 	0
 };
 
-const char* os_find_snapraid(void)
+const char* os_find_engine(const char* sys_engine)
 {
-	for (int i = 0; snapraid_paths[i]; ++i) {
-		if (access(snapraid_paths[i], X_OK) == 0)
-			return snapraid_paths[i];
+	/* check for existence every time in case it's installed at later time */
+	if (sys_engine != 0 && sys_engine[0] != 0) {
+		if (access(sys_engine, X_OK) == 0)
+			return sys_engine;
+	} else {
+		for (int i = 0; snapraid_paths[i]; ++i) {
+			if (access(snapraid_paths[i], X_OK) == 0)
+				return snapraid_paths[i];
+		}
 	}
 
 	return 0;

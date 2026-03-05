@@ -25,7 +25,7 @@
  * Find the SnapRAID binary in the system.
  * @return Path to SnapRAID binary, or NULL if not found
  */
-const char* os_find_snapraid(void);
+const char* os_find_engine(const char* sys_engine);
 
 /**
  * Default paths.

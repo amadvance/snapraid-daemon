@@ -448,6 +448,7 @@ struct snapraid_config {
 	const char* pidfile_arg; /**< PID file specified as argument, or 0 */
 	tommy_list line_list; /**< List of snapraid_config_line */
 	/* empty string or 0 value means value not set and/or disabled */
+	char sys_engine[CONFIG_MAX]; /**< Engine path. */
 	int net_enabled; /**< 1 if network interface is enabled, 0 otherwise */
 	char net_port[CONFIG_MAX]; /**< Network port to bind to */
 	char net_acl[CONFIG_MAX]; /**< IP access control list */
