@@ -627,7 +627,7 @@ const app = {
         const fullAccess = app.state.config?.config_full_access !== false;
         const protectedFields = [
             'hook_run_as_user', 'hook_script',
-            'log_directory', 'log_retention_days', 'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level'
+            'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level'
         ];
 
         // Manual conversion to handle types correctly
@@ -636,8 +636,7 @@ const app = {
 
             // Check if it should be a number
             if (['sync_threshold_deletes', 'sync_threshold_updates',
-                'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes',
-                'log_retention_days'].includes(key)) {
+                'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes'].includes(key)) {
                 updates[key] = parseInt(value, 10);
             } else if (key === 'scrub_percentage') {
                 updates[key] = parseFloat(value);

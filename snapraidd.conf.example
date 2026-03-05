@@ -21,6 +21,26 @@
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 #sys_engine = /usr/bin/snapraid
 
+# The sys_log_directory defines where the output of individual SnapRAID
+# commands is stored. If left unset, the daemon defaults to
+# /var/log/snapraid in Linux and /log in the installation directory in
+# Windows.
+#
+# Setting this option to an empty value (sys_log_directory = ) will
+# explicitly disable the saving of command output to persistent files.
+#
+# IMPORTANT: While it is possible to leave this empty to avoid saving files,
+# these logs are used by the daemon to reconstruct the past state of the
+# array (e.g., tracking the last successful sync or scrub). If no log
+# directory is provided, the daemon will lose its "memory" of previous
+# task results every time it is restarted.
+#sys_log_directory = /var/log/snapraid
+
+# To prevent your storage from filling up, sys_log_retention_days sets the
+# age at which old command logs are deleted. Logs are kept indefinitely
+# if this is set to 0 or left unset.
+sys_log_retention_days = 120
+
 ### Network & REST API
 # The net_enabled switch acts as the master toggle for the HTTP interface.
 # If this is set to 0 or left blank, the daemon operates in a secure,
@@ -102,8 +122,6 @@ net_allowed_origin = self
 # When set to 1, the following options can be updated via PATCH requests:
 #   - hook_run_as_user
 #   - hook_script
-#   - log_directory
-#   - log_retention_days
 #   - notify_run_as_user
 #   - notify_heartbeat
 #   - notify_result
@@ -269,33 +287,6 @@ spindown_idle_minutes = 15
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
 hook_run_as_user = nobody
-
-### Logging & Retention
-# The log_directory defines where the output of individual SnapRAID
-# commands is stored. If left unset, the daemon defaults to
-# /var/log/snapraid in Linux and /log in the installation directory in
-# Windows.
-#
-# Setting this option to an empty value (log_directory = ) will
-# explicitly disable the saving of command output to persistent files.
-#
-# IMPORTANT: While it is possible to leave this empty to avoid saving files,
-# these logs are used by the daemon to reconstruct the past state of the
-# array (e.g., tracking the last successful sync or scrub). If no log
-# directory is provided, the daemon will lose its "memory" of previous
-# task results every time it is restarted.
-#
-# This option can only be modified via the REST API if 'net_config_full_access'
-# is set to 1. Otherwise, it remains read-only for security reasons.
-#log_directory = /var/log/snapraid
-
-# To prevent your storage from filling up, log_retention_days sets the
-# age at which old command logs are deleted. Logs are kept indefinitely
-# if this is set to 0 or left unset.
-#
-# This option can only be modified via the REST API if 'net_config_full_access'
-# is set to 1. Otherwise, it remains read-only for security reasons.
-log_retention_days = 120
 
 ### Notifications
 # --- System Log (syslog/journald) ---

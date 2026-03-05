@@ -196,6 +196,13 @@ int config_load_locked(struct snapraid_state* state)
 
 			if (strcmp(key, "sys_engine") == 0) {
 				sncpy(config->sys_engine, sizeof(config->sys_engine), val);
+			} else if (strcmp(key, "sys_log_directory") == 0) {
+				sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), val);
+			} else if (strcmp(key, "sys_log_retention_days") == 0) {
+				if (parse_int(val, 0, 10000, &config->sys_log_retention_days) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "net_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->net_enabled) == 0) {
 				} else {
@@ -268,13 +275,6 @@ int config_load_locked(struct snapraid_state* state)
 				sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), val);
 			} else if (strcmp(key, "hook_script") == 0) {
 				sncpy(config->hook_script, sizeof(config->hook_script), val);
-			} else if (strcmp(key, "log_directory") == 0) {
-				sncpy(config->log_directory, sizeof(config->log_directory), val);
-			} else if (strcmp(key, "log_retention_days") == 0) {
-				if (parse_int(val, 0, 10000, &config->log_retention_days) == 0) {
-				} else {
-					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
-				}
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
 				int syslog;
 				if (parse_int(val, 0, 1, &syslog) == 0) {
@@ -502,6 +502,8 @@ void config_init(struct snapraid_state* state)
 
 	/* set default */
 	config->sys_engine[0] = 0;
+	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
+	config->sys_log_retention_days = 0;
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:7627");
 	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
@@ -523,8 +525,6 @@ void config_init(struct snapraid_state* state)
 	config->spindown_idle_minutes = 0;
 	config->hook_run_as_user[0] = 0;
 	config->hook_script[0] = 0;
-	os_default_log(config->log_directory, sizeof(config->log_directory));
-	config->log_retention_days = 0;
 	log_lock();
 	state->log.syslog = 0;
 	state->log.syslog_level = LVL_ERROR;

@@ -245,20 +245,53 @@ For a comprehensive view of how these settings are applied in a
 real-world environment, refer to the comments in the `snapraidd.conf`
 file installed.
 
-6.1 Network & REST API
+6.1 System
+----------
+
+These settings control the core execution environment and the
+underlying daemon.
+These options are not visible or modifiable via the REST API.
+They require a manual edit of the configuration file and a
+configuration reload (SIGHUP) or daemon restart to apply.
+
+---- 6.1.1 sys_engine ----
+Sets the absolute path to the SnapRAID executable. If omitted,
+the daemon searches /usr/bin and /usr/local/bin on Linux, /usr/bin
+in Wine, and the daemon's base directory on Windows.
+
+---- 6.1.2 sys_log_directory ----
+Defines where the output of individual SnapRAID commands is stored.
+If left unset, the daemon defaults to /var/log/snapraid in Linux
+and /log in the installation directory in Windows.
+
+Setting this option to an empty value (sys_log_directory = ) will
+explicitly disable the saving of command output to persistent files.
+
+IMPORTANT: While it is possible to leave this empty to avoid saving files,
+these logs are used by the daemon to reconstruct the past state of the
+array (e.g., tracking the last successful sync or scrub). If no log
+directory is provided, the daemon will lose its "memory" of previous
+task results every time it is restarted.
+
+---- 6.1.3 sys_log_retention_days ----
+To prevent your storage from filling up, sys_log_retention_days sets the
+age at which old command logs are deleted. Logs are kept indefinitely
+if this is set to 0 or left unset.
+
+6.2 Network & REST API
 ----------------------
 
 These settings control the network interface. These options are not
 visible from the REST API. They require a manual edit of the
 configuration file and a configuration reload (SIGHUP) to apply.
 
----- 6.1.1 net_enabled ----
+---- 6.2.1 net_enabled ----
 Acts as the master toggle for the network interface. When set to 1,
 the daemon enables the REST API and prepares to serve the web dashboard.
 If set to 0 or left blank, the daemon operates in a secure, local-only
 mode, and no network ports are opened.
 
----- 6.1.2 net_port ----
+---- 6.2.2 net_port ----
 Defines the specific IP address and port(s) to which the daemon binds.
 The format follows [IP_ADDRESS:]PORT[s].
 
@@ -280,7 +313,7 @@ Examples:
     net_port=[::1]:7627           - IPv6 loopback only.
     net_port=127.0.0.1:7627,8080  - Listen on multiple ports on localhost.
 
----- 6.1.3 net_acl ----
+---- 6.2.3 net_acl ----
 Restricts API and dashboard access to specific client IP addresses or
 subnets using a comma-separated Access Control List (ACL).
 
@@ -298,7 +331,7 @@ Examples:
     net_acl=+100.0.0.0/8,+127.0.0.1  - Allow Tailscale and localhost.
     net_acl=+192.168.1.0/24          - Allow local subnet only.
 
----- 6.1.4 net_security_headers ----
+---- 6.2.4 net_security_headers ----
 When enabled (1), the daemon injects several browser-level security
 hardening headers into every HTTP response. These include
 Content-Security-Policy (restricting resource loading),
@@ -310,7 +343,7 @@ This should only be disabled (0) if the daemon is behind a reverse
 proxy (like Nginx or Traefik) that is already configured to handle
 these security headers.
 
----- 6.1.5 net_allowed_origin ----
+---- 6.2.5 net_allowed_origin ----
 Configures Cross-Origin Resource Sharing (CORS) to determine which web
 applications can interact with the API.
 
@@ -319,7 +352,7 @@ self - (Default/Recommended) Dynamically reflects the `Host` header
 none - Omits CORS headers entirely, blocking browser-based access from any origin.
 URL - Restricts access to a specific origin (e.g., http://192.168.1.50:3000).
 
----- 6.1.6 net_config_full_access ----
+---- 6.2.6 net_config_full_access ----
 A security flag that determines whether sensitive configuration parameters
 can be modified via the REST API.
 
@@ -332,14 +365,12 @@ for modification via PATCH requests:
 
 hook_run_as_user - The account used for executing hook_script.
 hook_script - The absolute path to the hook script.
-log_directory - The persistent storage path for command outputs.
-log_retention_days - The duration for which log files are kept.
 notify_run_as_user - The account used for notification commands.
 notify_heartbeat - The command used for health monitoring pings.
 notify_result - The command used for sending task reports.
 notify_result_level - The severity threshold for sending notifications.
 
----- 6.1.7 net_web_root ----
+---- 6.2.7 net_web_root ----
 Specifies the source of the web dashboard assets. The daemon supports
 both a standard directory and a single compressed ZIP file for asset
 delivery.
@@ -371,7 +402,7 @@ UI until the daemon is restarted. This behavior can be bypassed by using
 the -N, --no-cache option during daemon startup, which is recommended
 for development environments only.
 
-6.2 Automation & Maintenance
+6.3 Automation & Maintenance
 ----------------------------
 
 These settings control the automation and maintenance tasks run by
@@ -380,7 +411,7 @@ the SnapRAID Daemon.
 For security reasons, some of them can be set via the REST API only if the
 net_config_full_access option is enabled.
 
----- 6.2.1 maintenance_schedule ----
+---- 6.3.1 maintenance_schedule ----
 Defines the timing for the automated maintenance sequence, which
 consists of a sync, followed by a scrub, and concluding with a report.
 If this option is unset, automated maintenance is disabled.
@@ -389,21 +420,21 @@ The format must be either "HH:MM" or "Day HH:MM".
 Hours are specified in a 24-hour format (00-23), and days are
 represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 
----- 6.2.2 sync_threshold_deletes ----
+---- 6.3.2 sync_threshold_deletes ----
 Sets the maximum number of deleted or missing files allowed before a
 sync operation is automatically aborted. This serves as a safety
 mechanism to prevent accidental parity loss due to unintended mass
 deletions. This safety check is enforced during automated maintenance
 schedules and tasks initiated through the Web UI.
 
----- 6.2.3 sync_threshold_updates ----
+---- 6.3.3 sync_threshold_updates ----
 Sets the maximum number of modified or updated files allowed before a
 sync operation is aborted. Similar to the delete threshold, this
 prevents the parity from being overwritten if an unexpected number
 of files have changed. This safety check is enforced during automated
 maintenance schedules and tasks initiated through the Web UI.
 
----- 6.2.4 sync_prehash ----
+---- 6.3.4 sync_prehash ----
 If set to 1, the sync command is executed with the --prehash option.
 This calculates the hash of all files before the synchronization process
 begins. By hashing data before the system is subjected to the high
@@ -412,7 +443,7 @@ silent data corruption caused by faulty memory that may only trigger
 under critical system stress.
 If missing or set to 0, no pre-hashing is performed.
 
----- 6.2.5 sync_force_zero ----
+---- 6.3.5 sync_force_zero ----
 If set to 1, the daemon allows a sync to proceed even if it detects
 files that have shrunk to zero size since the last run.
 By default (missing or 0), the daemon will halt the sync to protect
@@ -421,31 +452,31 @@ This setting is particularly useful for detecting and acknowledging
 instances where files, accessed during a system crash, have been
 truncated to zero bytes by the filesystem.
 
----- 6.2.6 scrub_percentage ----
+---- 6.3.6 scrub_percentage ----
 Determines the portion of the array verified after a successful sync.
 You may use decimal points to specify fractions of a percent
 (e.g., 0.7 to verify 0.7% of the array).
 If missing or set to 0, the scrub phase is skipped entirely.
 
----- 6.2.7 scrub_older_than ----
+---- 6.3.7 scrub_older_than ----
 Specifies that only blocks older than the defined number of days
 should be scrubbed. This allows the daemon to focus verification on
 older data while skipping recently synced blocks.
 If missing or set to 0, no age-based filtering is applied.
 
-6.3 Disk Monitoring & Power
+6.4 Disk Monitoring & Power
 ---------------------------
 
 The following settings manage how the daemon interacts with physical
 hardware to monitor disk health and optimize energy consumption
 
----- 6.3.1 probe_interval_minutes ----
+---- 6.4.1 probe_interval_minutes ----
 Controls the frequency at which the daemon checks disk SMART attributes.
 To prevent unnecessary disk wear, the daemon only performs this check
 if the disks are already spinning.
 If set to 0 or left blank, SMART monitoring is disabled.
 
----- 6.3.2 spindown_idle_minutes ----
+---- 6.4.2 spindown_idle_minutes ----
 Manages power consumption by automatically spinning down disks after
 the specified duration of inactivity.
 
@@ -457,7 +488,7 @@ service, or system process accesses the disk, the idle timer is reset.
 If this option is unset, the daemon will not manage disk power states,
 relying instead on the OS or hardware controllers.
 
----- 6.3.3 hook_script ----
+---- 6.4.3 hook_script ----
 Defines an absolute path to an executable script to be triggered by
 daemon events.
 
@@ -492,7 +523,7 @@ SECURITY REQUIREMENTS:
 
 This remains inactive if no path is defined.
 
----- 6.3.4 hook_run_as_user ----
+---- 6.4.4 hook_run_as_user ----
 Specifies the user account used to execute the hook_script.
 If this is missing or blank, the script is executed with the
 same privileges as the daemon process.
@@ -503,51 +534,31 @@ minimal local access while maintaining network capabilities.
 Alternatively, "NetworkService" can be used if the script specifically
 requires the computer's network identity to access remote resources.
 
-6.4 Logging & Notifications
----------------------------
+6.5 Notifications
+-----------------
 
-These settings control the logging and notification operations performed
-by the SnapRAID Daemon.
+These settings control the notification operations performed by the
+daemon.
 
----- 6.4.1 log_directory ----
-The log_directory defines where the output of individual SnapRAID
-commands is stored. If left unset, the daemon defaults to
-/var/log/snapraid in Linux and /log in the installation directory in
-Windows.
-
-Setting this option to an empty value (log_directory = ) will
-explicitly disable the saving of command output to persistent files.
-
-IMPORTANT: While it is possible to leave this empty to avoid saving files,
-these logs are used by the daemon to reconstruct the past state of the
-array (e.g., tracking the last successful sync or scrub). If no log
-directory is provided, the daemon will lose its "memory" of previous
-task results every time it is restarted.
-
----- 6.4.2 log_retention_days ----
-To prevent your storage from filling up, log_retention_days sets the
-age at which old command logs are deleted. Logs are kept indefinitely
-if this is set to 0 or left unset.
-
----- 6.4.3 notify_syslog_enabled ----
+---- 6.5.1 notify_syslog_enabled ----
 When set to 1, daemon activity is sent to the operating system system
 log (syslog/journald). While lifecycle events like starting and
 stopping are always captured, task-related messages are filtered by
 `notify_syslog_level`.
 
----- 6.4.4 notify_syslog_level ----
+---- 6.5.2 notify_syslog_level ----
 Sets the minimum severity for syslog task entries.
 Possible values are `info`, `warning`, `error`, and `critical`.
 The default is `error`.
 
----- 6.4.5 notify_heartbeat ----
+---- 6.5.3 notify_heartbeat ----
 Defines a command to run ONLY if the maintenance task was successful
 (it is not triggered by other tasks, such as heal or undelete).
 This is ideal for external monitoring services like "Dead Man's Snitch"
 or Healthchecks.io. If this ping stops, it indicates the server is down
 or the task is failing.
 
----- 6.4.6 notify_result ----
+---- 6.5.4 notify_result ----
 Specifies a command triggered after every report task generated by
 high-level tasks or by a SMART telemetry change. The command is only
 executed if the task's result matches the `notify_result_level`.
@@ -587,13 +598,13 @@ home directory containing a .netrc file with 600 permissions for SMTP
 authentication. Failure to do so may result in authentication errors
 (e.g., curl error 55).
 
----- 6.4.7 notify_result_level ----
+---- 6.5.5 notify_result_level ----
 Controls the filter for `notify_result`. The notification is sent only
 if the task result is equal to or more severe than this level.
 Valid values are `info` (always send), `warning`, `error`, and `critical`.
 The default is `error`.
 
----- 6.4.8 notify_run_as_user ----
+---- 6.5.6 notify_run_as_user ----
 The user account used for notify_heartbeat, notify_result and mail
 notifications. If missing or left blank, the task runs with the
 daemon's current privileges.
@@ -604,18 +615,18 @@ minimal local access while maintaining network capabilities.
 Alternatively, "NetworkService" can be used if the script specifically
 requires the computer's network identity to access remote resources.
 
----- 6.4.9 notify_differences ----
+---- 6.5.7 notify_differences ----
 If set to 1, the daemon logs a detailed list of file changes discovered
 before a sync begins. If set to 0 or missing, no difference report is
 generated.
 
-6.5 Notification Examples
+6.6 Notification Examples
 -------------------------
 
 The following examples demonstrate common notification and heartbeat
 configurations
 
----- 6.5.1 External Heartbeat Monitoring (Healthchecks.io) ----
+---- 6.6.1 External Heartbeat Monitoring (Healthchecks.io) ----
 To monitor that automated maintenance is running successfully, use a service
 like Healthchecks.io.
 
@@ -625,21 +636,21 @@ indefinitely (--max-time), and attempts to overcome transient network issues (--
 
 notify_heartbeat = curl -f --max-time 30 --retry 3 https://hc-ping.com/your_private_uuid
 
----- 6.5.2 Push Notifications (ntfy.sh) ----
+---- 6.6.2 Push Notifications (ntfy.sh) ----
 This uses curl to send the report as a POST request to a push notification service.
 It utilizes the --narrow flag to ensure the report is readable on mobile devices
 and maps SnapRAID status to ntfy titles, priorities, and emojis via placeholders.
 
 notify_result = curl --narrow -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" -H "Email: your_email@example.com" --data-binary @- https://ntfy.sh/your_private_topic
 
----- 6.5.3 Local System Mail (mail) ----
+---- 6.6.3 Local System Mail (mail) ----
 A traditional approach using the standard Linux mail utility. This is
 ideal if you have a local Mail Transfer Agent (MTA) like Postfix or
 Exim already configured on your system.
 
 notify_result = mail -s "%s" your_user@localhost
 
----- 6.5.4 Direct Delivery (SMTP-over-SSL) ----
+---- 6.6.4 Direct Delivery (SMTP-over-SSL) ----
 This leverages curl's built-in SMTP engine for direct delivery to an
 external provider. By using the --netrc option, login credentials
 remain secured in a separate file rather than being exposed in the

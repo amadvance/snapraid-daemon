@@ -33,6 +33,10 @@ SnapRAID-Daemon HISTORY
    when the array is in a state requiring manual intervention (FAILING/PREFAIL).
  * Added 'sys_engine' configuration option to specify a custom location for
    the SnapRAID executable. Standard system paths are searched by default.
+ * Renamed 'log_*' options to 'sys_log_*' to align with the new system-level
+   namespace.
+ * Established the 'sys_' prefix for static, manual-edit-only options 
+   that are hidden from the REST API for security and stability.
 
 0.1beta1 01/03/2026
 ===================

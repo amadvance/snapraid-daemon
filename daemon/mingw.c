@@ -144,7 +144,6 @@ void os_init(void)
 	if (is_wine) {
 		strcpy(path_log, "log");
 		strcpy(path_conf, "/etc/snapraidd.conf");
-		snwprintf(path_snapraidW, PATH_MAX, L"/usr/bin/snapraid");
 		strcpy(path_data, "/usr/share/snapraidd/");
 		strcpy(path_snapraid, "/usr/bin/snapraid");
 	} else {
@@ -1171,7 +1170,6 @@ int windows_join(thread_id_t thread, void** retval)
 const char* os_find_engine(const char* sys_engine)
 {
 	wchar_t conv[CONV_MAX];
-	DWORD attrib;
 	const char* path;
 
 	if (sys_engine && sys_engine[0])

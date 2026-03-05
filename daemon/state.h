@@ -449,6 +449,8 @@ struct snapraid_config {
 	tommy_list line_list; /**< List of snapraid_config_line */
 	/* empty string or 0 value means value not set and/or disabled */
 	char sys_engine[CONFIG_MAX]; /**< Engine path. */
+	char sys_log_directory[CONFIG_MAX]; /**< Directory for log files */
+	int sys_log_retention_days; /**< Number of days to keep logs */
 	int net_enabled; /**< 1 if network interface is enabled, 0 otherwise */
 	char net_port[CONFIG_MAX]; /**< Network port to bind to */
 	char net_acl[CONFIG_MAX]; /**< IP access control list */
@@ -470,8 +472,6 @@ struct snapraid_config {
 	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
 	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
 	char hook_script[CONFIG_MAX]; /**< Hook script path */
-	char log_directory[CONFIG_MAX]; /**< Directory for log files */
-	int log_retention_days; /**< Number of days to keep logs */
 	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */
 	char notify_heartbeat[CONFIG_MAX]; /**< Heartbeat notification URL */
 	char notify_result[CONFIG_MAX]; /**< Result notification URL/script */

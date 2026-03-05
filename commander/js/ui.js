@@ -924,13 +924,11 @@ export const renderSettings = (config) => {
                 ${boolField('sync_force_zero', 'Enable Force Zero', 'Allows the sync to proceed even if files that previously held data have become empty.')}
             </div>
 
-            <!-- Monitor & Log -->
+            <!-- Monitor -->
             <div class="card">
-                <h3>Monitor & Log</h3>
+                <h3>Monitor</h3>
                 ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning.')}
                 ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity.')}
-                ${inputField('log_directory', 'Log Directory', 'text', 'The folder where task outputs are saved; this is required for the daemon to remember previous run results.', !fullAccess)}
-                ${inputField('log_retention_days', 'Log Retention (Days)', 'number', 'The number of days to keep old task logs before they are automatically deleted to save space.', !fullAccess)}
             </div>
             </div>
 

@@ -1430,28 +1430,28 @@ int parse_timestamp(const char* name, int64_t* out)
 
 int parse_past_log(struct snapraid_state* state)
 {
-	char* log_directory = state->config.log_directory;
-	int64_t log_retention_days = state->config.log_retention_days;
+	char* sys_log_directory = state->config.sys_log_directory;
+	int64_t sys_log_retention_days = state->config.sys_log_retention_days;
 	sl_t log_list;
 
-	if (*log_directory == 0)
+	if (*sys_log_directory == 0)
 		return 0;
 
-	DIR* dir = opendir(log_directory);
+	DIR* dir = opendir(sys_log_directory);
 	if (!dir) {
-		log_msg(LVL_WARNING, "failed to open log directory %s, errno=%s(%d)", log_directory, strerror(errno), errno);
+		log_msg(LVL_WARNING, "failed to open log directory %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
 		return -1;
 	}
 
 	/* read only no more than 30 days of logs */
-	if (log_retention_days == 0)
-		log_retention_days = HISTORY_PAST_DAYS;
-	else if (log_retention_days > HISTORY_PAST_DAYS)
-		log_retention_days = HISTORY_PAST_DAYS;
+	if (sys_log_retention_days == 0)
+		sys_log_retention_days = HISTORY_PAST_DAYS;
+	else if (sys_log_retention_days > HISTORY_PAST_DAYS)
+		sys_log_retention_days = HISTORY_PAST_DAYS;
 
 	int count = 0;
 	int64_t now = time(0);
-	int64_t cutoff_seconds = now - log_retention_days * SECONDS_IN_A_DAY;
+	int64_t cutoff_seconds = now - sys_log_retention_days * SECONDS_IN_A_DAY;
 
 	sl_init(&log_list);
 	struct dirent* ent;
@@ -1491,11 +1491,11 @@ int parse_past_log(struct snapraid_state* state)
 		windows_starting();
 #endif
 
-		snprintf(path, sizeof(path), "%s/%s", log_directory, sn->str);
+		snprintf(path, sizeof(path), "%s/%s", sys_log_directory, sn->str);
 
 		int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
 		if (f == -1) {
-			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", log_directory, strerror(errno), errno);
+			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
 			continue;
 		}
 

@@ -905,7 +905,7 @@ components:
           example: "/var/log/snapraid/20260112-sync.log"
           description: >
             The absolute path to the log file for this specific task execution.
-            This file is stored in the directory defined by 'log_directory' in the config.
+            This file is stored in the directory defined by 'sys_log_directory' in the config.
         report_output:
           type: string
           description: >
@@ -1397,8 +1397,6 @@ components:
             read-only state for all API requests:
             - hook_run_as_user
             - hook_script
-            - log_directory
-            - log_retention_days
             - notify_run_as_user
             - notify_heartbeat
             - notify_result
@@ -1513,24 +1511,6 @@ components:
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly
             enabled in the static configuration file.
-        log_directory:
-          type: string
-          default: "/var/log/snapraid"
-          description: >
-            Persistence directory for execution logs (YYYYMMDD-command.log).
-            Logs are used as the primary data source to rehydrate task
-            history in-memory upon daemon restart.
-
-            For security enforcement, this parameter is immutable via
-            the REST API unless 'net_config_full_access' is explicitly
-            enabled in the static configuration file.
-        log_retention_days:
-          type: integer
-          example: 30
-          description: >
-            Retention window for log files. Deleting logs via this cleanup
-            policy removes the corresponding entries from the API history.
-            Set to 0 for indefinite retention.
         notify_syslog_enabled:
           type: boolean
           example: true

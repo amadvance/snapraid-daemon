@@ -272,14 +272,31 @@ real\-world environment, refer to the comments in the \`snapraidd.conf\`
 file installed.
 .SS System 
 These settings control the core execution environment and the
-underlying SnapRAID engine. These options are not visible or
-modifiable via the REST API. They require a manual edit of the
-configuration file and a configuration reload (SIGHUP) or daemon
-restart to apply.
+underlying daemon.
+These options are not visible or modifiable via the REST API.
+They require a manual edit of the configuration file and a
+configuration reload (SIGHUP) or daemon restart to apply.
 .SS sys_engine 
 Sets the absolute path to the SnapRAID executable. If omitted,
 the daemon searches /usr/bin and /usr/local/bin on Linux, /usr/bin
 in Wine, and the daemon\'s base directory on Windows.
+.SS sys_log_directory 
+Defines where the output of individual SnapRAID commands is stored.
+If left unset, the daemon defaults to /var/log/snapraid in Linux
+and /log in the installation directory in Windows.
+.PP
+Setting this option to an empty value (sys_log_directory = ) will
+explicitly disable the saving of command output to persistent files.
+.PP
+IMPORTANT: While it is possible to leave this empty to avoid saving files,
+these logs are used by the daemon to reconstruct the past state of the
+array (e.g., tracking the last successful sync or scrub). If no log
+directory is provided, the daemon will lose its \[dq]memory\[dq] of previous
+task results every time it is restarted.
+.SS sys_log_retention_days 
+To prevent your storage from filling up, sys_log_retention_days sets the
+age at which old command logs are deleted. Logs are kept indefinitely
+if this is set to 0 or left unset.
 .SS Network & REST API 
 These settings control the network interface. These options are not
 visible from the REST API. They require a manual edit of the
@@ -407,12 +424,6 @@ The account used for executing hook_script.
 .HP 4
 .I hook_script
 The absolute path to the hook script.
-.HP 4
-.I log_directory
-The persistent storage path for command outputs.
-.HP 4
-.I log_retention_days
-The duration for which log files are kept.
 .HP 4
 .I notify_run_as_user
 The account used for notification commands.
@@ -592,27 +603,9 @@ On Windows, \[dq]LocalService\[dq] is the preferred choice as it provides
 minimal local access while maintaining network capabilities.
 Alternatively, \[dq]NetworkService\[dq] can be used if the script specifically
 requires the computer\'s network identity to access remote resources.
-.SS Logging & Notifications 
-These settings control the logging and notification operations performed
-by the SnapRAID Daemon.
-.SS log_directory 
-The log_directory defines where the output of individual SnapRAID
-commands is stored. If left unset, the daemon defaults to
-/var/log/snapraid in Linux and /log in the installation directory in
-Windows.
-.PP
-Setting this option to an empty value (log_directory = ) will
-explicitly disable the saving of command output to persistent files.
-.PP
-IMPORTANT: While it is possible to leave this empty to avoid saving files,
-these logs are used by the daemon to reconstruct the past state of the
-array (e.g., tracking the last successful sync or scrub). If no log
-directory is provided, the daemon will lose its \[dq]memory\[dq] of previous
-task results every time it is restarted.
-.SS log_retention_days 
-To prevent your storage from filling up, log_retention_days sets the
-age at which old command logs are deleted. Logs are kept indefinitely
-if this is set to 0 or left unset.
+.SS Notifications 
+These settings control the notification operations performed by the
+daemon.
 .SS notify_syslog_enabled 
 When set to 1, daemon activity is sent to the operating system system
 log (syslog/journald). While lifecycle events like starting and

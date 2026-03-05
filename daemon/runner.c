@@ -184,7 +184,7 @@ static void runner_go(struct snapraid_state* state)
 	char hook_run_as_user[CONFIG_MAX];
 	char msg[MSG_MAX];
 	char exit_neg_msg[MSG_MAX];
-	char log_directory[PATH_MAX];
+	char sys_log_directory[PATH_MAX];
 	time_t unix_start_time;
 	time_t unix_queue_time;
 	time_t unix_end_time;
@@ -203,7 +203,7 @@ static void runner_go(struct snapraid_state* state)
 
 	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
-	sncpy(log_directory, sizeof(log_directory), state->config.log_directory);
+	sncpy(sys_log_directory, sizeof(sys_log_directory), state->config.sys_log_directory);
 	unix_queue_time = task->unix_queue_time;
 	unix_start_time = task->unix_start_time;
 	cmd = task->cmd;
@@ -220,15 +220,15 @@ static void runner_go(struct snapraid_state* state)
 
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
-	if (log_directory[0] != 0) {
-		int mkdir_ret = mkdir(log_directory, 0755);
+	if (sys_log_directory[0] != 0) {
+		int mkdir_ret = mkdir(sys_log_directory, 0755);
 		if (mkdir_ret != 0 && errno != EEXIST) {
-			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", log_directory, strerror(errno), errno);
+			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
 		} else {
 			time_t now = unix_start_time;
 			struct tm* local = localtime(&now);
 			if (local) {
-				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", log_directory,
+				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", sys_log_directory,
 					local->tm_year + 1900,
 					local->tm_mon + 1,
 					local->tm_mday,
@@ -238,7 +238,7 @@ static void runner_go(struct snapraid_state* state)
 					command_name(cmd)
 				);
 			} else {
-				snprintf(log_path, sizeof(log_path), "%s/%s.log", log_directory, command_name(cmd));
+				snprintf(log_path, sizeof(log_path), "%s/%s.log", sys_log_directory, command_name(cmd));
 			}
 
 			sncpy(task->log_file, sizeof(task->log_file), log_path);
@@ -855,17 +855,17 @@ static int delete_old_files(const char* dir_path, int days)
 
 int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
-	char log_directory[PATH_MAX];
-	int log_retention_days;
+	char sys_log_directory[PATH_MAX];
+	int sys_log_retention_days;
 
 	sncpy(msg, msg_size, "");
 
 	state_lock();
-	sncpy(log_directory, sizeof(log_directory), state->config.log_directory);
-	log_retention_days = state->config.log_retention_days;
+	sncpy(sys_log_directory, sizeof(sys_log_directory), state->config.sys_log_directory);
+	sys_log_retention_days = state->config.sys_log_retention_days;
 	state_unlock();
 
-	if (delete_old_files(log_directory, log_retention_days) != 0) {
+	if (delete_old_files(sys_log_directory, sys_log_retention_days) != 0) {
 		sncpy(msg, msg_size, "Failed deleting old log files");
 		*status = 500;
 		return 0;

@@ -282,8 +282,8 @@ void* scheduler_thread(void* arg)
 			}
 
 			/* delete old log every hour */
-			if (state->config.log_retention_days > 0
-				&& state->config.log_directory[0] != 0
+			if (state->config.sys_log_retention_days > 0
+				&& state->config.sys_log_directory[0] != 0
 				&& mono_now_secs - last_delete_ts >= 3600) {
 				state_unlock();
 

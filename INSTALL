@@ -87,5 +87,5 @@ On systemd units, it automatically stops the running service and disables it
 from the boot sequence.
 
 For safety and audit purposes, configuration files in '/etc/' and historical
-log files in the 'log_directory' are NOT removed. These must be deleted
+log files in the 'sys_log_directory' are NOT removed. These must be deleted
 manually if a complete purge is desired.
