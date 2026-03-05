@@ -97,6 +97,7 @@ const app = {
 
             switch (action) {
                 case 'maintenance': app.triggerMaintenance(); break;
+                case 'refresh': app.triggerRefresh(); break;
                 case 'stop-task': app.triggerStop(); break;
                 case 'spin-up': app.triggerCommand('spinUp'); break;
                 case 'spin-down': app.triggerCommand('spinDown'); break;
@@ -320,7 +321,11 @@ const app = {
             switch (hash) {
                 case '#/':
                     title.innerText = 'Dashboard';
-                    actions.innerHTML = `
+                    const health = app.state.dashboardArray?.health;
+                    const isBad = health === 'failing' || health === 'prefail';
+                    actions.innerHTML = isBad ? `
+                        <button class="btn btn-primary" data-tooltip="Refresh array state" data-action="refresh">Refresh</button>
+                    ` : `
                         <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                     `;
                     await app.loadDashboard({ array: true, activity: true, system: true });
@@ -403,9 +408,14 @@ const app = {
             if (app.state.currentRoute === '#/') {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
+                const isBad = array && (array.health === 'failing' || array.health === 'prefail');
                 actions.innerHTML = `
                     ${active ? `<button class="btn btn-danger" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
-                    <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
+                    ${isBad ? `
+                        <button class="btn btn-primary" data-tooltip="Refresh array state" data-action="refresh">Refresh</button>
+                    ` : `
+                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
+                    `}
                 `;
 
                 // Capture scroll state
@@ -528,6 +538,16 @@ const app = {
             await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
             showToast('Maintenance Triggered', 'success');
             setTimeout(app.loadDashboard, 500);
+        }
+    },
+
+    triggerRefresh: async () => {
+        try {
+            await API.refreshArray();
+            showToast('Refresh Triggered', 'success');
+            setTimeout(app.loadDashboard, 500);
+        } catch (e) {
+            showToast('Refresh failed: ' + e.message, 'error');
         }
     },
 
@@ -712,27 +732,27 @@ const app = {
                         <tr>
                             <td class="font-bold text-xs">${label}</td>
                             <td class="${rowClass} font-mono text-xs font-bold">${attr.raw}</td>
-                            <td class="${rowClass} font-mono text-xs">${attr.norm != null ? attr.norm: '-'}</td>
-                            <td class="${rowClass} font-mono text-xs">${attr.worst != null ? attr.worst: '-'}</td>
+                            <td class="${rowClass} font-mono text-xs">${attr.norm != null ? attr.norm : '-'}</td>
+                            <td class="${rowClass} font-mono text-xs">${attr.worst != null ? attr.worst : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.thresh != null ? attr.thresh : '-'}</td>
                             <td class="${rowClass} font-mono text-xs font-bold uppercase">${attr.when_failed != null ? attr.when_failed : '-'}</td>
                         </tr>
                     `);
                 } else if (attr.type === 'oldage') {
                     let valStr = attr.raw;
-                    if (attr.measure == 'time' ) {
+                    if (attr.measure == 'time') {
                         const seconds = attr.raw * attr.unit;
                         valStr = `${attr.raw} (${formatElapsedTime(seconds)})`;
                     }
-                    if (attr.measure == 'bytes' ) {
+                    if (attr.measure == 'bytes') {
                         const bytes = attr.raw * attr.unit;
                         valStr = `${attr.raw} (${formatSize(bytes)})`;
                     }
-                    if (attr.measure == 'percentage' ) {
+                    if (attr.measure == 'percentage') {
                         const bytes = attr.raw * attr.unit;
                         valStr = `${attr.raw}%`;
                     }
-                    if (attr.measure == 'temperature' ) {
+                    if (attr.measure == 'temperature') {
                         const bytes = attr.raw * attr.unit;
                         valStr = `${attr.raw} °C`;
                     }

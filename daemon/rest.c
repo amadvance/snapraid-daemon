@@ -963,6 +963,9 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	case CMD_SUSPEND_IDLE :
 		schedule_suspend_idle(state, msg, sizeof(msg), &status);
 		break;
+	case CMD_REFRESH :
+		schedule_refresh(state, msg, sizeof(msg), &status);
+		break;
 	}
 
 	free(js);
@@ -1867,6 +1870,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/undelete", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/suspend_idle", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/refresh", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/schedule", handler_schedule, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/report", handler_report, state);

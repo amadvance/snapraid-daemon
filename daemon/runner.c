@@ -541,6 +541,10 @@ static int runner_precondition(struct snapraid_state* state)
 	case CMD_UP :
 	case CMD_DOWN :
 	case CMD_SMART :
+	case CMD_LIST :
+	case CMD_DUP :
+	case CMD_STATUS :
+	case CMD_READ :
 	case CMD_REPORT :
 	case CMD_DOWN_IDLE :
 		/* these taks are allowed regardless the health */
@@ -673,7 +677,12 @@ static void* runner_thread(void* arg)
 				}
 			} else {
 				task->state = PROCESS_STATE_CANCEL;
+				task->unix_start_time = now;
 				task->unix_end_time = now;
+				log_msg(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
+
+				/* insert in the history */
+				tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 			}
 		}
 

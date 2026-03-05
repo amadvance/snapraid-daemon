@@ -15,7 +15,7 @@ snapraidd [\-V, \-\-version] [\-H, \-\-help]
 .PD
 .SH DESCRIPTION 
 SnapRAID Daemon is a specialized companion service designed to move SnapRAID
-from a manual, command\-line interface (CLI) workflow to an \'always\-on\'
+from a manual, command\-line interface (CLI) workflow to an \`always\-on\`
 background service.
 .PP
 Under the hood, the daemon uses the same SnapRAID CLI binary, providing the
@@ -369,7 +369,7 @@ applications can interact with the API.
 .PD 0
 .HP 4
 .I self
-(Default/Recommended) Dynamically reflects the \'Host\' header
+(Default/Recommended) Dynamically reflects the \`Host\` header
 of the request, allowing the built\-in UI to work across various hostnames or IPs.
 .HP 4
 .I none
@@ -756,10 +756,10 @@ Triggers the complete automated maintenance sequence. It orchestrates
 a parity synchronization, followed by a data integrity scrub, and
 concludes by issuing a system\-wide health report.
 This is the primary endpoint for routine array upkeep.
-This task is subject to the \'sync_threshold_deletes\' and
-\'sync_threshold_updates\' safety checks defined in the configuration.
+This task is subject to the \`sync_threshold_deletes\` and
+\`sync_threshold_updates\` safety checks defined in the configuration.
 The percentage of the array checked and the age filter are determined
-by the \'scrub_percentage\' and \'scrub_older_than\' settings.
+by the \`scrub_percentage\` and \`scrub_older_than\` settings.
 .PP
 Example:
 .PP
@@ -816,7 +816,7 @@ and report.
 Probes the disks to gather their latest activity state and executes a
 conditional spindown operation. The daemon will only issue the
 down_idle command to disks that have exceeded the
-\'spindown_idle_minutes\' threshold. In this case, no report is
+\`spindown_idle_minutes\` threshold. In this case, no report is
 generated.
 .PP
 Example:
@@ -828,6 +828,27 @@ curl \-X POST http://localhost:7627/snapraid/v1/suspend_idle
 .RE
 .PP
 It is implemented with the sequence of commands: probe, down_idle.
+.SS /snapraid/v1/refresh: 
+Forces the daemon to re\-synchronize its internal state with the
+content file. This is intended for use after manual interventions
+performed outside the daemon interface (e.g., replacing
+a failed disk, fixing UUID mismatches, or manually updating configuration).
+.PP
+The operation executes a \`read\` task to load the current content file
+data, followed by a \`report\` task to evaluate and broadcast the
+resulting array health.
+.PP
+This is specifically useful for clearing \`FAILING\` or \`PREFAIL\` modes
+once the underlying hardware or configuration issues have been
+resolved manually.
+.PP
+Example:
+.PP
+.RS 4
+curl \-X POST http://localhost:7627/snapraid/v1/refresh
+.PD 0
+.PD
+.RE
 .SS Monitoring & Inventory 
 These endpoints provide high\-level visibility into the global state of
 the storage stack and the health of the underlying physical hardware.
@@ -1035,7 +1056,7 @@ array statistics.
 .HP 4
 .I down_idle
 Executes a conditional spindown operation of the disks that
-have exceeded the \'spindown_idle_minutes\' threshold.
+have exceeded the \`spindown_idle_minutes\` threshold.
 .PD
 .RE
 .SH SIGNALS 

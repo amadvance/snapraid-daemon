@@ -124,6 +124,36 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
+  /snapraid/v1/refresh:
+    post:
+      summary: Refresh array state from content files
+      description: >
+        Forces the daemon to re-synchronize its internal state with the
+        content file. This is intended for use after manual interventions
+        performed outside the daemon interface (e.g., replacing
+        a failed disk, fixing UUID mismatches, or manually updating configuration).
+
+        The operation executes a 'read' task to load the current content file
+        data, followed by a 'report' task to evaluate and broadcast the
+        resulting array health.
+
+        This is specifically useful for clearing 'FAILING' or 'PREFAIL' modes
+        once the underlying hardware or configuration issues have been
+        resolved manually.
+
+        This is an asynchronous operation. Monitor progress via the
+        /activity endpoint.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          $ref: '#/components/responses/CommandResult'
+
   /snapraid/v1/schedule:
     post:
       summary: Schedule a sequence of commands

@@ -52,6 +52,7 @@ struct {
 	{ CMD_HEAL, "heal" },
 	{ CMD_UNDELETE, "undelete" },
 	{ CMD_SUSPEND_IDLE, "suspend_idle" },
+	{ CMD_REFRESH, "refresh" },
 	{ 0 }
 };
 

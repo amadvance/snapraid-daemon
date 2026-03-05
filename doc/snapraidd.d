@@ -9,7 +9,7 @@ Synopsis
 
 Description
 	SnapRAID Daemon is a specialized companion service designed to move SnapRAID
-	from a manual, command-line interface (CLI) workflow to an 'always-on'
+	from a manual, command-line interface (CLI) workflow to an `always-on`
 	background service.
 
 	Under the hood, the daemon uses the same SnapRAID CLI binary, providing the
@@ -293,7 +293,7 @@ Configuration
 	Configures Cross-Origin Resource Sharing (CORS) to determine which web
 	applications can interact with the API.
 
-	self - (Default/Recommended) Dynamically reflects the 'Host' header
+	self - (Default/Recommended) Dynamically reflects the `Host` header
 		of the request, allowing the built-in UI to work across various hostnames or IPs.
 	none - Omits CORS headers entirely, blocking browser-based access from any origin.
 	URL - Restricts access to a specific origin (e.g., http://192.168.1.50:3000).
@@ -639,10 +639,10 @@ REST API
 	a parity synchronization, followed by a data integrity scrub, and
 	concludes by issuing a system-wide health report.
 	This is the primary endpoint for routine array upkeep.
-	This task is subject to the 'sync_threshold_deletes' and
-	'sync_threshold_updates' safety checks defined in the configuration.
+	This task is subject to the `sync_threshold_deletes` and
+	`sync_threshold_updates` safety checks defined in the configuration.
 	The percentage of the array checked and the age filter are determined
-	by the 'scrub_percentage' and 'scrub_older_than' settings.
+	by the `scrub_percentage` and `scrub_older_than` settings.
 
 	Example:
 		:curl -X POST http://localhost:7627/snapraid/v1/maintenance
@@ -681,13 +681,30 @@ REST API
 	Probes the disks to gather their latest activity state and executes a
 	conditional spindown operation. The daemon will only issue the
 	down_idle command to disks that have exceeded the
-	'spindown_idle_minutes' threshold. In this case, no report is
+	`spindown_idle_minutes` threshold. In this case, no report is
 	generated.
 
 	Example:
 		:curl -X POST http://localhost:7627/snapraid/v1/suspend_idle
 
 	It is implemented with the sequence of commands: probe, down_idle.
+
+    /snapraid/v1/refresh:
+        Forces the daemon to re-synchronize its internal state with the
+        content file. This is intended for use after manual interventions
+        performed outside the daemon interface (e.g., replacing
+        a failed disk, fixing UUID mismatches, or manually updating configuration).
+
+        The operation executes a `read` task to load the current content file
+        data, followed by a `report` task to evaluate and broadcast the
+        resulting array health.
+
+        This is specifically useful for clearing `FAILING` or `PREFAIL` modes
+        once the underlying hardware or configuration issues have been
+        resolved manually.
+
+	Example:
+		:curl -X POST http://localhost:7627/snapraid/v1/refresh
 
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of
@@ -834,7 +851,7 @@ REST API
 	report - Generates a comprehensive summary of the last operations and
 		array statistics.
 	down_idle - Executes a conditional spindown operation of the disks that
-		have exceeded the 'spindown_idle_minutes' threshold.
+		have exceeded the `spindown_idle_minutes` threshold.
 
 Signals
 	This section defines how the daemon responds to standard Unix signals,

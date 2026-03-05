@@ -196,6 +196,27 @@ void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_s
 	state_unlock();
 }
 
+void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+{
+	time_t now = time(0);
+
+	state_lock();
+
+	/*
+	 * Schedule all the actions, note that they are just scheduled,
+	 * the eventual failure won't be detected here.
+	 *
+	 * Keep the lock to ensure that no other task is inserted in between.
+	 */
+	int ret = 0;
+	if (ret == 0)
+		ret = runner_locked(state, CMD_REFRESH, CMD_READ, now, 0, msg, msg_size, status);
+
+	(void)runner_locked(state, CMD_REFRESH, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	state_unlock();
+}
+
 void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);

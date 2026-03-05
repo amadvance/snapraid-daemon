@@ -230,6 +230,7 @@ struct snapraid_disk {
 #define CMD_HEAL 202 /**< High level command. Never enter the queue. */
 #define CMD_UNDELETE 203 /**< High level command. Never enter the queue. */
 #define CMD_SUSPEND_IDLE 204 /**< High level command. Never enter the queue. */
+#define CMD_REFRESH 205  /**< High level command. Never enter the queue. */
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */

@@ -22,9 +22,15 @@ SnapRAID-Daemon HISTORY
    Legacy 'script_pre_run', 'script_post_run' and script_run_as_user
    configuration options are now deprecated and ignored in favor of the new
    'hook_script' architecture.
-* If a disk changes its UUID, the array now enters a 'failing' state 
+ * If a disk changes its UUID, the array now enters a 'failing' state 
    because it is assumed the original disk has disappeared. This condition 
    persists until the content file reports a UUID matching the effective one.
+ * Added 'refresh' command to the REST API. This triggers a 'read' followed by 
+   a 'report' to re-synchronize the daemon state after manual external 
+   actions (e.g., resolving UUID mismatches or disk replacements). This is 
+   specifically intended to clear 'FAILING' or 'PREFAIL' states.
+ * In the UI, a 'Refresh' button is now displayed instead of 'Maintenance'
+   when the array is in a state requiring manual intervention (FAILING/PREFAIL).
 
 0.1beta1 01/03/2026
 ===================
