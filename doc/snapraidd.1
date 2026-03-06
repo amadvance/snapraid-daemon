@@ -492,6 +492,16 @@ If this option is unset, automated maintenance is disabled.
 The format must be either \[dq]HH:MM\[dq] or \[dq]Day HH:MM\[dq].
 Hours are specified in a 24\-hour format (00\-23), and days are
 represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
+.SS scrub_percentage 
+Determines the portion of the array verified after a successful sync.
+You may use decimal points to specify fractions of a percent
+(e.g., 0.7 to verify 0.7% of the array).
+If missing or set to 0, the scrub phase is skipped entirely.
+.SS scrub_older_than 
+Specifies that only blocks older than the defined number of days
+should be scrubbed. This allows the daemon to focus verification on
+older data while skipping recently synced blocks.
+If missing or set to 0, no age\-based filtering is applied.
 .SS sync_threshold_deletes 
 Sets the maximum number of deleted or missing files allowed before a
 sync operation is automatically aborted. This serves as a safety
@@ -520,16 +530,6 @@ against potential data corruption or accidental file clearing.
 This setting is particularly useful for detecting and acknowledging
 instances where files, accessed during a system crash, have been
 truncated to zero bytes by the filesystem.
-.SS scrub_percentage 
-Determines the portion of the array verified after a successful sync.
-You may use decimal points to specify fractions of a percent
-(e.g., 0.7 to verify 0.7% of the array).
-If missing or set to 0, the scrub phase is skipped entirely.
-.SS scrub_older_than 
-Specifies that only blocks older than the defined number of days
-should be scrubbed. This allows the daemon to focus verification on
-older data while skipping recently synced blocks.
-If missing or set to 0, no age\-based filtering is applied.
 .SS Disk Monitoring & Power 
 The following settings manage how the daemon interacts with physical
 hardware to monitor disk health and optimize energy consumption

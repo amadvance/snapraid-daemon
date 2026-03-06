@@ -420,21 +420,33 @@ The format must be either "HH:MM" or "Day HH:MM".
 Hours are specified in a 24-hour format (00-23), and days are
 represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 
----- 6.3.2 sync_threshold_deletes ----
+---- 6.3.2 scrub_percentage ----
+Determines the portion of the array verified after a successful sync.
+You may use decimal points to specify fractions of a percent
+(e.g., 0.7 to verify 0.7% of the array).
+If missing or set to 0, the scrub phase is skipped entirely.
+
+---- 6.3.3 scrub_older_than ----
+Specifies that only blocks older than the defined number of days
+should be scrubbed. This allows the daemon to focus verification on
+older data while skipping recently synced blocks.
+If missing or set to 0, no age-based filtering is applied.
+
+---- 6.3.4 sync_threshold_deletes ----
 Sets the maximum number of deleted or missing files allowed before a
 sync operation is automatically aborted. This serves as a safety
 mechanism to prevent accidental parity loss due to unintended mass
 deletions. This safety check is enforced during automated maintenance
 schedules and tasks initiated through the Web UI.
 
----- 6.3.3 sync_threshold_updates ----
+---- 6.3.5 sync_threshold_updates ----
 Sets the maximum number of modified or updated files allowed before a
 sync operation is aborted. Similar to the delete threshold, this
 prevents the parity from being overwritten if an unexpected number
 of files have changed. This safety check is enforced during automated
 maintenance schedules and tasks initiated through the Web UI.
 
----- 6.3.4 sync_prehash ----
+---- 6.3.6 sync_prehash ----
 If set to 1, the sync command is executed with the --prehash option.
 This calculates the hash of all files before the synchronization process
 begins. By hashing data before the system is subjected to the high
@@ -443,7 +455,7 @@ silent data corruption caused by faulty memory that may only trigger
 under critical system stress.
 If missing or set to 0, no pre-hashing is performed.
 
----- 6.3.5 sync_force_zero ----
+---- 6.3.7 sync_force_zero ----
 If set to 1, the daemon allows a sync to proceed even if it detects
 files that have shrunk to zero size since the last run.
 By default (missing or 0), the daemon will halt the sync to protect
@@ -451,18 +463,6 @@ against potential data corruption or accidental file clearing.
 This setting is particularly useful for detecting and acknowledging
 instances where files, accessed during a system crash, have been
 truncated to zero bytes by the filesystem.
-
----- 6.3.6 scrub_percentage ----
-Determines the portion of the array verified after a successful sync.
-You may use decimal points to specify fractions of a percent
-(e.g., 0.7 to verify 0.7% of the array).
-If missing or set to 0, the scrub phase is skipped entirely.
-
----- 6.3.7 scrub_older_than ----
-Specifies that only blocks older than the defined number of days
-should be scrubbed. This allows the daemon to focus verification on
-older data while skipping recently synced blocks.
-If missing or set to 0, no age-based filtering is applied.
 
 6.4 Disk Monitoring & Power
 ---------------------------

@@ -395,6 +395,18 @@ Configuration
 	Hours are specified in a 24-hour format (00-23), and days are
 	represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 
+    scrub_percentage
+	Determines the portion of the array verified after a successful sync.
+	You may use decimal points to specify fractions of a percent
+	(e.g., 0.7 to verify 0.7% of the array).
+	If missing or set to 0, the scrub phase is skipped entirely.
+
+    scrub_older_than
+	Specifies that only blocks older than the defined number of days
+	should be scrubbed. This allows the daemon to focus verification on
+	older data while skipping recently synced blocks.
+	If missing or set to 0, no age-based filtering is applied.
+
     sync_threshold_deletes
 	Sets the maximum number of deleted or missing files allowed before a
 	sync operation is automatically aborted. This serves as a safety
@@ -426,18 +438,6 @@ Configuration
 	This setting is particularly useful for detecting and acknowledging
 	instances where files, accessed during a system crash, have been
 	truncated to zero bytes by the filesystem.
-
-    scrub_percentage
-	Determines the portion of the array verified after a successful sync.
-	You may use decimal points to specify fractions of a percent
-	(e.g., 0.7 to verify 0.7% of the array).
-	If missing or set to 0, the scrub phase is skipped entirely.
-
-    scrub_older_than
-	Specifies that only blocks older than the defined number of days
-	should be scrubbed. This allows the daemon to focus verification on
-	older data while skipping recently synced blocks.
-	If missing or set to 0, no age-based filtering is applied.
 
   Disk Monitoring & Power
 	The following settings manage how the daemon interacts with physical

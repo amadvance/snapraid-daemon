@@ -906,20 +906,25 @@ export const renderSettings = (config) => {
             <div class="restricted-banner-title">
                 Restricted Access Mode
             </div>
-            Security-sensitive settings (logs, scripts, commands, users) are read-only because <code>net_config_full_access</code> is disabled.
+            Security-sensitive settings (scripts, commands, users) are read-only because <code>net_config_full_access</code> is disabled.
             Edit <code>snapraidd.conf</code> manually to change these values.
         </div>
         ` : ''}
         <form id="settings-form">
             <!-- Automation -->
-            <div class="grid-2">
+            <div class="grid-3">
             <div class="card">
                 <h3>Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the sync, scrub, and report sequence (e.g., 02:00, Mon 03:00).')}
-                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of file deletions before a scheduled sync aborts to prevent accidental data loss.')}
-                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates before a scheduled sync aborts to prevent unintended mass changes.')}
                 ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'The fraction of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%).', false, 'step="0.1"')}
                 ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Only scrubs data blocks that haven\'t been verified within this many days.')}
+            </div>
+
+            <!-- Data Integrity -->
+            <div class="card">
+                <h3>Data Integrity</h3>
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of file deletions before a scheduled sync aborts to prevent accidental data loss.')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates before a scheduled sync aborts to prevent unintended mass changes.')}
                 ${boolField('sync_prehash', 'Enable Pre-hash', 'Calculate hashes before syncing, providing an extra layer of protection against faulty memory corruption.')}
                 ${boolField('sync_force_zero', 'Enable Force Zero', 'Allows the sync to proceed even if files that previously held data have become empty.')}
             </div>
