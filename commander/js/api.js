@@ -4,7 +4,7 @@ const BASE_URL = '/snapraid/v1';
 async function request(endpoint, options = {}) {
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, {
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Pinggy-No-Screen': 'true' },
             ...options
         });
 
