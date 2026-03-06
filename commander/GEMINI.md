@@ -154,7 +154,7 @@ The project uses a custom, lightweight utility-first CSS framework defined in
 *   **Layout**: `.flex`, `.grid-2`, `.grid-3`, `.grid-4`, `.grid-fill-*`, `.items-center`, `.justify-between`, `.gap-2`, `.gap-4`.
 *   **Spacing**: `.m[t/b/l/r]-[1/2/4/6/8]`, `.p-[...]` (limited set).
 *   **Typography**: `.text-xs`, `.text-sm`, `.text-lg`, `.text-xl`, `.font-bold`, `.font-mono`.
-*   **Colors**: `.text-cyan`, `.text-red`, `.text-emerald`, `.text-amber`, `.text-muted`.
+*   **Colors**: `.text-sky`, `.text-red`, `.text-emerald`, `.text-amber`, `.text-muted`.
 *   **Components**: 
     *   `.card`: Dark-themed container with subtle border.
     *   `.btn`: Flexible button system (`btn-primary`, `btn-secondary`, `btn-danger`).

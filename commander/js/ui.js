@@ -75,13 +75,17 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
     // 4. Build SVG String
     let svg = `<svg width="${width}" height="${height}" class="temp-sparkline">`;
 
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const axisColor = isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
+    const textColor = isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+
     // Guide Rails & Labels (20, 45, 70)
     [20, 45, 70].forEach(level => {
         const yPos = getY(level);
         svg += `
-            <text x="5" y="${yPos + 4}" font-size="10" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${level}°</text>
+            <text x="5" y="${yPos + 4}" font-size="10" fill="${textColor}" font-family="sans-serif">${level}°</text>
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
-                  stroke="rgba(255,255,255,0.3)" stroke-dasharray="2" />
+                  stroke="${axisColor}" stroke-dasharray="2" />
         `;
     });
 
@@ -155,12 +159,17 @@ export function renderScrubHistory(containerId, history) {
 
     let svg = `<svg width="${width}" height="${height}" class="scrub-history">`;
 
+    const isLight = document.documentElement.dataset.theme === 'light';
+    const gridColor = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+    const axisColor = isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)';
+    const textColor = isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+
     // Horizontal grid lines every 5%
     for (let i = 5; i <= yMax; i += 5) {
         const yPos = getY(i);
         svg += `
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
-                  stroke="rgba(255,255,255,0.30)" stroke-dasharray="4" />
+                  stroke="${gridColor}" stroke-dasharray="4" />
         `;
     }
 
@@ -170,25 +179,25 @@ export function renderScrubHistory(containerId, history) {
         if (i % 5 != 0)
             svg += `
             <line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" 
-                  stroke="rgba(255,255,255,0.10)" stroke-dasharray="2" />
+                  stroke="${gridColor}" stroke-dasharray="2" opacity="0.5" />
         `;
     }
 
 
     // Draw Axes
     svg += `
-        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
-        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="${axisColor}" stroke-width="1" />
+        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="${axisColor}" stroke-width="1" />
     `;
 
     // Y Axis High Label
-    svg += `<text x="${margin.left - 5}" y="${getY(yMax) + 4}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" font-family="sans-serif" font-weight="bold">${Math.floor(yMax)}%</text>`;
+    svg += `<text x="${margin.left - 5}" y="${getY(yMax) + 4}" font-size="12" fill="${textColor}" text-anchor="end" font-family="sans-serif" font-weight="bold">${Math.floor(yMax)}%</text>`;
 
     // X Axis Labels
     svg += `
-        <text x="${margin.left}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="start" font-family="sans-serif" font-weight="bold">${xMin}</text>
-        <text x="${margin.left + chartWidth / 2}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="middle" font-family="sans-serif" font-weight="bold">days ago</text>
-        <text x="${margin.left + chartWidth}" y="${height - 10}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="end" font-family="sans-serif" font-weight="bold">${xMax}</text>
+        <text x="${margin.left}" y="${height - 10}" font-size="12" fill="${textColor}" text-anchor="start" font-family="sans-serif" font-weight="bold">${xMin}</text>
+        <text x="${margin.left + chartWidth / 2}" y="${height - 10}" font-size="12" fill="${textColor}" text-anchor="middle" font-family="sans-serif" font-weight="bold">days ago</text>
+        <text x="${margin.left + chartWidth}" y="${height - 10}" font-size="12" fill="${textColor}" text-anchor="end" font-family="sans-serif" font-weight="bold">${xMax}</text>
     `;
 
     // Render Bars
@@ -313,7 +322,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <div class="text-xs text-muted mb-2">LIVE MESSAGES</div>
                     ${(activity.messages || []).map(m => {
             const isError = m.level === 'error' || m.level === 'fatal';
-            const colorClass = isError ? 'text-red' : 'text-cyan';
+            const colorClass = isError ? 'text-red' : 'text-sky';
             const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
             return `<div class="log-line ${colorClass}">${typeBadge} ${m.text}</div>`;
         }).join('')}
@@ -331,7 +340,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
                     <div class="flex flex-wrap items-center gap-4 text-sm">
-                        <span class="font-bold text-cyan">${formatFullCommand(last).toUpperCase()}</span>
+                        <span class="font-bold text-sky">${formatFullCommand(last).toUpperCase()}</span>
                         <span class="flex gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
                         <span class="flex flex-wrap gap-4">
                             <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
@@ -401,19 +410,19 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 </div>
                 <div class="property-row">
                     <div class="property-label">Failure Probability</div>
-                    <div class="property-value text-cyan">${arrayInfo.failure_probability
+                    <div class="property-value text-sky">${arrayInfo.failure_probability
             ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">per year</span>`
             : healthBadge('pending')}</div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>
-                    <div class="property-value text-cyan">
+                    <div class="property-value text-sky">
                         ${arrayInfo.blocks_count && arrayInfo.blocks_unscrubbed ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) + '%' : healthBadge('pending')}
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Total Files</div>
-                    <div class="property-value text-cyan">${arrayInfo.files_count != null ? arrayInfo.files_count : healthBadge('pending')}</div>
+                    <div class="property-value text-sky">${arrayInfo.files_count != null ? arrayInfo.files_count : healthBadge('pending')}</div>
                 </div>
             </div>
         </div>
@@ -454,13 +463,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="property-list">
                 <div class="property-row">
                     <div class="property-label">Oldest</div>
-                    <div class="property-value text-cyan">
+                    <div class="property-value text-sky">
                         ${arrayInfo.scrub_history.x_axis_low > 0 ? arrayInfo.scrub_history.x_axis_low : 0}<span class="text-xs text-muted ml-2">days ago</span>
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Median</div>
-                    <div class="property-value text-cyan">
+                    <div class="property-value text-sky">
                         ${arrayInfo.scrub_history.x_axis_median > 0 ? arrayInfo.scrub_history.x_axis_median : 0}<span class="text-xs text-muted ml-2">days ago</span>
                     </div>
                 </div>
@@ -491,8 +500,8 @@ export const renderDifferences = (arrayInfo) => {
         added: 'text-emerald',
         removed: 'text-red',
         updated: 'text-amber',
-        moved: 'text-cyan',
-        copied: 'text-cyan',
+        moved: 'text-sky',
+        copied: 'text-sky',
         restored: 'text-emerald',
         equal: 'text-muted'
     };
@@ -552,12 +561,12 @@ export const renderDifferences = (arrayInfo) => {
                     ${arrayInfo.diff_moved > 0 ? `
                     <div class="property-row">
                         <div class="property-label">Moved</div>
-                        <div class="property-value text-cyan">${arrayInfo.diff_moved}</div>
+                        <div class="property-value text-sky">${arrayInfo.diff_moved}</div>
                     </div>` : ''}
                     ${arrayInfo.diff_copied > 0 ? `
                     <div class="property-row">
                         <div class="property-label">Copied</div>
-                        <div class="property-value text-cyan">${arrayInfo.diff_copied}</div>
+                        <div class="property-value text-sky">${arrayInfo.diff_copied}</div>
                     </div>` : ''}
                 </div>
 
@@ -665,7 +674,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
         return `
             <div class="mt-2 border text-sm">
                 <div class="flex justify-between mb-1">
-                     <span class="font-mono text-sm font-bold text-cyan">${dev.serial || 'Unknown Model'}</span>
+                     <span class="font-mono text-sm font-bold text-sky">${dev.serial || 'Unknown Model'}</span>
                      <div>${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.rotational ? 'HDD' : 'SSD'} ${dev.model || '-'}${powerOnYears}</div>
@@ -734,7 +743,7 @@ export const renderTasks = (data, hidePeriodic) => {
     const queueRows = pending.length ? pending.reverse().map(t => `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
+            <td class="font-bold text-sky">${formatFullCommand(t)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted">${formatFullTime(t.scheduled_at, pulseAt)}</td>
         </tr>
@@ -747,7 +756,7 @@ export const renderTasks = (data, hidePeriodic) => {
         return `
             <tr>
                 <td class="font-mono text-muted">#${t.number}</td>
-                <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
+                <td class="font-bold text-sky">${formatFullCommand(t)}</td>
                 <td>${statusBadge(t)}</td>
                 <td class="text-muted">${formatFullTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
@@ -760,13 +769,13 @@ export const renderTasks = (data, hidePeriodic) => {
         if (t.status === 'terminated' && t.exit_code !== 0) {
             exitStatus = `<div class="text-yellow mb-1">Exit Code: ${t.exit_code}</div>`;
         } else if (t.status === 'signaled') {
-            exitStatus = `<div class="text-yellow mb-1">Exit Signal: ${formatSignal(t.exit_sig)}</div>`;
+            exitStatus = `<div class="text-red mb-1">Exit Signal: ${formatSignal(t.exit_sig)}</div>`;
         }
 
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-cyan">${formatFullCommand(t)}</td>
+            <td class="font-bold text-sky">${formatFullCommand(t)}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted text-xs">${formatFullTime(t.started_at, pulseAt)}</td>
@@ -780,7 +789,7 @@ export const renderTasks = (data, hidePeriodic) => {
         </tr>
         <tr id="log-${t.number}" class="hidden">
             <td colspan="7">
-                <div class="text-xs font-mono p-4 shadow-inner">
+                <div class="task-history-log text-xs font-mono p-4">
                      ${exitStatus}
                       ${t.log_file && t.log_file !== 'N/A' ? `
                       <div class="text-muted mb-2">
@@ -791,13 +800,13 @@ export const renderTasks = (data, hidePeriodic) => {
                         ${(t.messages || []).length > 0
                 ? (t.messages || []).map(m => {
                     const isError = m.level === 'error' || m.level === 'fatal';
-                    const colorClass = isError ? 'text-red' : 'text-cyan';
+                    const colorClass = isError ? 'text-red' : 'text-sky';
                     const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
                     return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
                 }).join('')
-                : (t.report_output ? '' : '<div class="text-cyan">No logged messages.</div>')}
+                : (t.report_output ? '' : '<div class="text-sky">No logged messages.</div>')}
                         ${t.report_output ? `
-                        <div class="font-mono text-cyan whitespace-pre-wrap">${t.report_output}</div>
+                        <div class="font-mono text-sky whitespace-pre-wrap">${t.report_output}</div>
                         ` : ''}
                      </div>
                 </div>
@@ -853,7 +862,7 @@ export const renderTasks = (data, hidePeriodic) => {
                 </label>
             </div>
              <div class="overflow-x-auto">
-                <table class="data-table dense">
+                <table class="data-table dense history-table">
                     <thead><tr><th class="w-50">ID</th><th>Cmd</th><th>Health</th><th>Result</th><th>Started</th><th>Duration</th><th class="w-60">Details</th></tr></thead>
                     <tbody>${historyRows}</tbody>
                 </table>

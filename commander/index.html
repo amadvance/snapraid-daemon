@@ -60,12 +60,19 @@
         <main class="main-content">
             <!-- Mobile Header -->
             <header class="top-bar">
-                <button id="mobile-menu-btn" class="icon-btn mobile-only">
-                    <span class="icon" id="icon-menu"></span>
-                </button>
-                <h1 id="page-title">Dashboard</h1>
-                <div class="header-actions" id="header-actions">
-                    <!-- Dynamic Action Buttons injected here -->
+                <div class="flex items-center gap-4">
+                    <button id="mobile-menu-btn" class="icon-btn mobile-only">
+                        <span class="icon" id="icon-menu"></span>
+                    </button>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="header-actions" id="header-actions">
+                        <!-- Dynamic Action Buttons injected here -->
+                    </div>
+                    <button id="theme-toggle" class="btn btn-secondary btn-icon" data-tooltip="Toggle Theme">
+                        <span class="icon" id="icon-theme"></span>
+                    </button>
                 </div>
             </header>
             

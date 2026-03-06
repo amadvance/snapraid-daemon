@@ -18,10 +18,36 @@ const app = {
     },
 
     init: () => {
+        // Theme Init
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.dataset.theme = savedTheme;
+        
         // Render Icons
         document.querySelectorAll('[id^="icon-"]').forEach(el => {
             const iconName = el.id.replace('icon-', '');
-            if (Icons[iconName]) el.innerHTML = Icons[iconName];
+            if (iconName === 'theme') {
+                el.innerHTML = savedTheme === 'light' ? Icons.moon : Icons.sun;
+            } else if (Icons[iconName]) {
+                el.innerHTML = Icons[iconName];
+            }
+        });
+
+        // Theme Toggle Handler
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const current = document.documentElement.dataset.theme;
+            const next = current === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = next;
+            localStorage.setItem('theme', next);
+            
+            // Update Icon
+            const iconEl = document.querySelector('#icon-theme');
+            if (iconEl) iconEl.innerHTML = next === 'light' ? Icons.moon : Icons.sun;
+            
+            // Redraw graphs to match theme colors if needed (sparklines use hardcoded colors but maybe background changes?)
+            // Sparklines have transparent backgrounds, but axes lines are white with opacity.
+            // We might need to re-render them if we want to change axis colors.
+            // For now, let's just redraw.
+            app.redrawGraphs();
         });
 
         // Global Tooltip Manager
@@ -246,7 +272,7 @@ const app = {
 
                     if (hasProgress) {
                         html += `
-                        <div class="progress-container sidebar-progress">
+                        <div class="progress-container">
                             <div class="progress-bar" data-style-width="${state.progress}%"></div>
                         </div>`;
                     }
@@ -367,7 +393,7 @@ const app = {
                     view.innerHTML = '<p>Page Not Found</p>';
             }
         } catch (e) {
-            view.innerHTML = `<div class="card border-red-500"><h3 class="text-red">Error</h3><p>${e.message}</p></div>`;
+            view.innerHTML = `<div class="card border-red"><h3 class="text-red">Error</h3><p>${e.message}</p></div>`;
         }
     },
 

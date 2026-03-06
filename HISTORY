@@ -37,6 +37,7 @@ SnapRAID-Daemon HISTORY
    namespace.
  * Established the 'sys_' prefix for static, manual-edit-only options 
    that are hidden from the REST API for security and stability.
+ * Added a Light Theme with a dedicated toggle in the navigation bar.
 
 0.1beta1 01/03/2026
 ===================
