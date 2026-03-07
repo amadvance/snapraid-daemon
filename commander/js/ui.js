@@ -884,7 +884,7 @@ export const renderSettings = (config) => {
                 </label>
                 <label for="${key}" class="mb-0 ${disabled ? '' : 'cursor-pointer'} font-bold">${label}</label>
             </div>
-            ${desc ? `<div class="text-xs text-muted mt-1" style="margin-left: 58px;">${desc}</div>` : ''}
+            ${desc ? `<div class="text-xs text-muted mt-1">${desc}</div>` : ''}
         </div>
     `;
 
