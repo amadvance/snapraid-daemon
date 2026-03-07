@@ -20,6 +20,7 @@ mkdir -p $STAGING_DIR/$PRGNAM
 cp pkg/$PRGNAM.SlackBuild $STAGING_DIR/$PRGNAM/
 cp pkg/slack-desc $STAGING_DIR/$PRGNAM/
 cp pkg/doinst.sh $STAGING_DIR/$PRGNAM/
+cp pkg/README $STAGING_DIR/$PRGNAM/
 
 # Process the .info file and replace placeholders 
 sed -e "s/@MD5SUM@/$MD5SUM/g" pkg/$PRGNAM.info > $STAGING_DIR/$PRGNAM/$PRGNAM.info

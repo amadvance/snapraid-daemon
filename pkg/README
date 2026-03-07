@@ -1,0 +1,25 @@
+SnapRAID Daemon is a background service that automates SnapRAID
+parity management. It features a built-in Web UI and REST API
+to coordinate sync and scrub tasks through intelligent scheduling.
+
+This service ensures data protection stays current without manual
+command-line intervention.
+
+Requirements:
+- snapraid (the main SnapRAID utility)
+
+Configuration:
+The package installs a default configuration file and an init
+script:
+- /etc/snapraidd.conf
+- /etc/rc.d/rc.snapraidd
+
+Post-installation:
+To start the daemon automatically on boot, ensure the init script
+is executable:
+  chmod +x /etc/rc.d/rc.snapraidd
+
+Then add the following to /etc/rc.d/rc.local:
+  if [ -x /etc/rc.d/rc.snapraidd ]; then
+    /etc/rc.d/rc.snapraidd start
+  fi

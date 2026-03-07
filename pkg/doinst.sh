@@ -1,15 +1,26 @@
-# File: pkg/doinst.sh
 config() {
   NEW="$1"
-  OLD="$(echo $NEW | sed 's/\.new$//')"
-  # If the actual config file doesn't exist, move the .new one into place
+  OLD="$(dirname $NEW)/$(basename $NEW .new)"
+  # If there's no config file by that name, mv it over:
   if [ ! -r $OLD ]; then
     mv $NEW $OLD
   elif [ "$(cat $OLD | md5sum)" = "$(cat $NEW | md5sum)" ]; then
-    # If they are identical, just delete the redundant .new file
+    # toss the redundant copy
     rm $NEW
   fi
-  # If they differ, the .new file is left in /etc for the user to diff manually
+  # Otherwise, we leave the .new copy for the admin to consider...
 }
 
+preserve_perms() {
+  NEW="$1"
+  OLD="$(dirname $NEW)/$(basename $NEW .new)"
+  if [ -e $OLD ]; then
+    cp -a $OLD ${NEW}.incoming
+    cat $NEW > ${NEW}.incoming
+    mv ${NEW}.incoming $NEW
+  fi
+  config $NEW
+}
+
+preserve_perms etc/rc.d/rc.snapraidd.new
 config etc/snapraidd.conf.new
