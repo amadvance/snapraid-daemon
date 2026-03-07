@@ -665,6 +665,9 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
+    text-align: center;
+    justify-content: center;
+    line-height: 1.2;
 }
 
 .badge-green {
