@@ -128,6 +128,23 @@ void message_insert(tommy_list* list, int level, int type, const char* msg)
 }
 
 /****************************************************************************/
+/* run */
+
+struct snapraid_run* run_alloc(int day_of_week, int hour, int minute)
+{
+	struct snapraid_run* run = calloc_nofail(1, sizeof(struct snapraid_run));
+	run->day_of_week = day_of_week;
+	run->hour = hour;
+	run->minute = minute;
+	return run;
+}
+
+void run_free(void* void_run)
+{
+	free(void_run);
+}
+
+/****************************************************************************/
 /* task */
 
 struct snapraid_task* task_alloc(void)

@@ -389,11 +389,16 @@ Configuration
     maintenance_schedule
 	Defines the timing for the automated maintenance sequence, which
 	consists of a sync, followed by a scrub, and concluding with a report.
+	Multiple schedules can be specified by separating them with commas.
 	If this option is unset, automated maintenance is disabled.
 
 	The format must be either "HH:MM" or "Day HH:MM".
 	Hours are specified in a 24-hour format (00-23), and days are
 	represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
+
+	Examples:
+	"02:00" - Run every night at 2 AM.
+	"Mon 03:00, Thu 04:00" - Run every Monday at 3 AM and Thursday at 4 AM.
 
     scrub_percentage
 	Determines the portion of the array verified after a successful sync.

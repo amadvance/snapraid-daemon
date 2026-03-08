@@ -273,11 +273,18 @@ void* scheduler_thread(void* arg)
 
 			mono_now_secs = os_tick_sec();
 
-			/* sync and scrub */
-			if (current_hour == state->config.maintenance_hour
-				&& current_minute == state->config.maintenance_minute
-				&& (state->config.maintenance_run == RUN_DAILY || (state->config.maintenance_run == RUN_WEEKLY && current_wday == state->config.maintenance_day_of_week))) {
+			int schedule = 0;
+			for (tommy_node* i = tommy_list_head(&state->config.maintenance_list); i; i = i->next) {
+				struct snapraid_run* run = i->data;
+				if (current_hour == run->hour
+					&& current_minute == run->minute
+					&& (run->day_of_week == -1 || (current_wday == run->day_of_week))) {
+					schedule = 1;
+				}
+			}
+			if (schedule) {
 				schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
+				/* do not schedule other tasks */
 				break;
 			}
 

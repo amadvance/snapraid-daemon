@@ -65,13 +65,19 @@ const char* config_level_str(int level);
  * @param buf Buffer to store result
  * @param size Size of buffer
  */
-void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size);
+void config_schedule_str(struct snapraid_config* config, char* buf, size_t size);
 
 /**
  * Initialize configuration with defaults.
  * @param state Current snapraid state
  */
 void config_init(struct snapraid_state* state);
+
+/**
+ * Free configuration.
+ * @param state Current snapraid state
+ */
+void config_done(struct snapraid_state* state);
 
 /**
  * Load configuration from file.

@@ -22,6 +22,7 @@
 #include "daemon.h"
 #include "log.h"
 #include "rest.h"
+#include "elem.h"
 #include "conf.h"
 
 struct snapraid_config_line* config_line_alloc(void)
@@ -75,15 +76,29 @@ const char* config_level_str(int level)
 	return "-";
 }
 
-void config_schedule_str(const struct snapraid_config* config, char* buf, size_t size)
+void config_schedule_str(struct snapraid_config* config, char* buf, size_t size)
 {
 	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
-	if (config->maintenance_run == RUN_DAILY) {
-		snprintf(buf, size, "%02d:%02d", config->maintenance_hour, config->maintenance_minute);
-	} else if (config->maintenance_run == RUN_WEEKLY && config->maintenance_day_of_week >= 0 && config->maintenance_day_of_week < 7) {
-		snprintf(buf, size, "%s %02d:%02d", days[config->maintenance_day_of_week], config->maintenance_hour, config->maintenance_minute);
-	} else {
-		buf[0] = '\0';
+
+	size_t len = 0;
+	buf[len] = 0;
+
+	for (tommy_node* i = tommy_list_head(&config->maintenance_list); i; i = i->next) {
+		struct snapraid_run* run = i->data;
+
+		const char* sep = len != 0 ? ", " : "";
+
+		int ret;
+		if (run->day_of_week == -1)
+			ret = snprintf(buf + len, size - len, "%s%02d:%02d", sep, run->hour, run->minute);
+		else
+			ret = snprintf(buf + len, size - len, "%s%s %02d:%02d", sep, days[run->day_of_week], run->hour, run->minute);
+		if (ret < 0)
+			return;
+
+		len += ret;
+		if (len >= size)
+			return;
 	}
 }
 
@@ -105,41 +120,67 @@ static int get_day_index(const char* input)
 
 int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config)
 {
-	char day_str[10];
-	int hour, minute;
-
-	if (!input || strlen(input) == 0) {
-		config->maintenance_run = RUN_DISABLED;
+	if (!input || *input == '\0') {
 		return 0;
 	}
 
-	config->maintenance_hour = 0;
-	config->maintenance_minute = 0;
-	config->maintenance_day_of_week = -1;
+	tommy_list_foreach(&config->maintenance_list, run_free);
+	tommy_list_init(&config->maintenance_list);
 
-	if (sscanf(input, "%2d:%2d", &hour, &minute) == 2) {
-		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
+	const char* p = input;
+	while (*p) {
+		/* skip leading spaces */
+		while (isspace((unsigned char)*p))
+			++p;
+		if (*p == 0)
+			break;
+
+		long hour = -1;
+		long minute = -1;
+		long day_of_week = -1;
+
+		if (!isdigit((unsigned char)*p)) {
+			day_of_week = get_day_index(p);
+			if (day_of_week == -1)
+				return -1;
+
+			/* skip day */
+			p += 3;
+
+			/* a space is required after the day */
+			if (!isspace((unsigned char)*p))
+				return -1;
+
+			/* strtol skips spaces by itself */
+		}
+
+		char* e;
+		hour = strtol(p, &e, 10);
+		if (p == e || *e != ':')
 			return -1;
-		config->maintenance_run = RUN_DAILY;
-		config->maintenance_hour = hour;
-		config->maintenance_minute = minute;
-		return 0;
+		p = e + 1;
+		minute = strtol(p, &e, 10);
+		if (p == e)
+			return -1;
+		p = e;
+
+		if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
+			return -1;
+
+		struct snapraid_run* run = run_alloc(day_of_week, hour, minute);
+		tommy_list_insert_tail(&config->maintenance_list, &run->node, run);
+
+		/* skip trailing spaces */
+		while (isspace((unsigned char)*p))
+			++p;
+
+		if (*p == ',')
+			++p;
+		else if (*p != 0)
+			return -1;
 	}
 
-	if (sscanf(input, "%9s %2d:%2d", day_str, &hour, &minute) == 3) {
-		int day_of_week = get_day_index(day_str);
-		if (day_of_week == -1)
-			return -1;
-		if (hour < 0 || hour > 24 || minute < 0 || minute > 59)
-			return -1;
-		config->maintenance_run = RUN_WEEKLY;
-		config->maintenance_day_of_week = day_of_week;
-		config->maintenance_hour = hour;
-		config->maintenance_minute = minute;
-		return 0;
-	}
-
-	return -1;
+	return 0;
 }
 
 int config_parse_level(const char* input, int* out)
@@ -511,10 +552,7 @@ void config_init(struct snapraid_state* state)
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;
 	config->net_web_root[0] = 0;
-	config->maintenance_run = RUN_DISABLED;
-	config->maintenance_hour = 0;
-	config->maintenance_minute = 0;
-	config->maintenance_day_of_week = 0;
+	tommy_list_init(&config->maintenance_list);
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
@@ -535,5 +573,10 @@ void config_init(struct snapraid_state* state)
 	config->notify_result_level = LVL_ERROR;
 	config->notify_differences = 0;
 	os_default_conf(config->conf, sizeof(config->conf));
+}
+
+void config_done(struct snapraid_state* state)
+{
+	tommy_list_foreach(&state->config.maintenance_list, run_free);
 }
 

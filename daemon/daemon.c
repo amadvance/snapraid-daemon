@@ -253,6 +253,7 @@ void daemon_done(struct snapraid_state* state)
 	rest_done(state);
 	scheduler_done(state);
 	runner_done(state);
+	config_done(state);
 
 	log_msg(LVL_INFO, "daemon stopped");
 

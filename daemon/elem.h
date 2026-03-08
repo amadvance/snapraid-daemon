@@ -85,6 +85,21 @@ void message_free(void* void_message);
 void message_insert(tommy_list* list, int level, int type, const char* msg);
 
 /****************************************************************************/
+/* run */
+
+/**
+ * Allocate and initialize a new run.
+ * @return Pointer to newly allocated run
+ */
+struct snapraid_run* run_alloc(int day_of_week, int hour, int minute);
+
+/**
+ * Free a run.
+ * @param void_run Pointer to the run entry
+ */
+void run_free(void* void_run);
+
+/****************************************************************************/
 /* task */
 
 /**

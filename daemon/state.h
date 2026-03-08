@@ -411,9 +411,12 @@ struct snapraid_global {
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
 
-#define RUN_DISABLED 0
-#define RUN_DAILY 1
-#define RUN_WEEKLY 7
+struct snapraid_run {
+	int hour; /**< Hour for scheduled maintenance */
+	int minute; /**< Minute for scheduled maintenance */
+	int day_of_week; /**< Day of week for scheduled maintenance. -1 for all. */
+	tommy_node node;
+};
 
 #define LVL_CRITICAL 0
 #define LVL_ERROR 1
@@ -458,10 +461,7 @@ struct snapraid_config {
 	char net_allowed_origin[CONFIG_MAX]; /**< Allowed origin for CORS */
 	int net_config_full_access; /**< 1 if full configuration access is allowed from network, 0 otherwise */
 	char net_web_root[PATH_MAX]; /**< Web pages directory */
-	int maintenance_run; /**< 1 to enable automated maintenance, 0 otherwise */
-	int maintenance_hour; /**< Hour for scheduled maintenance */
-	int maintenance_minute; /**< Minute for scheduled maintenance */
-	int maintenance_day_of_week; /**< Day of week for scheduled maintenance */
+	tommy_list maintenance_list; /**< List of snapraid_run */
 	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
 	int sync_threshold_updates; /**< Threshold for updates before sync fails */
 	int sync_prehash; /**< 1 to enable prehash, 0 otherwise */
