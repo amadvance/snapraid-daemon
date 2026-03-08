@@ -618,7 +618,7 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 	if (state->global.version[0] == 0 || os_find_engine(state->config.sys_engine) == 0) { /* never run or uninstalled */
 		health = HEALTH_PENDING;
 		if (reason)
-			snprintf(reason, reason_size, "The snapraid binary was not found in the system PATH. Please install SnapRAID and restart the daemon.");
+			snprintf(reason, reason_size, "The snapraid binary was not found in the expected location. Please install SnapRAID and restart the daemon.");
 	} else if (tommy_list_empty(&state->data_list) || tommy_list_empty(&state->parity_list)) {
 		health = HEALTH_PENDING;
 		if (reason)
