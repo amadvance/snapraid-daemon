@@ -258,7 +258,7 @@ int crawl_zip(tommy_list* page_list, const char* path)
 		char name_buf[512];
 		size_t copy_len = (name_len < sizeof(name_buf) - 1) ? name_len : sizeof(name_buf) - 1;
 		memcpy(name_buf, cd_ptr + CD_FIXED_SIZE, copy_len);
-		name_buf[copy_len] = '\0';
+		name_buf[copy_len] = 0;
 
 		/* extract metadata */
 		uint32_t crc32 = read32(cd_ptr + OFF_CD_CRC32);

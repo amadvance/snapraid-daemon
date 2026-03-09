@@ -1323,7 +1323,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 
 				if (c == ':' && (mac_limit == 0 || mac <= mac_limit)) {
 					if (mac + 1 < RUN_FIELD_MAX) {
-						plain[plain_len++] = '\0';
+						plain[plain_len++] = 0;
 						if (mac == 1) {
 							if (strcmp(map[0], "msg") == 0)
 								mac_limit = 2; /* the command has two tags, no more */
@@ -1337,7 +1337,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 				if (c == '\n') {
 					int ignore_this_line = 0;
 
-					plain[plain_len] = '\0';
+					plain[plain_len] = 0;
 					map[mac] = 0;
 
 					if (!disable) {

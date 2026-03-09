@@ -510,7 +510,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 		return 0; /* not a page, follow other handlers */
 
 	size_t root_len = strlen(resolved_root);
-	if (strncmp(resolved_path, resolved_root, root_len) != 0 || (resolved_path[root_len] != '\0' && resolved_path[root_len] != '/'))
+	if (strncmp(resolved_path, resolved_root, root_len) != 0 || (resolved_path[root_len] != 0 && resolved_path[root_len] != '/'))
 		return send_error(conn, 403);
 
 	struct stat st;

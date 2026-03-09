@@ -480,11 +480,11 @@ size_t sncpy(char* dst, size_t dst_size, const char* src)
 
 	if (n != 0) {
 		while (--n != 0) {
-			if ((*dst++ = *s++) == '\0') {
+			if ((*dst++ = *s++) == 0) {
 				return (size_t)(s - src - 1);
 			}
 		}
-		*dst = '\0';
+		*dst = 0;
 	}
 
 	while (*s++) {
@@ -505,7 +505,7 @@ int strint(int* out, const char* s)
 	if (errno != 0)
 		return -1; /* overflow or underflow */
 
-	if (e == s || *e != '\0')
+	if (e == s || *e != 0)
 		return -1; /* not a valid number */
 
 	if (v < INT_MIN || v > INT_MAX)
@@ -525,7 +525,7 @@ int struint(unsigned* out, const char* s)
 	if (errno != 0)
 		return -1; /* overflow or underflow */
 
-	if (e == s || *e != '\0')
+	if (e == s || *e != 0)
 		return -1; /* not a valid number */
 
 	if (v > UINT_MAX)
@@ -545,7 +545,7 @@ int stri64(int64_t* out, const char* s)
 	if (errno != 0)
 		return -1; /* overflow or underflow */
 
-	if (e == s || *e != '\0')
+	if (e == s || *e != 0)
 		return -1; /* not a valid number */
 
 	*out = v;
@@ -562,7 +562,7 @@ int stru64(uint64_t* out, const char* s)
 	if (errno != 0)
 		return -1; /* overflow or underflow */
 
-	if (e == s || *e != '\0')
+	if (e == s || *e != 0)
 		return -1; /* not a valid number */
 
 	*out = v;
@@ -579,7 +579,7 @@ int strdouble(double* out, const char* s)
 	if (errno != 0)
 		return -1; /* overflow or underflow */
 
-	if (e == s || *e != '\0')
+	if (e == s || *e != 0)
 		return -1; /* not a valid number */
 
 	if (!isfinite(v))

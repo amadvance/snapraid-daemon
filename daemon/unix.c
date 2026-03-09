@@ -409,7 +409,7 @@ int os_script(char** argv, const char* run_as_user)
 	if (last_slash && last_slash != resolved_path) {
 		size_t dir_len = last_slash - resolved_path;
 		memcpy(dir_path, resolved_path, dir_len);
-		dir_path[dir_len] = '\0';
+		dir_path[dir_len] = 0;
 
 		if (stat(dir_path, &st) == 0) {
 			/* script directory must be owned by root or the daemon's real user */
@@ -528,7 +528,7 @@ int os_script(char** argv, const char* run_as_user)
 		setpgid(0, 0);
 
 		/* drop privileges first (if configured) */
-		if (run_as_user && run_as_user[0] != '\0') {
+		if (run_as_user && run_as_user[0] != 0) {
 			errno = 0;
 			struct passwd* pw = getpwnam(run_as_user);
 			if (!pw) {

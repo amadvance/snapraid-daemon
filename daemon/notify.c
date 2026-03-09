@@ -123,7 +123,7 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 		}
 	}
 
-	*out = '\0';
+	*out = 0;
 	return 0;
 }
 
