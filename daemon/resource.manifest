@@ -9,11 +9,11 @@
     />
     <description>SnapRAID Windows Daemon Service</description>
 
-    <!-- UAC PRIVILEGES: Forces 'requireAdministrator' so the daemon can access physical disks. -->
+    <!-- UAC PRIVILEGES: Uses 'asInvoker' because 'requireAdministrator' force a new console window to open -->
     <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
         <security>
             <requestedPrivileges>
-                <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+                <requestedExecutionLevel level="asInvoker" uiAccess="false" />
             </requestedPrivileges>
         </security>
     </trustInfo>
