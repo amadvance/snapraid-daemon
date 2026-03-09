@@ -28,7 +28,11 @@ const statusBadge = (task) => {
     }
 
     if (task.status === 'terminated' && task.exit_code !== 0) {
-        color = 'red';
+        return badge('error', 'red');
+    }
+    
+    if (task.status === 'terminated') {
+        return badge('success', 'green');
     }
 
     return badge(task.status, color);
