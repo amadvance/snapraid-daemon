@@ -8,6 +8,10 @@ SnapRAID-Daemon HISTORY
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4
    and IPv6 on the default port 7627, retrying with only IPv4 if it fails.
 
+0.1beta2b 09/03/2026
+====================
+ * Fixed handling of net_web_root in Linux when no directory is specified.
+
 0.1beta2 08/03/2026
 ===================
  * Added Windows support with an .exe installer. The installer also contains
