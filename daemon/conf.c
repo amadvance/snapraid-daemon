@@ -120,10 +120,6 @@ static int get_day_index(const char* input)
 
 int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config)
 {
-	if (!input || *input == '\0') {
-		return 0;
-	}
-
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_init(&config->maintenance_list);
 
