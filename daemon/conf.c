@@ -546,8 +546,8 @@ void config_init(struct snapraid_state* state)
 	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
 	config->sys_log_retention_days = 0;
 	config->net_enabled = 0;
-	sncpy(config->net_port, sizeof(config->net_port), "127.0.0.1:7627");
-	sncpy(config->net_acl, sizeof(config->net_acl), "+127.0.0.1");
+	sncpy(config->net_port, sizeof(config->net_port), "");
+	sncpy(config->net_acl, sizeof(config->net_acl), "");
 	config->net_security_headers = 1;
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;

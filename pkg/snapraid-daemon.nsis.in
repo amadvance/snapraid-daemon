@@ -45,7 +45,7 @@ VIAddVersionKey "ProductVersion" "@PACKAGE_VERSION@"
 
 # Finish Page
 !define MUI_FINISHPAGE_LINK "Open SnapRAID Web Interface now"
-!define MUI_FINISHPAGE_LINK_LOCATION "http://127.0.0.1:7627/"
+!define MUI_FINISHPAGE_LINK_LOCATION "http://localhost:7627/"
 !insertmacro MUI_PAGE_FINISH
 
 # Uninstaller Pages
@@ -173,7 +173,7 @@ Section "Install"
     WriteRegStr HKLM "Software\snapraid" "Install_Dir" "$INSTDIR"
 
     # CREATE DESKTOP SHORTCUT
-    CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://127.0.0.1:7627/" "" "$INSTDIR\snapraid-uninstall.exe" 0
+    CreateShortcut "$DESKTOP\SnapRAID Commander.lnk" "http://localhost:7627/" "" "$INSTDIR\snapraid-uninstall.exe" 0
 
     # WRITE THE UNINSTALL KEYS FOR WINDOWS CONTROL PANEL
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd" "DisplayName" "SnapRAID Daemon"

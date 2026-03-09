@@ -64,17 +64,20 @@ net_enabled = 1
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 #
 # Examples:
-#   "127.0.0.1:7627"       - IPv4 localhost only (Recommended).
-#   "7627"                 - All IPv4 interfaces (Required for Tailscale/LAN).
+#   "127.0.0.1:7627"       - IPv4 loopback only (Recommended).
 #   "[::1]:7627"           - IPv6 loopback only.
-#   "127.0.0.1:7627,8080"  - Listen on multiple ports on localhost.
-net_port = 127.0.0.1:7627
+#   "7627"                 - All IPv4 interfaces (Required for Tailscale/LAN).
+#   "[::]:7627"            - All IPv6 interfaces.
+#   "127.0.0.1:7627,127.0.0.1:8080"  - Listen on multiple ports on loopback.
+#net_port = 127.0.0.1:7627
 
 # The net_acl restricts API access to specific client IPs.
 # Format: A comma-separated list of [+/-][IP/MASK].
-# A '+' allows and '-' denies. Subnets use CIDR notation (e.g., /24).
-# If unset, the daemon defaults to +127.0.0.1. If any rules are set,
-# the server denies everything by default. The last matching rule wins.
+# The syntax uses + to allow and - to deny, supporting CIDR notation
+# (e.g., /24). The rules are processed sequentially, and the last
+# matching rule determines the outcome.
+# If unset, it defaults to accept everything. If any rules are defined,
+# the daemon adopts a "deny by default" stance.
 #
 # To allow access via Tailscale or similar services, ensure you add the
 # relevant network prefix (e.g., +100.0.0.0/8).
@@ -84,9 +87,9 @@ net_port = 127.0.0.1:7627
 #
 # Examples:
 #   "+127.0.0.1,+::1"          - Allow IPv4 and IPv6 loopback.
-#   "+100.0.0.0/8,+127.0.0.1"  - Allow Tailscale and localhost.
+#   "+100.0.0.0/8,+127.0.0.1"  - Allow Tailscale and loopback.
 #   "+192.168.1.0/24"          - Allow local subnet only.
-net_acl = +127.0.0.1
+#net_acl = +127.0.0.1
 
 # Injects browser-level security hardening headers into every HTTP response.
 #

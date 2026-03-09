@@ -1805,17 +1805,24 @@ void civetweb_log_message(const struct mg_connection* conn, const char* str)
 int rest_init(struct snapraid_state* state)
 {
 	const char* options[20];
+	char listening_port[CONFIG_MAX];
+	int listening_port_default;
 	int i;
 
 	if (!state->config.net_enabled)
 		return 0;
 
 	i = 0;
-	if (state->config.net_port[0] == 0) {
-		sncpy(state->config.net_port, sizeof(state->config.net_port), "127.0.0.1:7627");
+
+	sncpy(listening_port, sizeof(listening_port), state->config.net_port);
+	listening_port_default = 0;
+	if (listening_port[0] == 0) {
+		/* listen to both IPv4 and IPv6 */
+		sncpy(listening_port, sizeof(listening_port), "[::1]:7627,127.0.0.1:7627");
+		listening_port_default = 1;
 	}
 	options[i++] = "listening_ports";
-	options[i++] = state->config.net_port;
+	options[i++] = listening_port;
 	if (state->config.net_acl[0] != 0) {
 		options[i++] = "access_control_list";
 		options[i++] = state->config.net_acl;
@@ -1836,6 +1843,12 @@ int rest_init(struct snapraid_state* state)
 	state->rest_callbacks.log_message = log_internal_callback;
 
 	state->rest_context = mg_start(&state->rest_callbacks, state, options);
+	if (!state->rest_context && listening_port_default) {
+		/* retry with only IPv4 */
+		log_msg(LVL_WARNING, "failed to start web server binding to both IPv4 and IPv6, going to retry with IPv4 only, errno=%s(%d)", strerror(errno), errno);
+		sncpy(listening_port, sizeof(listening_port), "127.0.0.1:7627");
+		state->rest_context = mg_start(&state->rest_callbacks, state, options);
+	}
 	if (!state->rest_context) {
 		log_msg(LVL_ERROR, "failed to start web server, errno=%s(%d)", strerror(errno), errno);
 		return -1;
