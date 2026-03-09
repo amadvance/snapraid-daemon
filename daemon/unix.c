@@ -156,8 +156,8 @@ void os_default_conf(char* dst, size_t dst_size)
 void os_default_data(char* dst, size_t dst_size, const char* root)
 {
 #ifdef DATADIR
-	snprintf(dst, dst_size, DATADIR "/" DAEMON "/%s", root);
-	if (access(dst, F_OK) != 0)
+	snprintf(dst, dst_size, DATADIR "/%s", root);
+	if (access(dst, F_OK) == 0)
 		return;
 #endif
 	/* otherwise use  /usr/share/snapraidd */
