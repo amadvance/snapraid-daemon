@@ -25,6 +25,8 @@ fi
 
 sh makensis.sh
 sh makeslackdist.sh
+sh makearchdist.sh
 sudo sh makeslackware.sh
+sudo sh makearch.sh
 sudo sh makedeb.sh
 sudo sh makerpm.sh

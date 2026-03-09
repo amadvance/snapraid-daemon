@@ -5,6 +5,7 @@
 *.txz
 *.deb
 *.rpm
+*.zst
 
 # backups
 *~
@@ -50,6 +51,11 @@ makedeb.sh
 pkg/control
 makerpm.sh
 pkg/snapraid-daemon.spec
+makearch.sh
+makearchdist.sh
+pkg/.PKGINFO
+pkg/PKGBUILD
+pkg/.SRCINFO
 makensis.sh
 pkg/snapraid-daemon.nsis
 MSG00401.bin

@@ -1,0 +1,18 @@
+pkgbase = @PACKAGE@
+	pkgdesc = A background service with a built-in Web UI that automates SnapRAID operations
+	pkgver = @VERSION@
+	pkgrel = 1
+	url = https://www.snapraid.it/
+	arch = x86_64
+	license = GPL3
+	makedepends = gcc
+	makedepends = make
+	depends = zlib
+	depends = zstd
+	depends = snapraid>=14.0
+	depends = systemd
+	backup = etc/snapraidd.conf
+	source = https://github.com/amadvance/@PACKAGE@/releases/download/v@PACKAGE_VERSION@/@PACKAGE@-@PACKAGE_VERSION@.tar.gz
+	sha256sums = @SHA256@
+
+pkgname = @PACKAGE@

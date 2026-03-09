@@ -1,0 +1,35 @@
+# Maintainer: Andrea Mazzoleni <amadvance@gmail.com>
+pkgname=@PACKAGE@
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="A background service with a built-in Web UI that automates SnapRAID operations"
+arch=('x86_64')
+url="https://www.snapraid.it/"
+license=('GPL3')
+depends=('zlib' 'zstd' 'snapraid>=14.0' 'systemd')
+makedepends=('gcc' 'make')
+backup=('etc/snapraidd.conf')
+install="${pkgname}.install"
+source=("https://github.com/amadvance/@PACKAGE@/releases/download/v@PACKAGE_VERSION@/@PACKAGE@-@PACKAGE_VERSION@.tar.gz")
+sha256sums=('@SHA256@')
+
+build() {
+  cd "$pkgname-$pkgver"
+  ./configure --prefix=/usr --sysconfdir=/etc --with-init-type=none
+  make
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make DESTDIR="$pkgdir/" install
+  
+  # Add example config and docs (Matches your script's logic)
+  install -Dm644 snapraidd.conf.example "$pkgdir/usr/share/doc/$pkgname/snapraidd.conf.example"
+  install -m644 snapraidd.yaml COPYING AUTHORS HISTORY README "$pkgdir/usr/share/doc/$pkgname/"
+
+  # Ensure the config exists in /etc (Matches your script's cp line)
+  install -Dm644 snapraidd.conf.example "$pkgdir/etc/snapraidd.conf"
+
+  # Arch Policy: License must also be in the license directory
+  install -Dm644 COPYING "$pkgdir/usr/share/licenses/$pkgname/COPYING"
+}

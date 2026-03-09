@@ -165,6 +165,12 @@ EXTRA_DIST = \
 	pkg/postrm \
 	makerpm.sh.in \
 	pkg/snapraid-daemon.spec.in \
+	makearch.sh.in \
+	makearchdist.sh.in \
+	pkg/.INSTALL \
+	pkg/.PKGINFO.in \
+	pkg/PKGBUILD.in \
+	pkg/.SRCINFO.in \
 	makensis.sh.in \
 	pkg/snapraid-daemon.nsis.in \
 	pkg/snapraid-daemon.ico \

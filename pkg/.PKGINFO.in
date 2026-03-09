@@ -1,0 +1,13 @@
+pkgname = @PACKAGE@
+pkgver = @VERSION@-1
+pkgdesc = A background service with a built-in Web UI that automates SnapRAID operations
+url = https://www.snapraid.it/
+builddate = @BUILD_DATE@
+packager = Andrea Mazzoleni <amadvance@gmail.com>
+size = @PACKAGE_SIZE@
+arch = x86_64
+license = GPL3
+depend = zlib
+depend = zstd
+depend = systemd
+backup = etc/snapraidd.conf
