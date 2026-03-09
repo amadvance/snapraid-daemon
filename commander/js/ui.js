@@ -321,6 +321,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="log-window">
                     <div class="text-xs text-muted mb-2">LIVE MESSAGES</div>
                     ${(activity.messages || []).map(m => {
+            if (m.level === 'verbose') return '';
             const isError = m.level === 'error' || m.level === 'fatal';
             const colorClass = isError ? 'text-red' : 'text-sky';
             const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
@@ -800,7 +801,7 @@ export const renderTasks = (data, hidePeriodic) => {
                         ${(t.messages || []).length > 0
                 ? (t.messages || []).map(m => {
                     const isError = m.level === 'error' || m.level === 'fatal';
-                    const colorClass = isError ? 'text-red' : 'text-sky';
+                    const colorClass = isError ? 'text-red' : m.level === 'verbose' ? 'text-muted' : 'text-sky';
                     const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
                     return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
                 }).join('')

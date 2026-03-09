@@ -1510,6 +1510,10 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 			ss_json_str(s, level, "level", "info");
 			ss_json_str(s, level, "text", message->msg);
 			break;
+		case MESSAGE_LEVEL_VERBOSE :
+			ss_json_str(s, level, "level", "verbose");
+			ss_json_str(s, level, "text", message->msg);
+			break;
 		}
 		ss_json_close(s, &level);
 	}

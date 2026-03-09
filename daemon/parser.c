@@ -795,7 +795,7 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		++task->message_list_count;
 	} else if (strcmp(map[1], "verbose") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
+			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_VERBOSE, MESSAGE_TYPE_NONE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 		}
 		++task->message_list_count;

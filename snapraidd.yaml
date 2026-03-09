@@ -739,12 +739,13 @@ components:
       properties:
         level:
           type: string
-          enum: [fatal, error, info]
+          enum: [fatal, error, info, verbose]
           description: >
             Defines the impact on the current process:
             - **fatal**: Fatal error, the task stopped immediately.
             - **error**: Significant issue, but the task attempted to continue.
             - **info**: General telemetry and progress updates.
+            - **verbose**: Verbose information.
         type:
           type: string
           enum: [hardware, soft]

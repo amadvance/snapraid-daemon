@@ -1029,8 +1029,8 @@ body {
 
 .task-history-log {
     background-color: var(--bg-sub);
-    border-radius: var(--radius-md);
     margin: 0.5rem;
+    padding: 0.5rem;
 }
 
 .data-table tr:hover {
