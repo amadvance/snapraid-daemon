@@ -10,9 +10,15 @@ SnapRAID Daemon TODO
   implement as a new flag for "sync/maintenance" to avoid to run CLI multiple
   times.
 
+- Add a "pause" switch for all automated background tasks (sync/scrub).
+
+- Implement collapsing logic for diff results to hide matched copy/delete pairs
+  for a cleaner view. Do it in snapraid directly ?
 
 Future Releases
 ===============
+
+- Implement a manual sync/scrub/... trigger to allow on-demand operations.
 
 - Allow to accept a SMART attribute value as valid/acknowledged and don't show
   it anymore in the disk card UI as warning. It will remain in the full SMART 
