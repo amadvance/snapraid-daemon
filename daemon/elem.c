@@ -252,6 +252,14 @@ int task_level(struct snapraid_task* task)
 	return level;
 }
 
+void task_set_unique_start_time(struct snapraid_state* state, struct snapraid_task* task, time_t now)
+{
+	if (now <= state->runner.last_start_time)
+		now = state->runner.last_start_time + 1;
+	task->unix_start_time = now;
+	state->runner.last_start_time = now;
+}
+
 /****************************************************************************/
 /* schedule */
 

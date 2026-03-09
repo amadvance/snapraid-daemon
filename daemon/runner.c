@@ -431,6 +431,8 @@ static void runner_go(struct snapraid_state* state)
 
 bail:
 	unix_end_time = time(0);
+	if (unix_end_time < unix_start_time)
+		unix_end_time = unix_start_time; /* time start time may be in the future of few seconds to guarantee uniqueness */
 
 	/* store if the script was skipped */
 	if (post_script_skip)
@@ -658,7 +660,7 @@ static void* runner_thread(void* arg)
 
 			/* setup a new task to run */
 			struct snapraid_task* task = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
-			task->unix_start_time = now;
+			task_set_unique_start_time(state, task, now);
 
 			/* set in the latest */
 			state->runner.latest = task;
@@ -677,8 +679,8 @@ static void* runner_thread(void* arg)
 				}
 			} else {
 				task->state = PROCESS_STATE_CANCEL;
-				task->unix_start_time = now;
-				task->unix_end_time = now;
+				task->unix_start_time = now; /* here we don't care about uniqueness as canceled tasks are not stored */
+				task->unix_end_time = task->unix_start_time;
 				log_msg(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
 
 				/* insert in the history */

@@ -130,6 +130,11 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
  */
 int task_level(struct snapraid_task* task);
 
+/**
+ * Set the start time ensuring uniquiness.
+ */
+void task_set_unique_start_time(struct snapraid_state* state, struct snapraid_task* task, time_t now);
+
 /****************************************************************************/
 /* schedule */
 

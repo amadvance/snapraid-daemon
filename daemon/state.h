@@ -318,6 +318,7 @@ struct snapraid_runner {
 	thread_cond_t cond;
 	thread_id_t thread_id;
 	int number_allocator; /**< Allocator of number of tasks */
+	int64_t last_start_time; /**< Latest start time used */
 	struct snapraid_task* latest; /**< Task running, or latest one finished */
 	int script_skip; /**< If the post_run script was skipped because a following task is coming */
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
