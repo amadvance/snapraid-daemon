@@ -469,6 +469,7 @@ struct snapraid_config {
 	int sync_force_zero; /**< 1 to force sync with zero size, 0 otherwise */
 	double scrub_percentage; /**< Percentage of array to scrub */
 	int scrub_older_than; /**< Scrub blocks older than this many days */
+	int touch_zero_subseconds; /**< 1 to touch befoer sync, 0 otherwise */
 	int probe_interval_minutes; /**< Interval for disk probing in minutes */
 	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
 	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */

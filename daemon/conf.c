@@ -308,6 +308,11 @@ int config_load_locked(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "touch_zero_subseconds") == 0) {
+				if (parse_int(val, 0, 1, &config->touch_zero_subseconds) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "hook_run_as_user") == 0) {
 				sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), val);
 			} else if (strcmp(key, "hook_script") == 0) {
@@ -555,6 +560,7 @@ void config_init(struct snapraid_state* state)
 	config->sync_force_zero = 0;
 	config->scrub_percentage = 0;
 	config->scrub_older_than = 0;
+	config->touch_zero_subseconds = 0;
 	config->probe_interval_minutes = 0;
 	config->spindown_idle_minutes = 0;
 	config->hook_run_as_user[0] = 0;

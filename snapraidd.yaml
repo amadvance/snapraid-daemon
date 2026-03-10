@@ -1474,6 +1474,23 @@ components:
 
             This setting is enforced during scheduled maintenance and calls
             to 'maintenance'. It is BYPASSED for direct calls to 'scrub'.
+        touch_zero_subseconds:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: >
+            Enables a specific timestamp alignment pass as part of the
+            automated maintenance sequence.
+            The scope of this setting is to correct file metadata on
+            filesystems that lack sub-second precision (zeroed
+            nanoseconds). By refreshing these attributes to a random
+            sub-second value, the engine can reliably distinguish
+            between files that were moved or renamed versus those
+            that are new.
+            This is executed via the 'touch' command immediately before
+            the sync phase of the maintenance window to ensure high-
+            resolution tracking and prevent unnecessary parity
+            re-computation.
         probe_interval_minutes:
           type: integer
           example: 15

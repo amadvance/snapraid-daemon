@@ -21,7 +21,7 @@ const app = {
         // Theme Init
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.dataset.theme = savedTheme;
-        
+
         // Render Icons
         document.querySelectorAll('[id^="icon-"]').forEach(el => {
             const iconName = el.id.replace('icon-', '');
@@ -38,11 +38,11 @@ const app = {
             const next = current === 'light' ? 'dark' : 'light';
             document.documentElement.dataset.theme = next;
             localStorage.setItem('theme', next);
-            
+
             // Update Icon
             const iconEl = document.querySelector('#icon-theme');
             if (iconEl) iconEl.innerHTML = next === 'light' ? Icons.moon : Icons.sun;
-            
+
             // Redraw graphs to match theme colors if needed (sparklines use hardcoded colors but maybe background changes?)
             // Sparklines have transparent backgrounds, but axes lines are white with opacity.
             // We might need to re-render them if we want to change axis colors.
@@ -672,7 +672,7 @@ const app = {
         }
 
         // Handle unchecked booleans (FormData doesn't include them)
-        ['sync_prehash', 'sync_force_zero', 'notify_syslog_enabled', 'notify_differences'].forEach(key => {
+        ['sync_prehash', 'sync_force_zero', 'touch_before_sync', 'notify_syslog_enabled', 'notify_differences'].forEach(key => {
             if (!fullAccess && protectedFields.includes(key)) return;
             updates[key] = form.querySelector(`[name="${key}"]`).checked;
         });

@@ -7,6 +7,9 @@ SnapRAID-Daemon HISTORY
    list.
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4
    and IPv6 on the default port 7627, retrying with only IPv4 if it fails.
+ * Added 'touch_zero_subseconds' configuration option to the automated maintenance 
+   lifecycle. This feature refreshes file timestamps with zero nanosecond 
+   precision using the 'touch' command prior to a sync.
  * Improved the scheduler to catch up on missed tasks during "Spring Forward"
    DST jumps while preventing double execution during "Fall Back" repeats.
    Added a UTC-based safety check to detect and skip processing during large

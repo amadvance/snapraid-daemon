@@ -402,18 +402,6 @@ Configuration
 	"02:00" - Run every night at 2 AM.
 	"Mon 03:00, Thu 04:00" - Run every Monday at 3 AM and Thursday at 4 AM.
 
-    scrub_percentage
-	Determines the portion of the array verified after a successful sync.
-	You may use decimal points to specify fractions of a percent
-	(e.g., 0.7 to verify 0.7% of the array).
-	If missing or set to 0, the scrub phase is skipped entirely.
-
-    scrub_older_than
-	Specifies that only blocks older than the defined number of days
-	should be scrubbed. This allows the daemon to focus verification on
-	older data while skipping recently synced blocks.
-	If missing or set to 0, no age-based filtering is applied.
-
     sync_threshold_deletes
 	Sets the maximum number of deleted or missing files allowed before a
 	sync operation is automatically aborted. This serves as a safety
@@ -445,6 +433,34 @@ Configuration
 	This setting is particularly useful for detecting and acknowledging
 	instances where files, accessed during a system crash, have been
 	truncated to zero bytes by the filesystem.
+
+    scrub_percentage
+	Determines the portion of the array verified after a successful sync.
+	You may use decimal points to specify fractions of a percent
+	(e.g., 0.7 to verify 0.7% of the array).
+	If missing or set to 0, the scrub phase is skipped entirely.
+
+    scrub_older_than
+	Specifies that only blocks older than the defined number of days
+	should be scrubbed. This allows the daemon to focus verification on
+	older data while skipping recently synced blocks.
+	If missing or set to 0, no age-based filtering is applied.
+
+    touch_zero_subseconds
+	If set to 1, a specific timestamp alignment pass is performed
+	immediately before the sync during the maintenance window.
+	If this is missing or set to 0, this pass is skipped.
+
+	Many filesystems or file-copying utilities may leave file
+	timestamps with exactly zero nanoseconds. This lack of
+	precision can cause the synchronization engine to misidentify
+	moved or renamed files as entirely new content.
+
+	Setting this to 1 triggers the touch command to update these
+	sub-second parts of the timestamps to a random value. This
+	ensures high-resolution tracking is available to correctly
+	identify relocated data without re-processing the underlying
+	file blocks.
 
   Disk Monitoring & Power
 	The following settings manage how the daemon interacts with physical

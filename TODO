@@ -6,10 +6,6 @@ SnapRAID Daemon TODO
 
 - Show disks that are not part of the array
 
-- Add configurable option to run "touch" at every maintenance. Makes sense to
-  implement as a new flag for "sync/maintenance" to avoid to run CLI multiple
-  times.
-
 - Add a "pause" switch for all automated background tasks (sync/scrub).
 
 - Implement collapsing logic for diff results to hide matched copy/delete pairs

@@ -243,6 +243,23 @@ scrub_percentage = 0.7
 # on the age of the block.
 scrub_older_than = 10
 
+# If set to 1, a specific timestamp alignment pass is performed
+# immediately before the sync during the maintenance window.
+# If this is missing or set to 0, this pass is skipped.
+#
+# The scope of this option is to address filesystems or utilities that
+# do not support or preserve sub-second precision, leaving file
+# timestamps with exactly zero nanoseconds. This lack of resolution
+# can cause the engine to misidentify moved or renamed files as
+# entirely new data, potentially triggering unnecessary parity
+# recalculations.
+#
+# It matches the 'touch' command to update these sub-second parts of
+# the timestamps to a random value. This ensures high-resolution
+# tracking is available to correctly identify relocated data without
+# re-processing the underlying file blocks.
+touch_zero_subseconds = 1
+
 ### Disk Monitoring & Power
 # The probe_interval_minutes setting controls how often the daemon checks
 # SMART attributes, provided the disks are already spinning. If this is

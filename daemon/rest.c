@@ -602,6 +602,15 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("touch_zero_subseconds")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &state->config.touch_zero_subseconds) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.touch_zero_subseconds);
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_older_than")) == 0) {
 				++j;
 				if (json_int(js, &jv[j], 0, 1000, &state->config.scrub_older_than) == 0) {
@@ -782,6 +791,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_bool(&s, level, "sync_force_zero", config->sync_force_zero);
 	ss_json_double(&s, level, "scrub_percentage", config->scrub_percentage);
 	ss_json_int(&s, level, "scrub_older_than", config->scrub_older_than);
+	ss_json_bool(&s, level, "touch_zero_subseconds", config->touch_zero_subseconds);
 
 	ss_json_int(&s, level, "probe_interval_minutes", config->probe_interval_minutes);
 	ss_json_int(&s, level, "spindown_idle_minutes", config->spindown_idle_minutes);

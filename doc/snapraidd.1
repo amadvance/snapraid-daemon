@@ -502,16 +502,6 @@ represented by their short names (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 Examples:
 \[dq]02:00\[dq] \- Run every night at 2 AM.
 \[dq]Mon 03:00, Thu 04:00\[dq] \- Run every Monday at 3 AM and Thursday at 4 AM.
-.SS scrub_percentage 
-Determines the portion of the array verified after a successful sync.
-You may use decimal points to specify fractions of a percent
-(e.g., 0.7 to verify 0.7% of the array).
-If missing or set to 0, the scrub phase is skipped entirely.
-.SS scrub_older_than 
-Specifies that only blocks older than the defined number of days
-should be scrubbed. This allows the daemon to focus verification on
-older data while skipping recently synced blocks.
-If missing or set to 0, no age\-based filtering is applied.
 .SS sync_threshold_deletes 
 Sets the maximum number of deleted or missing files allowed before a
 sync operation is automatically aborted. This serves as a safety
@@ -540,6 +530,31 @@ against potential data corruption or accidental file clearing.
 This setting is particularly useful for detecting and acknowledging
 instances where files, accessed during a system crash, have been
 truncated to zero bytes by the filesystem.
+.SS scrub_percentage 
+Determines the portion of the array verified after a successful sync.
+You may use decimal points to specify fractions of a percent
+(e.g., 0.7 to verify 0.7% of the array).
+If missing or set to 0, the scrub phase is skipped entirely.
+.SS scrub_older_than 
+Specifies that only blocks older than the defined number of days
+should be scrubbed. This allows the daemon to focus verification on
+older data while skipping recently synced blocks.
+If missing or set to 0, no age\-based filtering is applied.
+.SS touch_zero_subseconds 
+If set to 1, a specific timestamp alignment pass is performed
+immediately before the sync during the maintenance window.
+If this is missing or set to 0, this pass is skipped.
+.PP
+Many filesystems or file\-copying utilities may leave file
+timestamps with exactly zero nanoseconds. This lack of
+precision can cause the synchronization engine to misidentify
+moved or renamed files as entirely new content.
+.PP
+Setting this to 1 triggers the touch command to update these
+sub\-second parts of the timestamps to a random value. This
+ensures high\-resolution tracking is available to correctly
+identify relocated data without re\-processing the underlying
+file blocks.
 .SS Disk Monitoring & Power 
 The following settings manage how the daemon interacts with physical
 hardware to monitor disk health and optimize energy consumption

@@ -40,6 +40,9 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (state->config.sync_force_zero) {
 		sl_insert_str(&sync_arg_list, "-Z");
 	}
+	if (state->config.touch_zero_subseconds) {
+		sl_insert_str(&sync_arg_list, "--gui-touch-before-sync");
+	}
 	if (state->config.sync_threshold_deletes) {
 		sl_insert_str(&sync_arg_list, "--gui-threshold-removes");
 		sl_insert_int(&sync_arg_list, state->config.sync_threshold_deletes);
