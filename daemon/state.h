@@ -205,6 +205,7 @@ struct snapraid_disk {
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
 	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
 	uint64_t error_data; /**< Accumulator of all silent data errors encountered. */
+	int last_update_at_number; /**< The latest task number that updated the disk */
 
 	tommy_list device_list; /**< List of snapraid_device */
 	tommy_list split_list; /**< List of snapraid_split */
@@ -378,8 +379,6 @@ struct snapraid_bucket {
 
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
-	int version_major; /**< Major version number */
-	int version_minor; /**< Minor version number */
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	unsigned blocksize; /**< Block size */
@@ -523,6 +522,10 @@ struct snapraid_web {
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
+
+	/* Data private for the parser. The parser run only one at a time, so no lock is required */
+	int parser_version_major; /**< Major version number */
+	int parser_version_minor; /**< Minor version number */
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */
