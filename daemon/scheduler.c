@@ -239,17 +239,78 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 	state_unlock();
 }
 
+static int is_leap_year(int tm_year)
+{
+	int year = tm_year + 1900;
+	return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+}
+
+static int days_in_month(int month, int tm_year)
+{
+	/* days in each month (Jan=0, Feb=1, ..., Dec=11) */
+	static const int days[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+	if (month == 1 && is_leap_year(tm_year)) {
+		return 29;
+	}
+
+	return days[month];
+}
+
+static int tm_compare_minute(const struct tm* a, const struct tm* b)
+{
+	if (a->tm_year != b->tm_year) return a->tm_year < b->tm_year ? -1 : 1;
+	if (a->tm_mon != b->tm_mon) return a->tm_mon < b->tm_mon  ? -1 : 1;
+	if (a->tm_mday != b->tm_mday) return a->tm_mday < b->tm_mday ? -1 : 1;
+	if (a->tm_hour != b->tm_hour) return a->tm_hour < b->tm_hour ? -1 : 1;
+	if (a->tm_min != b->tm_min) return a->tm_min < b->tm_min  ? -1 : 1;
+
+	return 0;
+}
+
+static void tm_increment_minute(struct tm* t)
+{
+	t->tm_min++;
+	if (t->tm_min < 60)
+		return;
+
+	/* minutes overflow */
+	t->tm_min = 0;
+	t->tm_hour++;
+	if (t->tm_hour < 24)
+		return;
+
+	/* hours overflow */
+	t->tm_hour = 0;
+	t->tm_wday = (t->tm_wday + 1) % 7; /* Sunday is 0 */
+	t->tm_mday++;
+	if (t->tm_mday <= days_in_month(t->tm_mon, t->tm_year))
+		return;
+
+	/* days overflow */
+	t->tm_mday = 1;
+	t->tm_mon++;
+	if (t->tm_mon < 12)
+		return;
+
+	/* months overflow */
+	t->tm_mon = 0;
+	t->tm_year++;
+}
+
 void* scheduler_thread(void* arg)
 {
 	char msg[MSG_MAX];
 	int status;
 	struct snapraid_state* state = arg;
-	int last_minute;
+	int64_t last;
+	struct tm last_tm;
 	int64_t last_probe_and_spindown_ts;
 	int64_t last_delete_ts;
 	int64_t last_history_ts;
 
-	last_minute = -1;
+	last = time(0);
+	localtime_r(&last, &last_tm);
 	last_probe_and_spindown_ts = 0;
 	last_delete_ts = 0;
 	last_history_ts = 0;
@@ -257,37 +318,68 @@ void* scheduler_thread(void* arg)
 	state_lock();
 
 	while (state->daemon_running != DAEMON_QUIT) {
+		int schedule = 0;
 		time_t now = time(0);
-		struct tm res;
-		struct tm* tm_info = localtime_r(&now, &res);
-		int current_minute = tm_info->tm_min;
-		int current_hour = tm_info->tm_hour;
-		int current_wday = tm_info->tm_wday;
-		int64_t mono_now_secs;
 
-		if (last_minute < 0)
-			last_minute = current_minute;
+		/*
+		 * Detect manual changes using UTC
+		 *
+		 * If the system UTC clock jumps by more than 5 minutes (300s),
+		 * we assume a manual user intervention or a massive NTP sync.
+		 *
+		 * We reset the tracker and skip scheduling.
+		 */
+		int64_t delta = now - last;
+		if (delta < 0)
+			delta = -delta;
+		if (delta > 300) {
+			last = now;
+			localtime_r(&last, &last_tm);
+			log_msg(LVL_WARNING, "manual time change detected. Skipping scheduler catch-up");
+		} else {
+			struct tm now_tm;
 
-		/* check only one time every minute */
-		while (current_minute != last_minute) {
-			last_minute = current_minute;
+			last = now;
+			localtime_r(&now, &now_tm);
 
-			mono_now_secs = os_tick_sec();
+			/*
+			 * Local time catch-up logic
+			 *
+			 * We increment the internal cursor (last_tm) minute-by-minute
+			 * until it matches the system local time (now_tm).
+			 *
+			 * DST SPRING FORWARD:
+			 * System jumps from 01:59 to 03:00. 'now_tm' becomes 03:00.
+			 * The loop increments last_tm through the "lost" hour, triggering missed tasks.
+			 *
+			 * DST FALL BACK:
+			 * System jumps from 02:59 to 02:00. 'now_tm' becomes 02:00.
+			 * Since last_tm (02:59) is now > now_tm (02:00), the loop condition fails.
+			 * The cursor effectively "pauses" for an hour until the wall clock catches up,
+			 * preventing tasks from being triggered twice.
+			 */
+			while (tm_compare_minute(&last_tm, &now_tm) < 0) {
+				tm_increment_minute(&last_tm);
 
-			int schedule = 0;
-			for (tommy_node* i = tommy_list_head(&state->config.maintenance_list); i; i = i->next) {
-				struct snapraid_run* run = i->data;
-				if (current_hour == run->hour
-					&& current_minute == run->minute
-					&& (run->day_of_week == -1 || (current_wday == run->day_of_week))) {
-					schedule = 1;
+				for (tommy_node* i = tommy_list_head(&state->config.maintenance_list); i; i = i->next) {
+					struct snapraid_run* run = i->data;
+					if (last_tm.tm_hour == run->hour
+						&& last_tm.tm_min == run->minute
+						&& (run->day_of_week == -1 || (last_tm.tm_wday == run->day_of_week))) {
+						schedule = 1;
+					}
 				}
 			}
+		}
+
+		while (1) {
 			if (schedule) {
 				schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
 				/* do not schedule other tasks */
 				break;
 			}
+
+			int64_t mono_now_secs = os_tick_sec();
 
 			/* delete old log every hour */
 			if (state->config.sys_log_retention_days > 0
@@ -326,8 +418,10 @@ void* scheduler_thread(void* arg)
 				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60) {
 				last_probe_and_spindown_ts = mono_now_secs;
 				schedule_suspend_idle_locked(state, now, msg, sizeof(msg), &status);
-				break;
+				/* continue with other tasks */
 			}
+
+			break; /* nothing to execute */
 		}
 
 		thread_cond_wait(&state->scheduler.cond, &state->state_lock);

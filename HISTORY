@@ -7,6 +7,10 @@ SnapRAID-Daemon HISTORY
    list.
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4
    and IPv6 on the default port 7627, retrying with only IPv4 if it fails.
+ * Improved the scheduler to catch up on missed tasks during "Spring Forward"
+   DST jumps while preventing double execution during "Fall Back" repeats.
+   Added a UTC-based safety check to detect and skip processing during large
+   manual time changes.
 
 0.1beta2b 09/03/2026
 ====================
