@@ -256,7 +256,7 @@ void* scheduler_thread(void* arg)
 
 	state_lock();
 
-	while (state->daemon_running) {
+	while (state->daemon_running != DAEMON_QUIT) {
 		time_t now = time(0);
 		struct tm* tm_info = localtime(&now);
 		int current_minute = tm_info->tm_min;

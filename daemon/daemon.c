@@ -56,56 +56,6 @@ static void usage(const char* conf)
 }
 
 /****************************************************************************/
-/* daemon */
-
-static void run(struct snapraid_state* state)
-{
-	log_msg(LVL_INFO, "daemon ready");
-
-	state->daemon_running = DAEMON_RUNNING;
-
-	while (state->daemon_running) {
-		if (state->daemon_running == DAEMON_RELOAD) {
-			state->daemon_running = DAEMON_RUNNING;
-
-			log_msg(LVL_INFO, "reload requested");
-
-			state_lock();
-
-			if (config_reload_locked(state) != 0) {
-				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
-			}
-
-			char net_web_root[PATH_MAX];
-			sncpy(net_web_root, sizeof(net_web_root), state->config.net_web_root);
-
-			state_unlock();
-
-			if (web_reload(state, net_web_root) != 0) {
-				log_msg(LVL_ERROR, "failed to reload web pages from %s", net_web_root);
-			}
-		}
-
-		state_lock();
-
-		scheduler_pulse(state);
-
-		state_unlock();
-
-		/*
-		 * The sleep call is interrupted by signals even with SA_RESTART.
-		 * See "man 7 signal".
-		 */
-		sleep(10);
-	}
-
-	if (state->daemon_sig)
-		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", signal_name(state->daemon_sig), state->daemon_sig);
-
-	log_msg(LVL_INFO, "daemon exiting cleanly");
-}
-
-/****************************************************************************/
 /* main */
 
 #if HAVE_GETOPT_LONG
@@ -239,12 +189,51 @@ int daemon_init(struct snapraid_state* state)
 
 void daemon_run(struct snapraid_state* state)
 {
-	/*
-	 * Main loop
-	 *
-	 * It's stopped by signals
-	 */
-	run(state);
+	log_msg(LVL_INFO, "daemon ready");
+
+	state_lock();
+
+	state->daemon_running = DAEMON_RUNNING;
+
+	while (state->daemon_running) { /* stopped by signals */
+		if (state->daemon_running == DAEMON_RELOAD) {
+			state->daemon_running = DAEMON_RUNNING;
+
+			log_msg(LVL_INFO, "reload requested");
+
+			if (config_reload_locked(state) != 0) {
+				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
+			}
+
+			char net_web_root[PATH_MAX];
+			sncpy(net_web_root, sizeof(net_web_root), state->config.net_web_root);
+
+			state_unlock();
+
+			if (web_reload(state, net_web_root) != 0) {
+				log_msg(LVL_ERROR, "failed to reload web pages from %s", net_web_root);
+			}
+
+			state_lock();
+		}
+
+		scheduler_pulse(state);
+
+		/*
+		 * The sleep call is interrupted by signals even with SA_RESTART.
+		 * See "man 7 signal".
+		 */
+		state_unlock();
+		sleep(5);
+		state_lock();
+	}
+
+	if (state->daemon_sig)
+		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", signal_name(state->daemon_sig), state->daemon_sig);
+
+	state_unlock();
+
+	log_msg(LVL_INFO, "daemon exiting cleanly");
 }
 
 void daemon_done(struct snapraid_state* state)
