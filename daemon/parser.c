@@ -1573,13 +1573,17 @@ int parse_past_log(struct snapraid_state* state)
 
 		/* setup a task */
 		struct snapraid_task* task = task_alloc();
+
+		state_lock();
 		task->number = ++state->runner.number_allocator;
 		state->runner.latest = task;
 		sncpy(task->log_file, sizeof(task->log_file), path);
+		state_unlock();
 
 		parse_log(state, f, 0, 0);
 		++count;
 
+		state_lock();
 		/* compute the task health */
 		task->health = health_task(task);
 
@@ -1589,6 +1593,7 @@ int parse_past_log(struct snapraid_state* state)
 		/* move it to the history */
 		tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 		state->runner.latest = 0;
+		state_unlock();
 
 		close(f);
 	}
