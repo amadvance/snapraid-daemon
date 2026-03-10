@@ -413,12 +413,12 @@ void ss_json_str(ss_t* s, int level, const char* field, const char* arg)
 
 void ss_json_pair_iso8601(ss_t* s, int level, const char* field, time_t arg)
 {
-	struct tm tm_info;
 	char buf[32];
 
-	localtime_r(&arg, &tm_info);
+	struct tm res;
+	struct tm* tm_info = localtime_r(&arg, &res);
 
-	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
+	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", tm_info);
 
 	ss_json_str(s, level, field, buf);
 }

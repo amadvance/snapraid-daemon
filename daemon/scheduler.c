@@ -258,7 +258,8 @@ void* scheduler_thread(void* arg)
 
 	while (state->daemon_running != DAEMON_QUIT) {
 		time_t now = time(0);
-		struct tm* tm_info = localtime(&now);
+		struct tm res;
+		struct tm* tm_info = localtime_r(&now, &res);
 		int current_minute = tm_info->tm_min;
 		int current_hour = tm_info->tm_hour;
 		int current_wday = tm_info->tm_wday;

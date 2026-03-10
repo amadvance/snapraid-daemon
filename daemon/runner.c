@@ -226,7 +226,8 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
 		} else {
 			time_t now = unix_start_time;
-			struct tm* local = localtime(&now);
+			struct tm res;
+			struct tm* local = localtime_r(&now, &res);
 			if (local) {
 				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", sys_log_directory,
 					local->tm_year + 1900,

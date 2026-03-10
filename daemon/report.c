@@ -119,7 +119,8 @@ static void format_timestamp(ss_t* ss, int64_t timestamp)
 	}
 
 	time_t t = (time_t)timestamp;
-	struct tm* tm_info = localtime(&t);
+	struct tm res;
+	struct tm* tm_info = localtime_r(&t, &res);
 	if (tm_info) {
 		ss_printf(ss, "%04d-%02d-%02d %02d:%02d:%02d",
 			tm_info->tm_year + 1900,
