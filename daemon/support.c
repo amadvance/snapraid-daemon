@@ -1039,7 +1039,7 @@ int mg_write_gzip(struct mg_connection* conn, const char* src, size_t src_size)
 
 		if (compressed_len > 0 || res == Z_STREAM_END) {
 			char hex[Z_HEADER_RESERVE + 1];
-			int hex_len = snprintf(hex, sizeof(hex), "%" PRIxPTR "\r\n", compressed_len);
+			int hex_len = snprintf(hex, sizeof(hex), "%" PRIxPTR "\r\n", (uint64_t)compressed_len); /* %z format is not supported by MingW */
 
 			char* send_start = (buf + Z_HEADER_RESERVE) - hex_len;
 			memcpy(send_start, hex, hex_len);
@@ -1099,7 +1099,7 @@ int mg_write_zstd(struct mg_connection* conn, const char* src, size_t src_size)
 			finished = (mode == ZSTD_e_end && remaining == 0);
 
 			char hex[Z_HEADER_RESERVE + 1];
-			int hex_len = snprintf(hex, sizeof(hex), "%zX\r\n", compressed_len);
+			int hex_len = snprintf(hex, sizeof(hex), "%" PRIxPTR "\r\n", (uint64_t)compressed_len); /* %z format is not supported by MingW */
 			char* send_start = (buf + Z_HEADER_RESERVE) - hex_len;
 			memcpy(send_start, hex, hex_len);
 
