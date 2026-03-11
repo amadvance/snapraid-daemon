@@ -126,7 +126,7 @@ osslsigncode sign \
 cd ${NSIS_PKG_ROOT}
 
 echo "Building NSIS installer..."
-../../nsis/Bin/makensis snapraid-daemon.nsis
+/usr/local/nsis/Bin/makensis snapraid-daemon.nsis
 
 cd ..
 
