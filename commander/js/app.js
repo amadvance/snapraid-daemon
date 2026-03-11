@@ -774,12 +774,13 @@ const app = {
                         valStr = `${attr.raw} (${formatSize(bytes)})`;
                     }
                     if (attr.measure == 'percentage') {
-                        const bytes = attr.raw * attr.unit;
                         valStr = `${attr.raw}%`;
                     }
                     if (attr.measure == 'temperature') {
-                        const bytes = attr.raw * attr.unit;
                         valStr = `${attr.raw} °C`;
+                        if (attr.min != null && attr.max != null) {
+                            valStr += ` (min ${attr.min} °C, max ${attr.max} °C)`;
+                        }
                     }
 
                     otherRows.push(`
