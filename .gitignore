@@ -85,3 +85,7 @@ www/
 wiki/
 beta/
 ftp/
+
+# perf
+perf.data
+perf.data.old

@@ -372,6 +372,17 @@ helgrind:
 		2> helgrind.log
 		tail helgrind.log
 
+heaptrack:
+	/usr/local/heaptrack/bin/heaptrack $(MANUAL)
+
+perf:
+	@trap 'perf report; exit 1' INT; perf record -g -- $(MANUAL)
+
+perfstat:
+	perf stat -d -- $(MANUAL)
+
+perfmem:
+	@trap 'perf mem report; exit 1' INT; perf mem record -- $(MANUAL)
 
 # Web distribution
 
