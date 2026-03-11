@@ -154,7 +154,6 @@ struct smart_entry {
 
 	{ 196, FORMAT_16, "Reallocated_Event_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
 	{ 196, FORMAT_48, "Lifetime_Retried_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 196, FORMAT_48, "Reallocated_Event_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ 196, FORMAT_48, "Total_Erase_Failures", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ 196, FORMAT_48, "Total_Spare_Block_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
 	{ 196, FORMAT_64, "Erase_Failure_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
