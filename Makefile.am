@@ -351,6 +351,9 @@ endif
 
 MANUAL=./snapraidd -f -N
 
+run:
+	$(MANUAL)
+
 valgrind:
 	valgrind \
 		--tool=memcheck \
@@ -380,7 +383,7 @@ perf:
 
 perfstat:
 	perf stat -d -- $(MANUAL)
-
+	
 perfmem:
 	@trap 'perf mem report; exit 1' INT; perf mem record -- $(MANUAL)
 

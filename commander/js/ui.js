@@ -597,7 +597,7 @@ export const renderDifferences = (arrayInfo) => {
 
 /* --- Disks --- */
 const renderDiskCard = (disk, type, pulseAt) => {
-    const borderClass = type === 'parity' ? 'card-border-purple' : 'card-border-blue';
+    const borderClass = type === 'parity' ? 'card-border-purple' : type === 'data' ? 'card-border-blue' : 'card-border-grey' ;
 
     const errorBadges = [];
     let errorStatus = null;
@@ -728,11 +728,11 @@ const renderDiskCard = (disk, type, pulseAt) => {
 export const renderDisks = (data) => {
     const pulseAt = data.pulse?.current_at;
     return `
-        <h2>Parity Disks</h2>
-        <div class="grid-fill-2 mb-8">${data.parity_disks.map(d => renderDiskCard(d, 'parity', pulseAt)).join('')}</div>
-        
-        <h2>Data Disks</h2>
-        <div class="grid-fill-2">${data.data_disks.map(d => renderDiskCard(d, 'data', pulseAt)).join('')}</div>
+        <div class="grid-fill-2 mb-8">
+          ${data.data_disks.map(d => renderDiskCard(d, 'data', pulseAt)).join('')}
+          ${data.parity_disks.map(d => renderDiskCard(d, 'parity', pulseAt)).join('')}
+          ${data.extra_disks.map(d => renderDiskCard(d, 'extra', pulseAt)).join('')}
+        </div>
     `;
 };
 

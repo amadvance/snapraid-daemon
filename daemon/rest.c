@@ -1348,10 +1348,13 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 	}
 }
 
-static void json_disk_list(ss_t* s, int level, tommy_list* list, int64_t reference)
+static void json_disk_list(ss_t* s, int level, tommy_list* list, int kind, int64_t reference)
 {
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
+		if (disk->kind != kind)
+			continue;
 
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "name", disk->name);
@@ -1417,10 +1420,13 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
-	json_disk_list(&s, level, &state->data_list, state->global.last_time);
+	json_disk_list(&s, level, &state->disk_list, DISK_DATA, state->global.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "parity_disks");
-	json_disk_list(&s, level, &state->parity_list, state->global.last_time);
+	json_disk_list(&s, level, &state->disk_list, DISK_PARITY, state->global.last_time);
+	ss_json_array_close(&s, &level);
+	ss_json_array_open(&s, &level, "extra_disks");
+	json_disk_list(&s, level, &state->disk_list, DISK_EXTRA, state->global.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
 
@@ -1662,8 +1668,11 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	uint64_t total_space_bytes = 0;
 	uint64_t free_space_bytes = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+		if (disk->kind != DISK_DATA)
+			continue;
+
 		if (disk->total_space_bytes != 0)
 			total_space_bytes += disk->total_space_bytes;
 		if (disk->free_space_bytes != 0)
@@ -1687,8 +1696,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_str(&s, level, "last_command", global->last_cmd);
 	if (global->blocksize) { /* engine was run and it has a configuration file */
 		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
-		ss_json_int(&s, level, "data_disks_count", tommy_list_count(&state->data_list));
-		ss_json_int(&s, level, "parity_disks_count", tommy_list_count(&state->parity_list));
+		ss_json_int(&s, level, "data_disks_count", disk_count(&state->disk_list, DISK_DATA));
+		ss_json_int(&s, level, "parity_disks_count", disk_count(&state->disk_list, DISK_PARITY));
+		ss_json_int(&s, level, "extra_disks_count", disk_count(&state->disk_list, DISK_EXTRA));
 		if (total_space_bytes != 0)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
 		if (free_space_bytes != 0)

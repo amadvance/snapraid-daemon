@@ -79,6 +79,17 @@ const char* command_name(int cmd)
 /****************************************************************************/
 /* disk/split/device */
 
+int disk_count(tommy_list* list, int kind)
+{
+	int count = 0;
+	for (tommy_node* i = tommy_list_head(list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		if (disk->kind == kind)
+			++count;
+	}
+	return count;
+}
+
 void disk_free(void* void_disk)
 {
 	struct snapraid_disk* disk = void_disk;
@@ -644,7 +655,7 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 		health = HEALTH_PENDING;
 		if (reason)
 			snprintf(reason, reason_size, "The snapraid binary was not found in the expected location. Please install SnapRAID and restart the daemon.");
-	} else if (tommy_list_empty(&state->data_list) || tommy_list_empty(&state->parity_list)) {
+	} else if (tommy_list_empty(&state->disk_list)) {
 		health = HEALTH_PENDING;
 		if (reason)
 			snprintf(reason, reason_size, "The array is not configured. The /etc/snapraid.conf is missing or empty. Copy the snapraid.conf.example to /etc/snapraid.conf and define your disks to begin.");
@@ -655,13 +666,7 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		int low_health = health_disk(disk, msg, sizeof(msg));
-		health = health_worse(health, low_health, reason, reason_size, msg);
-	}
-
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		int low_health = health_disk(disk, msg, sizeof(msg));
 		health = health_worse(health, low_health, reason, reason_size, msg);
@@ -674,15 +679,7 @@ double afr_array(struct snapraid_state* state)
 {
 	double afr = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			afr += device->afr;
-		}
-	}
-
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;
@@ -755,16 +752,7 @@ int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time)
 {
 	int ret = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->data_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			if (temperature_cleanup(device, last_time))
-				ret = 1;
-		}
-	}
-
-	for (tommy_node* i = tommy_list_head(&state->parity_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;

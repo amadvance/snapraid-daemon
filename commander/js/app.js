@@ -164,7 +164,7 @@ const app = {
             renderScrubHistory('scrub-history-graph', app.state.dashboardArray.scrub_history);
         } else if (hash === '#/disks' && app.state.disks) {
             const data = app.state.disks;
-            [...data.parity_disks, ...data.data_disks].forEach(disk => {
+            [...data.parity_disks, ...data.data_disks, ...data.extra_disks].forEach(disk => {
                 disk.devices.forEach(dev => {
                     if (dev.temp_history_24h) {
                         const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
@@ -689,7 +689,7 @@ const app = {
         if (!app.state.disks) return;
 
         let device = null;
-        [...app.state.disks.parity_disks, ...app.state.disks.data_disks].forEach(disk => {
+        [...app.state.disks.parity_disks, ...app.state.disks.data_disks, ...app.state.disks.extra_disks].forEach(disk => {
             disk.devices.forEach(dev => {
                 if (dev.device_node === deviceNode) device = dev;
             });

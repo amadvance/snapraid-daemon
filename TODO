@@ -4,8 +4,6 @@ SnapRAID Daemon TODO
 - Implement a new "maintenance" command for CLI that implements sync+scrub,
   run one after another.
 
-- Show disks that are not part of the array
-
 - Add a "pause" switch for all automated background tasks (sync/scrub).
 
 - Implement collapsing logic for diff results to hide matched copy/delete pairs

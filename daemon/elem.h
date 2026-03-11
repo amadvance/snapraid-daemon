@@ -46,6 +46,11 @@ const char* command_name(int cmd);
 void disk_free(void* void_disk);
 
 /**
+ * Count the number of disks of the specified kind.
+ */
+int disk_count(tommy_list* list, int kind);
+
+/**
  * Free a device entry.
  * @param void_device Pointer to the device entry
  */

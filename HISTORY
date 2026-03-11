@@ -3,6 +3,11 @@ SnapRAID-Daemon HISTORY
 
 0.1beta3 ?/03/2026
 ===================
+ * Added monitoring for disks not part of the array. These are defined in
+   the SnapRAID configuration (snapraid.conf) using the 'extra' keyword and
+   are monitored identically to array disks for health and status.
+   The only exception is that they are excluded from 'up', 'down', and
+   'down_idle' power management operations.
  * Added support for multiple maintenance schedules using a comma-separated
    list.
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4

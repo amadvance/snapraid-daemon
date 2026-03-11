@@ -70,16 +70,21 @@ Options
 
 Getting Started
 	The daemon acts as a management layer for the SnapRAID CLI. Therefore,
-	SnapRAID must be installed and fully configured before starting the
-	service. All interactions with the underlying parity array are handled
-	through the standard SnapRAID binary.
+	SnapRAID CLI must be installed and fully configured before starting the
+	service.
 
-	During the installation process, a default configuration file is
-	provisioned to enable the REST API and the Web UI. For users installing
-	via binary packages, this file is typically placed at `/etc/snapraidd.conf`.
-	If you are installing from source, it is recommended to run
-	`./configure --sysconfdir=/etc` during the build process to ensure the
-	configuration is placed in the standard `/etc` directory.
+	All `data`, `parity`, and `extra` disks defined in the SnapRAID CLI
+	configuration file are considered part of the array and are managed
+	by the daemon. All interactions with the underlying array are handled
+	through the standard SnapRAID CLI binary.
+
+	During the installation process of the daemon, a default configuration
+	file is provisioned to enable the REST API and the Web UI. For users
+	installing via binary packages, this file is typically placed at
+	`/etc/snapraidd.conf`. If you are installing from source, it is
+	recommended to run `./configure --sysconfdir=/etc` during the build
+	process to ensure theconfiguration is placed in the standard `/etc`
+	directory.
 
 	Using this default configuration file, the UI is accessible locally
 	via a web browser at the following address:

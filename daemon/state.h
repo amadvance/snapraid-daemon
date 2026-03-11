@@ -196,6 +196,11 @@ struct snapraid_split {
 	tommy_node node;
 };
 
+#define DISK_UNDEFINED 0
+#define DISK_DATA 1
+#define DISK_PARITY 2
+#define DISK_EXTRA 3
+
 struct snapraid_disk {
 	char name[KEYWORD_MAX]; /**< Name of the disk. */
 	uint64_t total_space_bytes; /**< Size of the disk stored in the content file or obtained from the filesystem. */
@@ -206,6 +211,7 @@ struct snapraid_disk {
 	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
 	uint64_t error_data; /**< Accumulator of all silent data errors encountered. */
 	int last_update_at_number; /**< The latest task number that updated the disk */
+	int kind; /**< Kind of the disk. One of DISK_* */
 
 	tommy_list device_list; /**< List of snapraid_device */
 	tommy_list split_list; /**< List of snapraid_split */
@@ -538,8 +544,7 @@ struct snapraid_state {
 	struct snapraid_global global; /**< Global array metadata */
 	struct snapraid_config config; /**< Runtime configuration */
 	struct snapraid_system system; /**< Host system information */
-	tommy_list data_list; /**< List of data disks */
-	tommy_list parity_list; /**< List of parity disks */
+	tommy_list disk_list; /**< List of disks */
 
 	/**< Data protected by the web lock */
 	thread_rwlock_t web_lock; /**< Protection for the following data */

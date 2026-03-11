@@ -595,10 +595,14 @@ static void print_device_narrow(struct snapraid_device* device, ss_t* ss, int ha
 	}
 }
 
-static void print_disk_list_wide(tommy_list* disk_list, ss_t* ss, struct disk_spacing* sp)
+static void print_disk_list_wide(tommy_list* disk_list, int kind, ss_t* ss, struct disk_spacing* sp)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
+		if (disk->kind != kind)
+			continue;
+
 		int disk_health = health_disk(disk, 0, 0);
 
 		ss_prints(ss, "  ");
@@ -623,10 +627,14 @@ static void print_disk_list_wide(tommy_list* disk_list, ss_t* ss, struct disk_sp
 	}
 }
 
-static void print_disk_list_narrow(tommy_list* disk_list, ss_t* ss)
+static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
+		if (disk->kind != kind)
+			continue;
+
 		int disk_health = health_disk(disk, 0, 0);
 
 		ss_prints(ss, disk->name);
@@ -701,22 +709,28 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	sp.health_len = 9;
 
 	/* get field lenghts */
-	spacing_disk_list(&state->data_list, &sp);
-	spacing_disk_list(&state->parity_list, &sp);
+	spacing_disk_list(&state->disk_list, &sp);
 
 	++sp.name_len; /* extra space after the name */
 
 	/* data disks */
-	if (!tommy_list_empty(&state->data_list)) {
+	if (disk_count(&state->disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS:\n");
-		print_disk_list_wide(&state->data_list, ss, &sp);
+		print_disk_list_wide(&state->disk_list, DISK_DATA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* parity disks */
-	if (!tommy_list_empty(&state->parity_list)) {
+	if (disk_count(&state->disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS:\n");
-		print_disk_list_wide(&state->parity_list, ss, &sp);
+		print_disk_list_wide(&state->disk_list, DISK_PARITY, ss, &sp);
+		ss_prints(ss, "\n");
+	}
+
+	/* other disks */
+	if (disk_count(&state->disk_list, DISK_EXTRA) != 0) {
+		ss_prints(ss, "EXTRA DISKS:\n");
+		print_disk_list_wide(&state->disk_list, DISK_EXTRA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
@@ -794,15 +808,21 @@ int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	ss_printf(ss, "BAD BLOCKS: %" PRIu64 "\n", state->global.block_bad);
 	ss_prints(ss, "\n");
 
-	if (!tommy_list_empty(&state->data_list)) {
+	if (disk_count(&state->disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS\n");
-		print_disk_list_narrow(&state->data_list, ss);
+		print_disk_list_narrow(&state->disk_list, DISK_DATA, ss);
 		ss_prints(ss, "\n");
 	}
 
-	if (!tommy_list_empty(&state->parity_list)) {
+	if (disk_count(&state->disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS\n");
-		print_disk_list_narrow(&state->parity_list, ss);
+		print_disk_list_narrow(&state->disk_list, DISK_PARITY, ss);
+		ss_prints(ss, "\n");
+	}
+
+	if (disk_count(&state->disk_list, DISK_EXTRA) != 0) {
+		ss_prints(ss, "EXTRA DISKS\n");
+		print_disk_list_narrow(&state->disk_list, DISK_EXTRA, ss);
 		ss_prints(ss, "\n");
 	}
 

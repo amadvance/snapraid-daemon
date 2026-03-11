@@ -158,7 +158,7 @@ paths:
     post:
       summary: Schedule a sequence of commands
       description: >
-        Queues one or more SnapRAID commands to be executed sequentially in a single session.
+        Queues one or more SnapRAID CLI commands to be executed sequentially in a single session.
 
         Execution Logic:
         - Commands are executed in the exact order provided in the 'tasks' array.
@@ -194,12 +194,12 @@ paths:
     post:
       summary: Stop active task
       description: >
-        Terminates the currently running SnapRAID task (scrub, sync, etc.) by
+        Terminates the currently running SnapRAID CLI task (scrub, sync, etc.) by
         sending a SIGTERM signal to the process.
 
         This command is synchronous in the sense that it returns only after
         the signal has been successfully sent. However, the actual termination
-        of the SnapRAID process may take a few seconds to complete gracefully.
+        of the SnapRAID CLI process may take a few seconds to complete gracefully.
 
         Note that the hook_script is never terminated.
       responses:
@@ -337,6 +337,11 @@ paths:
                     description: "Ordered list of parity disks (parity, 2-parity, ...)"
                     items:
                       $ref: '#/components/schemas/Disk'
+                  extra_disks:
+                    type: array
+                    description: "Ordered list of extra disks (boot, data, ...)"
+                    items:
+                      $ref: '#/components/schemas/Disk'
 
   /snapraid/v1/activity:
     get:
@@ -376,7 +381,7 @@ paths:
     get:
       summary: Retrieve global task lifecycle state
       description: >
-        Provides a holistic, unified view of the SnapRAID-Daemon workload.
+        Provides a holistic, unified view of the SnapRAID Daemon workload.
         Tasks are categorized by their current state in the execution pipeline.
 
         The 'active' field is returned as an array. In the current version of the
@@ -474,7 +479,7 @@ paths:
       summary: Get array metadata and delta statistics
       description: >
         Returns the top-level logical state of the array. This includes
-        software versioning, SnapRAID block configuration, and the
+        software versioning, SnapRAID CLI block configuration, and the
         timestamps of the most recent maintenance tasks.
 
         The 'diff' statistics represent the drift between the actual
@@ -620,7 +625,7 @@ components:
       properties:
         command:
           type: string
-          description: "The SnapRAID action to perform."
+          description: "The SnapRAID CLI action to perform."
           oneOf:
             - const: probe
               description: >
@@ -697,7 +702,7 @@ components:
           description: >
             Related to the /config entry point.
 
-            Increments when the daemon or SnapRAID configuration is altered.
+            Increments when the SnapRAID Daemon configuration is altered.
             A change here indicates that the data returned by /config
             has potentially been updated.
         disks:
@@ -1385,7 +1390,7 @@ components:
 
     Config:
       type: object
-      description: Global configuration state for the SnapRAID daemon.
+      description: Global configuration state for the SnapRAID Daemon.
       properties:
         config_full_access:
           type: boolean
@@ -1794,12 +1799,12 @@ components:
           type: string
           example: "13.1"
           description: >
-            The version of the SnapRAID-Daemon currently running.
+            The version of the SnapRAID Daemon currently running.
         daemon_conf:
           type: string
           example: "/etc/snapraid.conf"
           description: >
-            Absolute path to the SnapRAID-Daemon configuration file.
+            Absolute path to the SnapRAID Daemon configuration file.
         health:
           type: string
           enum: [passed, corrupt, prefail, failing, pending]
@@ -1823,17 +1828,17 @@ components:
           type: string
           example: "13.1"
           description: >
-            The version of the underlying SnapRAID binary.
+            The version of the underlying SnapRAID CLI binary.
         engine_conf:
           type: string
           example: "/etc/snapraid.conf"
           description: >
-            Absolute path to the SnapRAID configuration file.
+            Absolute path to the SnapRAID CLI configuration file.
         engine_content:
           type: string
           example: "/var/snapraid/snapraid.content"
           description: >
-            Absolute path to the primary SnapRAID content file.
+            Absolute path to the primary SnapRAID CLI content file.
         block_size_bytes:
           type: integer
           example: 262144
@@ -1841,16 +1846,19 @@ components:
             Array block size in bytes (always power of 2).
         data_disks_count:
           type: integer
-          minimum: 1
           description: >
             The total number of data disks currently registered
-            and protected in the SnapRAID configuration.
+            and protected in the SnapRAID CLI configuration.
         parity_disks_count:
           type: integer
-          minimum: 1
           description: >
             The number of parity disks (redundancy levels) configured,
             defining how many simultaneous disk failures the array can survive.
+        extra_disks_count:
+          type: integer
+          description: >
+            The total number of extra disks currently registered in the
+            SnapRAID CLI configuration.
         last_command_at:
           type: string
           example: "2026-01-12T08:00:00"
