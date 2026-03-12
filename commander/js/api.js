@@ -8,11 +8,19 @@ async function request(endpoint, options = {}) {
             ...options
         });
 
-        if (response.status === 204) return null; // No Content
+        if (response.status === 204)
+            return null; // No Content
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+            let errorMessage = `API Error ${response.status}: ${errorText}`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                if (errorJson && errorJson.message) {
+                    errorMessage = errorJson.message;
+                }
+            } catch (ignore) { }
+            throw new Error(errorMessage);
         }
 
         const contentType = response.headers.get("content-type");

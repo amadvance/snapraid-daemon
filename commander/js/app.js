@@ -682,7 +682,6 @@ const app = {
             await API.updateConfig(updates);
             showToast('Configuration Saved', 'success');
         } catch (e) {
-            console.error('Save settings failed:', e);
             showToast('Failed to save: ' + e.message, 'error');
         }
     },

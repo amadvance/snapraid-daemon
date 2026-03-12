@@ -189,7 +189,7 @@ export const showToast = (message, type = 'info') => {
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `<span class="font-bold">${type.toUpperCase()}:</span> ${message}`;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    setTimeout(() => toast.remove(), 7000);
 };
 
 export const showConfirm = (message, title = 'Confirmation Required') => {
