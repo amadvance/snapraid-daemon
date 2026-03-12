@@ -127,10 +127,9 @@ static struct snapraid_disk* find_disk(tommy_list* list, int number, const char*
 		i = i->next;
 	}
 
-	disk = calloc_nofail(1, sizeof(struct snapraid_disk));
-	disk->kind = kind;
+	disk = disk_alloc(name, kind);
 	disk->last_update_at_number = number;
-	sncpy(disk->name, sizeof(disk->name), name);
+
 	tommy_list_insert_tail(list, &disk->node, disk);
 
 	return disk;
@@ -446,9 +445,9 @@ static void process_fsinfo_extra(struct snapraid_state* state, char** map, size_
 
 	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, name, DISK_EXTRA);
 
-	/* PULSE_ARRAY reports the sum of alloc and free space */
-	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &disk->total_space_bytes, size_alloc);
-	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &disk->free_space_bytes, size_free);
+	/* note that PULSE_ARRAY is not affected by the size of extra disks */
+	pulse_stru64(state, PULSE_DISKS, &disk->total_space_bytes, size_alloc);
+	pulse_stru64(state, PULSE_DISKS, &disk->free_space_bytes, size_free);
 }
 
 static void process_fsinfo_parity(struct snapraid_state* state, char** map, size_t mac)

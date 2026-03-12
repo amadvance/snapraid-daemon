@@ -40,6 +40,11 @@ const char* command_name(int cmd);
 /* disk/split/device */
 
 /**
+ * Allocate a disk entry
+ */
+struct snapraid_disk* disk_alloc(const char* name, int kind);
+
+/**
  * Free a disk entry and its associated device and split lists.
  * @param void_disk Pointer to the disk entry
  */

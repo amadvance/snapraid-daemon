@@ -1359,11 +1359,11 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list, int kind, int64
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "name", disk->name);
 		ss_json_str(s, level, "health", health_name(health_disk(disk, 0, 0)));
-		if (disk->total_space_bytes != 0)
+		if (disk->total_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "total_space_bytes", disk->total_space_bytes);
-		if (disk->free_space_bytes != 0)
+		if (disk->free_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "free_space_bytes", disk->free_space_bytes);
-		if (disk->access_count != 0) {
+		if (disk->access_count != SMART_UNASSIGNED) {
 			ss_json_i64(s, level, "access_count", disk->access_count);
 			ss_json_pair_iso8601(s, level, "access_count_initial_time", disk->access_count_initial_time);
 			ss_json_i64(s, level, "access_count_idle_duration", disk->access_count_latest_time - disk->access_count_initial_time);
@@ -1667,16 +1667,30 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	uint64_t total_space_bytes = 0;
 	uint64_t free_space_bytes = 0;
-
+	int data_count = 0;
 	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
 		if (disk->kind != DISK_DATA)
 			continue;
 
-		if (disk->total_space_bytes != 0)
+		++data_count;
+		if (disk->total_space_bytes == SMART_UNASSIGNED
+			|| total_space_bytes == SMART_UNASSIGNED) {
+			total_space_bytes = SMART_UNASSIGNED;
+		} else {
 			total_space_bytes += disk->total_space_bytes;
-		if (disk->free_space_bytes != 0)
+		}
+		if (disk->free_space_bytes == SMART_UNASSIGNED
+			|| free_space_bytes == SMART_UNASSIGNED) {
+			free_space_bytes = SMART_UNASSIGNED;
+		} else {
 			free_space_bytes += disk->free_space_bytes;
+		}
+	}
+	if (!data_count) {
+		total_space_bytes = SMART_UNASSIGNED;
+		free_space_bytes = SMART_UNASSIGNED;
 	}
 
 	ss_json_open(&s, &level);
@@ -1699,9 +1713,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_int(&s, level, "data_disks_count", disk_count(&state->disk_list, DISK_DATA));
 		ss_json_int(&s, level, "parity_disks_count", disk_count(&state->disk_list, DISK_PARITY));
 		ss_json_int(&s, level, "extra_disks_count", disk_count(&state->disk_list, DISK_EXTRA));
-		if (total_space_bytes != 0)
+		if (total_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
-		if (free_space_bytes != 0)
+		if (free_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(&s, level, "free_space_bytes", free_space_bytes);
 		ss_json_double(&s, level, "annual_failure_rate", afr_array(state));
 		ss_json_double(&s, level, "failure_probability", fp_array(state));

@@ -359,6 +359,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     }
 
     // 2. Array Summary Card
+    const hasUsage = arrayInfo.total_space_bytes != null && arrayInfo.free_space_bytes != null;
     const totalSpace = arrayInfo.total_space_bytes || 0;
     const freeSpace = arrayInfo.free_space_bytes || 0;
     const usedSpace = totalSpace - freeSpace;
@@ -388,6 +389,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="mb-6">
                 <div class="flex justify-between text-sm mb-2">
                     <span class="text-muted">Storage Usage</span>
+                    ${hasUsage ? `
                     <span class="font-mono">${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
                 </div>
                 <div class="progress-container">
@@ -396,6 +398,10 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="text-right text-xs text-muted">
                     ${formatBytes(freeSpace)} free
                 </div>
+                    ` : `
+                    <span>${healthBadge('pending')}</span>
+                </div>
+                    `}
             </div>
 
             <div class="property-list">
@@ -612,6 +618,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
     if (disk.error_data > 0)
         errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
 
+    const hasUsage = disk.total_space_bytes != null && disk.free_space_bytes != null;
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
     const usedSpace = totalSpace - freeSpace;
@@ -711,12 +718,17 @@ const renderDiskCard = (disk, type, pulseAt) => {
             </div>
            
             <div class="mb-1 flex justify-between text-xs">
-                <span>Usage</span>
+                <span class="text-muted">Storage Usage</span>
+                ${hasUsage ? `
                 <span>${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
             </div>
             <div class="progress-container mb-4">
                 <div class="progress-bar" data-style-width="${percentUsed}%"></div>
             </div>
+                ` : `
+                <span>${healthBadge('pending')}</span>
+            </div>
+                `}
 
             ${errorBadges.join('')}
 

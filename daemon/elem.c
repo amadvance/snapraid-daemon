@@ -90,6 +90,18 @@ int disk_count(tommy_list* list, int kind)
 	return count;
 }
 
+struct snapraid_disk* disk_alloc(const char* name, int kind)
+{
+	struct snapraid_disk* disk = calloc_nofail(1, sizeof(struct snapraid_disk));
+	disk->kind = kind;
+	disk->total_space_bytes = SMART_UNASSIGNED;
+	disk->free_space_bytes = SMART_UNASSIGNED;
+	disk->access_count = SMART_UNASSIGNED;
+	sncpy(disk->name, sizeof(disk->name), name);
+
+	return disk;
+}
+
 void disk_free(void* void_disk)
 {
 	struct snapraid_disk* disk = void_disk;

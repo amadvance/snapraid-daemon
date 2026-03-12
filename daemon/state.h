@@ -203,9 +203,9 @@ struct snapraid_split {
 
 struct snapraid_disk {
 	char name[KEYWORD_MAX]; /**< Name of the disk. */
-	uint64_t total_space_bytes; /**< Size of the disk stored in the content file or obtained from the filesystem. */
-	uint64_t free_space_bytes; /**< Free size of the disk stored in the content file or obtained from the filesystem. */
-	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. */
+	uint64_t total_space_bytes; /**< Size of the disk stored in the content file. SMART_UNASSIGNED if not set. */
+	uint64_t free_space_bytes; /**< Free size of the disk stored in the content file. SMART_UNASSIGNED if not set. */
+	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. SMART_UNASSIGNED if not set. */
 	int64_t access_count_initial_time; /**< Time of the first access_count to this value. */
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
 	uint64_t error_io; /**< Accumulator of all I/O errors encountered. */
