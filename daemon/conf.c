@@ -120,17 +120,16 @@ static int get_day_index(const char* input)
 
 int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config)
 {
+	const char* p = input;
+
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_init(&config->maintenance_list);
 
-	const char* p = input;
-	while (*p) {
-		/* skip leading spaces */
-		while (isspace((unsigned char)*p))
-			++p;
-		if (*p == 0)
-			break;
+	/* skip leading spaces to accept and empty string */
+	while (isspace((unsigned char)*p))
+		++p;
 
+	while (*p) {
 		long hour = -1;
 		long minute = -1;
 		long day_of_week = -1;
@@ -170,10 +169,20 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 		while (isspace((unsigned char)*p))
 			++p;
 
-		if (*p == ',')
+		if (*p == ',') {
 			++p;
-		else if (*p != 0)
-			return -1;
+
+			/* skip leading spaces after comma */
+			while (isspace((unsigned char)*p))
+				++p;
+
+			if (*p == 0)
+				return -1; /* don't accept a trailing comma */
+		} else {
+			/* only comma and 0 can end an entry */
+			if (*p != 0)
+				return -1;
+		}
 	}
 
 	return 0;
