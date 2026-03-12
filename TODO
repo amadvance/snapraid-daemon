@@ -30,6 +30,23 @@ Future Releases
     notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
     smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
 
+ - Unprivileged execution mode
+   - Implement a configurable option to run the daemon as a non-root user.
+     When enabled, the daemon executes the SnapRAID engine via sudo.
+   - The implementation must remain compatible with both systemd and
+     BSD-style init systems. This requires a two-pronged approach for
+     permission management. For systemd, the service unit should use the
+     LogsDirectory directive to automate /var/log/snapraid folder creation.
+     For BSD and other traditional init systems, the daemon must either assume
+     the log directory was pre-provisioned via a ports/package script or
+     include a check to verify write access before starting.
+   - The internal command builder must be updated to conditionally prefix the
+     SnapRAID binary path with sudo based on the configuration state.
+     Additionally, the project documentation must include a standardized
+     sudoers policy to grant the daemon user NOPASSWD access specifically
+     for the SnapRAID binary:
+     snapraidd ALL=(ALL) NOPASSWD: /usr/bin/snapraid
+
 - Stress Test Utility
   Provide a way to stress-test new disks before adding them to the array.
   A "Badblocks" or "Long SMART Test" trigger from the UI.
