@@ -561,9 +561,13 @@ const app = {
     triggerMaintenance: async () => {
         const res = await showConfirmDown('Start full maintenance sequence?');
         if (res) {
-            await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
-            showToast('Maintenance Triggered', 'success');
-            setTimeout(app.loadDashboard, 500);
+            try {
+                await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
+                showToast('Maintenance Triggered', 'success');
+                setTimeout(app.loadDashboard, 500);
+            } catch (e) {
+                showToast('Failed to start maintenance: ' + e.message, 'error');
+            }
         }
     },
 
@@ -579,16 +583,24 @@ const app = {
 
     triggerStop: async () => {
         if (await showConfirm('Are you sure you want to STOP the running task?', 'Stop Task')) {
-            await API.stopTask();
-            showToast('Stop Signal Sent', 'info');
+            try {
+                await API.stopTask();
+                showToast('Stop Signal Sent', 'info');
+            } catch (e) {
+                showToast('Failed to stop: ' + e.message, 'error');
+            }
         }
     },
 
     triggerDiff: async () => {
         if (await showConfirm('Trigger a new differences check?', 'Differences')) {
-            await API.startDiff();
-            showToast('Diff Command Triggered', 'success');
-            setTimeout(app.loadDifferences, 500);
+            try {
+                await API.startDiff();
+                showToast('Diff Command Triggered', 'success');
+                setTimeout(app.loadDifferences, 500);
+            } catch (e) {
+                showToast('Failed to start diff: ' + e.message, 'error');
+            }
         }
     },
 
@@ -600,8 +612,12 @@ const app = {
     triggerHeal: async () => {
         const res = await showConfirmDown('Start healing sequence for silent errors?', 'Heal Errors');
         if (res) {
-            await API.startHeal({ spindown_on_finish: res === 'spindown' });
-            showToast('Heal Command Triggered', 'success');
+            try {
+                await API.startHeal({ spindown_on_finish: res === 'spindown' });
+                showToast('Heal Command Triggered', 'success');
+            } catch (e) {
+                showToast('Failed to start heal: ' + e.message, 'error');
+            }
         }
     },
 
@@ -641,8 +657,12 @@ const app = {
     },
 
     triggerCommand: async (cmd) => {
-        await API[cmd]();
-        showToast(`Command ${cmd} sent`, 'info');
+        try {
+            await API[cmd]();
+            showToast(`Command ${cmd} sent`, 'info');
+        } catch (e) {
+            showToast('Failed to start command: ' + e.message, 'error');
+        }
     },
 
     saveSettings: async () => {
