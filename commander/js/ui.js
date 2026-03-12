@@ -298,7 +298,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         heroHtml = `
             <div class="grid-1">
             <div class="card glow">
-                <div class="flex justify-between mb-4">
+                <div class="flex justify-between items-center mb-4">
                     <div>
                         <h3>ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
                         <div class="text-sm text-muted">Started: ${formatFullTime(activity.started_at, pulseAt)}</div>
@@ -346,7 +346,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 ${last ? `
                     <div class="flex flex-wrap items-center gap-4 text-sm">
                         <span class="font-bold text-sky">${formatFullCommand(last).toUpperCase()}</span>
-                        <span class="flex gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
+                        <span class="flex items-center gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
                         <span class="flex flex-wrap gap-4">
                             <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
                             <span class="text-muted">Ended: ${formatFullTime(last.finished_at, pulseAt)}</span>
@@ -380,9 +380,9 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
     const arrayStatusHtml = `
         <div class="card">
-            <div class="flex gap-4 items-center mb-4">
+            <div class="flex gap-4 justify-between items-center mb-4">
                 <h3>Array</h3>
-                <div class="text-2xl font-bold flex gap-4 items-center">${healthBadge(arrayInfo.health)} ${parityBadgeHtml}</div>
+                <div class="flex gap-2 items-center mb-4">${healthBadge(arrayInfo.health)} ${parityBadgeHtml}</div>
             </div>
 
             <div class="mb-6">
@@ -597,7 +597,7 @@ export const renderDifferences = (arrayInfo) => {
 
 /* --- Disks --- */
 const renderDiskCard = (disk, type, pulseAt) => {
-    const borderClass = type === 'parity' ? 'card-border-purple' : type === 'data' ? 'card-border-blue' : 'card-border-grey' ;
+    const borderClass = type === 'parity' ? 'card-border-purple' : type === 'data' ? 'card-border-blue' : 'card-border-grey';
 
     const errorBadges = [];
     let errorStatus = null;
@@ -678,9 +678,9 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
         return `
             <div class="mt-2 border text-sm">
-                <div class="flex justify-between mb-1">
+                <div class="flex justify-between items-center mb-1">
                      <span class="font-mono text-sm font-bold text-sky">${dev.serial || 'Unknown Model'}</span>
-                     <div>${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
+                     <div class="flex items-center gap-2">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.rotational ? 'HDD' : 'SSD'} ${dev.model || '-'}${powerOnYears}</div>
                 
@@ -705,8 +705,8 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
     return `
         <div class="card card-disk ${borderClass}">
-            <div class="flex justify-between mb-2">
-                <h4 class="font-bold text-lg">${disk.name}</h3>
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="font-bold text-lg">${disk.name}</h4>
                 ${healthBadge(disk.health)}
             </div>
            
