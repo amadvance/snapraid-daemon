@@ -37,7 +37,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (state->config.sync_prehash) {
 		sl_insert_str(&sync_arg_list, "-h");
 	}
-	if (state->config.sync_force_zero) {
+	if (!state->config.sync_prevent_truncations) {
 		sl_insert_str(&sync_arg_list, "-Z");
 	}
 	if (state->config.touch_zero_subseconds) {

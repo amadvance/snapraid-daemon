@@ -953,7 +953,7 @@ export const renderSettings = (config) => {
                 ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of deletions allowed. If exceeded, the sync will not start to prevent accidental mass data loss.')}
                 ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates allowed. If exceeded, the sync will not start to prevent unintended mass changes.')}
                 ${boolField('sync_prehash', 'Safety Pre-hash', 'Pre-calculates hashes before syncing to verify them during the process. This provides a second read pass to catch silent data errors and faulty memory corruption.')}
-                ${boolField('sync_force_zero', 'Accept File Truncations', 'Allows the synchronization to proceed even if files that previously contained data are now empty.')}
+                ${boolField('sync_prevent_truncations', 'Prevent File Truncations', 'Stops the synchronization if files that previously contained data are now empty. Prevent parity updates when data may have been accidentally cleared.')}
             </div>
 
             <!-- Monitor -->

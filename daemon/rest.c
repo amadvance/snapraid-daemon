@@ -584,10 +584,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
-			} else if (json_entry(js, &jv[j], json_const("sync_force_zero")) == 0) {
+			} else if (json_entry(js, &jv[j], json_const("sync_prevent_truncations")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.sync_force_zero) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_force_zero);
+				if (json_boolean(js, &jv[j], &state->config.sync_prevent_truncations) == 0) {
+					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_prevent_truncations);
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -788,7 +788,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
 	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
 	ss_json_bool(&s, level, "sync_prehash", config->sync_prehash);
-	ss_json_bool(&s, level, "sync_force_zero", config->sync_force_zero);
+	ss_json_bool(&s, level, "sync_prevent_truncations", config->sync_prevent_truncations);
 	ss_json_double(&s, level, "scrub_percentage", config->scrub_percentage);
 	ss_json_int(&s, level, "scrub_older_than", config->scrub_older_than);
 	ss_json_bool(&s, level, "touch_zero_subseconds", config->touch_zero_subseconds);

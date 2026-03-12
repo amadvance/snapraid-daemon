@@ -646,41 +646,43 @@ const app = {
     },
 
     saveSettings: async () => {
-        const form = document.getElementById('settings-form');
-        const formData = new FormData(form);
-        const updates = {};
-
-        const fullAccess = app.state.config?.config_full_access !== false;
-        const protectedFields = [
-            'hook_run_as_user', 'hook_script',
-            'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level'
-        ];
-
-        // Manual conversion to handle types correctly
-        for (let [key, value] of formData.entries()) {
-            if (!fullAccess && protectedFields.includes(key)) continue;
-
-            // Check if it should be a number
-            if (['sync_threshold_deletes', 'sync_threshold_updates',
-                'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes'].includes(key)) {
-                updates[key] = parseInt(value, 10);
-            } else if (key === 'scrub_percentage') {
-                updates[key] = parseFloat(value);
-            } else {
-                updates[key] = value;
-            }
-        }
-
-        // Handle unchecked booleans (FormData doesn't include them)
-        ['sync_prehash', 'sync_force_zero', 'touch_before_sync', 'notify_syslog_enabled', 'notify_differences'].forEach(key => {
-            if (!fullAccess && protectedFields.includes(key)) return;
-            updates[key] = form.querySelector(`[name="${key}"]`).checked;
-        });
-
         try {
+            const form = document.getElementById('settings-form');
+            const formData = new FormData(form);
+            const updates = {};
+
+            const fullAccess = app.state.config?.config_full_access !== false;
+            const protectedFields = [
+                'hook_run_as_user', 'hook_script',
+                'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level',
+            ];
+
+            // Manual conversion to handle types correctly
+            for (let [key, value] of formData.entries()) {
+                if (!fullAccess && protectedFields.includes(key)) continue;
+
+                // Check if it should be a number
+                if (['sync_threshold_deletes', 'sync_threshold_updates',
+                    'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes'].includes(key)) {
+                    updates[key] = parseInt(value, 10);
+                } else if (key === 'scrub_percentage') {
+                    updates[key] = parseFloat(value);
+                } else {
+                    updates[key] = value;
+                }
+            }
+
+            // Handle unchecked booleans (FormData doesn't include them)
+            ['sync_prehash', 'sync_prevent_truncations', 'touch_zero_subseconds', 'notify_syslog_enabled', 'notify_differences'].forEach(key => {
+                if (!fullAccess && protectedFields.includes(key)) return;
+                const el = form.querySelector(`[name="${key}"]`);
+                if (el) updates[key] = el.checked;
+            });
+
             await API.updateConfig(updates);
             showToast('Configuration Saved', 'success');
         } catch (e) {
+            console.error('Save settings failed:', e);
             showToast('Failed to save: ' + e.message, 'error');
         }
     },

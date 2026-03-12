@@ -311,8 +311,8 @@ int config_load_locked(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
-			} else if (strcmp(key, "sync_force_zero") == 0) {
-				if (parse_int(val, 0, 1, &config->sync_force_zero) == 0) {
+			} else if (strcmp(key, "sync_prevent_truncations") == 0) {
+				if (parse_int(val, 0, 1, &config->sync_prevent_truncations) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -575,7 +575,7 @@ void config_init(struct snapraid_state* state)
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
-	config->sync_force_zero = 0;
+	config->sync_prevent_truncations = 0;
 	config->scrub_percentage = 0;
 	config->scrub_older_than = 0;
 	config->touch_zero_subseconds = 0;

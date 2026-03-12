@@ -224,13 +224,13 @@ sync_threshold_updates = 100
 # If this is missing or set to 0, no prehash is used.
 #sync_prehash = 1
 
-# If set to 1, the sync command will run even if files are detected that have
-# shrunk to zero size since the last successful run. This allows the daemon
-# to proceed while making it easy to detect files that were truncated, a
-# common occurrence for files being accessed during a system crash.
-# If this is missing or set to 0, the sync is halted to prevent overwriting
-# parity with empty file data.
-#sync_force_zero = 1
+# If set to 1, the sync is halted to prevent overwriting
+# parity with empty file data. This provides a safety
+# barrier against truncated data, which may occurs
+# during system crashes or filesystem errors.
+# If this is missing or set to 0, the sync is allowed
+# to proceed even if files have shrunk to zero size.
+#sync_prevent_truncations = 1
 
 # After a sync completes, the scrub_percentage determines how much of the
 # array is verified.

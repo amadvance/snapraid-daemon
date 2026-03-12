@@ -1450,12 +1450,14 @@ components:
             Calculates hashes for new or modified files before updating
             parity. Protects against integrating data corrupted by
             faulty RAM or cables.
-        sync_force_zero:
+        sync_prevent_truncations:
           type: boolean
           example: false
           description: >
-            Permits parity synchronization even if existing files have
-            unexpectedly shrunk to zero bytes.
+            Stops the synchronization if files that previously
+            contained data are now empty. This acts as a safety
+            barrier to prevent parity updates when data may have
+            been accidentally cleared.
         scrub_percentage:
           type: number
           format: float

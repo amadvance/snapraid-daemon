@@ -472,7 +472,7 @@ struct snapraid_config {
 	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
 	int sync_threshold_updates; /**< Threshold for updates before sync fails */
 	int sync_prehash; /**< 1 to enable prehash, 0 otherwise */
-	int sync_force_zero; /**< 1 to force sync with zero size, 0 otherwise */
+	int sync_prevent_truncations; /**< 0 to force sync with zero size, 1 otherwise */
 	double scrub_percentage; /**< Percentage of array to scrub */
 	int scrub_older_than; /**< Scrub blocks older than this many days */
 	int touch_zero_subseconds; /**< 1 to touch befoer sync, 0 otherwise */

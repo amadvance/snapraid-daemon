@@ -430,14 +430,13 @@ Configuration
 	under critical system stress.
 	If missing or set to 0, no pre-hashing is performed.
 
-    sync_force_zero
-	If set to 1, the daemon allows a sync to proceed even if it detects
-	files that have shrunk to zero size since the last run.
-	By default (missing or 0), the daemon will halt the sync to protect
-	against potential data corruption or accidental file clearing.
-	This setting is particularly useful for detecting and acknowledging
-	instances where files, accessed during a system crash, have been
-	truncated to zero bytes by the filesystem.
+    sync_prevent_truncations
+	If set to 1, the sync is halted to prevent overwriting
+	parity with empty file data. This provides a safety
+	barrier against truncated data, which may occurs
+	during system crashes or filesystem errors.
+	If this is missing or set to 0, the sync is allowed
+	to proceed even if files have shrunk to zero size.
 
     scrub_percentage
 	Determines the portion of the array verified after a successful sync.

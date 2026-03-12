@@ -21,6 +21,9 @@ SnapRAID-Daemon HISTORY
    manual time changes.
  * Added support for the ZSTD compression in the HTTP protocol at the Windows
    Service.
+ * Renamed 'sync_force_zero' to 'sync_prevent_truncations' with the opposite
+   meaning. This ensures the option provides better safety when enabled,
+   consistent with 'sync_prehash'.
 
 0.1beta2b 09/03/2026
 ====================
