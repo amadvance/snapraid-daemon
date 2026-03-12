@@ -121,9 +121,9 @@ static int get_day_index(const char* input)
 int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config)
 {
 	const char* p = input;
+	tommy_list list;
 
-	tommy_list_foreach(&config->maintenance_list, run_free);
-	tommy_list_init(&config->maintenance_list);
+	tommy_list_init(&list);
 
 	/* skip leading spaces to accept and empty string */
 	while (isspace((unsigned char)*p))
@@ -137,33 +137,33 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 		if (!isdigit((unsigned char)*p)) {
 			day_of_week = get_day_index(p);
 			if (day_of_week == -1)
-				return -1;
+				goto bail;
 
 			/* skip day */
 			p += 3;
 
 			/* a space is required after the day */
 			if (!isspace((unsigned char)*p))
-				return -1;
+				goto bail;
 
 			/* strtol skips spaces by itself */
 		}
 
 		char* e;
 		hour = strtol(p, &e, 10);
-		if (p == e || *e != ':')
-			return -1;
+		if (p == e || *e != ':') /* if no digit is processed -> p==e */
+			goto bail;
 		p = e + 1;
 		minute = strtol(p, &e, 10);
 		if (p == e)
-			return -1;
+			goto bail;
 		p = e;
 
 		if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
-			return -1;
+			goto bail;
 
 		struct snapraid_run* run = run_alloc(day_of_week, hour, minute);
-		tommy_list_insert_tail(&config->maintenance_list, &run->node, run);
+		tommy_list_insert_tail(&list, &run->node, run);
 
 		/* skip trailing spaces */
 		while (isspace((unsigned char)*p))
@@ -177,15 +177,24 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 				++p;
 
 			if (*p == 0)
-				return -1; /* don't accept a trailing comma */
+				goto bail; /* don't accept a trailing comma */
 		} else {
 			/* only comma and 0 can end an entry */
 			if (*p != 0)
-				return -1;
+				goto bail;
 		}
 	}
 
+	/* accept the final list */
+	tommy_list_foreach(&config->maintenance_list, run_free);
+	config->maintenance_list = list;
+
 	return 0;
+
+bail:
+	/* cleanup partial list creation */
+	tommy_list_foreach(&list, run_free);
+	return -1;
 }
 
 int config_parse_level(const char* input, int* out)
