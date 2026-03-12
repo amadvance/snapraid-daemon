@@ -1410,8 +1410,8 @@ body {
 }
 
 .toast-info {
-    border-color: var(--c-slate-700);
-    background: var(--c-slate-800) !important;
+    border-color: var(--c-sky-700);
+    background: var(--c-sky-950) !important;
     border-left: 4px solid var(--c-sky-500);
 }
 

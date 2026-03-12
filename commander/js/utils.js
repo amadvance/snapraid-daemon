@@ -190,7 +190,7 @@ export const showToast = (message, type = 'info') => {
 
     let icon = Icons.activity;
     if (type === 'error' || type === 'warning') icon = Icons.alert;
-    if (type === 'success') icon = Icons.check;
+    if (type === 'success' || type === 'info') icon = Icons.check;
 
     toast.innerHTML = `
         <div class="flex items-center gap-2">
@@ -201,7 +201,7 @@ export const showToast = (message, type = 'info') => {
         </div>
     `;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 7000);
+    setTimeout(() => toast.remove(), 5000);
 };
 
 export const showConfirm = (message, title = 'Confirmation Required') => {

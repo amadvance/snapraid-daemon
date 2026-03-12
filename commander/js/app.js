@@ -563,7 +563,7 @@ const app = {
         if (res) {
             try {
                 await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
-                showToast('Maintenance Triggered', 'success');
+                showToast('Maintenance Triggered', 'info');
                 setTimeout(app.loadDashboard, 500);
             } catch (e) {
                 showToast('Failed to start maintenance: ' + e.message, 'error');
@@ -574,7 +574,7 @@ const app = {
     triggerRefresh: async () => {
         try {
             await API.refreshArray();
-            showToast('Refresh Triggered', 'success');
+            showToast('Refresh Triggered', 'info');
             setTimeout(app.loadDashboard, 500);
         } catch (e) {
             showToast('Refresh failed: ' + e.message, 'error');
@@ -596,7 +596,7 @@ const app = {
         if (await showConfirm('Trigger a new differences check?', 'Differences')) {
             try {
                 await API.startDiff();
-                showToast('Diff Command Triggered', 'success');
+                showToast('Diff Command Triggered', 'info');
                 setTimeout(app.loadDifferences, 500);
             } catch (e) {
                 showToast('Failed to start diff: ' + e.message, 'error');
@@ -614,7 +614,7 @@ const app = {
         if (res) {
             try {
                 await API.startHeal({ spindown_on_finish: res === 'spindown' });
-                showToast('Heal Command Triggered', 'success');
+                showToast('Heal Command Triggered', 'info');
             } catch (e) {
                 showToast('Failed to start heal: ' + e.message, 'error');
             }
@@ -637,7 +637,7 @@ const app = {
         if (confirmRes) {
             try {
                 await API.undelete(filters, { spindown_on_finish: confirmRes === 'spindown' });
-                showToast(`Undelete queued for ${filters.length} patterns`, 'success');
+                showToast(`Undelete queued for ${filters.length} patterns`, 'info');
                 input.value = ''; // Clear input on success
             } catch (e) {
                 showToast('Failed to start undelete: ' + e.message, 'error');
@@ -649,7 +649,7 @@ const app = {
         if (await showConfirm(`Recover missing file?\n${path}`, 'Undelete File')) {
             try {
                 await API.undelete([path]);
-                showToast('Undelete Task Queued', 'success');
+                showToast('Undelete Task Queued', 'info');
             } catch (e) {
                 showToast('Failed to start undelete: ' + e.message, 'error');
             }
@@ -700,7 +700,7 @@ const app = {
             });
 
             await API.updateConfig(updates);
-            showToast('Configuration Saved', 'success');
+            showToast('Configuration Saved', 'info');
         } catch (e) {
             showToast('Failed to save: ' + e.message, 'error');
         }
