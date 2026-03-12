@@ -510,6 +510,8 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
+			parser_remove_old_disk(state, task);
+
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */
 				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);

@@ -25,16 +25,39 @@
 #include "smart.h"
 #include "parser.h"
 
-/**
- * Remove old disks.
- */
-static void remove_old_disk(struct snapraid_state* state, int number)
+void parser_remove_old_disk(struct snapraid_state* state, struct snapraid_task* task)
 {
+	/* only tasks that process snapraid.conf */
+	switch (task->cmd) {
+	case CMD_PROBE :
+	case CMD_UP :
+	case CMD_DOWN :
+	case CMD_SMART :
+	case CMD_LIST :
+	case CMD_DIFF :
+	case CMD_DUP :
+	case CMD_SYNC :
+	case CMD_SCRUB :
+	case CMD_FIX :
+	case CMD_CHECK :
+	case CMD_STATUS :
+	case CMD_READ :
+		break;
+	default :
+		return;
+	}
+
+	/* only if terminated with success */
+	if (task->state != PROCESS_STATE_TERM)
+		return;
+	if (task->exit_code != 0)
+		return;
+
 	for (tommy_node* i = tommy_list_head(&state->disk_list); i; ) {
 		struct snapraid_disk* disk = i->data;
 		tommy_node* i_next = i->next;
 
-		if (disk->last_update_at_number < number) {
+		if (disk->last_update_at_number < task->number) {
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->disk_list, &disk->node);
 			disk_free(disk);
@@ -1316,36 +1339,6 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 	return ignore_this_line;
 }
 
-/*
- * Check if the task processed all the array information
- */
-static int parse_task_full_info(struct snapraid_task* task)
-{
-	/* only if the task read the content file */
-	switch (task->cmd) {
-	case CMD_LIST :
-	case CMD_DIFF :
-	case CMD_DUP :
-	case CMD_SYNC :
-	case CMD_SCRUB :
-	case CMD_FIX :
-	case CMD_CHECK :
-	case CMD_STATUS :
-	case CMD_READ :
-		break;
-	default :
-		return 0;
-	}
-
-	/* only if terminated with success */
-	if (task->state != PROCESS_STATE_TERM)
-		return 0;
-	if (task->exit_code != 0)
-		return 0;
-
-	return 1;
-}
-
 #define RUN_INPUT_MAX 4096
 #define RUN_FIELD_MAX 64
 
@@ -1469,13 +1462,6 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 			}
 		}
 	}
-
-	/* remove disks that were not referenced */
-	state_lock();
-	if (parse_task_full_info(state->runner.latest)) {
-		remove_old_disk(state, state->runner.latest->number);
-	}
-	state_unlock();
 }
 
 int parse_timestamp(const char* name, int64_t* out)
@@ -1602,6 +1588,10 @@ int parse_past_log(struct snapraid_state* state)
 		++count;
 
 		state_lock();
+
+		/* remove disks that were not referenced */
+		parser_remove_old_disk(state, task);
+
 		/* compute the task health */
 		task->health = health_task(task);
 
