@@ -1,6 +1,6 @@
 
 import { API } from './api.js';
-import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatSize, formatSeconds } from './utils.js';
+import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatDiskSize, formatSeconds } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
 
 const app = {
@@ -771,7 +771,7 @@ const app = {
                     }
                     if (attr.measure == 'bytes') {
                         const bytes = attr.raw * attr.unit;
-                        valStr = `${attr.raw} (${formatSize(bytes)})`;
+                        valStr = `${attr.raw} (${formatDiskSize(bytes)})`;
                     }
                     if (attr.measure == 'percentage') {
                         valStr = `${attr.raw}%`;

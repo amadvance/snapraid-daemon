@@ -1,13 +1,3 @@
-
-export const formatBytes = (bytes, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-};
-
 export const formatFullTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
         return '-';
@@ -58,22 +48,58 @@ export const formatElapsedTime = (seconds) => {
     if (seconds < 60) return 'now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours`;
-    if (seconds < 86400*30) return `${Math.floor(seconds / 86400)} days`;
-    if (seconds < 86400*365) return `${Math.floor(seconds / (86400*30))} months`;
-    return `${(seconds / (86400*365)).toFixed(1)} years`;
+    if (seconds < 86400 * 30) return `${Math.floor(seconds / 86400)} days`;
+    if (seconds < 86400 * 365) return `${Math.floor(seconds / (86400 * 30))} months`;
+    return `${(seconds / (86400 * 365)).toFixed(1)} years`;
 };
 
-export const formatSize = (bytes) => {
+const formatWithSigFigs = (val, reference_val) => {
+    if (reference_val >= 100) return val.toFixed(0);
+    if (reference_val >= 10) return val.toFixed(1);
+    return val.toFixed(2);
+};
+
+export const formatMemorySize = (bytes, reference_bytes = bytes) => {
     if (bytes === 0) return '0 bytes';
     if (bytes === 1) return '1 byte';
 
-    if (bytes < 1000) return `${bytes} bytes`;
-    if (bytes < 1000 ** 2) return `${(bytes / 1000).toFixed(1)} kB`;
-    if (bytes < 1000 ** 3) return `${(bytes / 1000 ** 2).toFixed(1)} MB`;
-    if (bytes < 1000 ** 4) return `${(bytes / 1000 ** 3).toFixed(1)} GB`;
-    if (bytes < 1000 ** 5) return `${(bytes / 1000 ** 4).toFixed(1)} TB`;   
+    const units = [' bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+    const k = 1024;
 
-    return `${(bytes / 1000 ** 5).toFixed(1)} PB`;
+    let i = Math.min(
+        Math.floor(Math.log(Math.abs(reference_bytes)) / Math.log(k)),
+        units.length - 1
+    );
+
+    let reference_value = reference_bytes / Math.pow(k, i);
+    let value = bytes / Math.pow(k, i);
+
+    return `${formatWithSigFigs(value, reference_value)} ${units[i]}`;
+};
+
+export const formatDiskSize = (bytes, reference_bytes = bytes) => {
+    if (bytes === 0) return '0 bytes';
+    if (bytes === 1) return '1 byte';
+
+    const units = [' bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
+    const k = 1000;
+
+    let i = Math.min(
+        Math.floor(Math.log(Math.abs(reference_bytes)) / Math.log(k)),
+        units.length - 1
+    );
+
+    let refecence_value = reference_bytes / Math.pow(k, i);
+    let value = bytes / Math.pow(k, i);
+
+    // toPrecision(3) can round up to the next unit (e.g. 999.99 → 1000)
+    if (parseFloat(refecence_value.toPrecision(3)) >= k && i < units.length - 1) {
+        i += 1;
+        value /= k;
+        refecence_value /= k;
+    }
+
+    return `${formatWithSigFigs(value, refecence_value)} ${units[i]}`;
 };
 
 export const formatAgoMins = (mins) => {

@@ -1,5 +1,5 @@
 
-import { formatBytes, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, Icons } from './utils.js';
+import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
@@ -250,7 +250,7 @@ const renderSystemCard = (system) => {
                     <div class="property-label">Memory</div>
                     <div class="property-value">
                         <div class="flex justify-between text-xs mb-1">
-                            <span>${formatBytes(usedMem)} / ${formatBytes(totalMem)}</span>
+                            <span>${formatMemorySize(usedMem, totalMem)} / ${formatMemorySize(totalMem)}</span>
                             <span>${system.is_ecc ? '(ECC)' : ''}</span>
                         </div>
                         <div class="progress-container system-progress">
@@ -317,7 +317,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
                 <div class="grid-4 mb-4">
                     <div><span class="text-muted block text-xs">Speed</span><span class="font-bold"> ${activity.speed_mbs || 0} MB/s</span></div>
-                    <div><span class="text-muted block text-xs">Processed</span><span class="font-bold"> ${formatBytes(activity.size_done_bytes || 0)}</span></div>
+                    <div><span class="text-muted block text-xs">Processed</span><span class="font-bold"> ${formatDiskSize(activity.size_done_bytes || 0)}</span></div>
                     <div><span class="text-muted block text-xs">CPU</span><span class="font-bold"> ${activity.cpu_usage || 0}%</span></div>
                 </div>
                 ` : ''}
@@ -390,13 +390,13 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="flex justify-between text-sm mb-2">
                     <span class="text-muted">Storage Usage</span>
                     ${hasUsage ? `
-                    <span class="font-mono">${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
+                    <span class="font-mono">${formatDiskSize(usedSpace, totalSpace)} / ${formatDiskSize(totalSpace)}</span>
                 </div>
                 <div class="progress-container">
                     <div class="progress-bar" data-style-width="${percentUsed}%"></div>
                 </div>
                 <div class="text-right text-xs text-muted">
-                    ${formatBytes(freeSpace)} free
+                    ${formatDiskSize(freeSpace)} free
                 </div>
                     ` : `
                     <span>${healthBadge('pending')}</span>
@@ -409,14 +409,14 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <div class="property-label">Bad</div>
                     <div class="property-value ${arrayInfo.blocks_bad > 0 ? 'text-red' : 'text-emerald'}">
                         ${arrayInfo.blocks_bad != null ? arrayInfo.blocks_bad : healthBadge('pending')}
-                        ${arrayInfo.blocks_bad > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_bad * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
+                        ${arrayInfo.blocks_bad > 0 ? `<span class="text-xs text-muted ml-2">(${formatDiskSize(arrayInfo.blocks_bad * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
                     <div class="property-label">Unsynced</div>
                     <div class="property-value ${arrayInfo.blocks_unsynced > 0 ? 'text-yellow' : 'text-emerald'}">
                         ${arrayInfo.blocks_unsynced != null ? arrayInfo.blocks_unsynced : healthBadge('pending')}
-                        ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatBytes(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
+                        ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatDiskSize(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
                 <div class="property-row">
@@ -720,7 +720,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
             <div class="mb-1 flex justify-between text-xs">
                 <span class="text-muted">Storage Usage</span>
                 ${hasUsage ? `
-                <span>${formatBytes(usedSpace)} / ${formatBytes(totalSpace)}</span>
+                <span>${formatDiskSize(usedSpace, totalSpace)} / ${formatDiskSize(totalSpace)}</span>
             </div>
             <div class="progress-container mb-4">
                 <div class="progress-bar" data-style-width="${percentUsed}%"></div>
