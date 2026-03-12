@@ -141,7 +141,6 @@
     --log-window-text: var(--c-slate-200);
     --status-next: var(--c-slate-400);
     --progress-container-background: var(--c-slate-800);
-    --toast-background: var(--c-slate-800);
     --slider-background: var(--c-slate-700);
     --table-row-hover: rgba(255, 255, 255, 0.12);
     --table-row-alt: rgba(255, 255, 255, 0.05);
@@ -178,7 +177,6 @@
     --log-window-text: var(--c-slate-700);
     --status-next: var(--c-slate-600);
     --progress-container-background: var(--c-slate-300);
-    --toast-background: var(--c-slate-100);
     --slider-background: var(--c-slate-500);
     --table-row-hover: rgba(0, 0, 0, 0.10);
     --table-row-alt: rgba(0, 0, 0, 0.04);
@@ -1253,6 +1251,10 @@ body {
     gap: 1rem;
 }
 
+.gap-8 {
+    gap: 2rem;
+}
+
 .mt-1 {
     margin-top: 0.25rem;
 }
@@ -1370,12 +1372,72 @@ body {
 }
 
 .toast {
-    background: var(--toast-background);
-    border: 1px solid var(--c-slate-700);
+    border: 1px solid;
     padding: 1rem;
     border-radius: var(--radius-md);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     animation: slideIn 0.3s;
+}
+
+.toast svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.toast svg[stroke] {
+    fill: none;
+    stroke: currentColor;
+}
+
+.toast-error {
+    border-color: var(--c-red-700);
+    background: var(--c-red-950) !important;
+    border-left: 4px solid var(--c-red-500);
+}
+
+.toast-warning {
+    border-color: var(--c-amber-700);
+    background: var(--c-amber-950) !important;
+    border-left: 4px solid var(--c-amber-500);
+}
+
+.toast-success {
+    border-color: var(--c-emerald-700);
+    background: var(--c-emerald-950) !important;
+    border-left: 4px solid var(--c-emerald-500);
+}
+
+.toast-info {
+    border-color: var(--c-slate-700);
+    background: var(--c-slate-800) !important;
+    border-left: 4px solid var(--c-sky-500);
+}
+
+/* Light Theme Toast Overrides */
+[data-theme="light"] .toast-error {
+    border-color: var(--c-red-200);
+    background: var(--c-red-50) !important;
+    color: var(--c-red-800);
+}
+
+[data-theme="light"] .toast-warning {
+    border-color: var(--c-amber-200);
+    background: var(--c-amber-50) !important;
+    color: var(--c-amber-800);
+}
+
+[data-theme="light"] .toast-success {
+    border-color: var(--c-emerald-200);
+    background: var(--c-emerald-50) !important;
+    color: var(--c-emerald-800);
+}
+
+[data-theme="light"] .toast-info {
+    border-color: var(--c-sky-200);
+    background: var(--c-sky-50) !important;
+    color: var(--c-sky-800);
 }
 
 @keyframes slideIn {

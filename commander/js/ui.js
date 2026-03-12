@@ -315,7 +315,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <span>ETA: ${formatSeconds(activity.eta_seconds)}</span>
                 </div>
 
-                <div class="grid-4 mb-4">
+                <div class="flex item-center gap-8 mb-4">
                     <div><span class="text-muted block text-xs">Speed</span><span class="font-bold"> ${activity.speed_mbs || 0} MB/s</span></div>
                     <div><span class="text-muted block text-xs">Processed</span><span class="font-bold"> ${formatDiskSize(activity.size_done_bytes || 0)}</span></div>
                     <div><span class="text-muted block text-xs">CPU</span><span class="font-bold"> ${activity.cpu_usage || 0}%</span></div>

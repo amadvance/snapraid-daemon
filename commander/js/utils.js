@@ -187,7 +187,19 @@ export const showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span class="font-bold">${type.toUpperCase()}:</span> ${message}`;
+
+    let icon = Icons.activity;
+    if (type === 'error' || type === 'warning') icon = Icons.alert;
+    if (type === 'success') icon = Icons.check;
+
+    toast.innerHTML = `
+        <div class="flex items-center gap-2">
+            <span style="width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">${icon}</span>
+            <div>
+                <span class="font-bold">${type.toUpperCase()}:</span> ${message}
+            </div>
+        </div>
+    `;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 7000);
 };
