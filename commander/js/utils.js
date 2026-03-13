@@ -194,7 +194,7 @@ export const showToast = (message, type = 'info') => {
 
     toast.innerHTML = `
         <div class="flex items-center gap-2">
-            <span style="width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">${icon}</span>
+            <span class="toast-icon">${icon}</span>
             <div>
                 <span class="font-bold">${type.toUpperCase()}:</span> ${message}
             </div>
