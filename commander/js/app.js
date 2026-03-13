@@ -128,7 +128,10 @@ const app = {
                 case 'spin-up': app.triggerCommand('spinUp'); break;
                 case 'spin-down': app.triggerCommand('spinDown'); break;
                 case 'diff': app.triggerDiff(); break;
-                case 'recovery-cancel': app.handleRoute(); break;
+                case 'recovery-cancel':
+			app.handleRoute();
+			showToast('Refreshed settings', 'info');
+			break;
                 case 'settings-save': app.saveSettings(); break;
                 case 'undelete': app.triggerUndelete(ds.path); break;
                 case 'undelete-batch': app.triggerUndeleteBatch(); break;
