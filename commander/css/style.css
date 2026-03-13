@@ -287,6 +287,8 @@ body {
     width: 20px;
     height: 20px;
     fill: currentColor;
+    align-items: center;
+    margin-top: 0.4rem;
 }
 
 .sidebar-status {
