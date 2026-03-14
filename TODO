@@ -1,9 +1,6 @@
 SnapRAID Daemon TODO
 ====================
 
-- Implement collapsing logic for diff results to hide matched copy/delete pairs
-  for a cleaner view. Do it in snapraid directly ?
-
 Future Releases
 ===============
 

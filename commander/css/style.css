@@ -1209,6 +1209,10 @@ body {
     color: var(--c-emerald-500);
 }
 
+.text-purple {
+    color: var(--c-purple-500);
+}
+
 .text-grey {
     color: var(--text-grey);
 }

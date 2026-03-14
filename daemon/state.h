@@ -344,9 +344,10 @@ struct snapraid_scheduler {
 #define FILE_CHANGE_DIFF_UPDATE 3 /**< A file or link has been updated (size, timestamp, or link target changed). */
 #define FILE_CHANGE_DIFF_MOVE 4 /**< A file was moved on the same disk. */
 #define FILE_CHANGE_DIFF_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
-#define FILE_CHANGE_DIFF_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
-#define FILE_CHANGE_RECOVERED 7 /**< A recoverable/recovered file */
-#define FILE_CHANGE_UNRECOVERABLE 8 /**< A unrecoverable file */
+#define FILE_CHANGE_DIFF_RELOCATE 6 /**< A new file was found to be a copy of a file from another disk now disappeared. */
+#define FILE_CHANGE_DIFF_RESTORE 7 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
+#define FILE_CHANGE_RECOVERED 8 /**< A recoverable/recovered file */
+#define FILE_CHANGE_UNRECOVERABLE 9 /**< A unrecoverable file */
 
 struct snapraid_file {
 	tommy_node node;
@@ -366,6 +367,7 @@ struct snapraid_diff_stat {
 	int64_t diff_updated; /**< Number of updated files */
 	int64_t diff_moved; /**< Number of moved files */
 	int64_t diff_copied; /**< Number of copied files */
+	int64_t diff_relocated; /**< Number of relocated files */
 	int64_t diff_restored; /**< Number of restored files */
 	tommy_list file_list; /**< List of snapraid_file entries */
 };

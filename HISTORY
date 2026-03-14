@@ -8,6 +8,9 @@ SnapRAID-Daemon HISTORY
    are monitored identically to array disks for health and status.
    The only exception is that they are excluded from 'up', 'down', and
    'down_idle' power management operations.
+ * Introduced the 'relocated' file state to unify the previous 'copied/removed'
+   logic. This new status specifically identifies files moved to a different
+   path or disk with a new inode where the original has disappeared.
  * Added support for multiple maintenance schedules using a comma-separated
    list.
  * Added a one-shot 'hold_off' API endpoint to bypass the next scheduled

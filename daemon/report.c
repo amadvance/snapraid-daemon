@@ -179,10 +179,10 @@ static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
 			if (file->change != change)
 				continue;
 
-			if (file->change == FILE_CHANGE_DIFF_MOVE || file->change == FILE_CHANGE_DIFF_COPY) {
-				ss_printf(ss, "    %s: %s <- %s: %s\n", file->disk, file->path, file->source_disk, file->source_path);
+			if (file->change == FILE_CHANGE_DIFF_MOVE || file->change == FILE_CHANGE_DIFF_COPY || file->change == FILE_CHANGE_DIFF_RELOCATE) {
+				ss_printf(ss, "    %s:%s <- %s:%s\n", file->disk, file->path, file->source_disk, file->source_path);
 			} else {
-				ss_printf(ss, "    %s: %s\n", file->disk, file->path);
+				ss_printf(ss, "    %s:%s\n", file->disk, file->path);
 			}
 		}
 		ss_prints(ss, "\n");
@@ -216,10 +216,10 @@ static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
 			if (file->change != change)
 				continue;
 
-			if (file->change == FILE_CHANGE_DIFF_MOVE || file->change == FILE_CHANGE_DIFF_COPY) {
-				ss_printf(ss, "%s: %s <- %s: %s\n", file->disk, file->path, file->source_disk, file->source_path);
+			if (file->change == FILE_CHANGE_DIFF_MOVE || file->change == FILE_CHANGE_DIFF_COPY || file->change == FILE_CHANGE_DIFF_RELOCATE) {
+				ss_printf(ss, "%s:%s <- %s:%s\n", file->disk, file->path, file->source_disk, file->source_path);
 			} else {
-				ss_printf(ss, "%s: %s\n", file->disk, file->path);
+				ss_printf(ss, "%s:%s\n", file->disk, file->path);
 			}
 		}
 		ss_prints(ss, "\n");
@@ -759,13 +759,14 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	if (diff_stat) {
 		print_line_separator(ss);
 		ss_prints(ss, "DIFFERENCES:\n\n");
-		ss_printf(ss, "  equal:   %10" PRId64 "\n", diff_stat->diff_equal);
-		ss_printf(ss, "  added:   %10" PRId64 "\n", diff_stat->diff_added);
-		ss_printf(ss, "  removed: %10" PRId64 "\n", diff_stat->diff_removed);
-		ss_printf(ss, "  updated: %10" PRId64 "\n", diff_stat->diff_updated);
-		ss_printf(ss, "  moved:   %10" PRId64 "\n", diff_stat->diff_moved);
-		ss_printf(ss, "  copied:  %10" PRId64 "\n", diff_stat->diff_copied);
-		ss_printf(ss, "  restored:%10" PRId64 "\n", diff_stat->diff_restored);
+		ss_printf(ss, "  equal:    %10" PRId64 "\n", diff_stat->diff_equal);
+		ss_printf(ss, "  added:    %10" PRId64 "\n", diff_stat->diff_added);
+		ss_printf(ss, "  removed:  %10" PRId64 "\n", diff_stat->diff_removed);
+		ss_printf(ss, "  updated:  %10" PRId64 "\n", diff_stat->diff_updated);
+		ss_printf(ss, "  moved:    %10" PRId64 "\n", diff_stat->diff_moved);
+		ss_printf(ss, "  copied:   %10" PRId64 "\n", diff_stat->diff_copied);
+		ss_printf(ss, "  relocated:%10" PRId64 "\n", diff_stat->diff_relocated);
+		ss_printf(ss, "  restored: %10" PRId64 "\n", diff_stat->diff_restored);
 		ss_prints(ss, "\n");
 
 		/* differences list if enabled */
@@ -844,13 +845,14 @@ int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	/* global statistics */
 	if (diff_stat) {
 		ss_prints(ss, "DIFFERENCES:\n");
-		ss_printf(ss, "- equal:   %10" PRId64 "\n", diff_stat->diff_equal);
-		ss_printf(ss, "- added:   %10" PRId64 "\n", diff_stat->diff_added);
-		ss_printf(ss, "- removed: %10" PRId64 "\n", diff_stat->diff_removed);
-		ss_printf(ss, "- updated: %10" PRId64 "\n", diff_stat->diff_updated);
-		ss_printf(ss, "- moved:   %10" PRId64 "\n", diff_stat->diff_moved);
-		ss_printf(ss, "- copied:  %10" PRId64 "\n", diff_stat->diff_copied);
-		ss_printf(ss, "- restored:%10" PRId64 "\n", diff_stat->diff_restored);
+		ss_printf(ss, "- equal:    %10" PRId64 "\n", diff_stat->diff_equal);
+		ss_printf(ss, "- added:    %10" PRId64 "\n", diff_stat->diff_added);
+		ss_printf(ss, "- removed:  %10" PRId64 "\n", diff_stat->diff_removed);
+		ss_printf(ss, "- updated:  %10" PRId64 "\n", diff_stat->diff_updated);
+		ss_printf(ss, "- moved:    %10" PRId64 "\n", diff_stat->diff_moved);
+		ss_printf(ss, "- copied:   %10" PRId64 "\n", diff_stat->diff_copied);
+		ss_printf(ss, "- relocated:%10" PRId64 "\n", diff_stat->diff_relocated);
+		ss_printf(ss, "- restored: %10" PRId64 "\n", diff_stat->diff_restored);
 		ss_prints(ss, "\n");
 
 		/* differences list if enabled */

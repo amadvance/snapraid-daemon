@@ -1827,6 +1827,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_u64(&s, level, "diff_updated", global->diff_current.diff_updated);
 		ss_json_u64(&s, level, "diff_moved", global->diff_current.diff_moved);
 		ss_json_u64(&s, level, "diff_copied", global->diff_current.diff_copied);
+		ss_json_u64(&s, level, "diff_relocated", global->diff_current.diff_relocated);
 		ss_json_u64(&s, level, "diff_restored", global->diff_current.diff_restored);
 		ss_json_array_open(&s, &level, "diffs");
 		for (tommy_node* i = tommy_list_head(&global->diff_current.file_list); i; i = i->next) {

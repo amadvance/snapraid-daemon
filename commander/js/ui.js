@@ -525,7 +525,8 @@ export const renderDifferences = (arrayInfo) => {
         removed: 'text-red',
         updated: 'text-amber',
         moved: 'text-sky',
-        copied: 'text-sky',
+        copied: 'text-emerald',
+        relocated: 'text-sky',
         restored: 'text-emerald',
         equal: 'text-muted'
     };
@@ -590,7 +591,12 @@ export const renderDifferences = (arrayInfo) => {
                     ${arrayInfo.diff_copied > 0 ? `
                     <div class="property-row">
                         <div class="property-label">Copied</div>
-                        <div class="property-value text-sky">${arrayInfo.diff_copied}</div>
+                        <div class="property-value text-emerald">${arrayInfo.diff_copied}</div>
+                    </div>` : ''}
+                    ${arrayInfo.diff_relocated > 0 ? `
+                    <div class="property-row">
+                        <div class="property-label">Relocated</div>
+                        <div class="property-value text-sky">${arrayInfo.diff_relocated}</div>
                     </div>` : ''}
                 </div>
 

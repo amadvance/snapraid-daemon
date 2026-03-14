@@ -313,6 +313,7 @@ struct {
 	{ FILE_CHANGE_DIFF_UPDATE, "updated" },
 	{ FILE_CHANGE_DIFF_MOVE, "moved" },
 	{ FILE_CHANGE_DIFF_COPY, "copied" },
+	{ FILE_CHANGE_DIFF_RELOCATE, "relocated" },
 	{ FILE_CHANGE_DIFF_RESTORE, "restored" },
 	{ FILE_CHANGE_RECOVERED, "recovered" },
 	{ FILE_CHANGE_UNRECOVERABLE, "unrecoverable" },
@@ -384,6 +385,7 @@ void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal)
 	diff->diff_updated = 0;
 	diff->diff_moved = 0;
 	diff->diff_copied = 0;
+	diff->diff_relocated = 0;
 	diff->diff_restored = 0;
 
 	tommy_list_foreach(&diff->file_list, file_free);
@@ -405,12 +407,14 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 	diff_src->diff_equal += diff_dest->diff_updated;
 	diff_src->diff_equal += diff_dest->diff_moved;
 	diff_src->diff_equal += diff_dest->diff_copied;
+	/* don't add relocated as they match one copied and one removed */
 	diff_src->diff_equal += diff_dest->diff_restored;
 	diff_src->diff_added = 0;
 	diff_src->diff_removed = 0;
 	diff_src->diff_updated = 0;
 	diff_src->diff_moved = 0;
 	diff_src->diff_copied = 0;
+	diff_src->diff_relocated = 0;
 	diff_src->diff_restored = 0;
 }
 

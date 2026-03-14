@@ -1637,7 +1637,7 @@ components:
       properties:
         change:
           type: string
-          enum: [added, removed, updated, moved, copied, restored]
+          enum: [added, removed, updated, moved, copied, relocated, restored]
           description: >
             The specific type of change detected:
             - added: New file not in content file.
@@ -1645,6 +1645,7 @@ components:
             - updated: Size, timestamp, or link target changed.
             - moved: Path changed on the same disk.
             - copied: New file is a copy from another disk.
+            - relocated: New file is moved from another disk.
             - restored: Inode changed but metadata matches. Likely a backup restore.
           example: "moved"
         disk:
@@ -1661,13 +1662,13 @@ components:
           type: string
           description: >
             The name of the originating disk. This field is only populated if
-            the reason is 'moved' or 'copied'.
+            the reason is 'moved', 'copied' or 'relocated'.
           example: "d2"
         source_path:
           type: string
           description: >
             The original path of the file. This field is only populated if the
-            reason is 'moved' or 'copied'.
+            reason is 'moved', 'copied' or 'relocated'.
           example: "downloads/file.mkv"
 
     Fix:
@@ -2022,6 +2023,11 @@ components:
           format: int64
           description: >
             The count of new files created by copying an existing protected file to a new path.
+        diff_relocated:
+          type: integer
+          format: int64
+          description: >
+            The count of new files created by moving an existing protected file to a new path.
         diff_restored:
           type: integer
           format: int64
