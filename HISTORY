@@ -10,6 +10,9 @@ SnapRAID-Daemon HISTORY
    'down_idle' power management operations.
  * Added support for multiple maintenance schedules using a comma-separated
    list.
+ * Added a one-shot 'hold_off' API endpoint to bypass the next scheduled
+   maintenance window, featuring an automatic reset mechanism once a skip
+   occurs.
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4
    and IPv6 on the default port 7627, retrying with only IPv4 if it fails.
  * Added 'touch_zero_subseconds' configuration option to the automated maintenance 

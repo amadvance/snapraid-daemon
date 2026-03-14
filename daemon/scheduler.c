@@ -377,7 +377,13 @@ void* scheduler_thread(void* arg)
 
 		while (1) {
 			if (schedule) {
-				schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
+				if (state->runner.hold_off) {
+					/* hold off one event */
+					state->runner.hold_off = 0;
+					pulse(state, PULSE_ARRAY);
+				} else {
+					schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
+				}
 				/* do not schedule other tasks */
 				break;
 			}

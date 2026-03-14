@@ -129,9 +129,9 @@ const app = {
                 case 'spin-down': app.triggerCommand('spinDown'); break;
                 case 'diff': app.triggerDiff(); break;
                 case 'recovery-cancel':
-			app.handleRoute();
-			showToast('Refreshed settings', 'info');
-			break;
+                    app.handleRoute();
+                    showToast('Refreshed settings', 'info');
+                    break;
                 case 'settings-save': app.saveSettings(); break;
                 case 'undelete': app.triggerUndelete(ds.path); break;
                 case 'undelete-batch': app.triggerUndeleteBatch(); break;
@@ -150,6 +150,8 @@ const app = {
             const action = el.dataset.action;
             if (action === 'toggle-periodic') {
                 app.toggleHidePeriodic(el.checked);
+            } else if (action === 'hold-off') {
+                app.toggleHoldOff(el.checked);
             }
         });
 
@@ -610,6 +612,16 @@ const app = {
     toggleHidePeriodic: (checked) => {
         app.state.hidePeriodic = checked;
         app.loadTasks();
+    },
+
+    toggleHoldOff: async (checked) => {
+        try {
+            await API.setHoldOff(checked);
+            showToast(checked ? 'Maintenance Hold-Off Enabled' : 'Maintenance Hold-Off Disabled', 'info');
+        } catch (e) {
+            showToast('Failed to toggle hold-off: ' + e.message, 'error');
+            app.loadDashboard({ array: true, activity: false, system: false });
+        }
     },
 
     triggerHeal: async () => {

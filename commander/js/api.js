@@ -56,5 +56,6 @@ export const API = {
     spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
     undelete: (filters, options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters, ...options }) }),
     stopTask: () => request('/stop', { method: 'POST' }),
-    refreshArray: () => request('/refresh', { method: 'POST' })
+    refreshArray: () => request('/refresh', { method: 'POST' }),
+    setHoldOff: (enabled) => request('/hold_off', { method: 'POST', body: JSON.stringify({ enabled }) })
 };

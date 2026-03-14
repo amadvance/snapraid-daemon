@@ -331,6 +331,7 @@ struct snapraid_runner {
 	int script_skip; /**< If the post_run script was skipped because a following task is coming */
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
 	tommy_list history_list; /**< List of snapraid_task already executed */
+	int hold_off; /**< Hold off the next maintenance */
 };
 
 struct snapraid_scheduler {

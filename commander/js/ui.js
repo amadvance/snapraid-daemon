@@ -138,7 +138,7 @@ export function renderScrubHistory(containerId, history) {
     if (!container || !history || !history.points) return;
 
     const width = container.clientWidth;
-    const height = 200; // Fixed vertical size
+    const height = 150; // Fixed vertical size, match it with CSS scrub-history-container
 
     const margin = { top: 20, right: 10, bottom: 30, left: 35 };
     const chartWidth = width - margin.left - margin.right;
@@ -467,10 +467,23 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         </div>
     `;
 
-    const scrubHistoryHtml = arrayInfo.scrub_history ? `
+    const maintenanceHtml = arrayInfo.scrub_history ? `
         <div class="card">
-            <h3>Maintenance History</h3>
+            <h3>Maintenance</h3>
+           
+            <div class="mt-4 mb-4 pt-4 border-t border-subtle">
+                <div class="flex items-center gap-4">
+                    <label class="switch switch-sm">
+                        <input type="checkbox" data-action="hold-off" ${arrayInfo.hold_off ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <label class="text-muted mb-0 cursor-pointer font-bold text-sm">Hold Off Next Maintenance</label>
+                </div>
+                <div class="text-xs text-muted mt-1">Skip the next scheduled maintenance. It will automatically reset after the skip occurs.</div>
+            </div>
+
             <div id="scrub-history-graph" class="scrub-history-container"></div>
+
             <div class="property-list">
                 <div class="property-row">
                     <div class="property-label">Oldest</div>
@@ -491,7 +504,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     const summaryHtml = `
         <div class="grid-2">
             ${arrayStatusHtml}
-            ${scrubHistoryHtml}
+            ${maintenanceHtml}
             ${renderSystemCard(systemInfo)}
             ${configHtml}
         </div>

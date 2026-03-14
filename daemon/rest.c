@@ -1128,6 +1128,93 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 }
 
 /**
+ * POST /snapraid/v1/hold_off
+ */
+static int handler_hold_off(struct mg_connection* conn, void* cbdata)
+{
+	char msg[MSG_MAX];
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int status;
+	jsmntok_t jv[JSMN_TOKEN_MAX];
+	jsmn_parser jp;
+	ssize_t jl;
+	char* js;
+	int jc;
+	int level = 0;
+	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "POST") != 0)
+		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	status = json_read(conn, &js, &jl, msg, sizeof(msg));
+	if (status != 200)
+		return send_json_error(conn, status, msg);
+
+	int hold_off = -1;
+
+	jsmn_init(&jp);
+	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
+	if (jc < 0) {
+		json_error_parse(msg, sizeof(msg), jc);
+		goto bad;
+	} else {
+		int j = 0;
+		if (jv[j].type != JSMN_OBJECT) {
+			snprintf(msg, sizeof(msg), "Missing root JSON object");
+			goto bad;
+		}
+		int c0 = jv[j++].size;
+		while (c0-- > 0) {
+			if (json_entry(js, &jv[j], json_const("enabled")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &hold_off) == 0) {
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else {
+				json_error_entry(msg, sizeof(msg), js, &jv[j]);
+				goto bad;
+			}
+		}
+	}
+	if (hold_off < 0)
+		goto bad;
+
+	free(js);
+
+	status = 200;
+	state_lock();
+	state->runner.hold_off = hold_off;
+	pulse(state, PULSE_ARRAY);
+	state_unlock();
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	ss_json_open(&s, &level);
+	ss_json_bool(&s, level, "success", 1);
+	if (hold_off)
+		ss_json_str(&s, level, "message", "Hold off enabled");
+	else
+		ss_json_str(&s, level, "message", "Hold off disabled");
+	ss_json_close(&s, &level);
+
+	send_json_answer(conn, status, &s);
+
+	ss_done(&s);
+
+	return send_json_success(conn, status);
+bad:
+	free(js);
+	return send_json_error(conn, 400, "Unrecognized json");
+}
+
+/**
  * POST /snapraid/v1/report
  */
 static int handler_report(struct mg_connection* conn, void* cbdata)
@@ -1733,6 +1820,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_pair_iso8601(&s, level, "last_diff_at", global->diff_time);
 		if (global->fix_time)
 			ss_json_pair_iso8601(&s, level, "last_fix_at", global->fix_time);
+		ss_json_bool(&s, level, "hold_off", state->runner.hold_off);
 		ss_json_u64(&s, level, "diff_equal", global->diff_current.diff_equal);
 		ss_json_u64(&s, level, "diff_added", global->diff_current.diff_added);
 		ss_json_u64(&s, level, "diff_removed", global->diff_current.diff_removed);
@@ -1903,6 +1991,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/system", handler_system, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/hold_off", handler_hold_off, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");

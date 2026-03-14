@@ -40,6 +40,32 @@ paths:
           description: Engine not found or execution failed.
           $ref: '#/components/responses/CommandResult'
 
+  /snapraid/v1/hold_off:
+    post:
+      summary: "Hold off next maintenance"
+      description: >
+        Controls the one-shot skip state for the next scheduled
+        maintenance task. If enabled, the immediate next
+        scheduled maintenance window is bypassed. The system will
+        automatically reset this state to disabled once a
+        scheduled task has been skipped.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: >
+                    Set to true to enable the hold-off state.
+                    Set to false to resume the normal
+                    maintenance schedule.
+      responses:
+        200:
+          description: "Hold-off state updated successfully"
+
   /snapraid/v1/heal:
     post:
       summary: Execute automated silent error recovery sequence
@@ -1826,7 +1852,7 @@ components:
               condition.
             * pending: The aggregate health has not yet been
               determined.
-        engi:
+        engine_version:
           type: string
           example: "13.1"
           description: >
@@ -1959,6 +1985,13 @@ components:
           example: "2026-01-12T08:00:00"
           description: >
             Local timestamp of the last array fix ('fix').
+        hold_off:
+          type: boolean
+          description: >
+            Indicates if the next scheduled maintenance is
+            currently flagged to be skipped. This value
+            returns to false automatically after the skip
+            event.
         diff_equal:
           type: integer
           format: int64
