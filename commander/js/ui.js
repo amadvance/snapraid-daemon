@@ -654,7 +654,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
         if (dev.smart) {
             if (dev.smart.attributes) {
                 dev.smart.attributes.forEach(attr => {
-                    if (attr.type === 'prefail' && attr.raw !== 0) {
+                    if (attr.critical && attr.measure === 'count' && attr.raw !== 0) {
                         let label = `${attr.name.toLowerCase()}: ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
                         smartIssues.push(label);
                     }

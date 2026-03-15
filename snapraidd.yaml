@@ -1159,12 +1159,19 @@ components:
                     description: >
                       The technical identifier or human-readable name of the
                       S.M.A.R.T. attribute (e.g., Power_On_Hours).
+                  critical:
+                    type: boolean
+                    description: >
+                      Indicates if this attribute is a critical indicator of
+                      hardware health. When true, any degradation in this
+                      value should be treated as a high-priority warning,
+                      regardless of whether the 'type' is 'prefail' or 'oldage'.
                   type:
                     type: string
-                    enum: [prefail, oldage, temperature]
+                    enum: [prefail, oldage]
                     description: >
-                      Indicates if this attribute is a 'pre-fail' indicator,
-                      a 'temperature' or a 'oldage' informational value.
+                      Indicates if this attribute is a 'pre-fail' indicator
+                      or a 'oldage' informational value.
                   when_failed:
                     type: string
                     enum: [never, now, past]
@@ -1196,18 +1203,37 @@ components:
                       firmware itself. This is a hardware-persisted
                       record of the 'raw' value that spans the entire life
                       of the disk, independent of the daemon's tracking.
+                  avg:
+                    type: integer
+                    description: >
+                      The lifetime average recorded by the drive
+                      firmware itself. This is a hardware-persisted
+                      record of the 'raw' value that spans the entire life
+                      of the disk, independent of the daemon's tracking.
                   measure:
                     type: string
-                    enum: [bytes, time, temperature, count, percentage]
+                    enum: [size, time, temperature, count, use_ratio, life_ratio, vendor]
                     description: >
-                      The category of measurement for the 'raw' value.
-                      This defines how the value should be interpreted and
-                      formatted by the consumer.
+                      The category of measurement for the 'raw' value:
+                      'size': Size-based metric in bytes (e.g., Total_LBAs_Written).
+                      'time': Duration measured in seconds (e.g., Power_On_Hours).
+                      'temperature': Thermal value in degrees Celsius.
+                      'count': A discrete event counter where an increase
+                      signifies worsening conditions (e.g., Reallocated_Sector_Ct).
+                      'use_ratio': A percentage increasing from 0 to 100,
+                      typically used for resource utilization or wear accumulation.
+                      'life_ratio': A percentage decreasing from 100 to 0,
+                      representing remaining health or estimated life.
+                      'vendor': An opaque raw value that does not map
+                      to a standard unit and should be treated as informational.
                   unit:
-                    type: integer
+                    type: number
+                    format: float
                     description: >
                       The multiplier to convert the 'raw' value into the
                       base SI unit for the specified 'measure'.
+                      Note that for 'time' the unit may be less than 1
+                      to represent milliseconds.
                       For 'bytes', results in total bytes.
                       For 'time', results in total seconds.
                       For 'temperature', results in Celsius degrees.

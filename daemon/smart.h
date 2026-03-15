@@ -25,12 +25,14 @@
 /* smart */
 
 #define SMART_KIND_PULSE 0x01 /**< Needs a pulse when it changes */
-#define SMART_KIND_PREFAIL 0x02 /**< It's a PREFAIL attribute, otherwise OLDAGE */
-#define SMART_KIND_TEMP 0x08 /**< It's a temperature measure */
+#define SMART_KIND_CRITICAL 0x02 /**< It's a CRITICAL attribute (most PREFAIL but not necessarely) */
+#define SMART_KIND_COUNT 0x04 /**< It's a event counter */
+#define SMART_KIND_TEMP 0x08 /**< It's a temperature measure in celsius */
 #define SMART_KIND_SIZE 0x10 /**< It's a size measure */
-#define SMART_KIND_TIME 0x20 /**< It's a time measure */
-#define SMART_KIND_PERC 0x40 /**< It's a percentage measure */
-#define SMART_KIND_COUNT 0x80 /**< It's a counter measure (NOT USED BEING THE DEFAULT) */
+#define SMART_KIND_TIME 0x20 /**< It's a time measure (to be converted to seconds considerign the unit) */
+#define SMART_KIND_USE_RATIO 0x40 /**< It's a percentage measure from 0 to 100 */
+#define SMART_KIND_LIFE_RATIO 0x80 /**< It's a percentage measure from 100 to 0 */
+#define SMART_KIND_VENDOR 0x100 /**< It's a vendor specific value */
 
 /**
  * Convert a raw SMART value based on its kind.

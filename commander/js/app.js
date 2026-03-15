@@ -1,6 +1,6 @@
 
 import { API } from './api.js';
-import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatDiskSize, formatSeconds } from './utils.js';
+import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
 
 const app = {
@@ -782,42 +782,25 @@ const app = {
         if (s.attributes) {
             s.attributes.forEach(attr => {
                 const label = attr.name.replace(/_/g, ' ').toUpperCase();
-                if (attr.type === 'prefail' || attr.when_failed === 'now' || attr.when_failed === 'past') {
+                if (attr.critical || attr.when_failed === 'now' || attr.when_failed === 'past') {
                     let rowClass = 'text-emerald';
                     if (attr.when_failed === 'now')
                         rowClass = 'text-red';
-                    else if (attr.when_failed === 'past' || attr.raw > 0)
+                    else if (attr.when_failed === 'past' || (attr.measure == 'count' && attr.raw > 0))
                         rowClass = 'text-amber';
 
                     criticalRows.push(`
                         <tr>
                             <td class="font-bold text-xs">${label}</td>
-                            <td class="${rowClass} font-mono text-xs font-bold">${attr.raw}</td>
+                            <td class="${rowClass} font-mono text-xs font-bold">${formatAttr(attr)}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.norm != null ? attr.norm : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.worst != null ? attr.worst : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.thresh != null ? attr.thresh : '-'}</td>
                             <td class="${rowClass} font-mono text-xs font-bold uppercase">${attr.when_failed != null ? attr.when_failed : '-'}</td>
                         </tr>
                     `);
-                } else if (attr.type === 'oldage') {
-                    let valStr = attr.raw;
-                    if (attr.measure == 'time') {
-                        const seconds = attr.raw * attr.unit;
-                        valStr = `${attr.raw} (${formatElapsedTime(seconds)})`;
-                    }
-                    if (attr.measure == 'bytes') {
-                        const bytes = attr.raw * attr.unit;
-                        valStr = `${attr.raw} (${formatDiskSize(bytes)})`;
-                    }
-                    if (attr.measure == 'percentage') {
-                        valStr = `${attr.raw}%`;
-                    }
-                    if (attr.measure == 'temperature') {
-                        valStr = `${attr.raw} °C`;
-                        if (attr.min != null && attr.max != null) {
-                            valStr += ` (min ${attr.min} °C, max ${attr.max} °C)`;
-                        }
-                    }
+                } else {
+                    let valStr = formatAttr(attr);
 
                     otherRows.push(`
                         <tr>

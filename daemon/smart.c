@@ -50,6 +50,8 @@
 #define FORMAT_48_MIB 0xD0000 /**< 48 bits * 1024^2 */
 #define FORMAT_48_32MIB 0xE0000 /**< 48 bits * 32 * 1024^2 */
 #define FORMAT_48_512 0xF0000 /**< 48 bits * 512 */
+#define FORMAT_16_D1000_AVG 0x100000 /**< 16 bits / 1000, AVG-VAL */
+#define FORMAT_16_MINVAL 0x200000 /**< 16 bits, nibbles MIN-VAL */
 
 /* From: https://github.com/smartmontools/smartmontools/blob/main/drivedb/drivedb.h */
 struct smart_entry {
@@ -102,34 +104,36 @@ struct smart_entry {
 	 * 201		Soft Read Error Rate			1	20
 	 *
 	 */
-	{ 5, FORMAT_16, "Reallocated_Sector_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 5, FORMAT_16, "New_Bad_Blk_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_16, "New_Bad_Block_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_16, "Realloc_Flash_Blocks_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_16, "Retried_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_48, "Later_Bad_Block", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_48, "Reallocate_NAND_Blk_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_48, "Reallocated_Block_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_48, "Retired_Block_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 5, FORMAT_48, "Runtime_Bad_Block", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 5, FORMAT_16, "Reallocated_Sector_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 5, FORMAT_16, "New_Bad_Blk_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_16, "New_Bad_Block_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_16, "Realloc_Flash_Blocks_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_16, "Retried_Blk_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_48, "Later_Bad_Block", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_48, "Reallocate_NAND_Blk_Cnt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_48, "Reallocated_Block_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_48, "Retired_Block_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 5, FORMAT_48, "Runtime_Bad_Block", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 10, FORMAT_48, "Spin_Retry_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 10, FORMAT_48, "Spin_Retry_Count,HDD", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 10, FORMAT_48, "Spin_Retry_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 10, FORMAT_48, "Spin_Retry_Count,HDD", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 184, FORMAT_48, "End-to-End_Error", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 184, FORMAT_48, "End-to-End_Error_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 184, FORMAT_48, "Error_Correction_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 184, FORMAT_48, "IO_Error_Detect_Code_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 184, FORMAT_48, "End-to-End_Error", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 184, FORMAT_48, "End-to-End_Error_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 184, FORMAT_48, "Error_Correction_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 184, FORMAT_48, "IO_Error_Detect_Code_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 187, FORMAT_48, "Reported_Uncorrect", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 187, FORMAT_48, "Reported_UE_Counts", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 187, FORMAT_48, "Reported_Uncorr_Errors", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 187, FORMAT_48, "Total_Unc_NAND_Reads", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 187, FORMAT_48, "Uncorrectable_ECC_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 187, FORMAT_48, "Uncorrectable_Error_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 187, FORMAT_48, "Reported_Uncorrect", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 187, FORMAT_48, "Reported_UE_Counts", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 187, FORMAT_48, "Reported_Uncorr_Errors", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 187, FORMAT_48, "Total_Unc_NAND_Reads", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 187, FORMAT_48, "Uncorrectable_ECC_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 187, FORMAT_48, "Uncorrectable_Error_Cnt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 188, FORMAT_16, "Command_Timeout", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* adjusted from 48 to 16 */ /* default entry */
-	{ 188, FORMAT_16, "Command_Timeouts", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* adjusted from 48 to 16 */
+	/* adjusted from 48 to 16 */
+	{ 188, FORMAT_16, "Command_Timeout", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	/* adjusted from 48 to 16 */
+	{ 188, FORMAT_16, "Command_Timeouts", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
 #if 0
 	/**
@@ -141,57 +145,67 @@ struct smart_entry {
 	 * vendors and is often not meaningful as a decimal number. For some drives, this
 	 * number may increase during normal operation without necessarily signifying errors.[28]
 	 */
-	{ 195, FORMAT_48, "Hardware_ECC_Recovered", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 195, FORMAT_16, "RAISE_ECC_Cor_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_24, "ECC_On_the_Fly_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_24, "ECC_Uncorr_Error_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_48, "ECC_Error_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_48, "ECC_On_the_Fly_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_48, "ECC_on_the_Fly_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 195, FORMAT_16, "Uncorrectable_Err_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* adjusted to 16 */  /* not present in https://github.com/linuxhw/SMART and EnterpriseDrive */
-	{ 195, FORMAT_16, "Uncorrectable_Error_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* adjusted to 16 */
+	{ 195, FORMAT_48, "Hardware_ECC_Recovered", SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 195, FORMAT_16, "RAISE_ECC_Cor_Ct", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 195, FORMAT_24, "ECC_On_the_Fly_Count", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 195, FORMAT_24, "ECC_Uncorr_Error_Count", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 195, FORMAT_48, "ECC_Error_Rate", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 195, FORMAT_48, "ECC_On_the_Fly_Count", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 195, FORMAT_48, "ECC_on_the_Fly_Rate", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	/* adjusted to 16 - not present in https://github.com/linuxhw/SMART and EnterpriseDrive */
+	{ 195, FORMAT_16, "Uncorrectable_Err_Ct", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	/* adjusted to 16 */
+	{ 195, FORMAT_16, "Uncorrectable_Error_Cnt", SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 #endif
 
-	{ 196, FORMAT_16, "Reallocated_Event_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 196, FORMAT_48, "Lifetime_Retried_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 196, FORMAT_48, "Total_Erase_Failures", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 196, FORMAT_48, "Total_Spare_Block_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 196, FORMAT_64, "Erase_Failure_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 196, FORMAT_16, "Reallocated_Event_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 196, FORMAT_48, "Lifetime_Retried_Blk_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 196, FORMAT_48, "Total_Erase_Failures", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 196, FORMAT_48, "Total_Spare_Block_Cnt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 196, FORMAT_64, "Erase_Failure_Blk_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 197, FORMAT_48, "Current_Pending_Sector", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 197, FORMAT_48, "Current_Pending_ECC_Cnt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 197, FORMAT_48, "ECC_Error_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 197, FORMAT_48, "Pending_Sector_Count", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 197, FORMAT_48, "Total_Unc_Read_Failures", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 197, FORMAT_64, "Read_Failure_Blk_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 197, FORMAT_48, "Current_Pending_Sector", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 197, FORMAT_48, "Current_Pending_ECC_Cnt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 197, FORMAT_48, "ECC_Error_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 197, FORMAT_48, "Pending_Sector_Count", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 197, FORMAT_48, "Total_Unc_Read_Failures", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 197, FORMAT_64, "Read_Failure_Blk_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 198, FORMAT_48, "Offline_Uncorrectable", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 198, FORMAT_24, "Uncorrectable_Sector_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 198, FORMAT_48, "Offline_UErr_Media_Scan", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 198, FORMAT_48, "Uncor_Read_Error_Ct", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 198, FORMAT_48, "Offline_Uncorrectable", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 198, FORMAT_24, "Uncorrectable_Sector_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 198, FORMAT_48, "Offline_UErr_Media_Scan", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 198, FORMAT_48, "Uncor_Read_Error_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	{ 201, FORMAT_48, "Soft_Read_Error_Rate,HDD", SMART_KIND_PREFAIL | SMART_KIND_PULSE }, /* default entry */
-	{ 201, FORMAT_48, "Soft_Read_Error_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 201, FORMAT_24, "Unc_Soft_Read_Err_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 201, FORMAT_48, "Read_Error_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 201, FORMAT_48, "Unc_Read_Error_Rate", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ 201, FORMAT_48, "Uncorr_Soft_Read_Err_Rt", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 201, FORMAT_48, "Soft_Read_Error_Rate,HDD", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+	{ 201, FORMAT_48, "Soft_Read_Error_Rate", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 201, FORMAT_24, "Unc_Soft_Read_Err_Rate", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 201, FORMAT_48, "Read_Error_Rate", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 201, FORMAT_48, "Unc_Read_Error_Rate", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ 201, FORMAT_48, "Uncorr_Soft_Read_Err_Rt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	/* temperature, 190 */
-	{ 190, FORMAT_16_MAXMINVAL, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
-	{ 190, FORMAT_16_MAXMINVAL, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_16_MAXMINVAL, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	/* spinup time, 3 (high 16 bit is average or 0) */
+	{ 3, FORMAT_16_D1000_AVG, "Spin_Up_Time", SMART_KIND_TIME | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
 
-	/* temperature, 194 */
-	{ 194, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
-	{ 194, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 194, FORMAT_16_MAXMINVAL, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	/* helium level (high 16 bit is min or 0), 22 */
+	{ 22, FORMAT_16_MINVAL, "Helium_Level", SMART_KIND_LIFE_RATIO | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
 
-	/* power on, 9 */
+	/* adjusted from 48 to 32 to avoid packed values in https://github.com/linuxhw/SMART */
+	{ 179, FORMAT_32, "Used_Rsvd_Blk_Cnt_Tot", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
+
+	/* temperature, 190, 194, 231 */
+	{ -1, FORMAT_16_MAXMINVAL, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
+	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
+	{ -1, FORMAT_16_MAXMINVAL, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ -1, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
+
+	/* power on hours, 9 */
 	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME }, /* default entry */
 	{ 9, FORMAT_32, "Power_On_Hours_and_Msec", SMART_KIND_TIME }, /* hours are in the lower 32 bit */
+
+	/* loaded hours */
+	{ 222, FORMAT_32, "Loaded_Hours", SMART_KIND_TIME },
 
 	/* size 241, 242 */
 	{ -1, FORMAT_48_512, "Total_LBAs_Read", SMART_KIND_SIZE }, /* default entry */
@@ -216,31 +230,31 @@ struct smart_entry {
 	{ -1, FORMAT_48_GIB, "Total_Writes_GiB", SMART_KIND_SIZE },
 
 	/* other entries */
-	{ 12, FORMAT_48, "Power_Cycle_Count", 0 }, /* default entry */
-	{ 4, FORMAT_48, "Start_Stop_Count", 0 }, /* default entry */
-	{ 193, FORMAT_48, "Load_Cycle_Count", 0 }, /* default entry */
+	{ 12, FORMAT_48, "Power_Cycle_Count", SMART_KIND_COUNT }, /* default entry */
+	{ 4, FORMAT_48, "Start_Stop_Count", SMART_KIND_COUNT }, /* default entry */
+	{ 193, FORMAT_48, "Load_Cycle_Count", SMART_KIND_COUNT }, /* default entry */
 
 	/* from SnapRAID SCSI mapping, see smartctl_attribute() */
-	{ 5, FORMAT_16, "Elements_In_Grown_Defect_List", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ 5, FORMAT_16, "Elements_In_Grown_Defect_List", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 	{ 194, FORMAT_16, "Current_Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ 190, FORMAT_16, "Drive_Trip_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 4, FORMAT_32, "Accumulated_Start-Stop_Cycles", 0 },
-	{ 193, FORMAT_32, "Accumulated_Load-Unload_Cycles", 0 },
+	{ 4, FORMAT_32, "Accumulated_Start-Stop_Cycles", SMART_KIND_COUNT },
+	{ 193, FORMAT_32, "Accumulated_Load-Unload_Cycles", SMART_KIND_COUNT },
 	{ 12, FORMAT_32, "Number_Of_Hours_Powered_Up", SMART_KIND_TIME },
 
 	/* from SnapRAID NVME mapping, see smartctl_attribute() */
 	{ 194, FORMAT_16, "Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 12, FORMAT_48, "Power_Cycles", 0 },
-	{ -1, FORMAT_8_BM, "Critical_Warning", SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ -1, FORMAT_64, "Available_Spare", SMART_KIND_PERC },
+	{ 12, FORMAT_48, "Power_Cycles", SMART_KIND_COUNT },
+	{ -1, FORMAT_8_BM, "Critical_Warning", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ -1, FORMAT_64, "Available_Spare", SMART_KIND_LIFE_RATIO },
 	{ -1, FORMAT_64_1000_512, "Data_Units_Read", SMART_KIND_SIZE },
 	{ -1, FORMAT_64_1000_512, "Data_Units_Written", SMART_KIND_SIZE },
-	{ -1, FORMAT_64, "Host_Read_Commands", 0 },
-	{ -1, FORMAT_64, "Host_Write_Commands", 0 },
+	{ -1, FORMAT_64, "Host_Read_Commands", SMART_KIND_COUNT },
+	{ -1, FORMAT_64, "Host_Write_Commands", SMART_KIND_COUNT },
 	{ -1, FORMAT_64_60, "Controller_Busy_Time", SMART_KIND_TIME },
-	{ -1, FORMAT_64, "Unsafe_Shutdowns", 0 },
-	{ -1, FORMAT_64_60, "Warning_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
-	{ -1, FORMAT_64_60, "Critical_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_PREFAIL | SMART_KIND_PULSE },
+	{ -1, FORMAT_64, "Unsafe_Shutdowns", SMART_KIND_COUNT },
+	{ -1, FORMAT_64_60, "Warning_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ -1, FORMAT_64_60, "Critical_Comp_Temperature_Time", SMART_KIND_TIME | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 	{ 0 }
 };
 
@@ -253,6 +267,8 @@ uint64_t smart_conv(uint64_t raw, int format)
 		return raw & 0xFF;
 	case FORMAT_16 :
 	case FORMAT_16_MAXMINVAL :
+	case FORMAT_16_MINVAL :
+	case FORMAT_16_D1000_AVG :
 		return raw & 0xFFFF;
 	case FORMAT_24 :
 		return raw & 0xFFFFFF;
@@ -331,44 +347,158 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 	}
 }
 
-void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int kind)
+void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int format)
 {
-	ss_json_u64(s, level, name, smart_conv(tracked->value, kind));
+	ss_json_u64(s, level, name, smart_conv(tracked->value, format));
 
 	if (tracked->prev != SMART_UNASSIGNED) {
 		char history[KEYWORD_MAX];
 		snprintf(history, sizeof(history), "%s_history", name);
 		ss_json_object_open(s, &level, history);
-		ss_json_u64(s, level, "prev", smart_conv(tracked->prev, kind));
+		ss_json_u64(s, level, "prev", smart_conv(tracked->prev, format));
 		ss_json_pair_iso8601(s, level, "prev_at", tracked->prev_last);
 		if (tracked->lowest != SMART_UNASSIGNED
-			&& smart_conv(tracked->lowest, kind) != smart_conv(tracked->value, kind)) {
-			ss_json_u64(s, level, "lowest", smart_conv(tracked->lowest, kind));
+			&& smart_conv(tracked->lowest, format) != smart_conv(tracked->value, format)) {
+			ss_json_u64(s, level, "lowest", smart_conv(tracked->lowest, format));
 			ss_json_pair_iso8601(s, level, "lowest_at", tracked->lowest_last);
 		}
 		ss_json_close(s, &level);
 	}
 }
 
+static void json_attr(ss_t* s, int* level, int kind_and_format, struct smart_attr* attr)
+{
+	int kind = kind_and_format;
+	int format = kind_and_format & FORMAT_MASK;
+
+	ss_json_open(s, level);
+	ss_json_str(s, *level, "name", attr->name);
+	ss_json_bool(s, *level, "critical", (kind & SMART_KIND_CRITICAL) != 0);
+	if (attr->flags & SMART_ATTR_TYPE_PREFAIL)
+		ss_json_str(s, *level, "type", "prefail");
+	else
+		ss_json_str(s, *level, "type", "oldage");
+	if (attr->flags & SMART_ATTR_WHEN_FAILED_NOW)
+		ss_json_str(s, *level, "when_failed", "now");
+	else if (attr->flags & SMART_ATTR_WHEN_FAILED_PAST)
+		ss_json_str(s, *level, "when_failed", "past");
+	else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
+		ss_json_str(s, *level, "when_failed", "never");
+	json_tracked(s, *level, "raw", &attr->raw, format);
+	if (attr->norm || attr->worst || attr->thresh) {
+		ss_json_u64(s, *level, "norm", attr->norm);
+		ss_json_u64(s, *level, "worst", attr->worst);
+		ss_json_u64(s, *level, "thresh", attr->thresh);
+	}
+	if (format == FORMAT_16_MAXMINVAL) {
+		uint64_t value = attr->raw.value & 0xFFFF;
+		uint64_t min = (attr->raw.value >> 16) & 0xFFFF;
+		uint64_t max = (attr->raw.value >> 32) & 0xFFFF;
+		if (min <= value && value <= max) {
+			ss_json_u64(s, *level, "min", min);
+			ss_json_u64(s, *level, "max", max);
+		}
+	}
+	if (format == FORMAT_16_MINVAL) {
+		uint64_t value = attr->raw.value & 0xFFFF;
+		uint64_t min = (attr->raw.value >> 16) & 0xFFFF;
+		if (min != 0 && min <= value) {
+			ss_json_u64(s, *level, "min", min);
+		}
+	}
+	if (format == FORMAT_16_D1000_AVG) {
+		uint64_t avg = (attr->raw.value >> 16) & 0xFFFF;
+		if (avg != 0)
+			ss_json_u64(s, *level, "avg", avg);
+	}
+	if (kind & SMART_KIND_SIZE) {
+		ss_json_str(s, *level, "measure", "size");
+		switch (format) {
+		case FORMAT_64_1000_512 :
+			ss_json_u64(s, *level, "unit", 1000 * 512);
+			break;
+		case FORMAT_48_GB :
+			ss_json_u64(s, *level, "unit", 1000 * 1000 * 1000);
+			break;
+		case FORMAT_48_GIB :
+			ss_json_u64(s, *level, "unit", 1024 * 1024 * 1024);
+			break;
+		case FORMAT_48_MIB :
+			ss_json_u64(s, *level, "unit", 1024 * 1024);
+			break;
+		case FORMAT_48_32MIB :
+			ss_json_u64(s, *level, "unit", 32 * 1024 * 1024);
+			break;
+		case FORMAT_48_512 :
+			ss_json_u64(s, *level, "unit", 512);
+			break;
+		default :
+			ss_json_u64(s, *level, "unit", 1);
+			break;
+		}
+	} else if (kind & SMART_KIND_TIME) {
+		ss_json_str(s, *level, "measure", "time");
+		switch (format) {
+		case FORMAT_64_60 :
+			ss_json_u64(s, *level, "unit", 60);
+			break;
+		case FORMAT_16_D1000_AVG :
+			ss_json_double(s, *level, "unit", 0.001);
+			break;
+		default :
+			/* default hours */
+			ss_json_u64(s, *level, "unit", 3600);
+			break;
+		}
+	} else if (kind & SMART_KIND_TEMP) {
+		ss_json_str(s, *level, "measure", "temperature");
+		ss_json_u64(s, *level, "unit", 1);
+	} else if (kind & SMART_KIND_LIFE_RATIO) {
+		ss_json_str(s, *level, "measure", "life_ratio");
+		ss_json_u64(s, *level, "unit", 1);
+	} else if (kind & SMART_KIND_USE_RATIO) {
+		ss_json_str(s, *level, "measure", "use_ratio");
+		ss_json_u64(s, *level, "unit", 1);
+	} else if (kind & SMART_KIND_COUNT) {
+		ss_json_str(s, *level, "measure", "count");
+		ss_json_u64(s, *level, "unit", 1);
+	} else {
+		ss_json_str(s, *level, "measure", "vendor");
+		ss_json_u64(s, *level, "unit", 1);
+	}
+	ss_json_close(s, level);
+}
+
 void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 {
+	char processed[SMART_COUNT];
+
+	memset(processed, 0, sizeof(processed));
+
 	ss_json_array_open(s, &level, "attributes");
 
+	/* output known entry in the specific order listed */
 	for (int i = 0; SMART_ENTRIES[i].index; ++i) {
 		struct smart_entry* entry = &SMART_ENTRIES[i];
 		struct smart_attr* attr = 0;
+		int id = 0;
 
-		if (entry->index >= 0) {
+		if (entry->index > 0) {
+			/* if the entry has a specific ID, check only that SMART ID */
 			struct smart_attr* pos = &dev->smart[entry->index];
-			if (strcmp(pos->name, entry->name) == 0)
+			if (strcmp(pos->name, entry->name) == 0) {
 				attr = pos;
+				id = entry->index;
+			}
 		} else {
+			/* if the entry has a negative ID (-1), search it by name */
 			for (int j = 1; j < SMART_COUNT; ++j) {
 				struct smart_attr* pos = &dev->smart[j];
 				if (pos->raw.value == SMART_UNASSIGNED)
 					continue;
 				if (strcmp(pos->name, entry->name) == 0) {
 					attr = pos;
+					id = j;
 					break;
 				}
 			}
@@ -376,83 +506,28 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		if (!attr)
 			continue;
 
-		int kind = entry->kind | entry->format;
-		int format = entry->format;
+		processed[id] = 1;
 
-		ss_json_open(s, &level);
-		ss_json_str(s, level, "name", attr->name);
-		if (kind & SMART_KIND_PREFAIL)
-			ss_json_str(s, level, "type", "prefail");
-		else
-			ss_json_str(s, level, "type", "oldage");
-		if (attr->flags & SMART_ATTR_WHEN_FAILED_NOW)
-			ss_json_str(s, level, "when_failed", "now");
-		else if (attr->flags & SMART_ATTR_WHEN_FAILED_PAST)
-			ss_json_str(s, level, "when_failed", "past");
-		else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
-			ss_json_str(s, level, "when_failed", "never");
-		json_tracked(s, level, "raw", &attr->raw, kind);
-		if (attr->norm || attr->worst || attr->thresh) {
-			ss_json_u64(s, level, "norm", attr->norm);
-			ss_json_u64(s, level, "worst", attr->worst);
-			ss_json_u64(s, level, "thresh", attr->thresh);
-		}
-		if (format == FORMAT_16_MAXMINVAL) {
-			uint64_t value = attr->raw.value & 0xFFFF;
-			uint64_t min = (attr->raw.value >> 16) & 0xFFFF;
-			uint64_t max = (attr->raw.value >> 32) & 0xFFFF;
-			if (min <= value && value <= max) {
-				ss_json_u64(s, level, "min", min);
-				ss_json_u64(s, level, "max", max);
-			}
-		}
-		if (kind & SMART_KIND_SIZE) {
-			ss_json_str(s, level, "measure", "bytes");
-			switch (format) {
-			case FORMAT_64_1000_512 :
-				ss_json_u64(s, level, "unit", 1000 * 512);
-				break;
-			case FORMAT_48_GB :
-				ss_json_u64(s, level, "unit", 1000 * 1000 * 1000);
-				break;
-			case FORMAT_48_GIB :
-				ss_json_u64(s, level, "unit", 1024 * 1024 * 1024);
-				break;
-			case FORMAT_48_MIB :
-				ss_json_u64(s, level, "unit", 1024 * 1024);
-				break;
-			case FORMAT_48_32MIB :
-				ss_json_u64(s, level, "unit", 32 * 1024 * 1024);
-				break;
-			case FORMAT_48_512 :
-				ss_json_u64(s, level, "unit", 512);
-				break;
-			default :
-				ss_json_u64(s, level, "unit", 1);
-				break;
-			}
-		} else if (kind & SMART_KIND_TIME) {
-			ss_json_str(s, level, "measure", "time");
-			switch (format) {
-			case FORMAT_64_60 :
-				ss_json_u64(s, level, "unit", 60);
-				break;
-			default :
-				/* default hours */
-				ss_json_u64(s, level, "unit", 3600);
-				break;
-			}
-		} else if (kind & SMART_KIND_TEMP) {
-			ss_json_str(s, level, "measure", "temperature");
-			ss_json_u64(s, level, "unit", 1);
-		} else if (kind & SMART_KIND_PERC) {
-			ss_json_str(s, level, "measure", "percentage");
-			ss_json_u64(s, level, "unit", 1);
-		} else {
-			ss_json_str(s, level, "measure", "count");
-			ss_json_u64(s, level, "unit", 1);
-		}
-		ss_json_close(s, &level);
+		json_attr(s, &level, entry->kind | entry->format, attr);
+	}
+
+	/* output all PREFAIL that are not yet processed */
+	for (int j = 1; j < SMART_COUNT; ++j) {
+		struct smart_attr* attr = &dev->smart[j];
+
+		/* if alredy processed, skip it */
+		if (processed[j])
+			continue;
+
+		/* if not prefail, skip it */
+		if ((attr->flags & SMART_ATTR_TYPE_PREFAIL) == 0)
+			continue;
+
+		/* if unassigned, skip it */
+		if (attr->raw.value == SMART_UNASSIGNED)
+			continue;
+
+		json_attr(s, &level, SMART_KIND_CRITICAL | SMART_KIND_VENDOR, attr);
 	}
 
 	ss_json_array_close(s, &level);

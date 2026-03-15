@@ -163,6 +163,49 @@ export const formatHistory = (value, history, pulseAt) => {
     return label;
 }
 
+export const formatAttr = (attr) => {
+    let valStr = attr.raw;
+    if (attr.measure == 'time') {
+        if (attr.unit == 0.001) {
+            if (attr.avg)
+                valStr = `${attr.raw} ms (avg ${attr.avg})`;
+            else
+                valStr = `${attr.raw} ms`;
+        } else {
+            if (attr.raw < 60) {
+                valStr = `${attr.raw} seconds`;
+            } else {
+                const seconds = attr.raw * attr.unit;
+                valStr = `${attr.raw} (${formatElapsedTime(seconds)})`;
+            }
+        }
+    }
+    if (attr.measure == 'size') {
+        const bytes = attr.raw * attr.unit;
+        valStr = `${attr.raw} (${formatDiskSize(bytes)})`;
+    }
+    if (attr.measure == 'temperature') {
+        valStr = `${attr.raw} °C`;
+        if (attr.min != null && attr.max != null) {
+            valStr += ` (min ${attr.min}, max ${attr.max})`;
+        }
+    }
+    if (attr.measure == 'count') {
+        const bytes = attr.raw * attr.unit;
+        valStr = `${attr.raw}`;
+    }
+    if (attr.measure == 'use_ratio') {
+        valStr = `${attr.raw}%`;
+    }
+    if (attr.measure == 'life_ratio') {
+        valStr = `${attr.raw}%`;
+    }
+    if (attr.measure == 'vendor') {
+        valStr = `(${attr.raw})`;
+    }
+    return valStr;
+}
+
 // SVG Icons (Strings)
 export const Icons = {
     logo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,

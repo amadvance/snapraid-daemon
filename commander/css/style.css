@@ -1571,7 +1571,7 @@ input[type=number]:focus {
 }
 
 .modal-container.large {
-    max-width: 800px;
+    max-width: 850px;
 }
 
 /* Toggle Switch */

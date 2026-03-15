@@ -680,7 +680,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				device->smart[index].flags = flags;
 			}
 
-			if (got_raw == 0 && (kind & SMART_KIND_PREFAIL) != 0)
+			/* track history only for CRITICAL and COUNT attributes */
+			if (got_raw == 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0)
 				tracked_update(&device->smart[index].raw, old_raw, kind, state->global.last_time);
 		}
 	}
