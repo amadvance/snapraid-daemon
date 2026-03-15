@@ -1,7 +1,7 @@
 SnapRAID-Daemon HISTORY
 =======================
 
-0.1beta3 ?/03/2026
+0.1beta3 15/03/2026
 ===================
  * Added monitoring for disks not part of the array. These are defined in
    the SnapRAID configuration (snapraid.conf) using the 'extra' keyword and
