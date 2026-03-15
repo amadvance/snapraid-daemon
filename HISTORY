@@ -1,6 +1,10 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+0.1beta3b 15/03/2026
+===================
+ * Fix "Touch Zero Subseconds" option making Maintenance to fail.
+
 0.1beta3 15/03/2026
 ===================
  * Added monitoring for disks not part of the array. These are defined in
