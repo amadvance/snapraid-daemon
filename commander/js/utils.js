@@ -172,10 +172,10 @@ export const formatAttr = (attr) => {
             else
                 valStr = `${attr.raw} ms`;
         } else {
-            if (attr.raw < 60) {
-                valStr = `${attr.raw} seconds`;
+            const seconds = attr.raw * attr.unit;
+            if (seconds < 60) {
+                valStr = `${attr.raw} (${seconds} seconds)`;
             } else {
-                const seconds = attr.raw * attr.unit;
                 valStr = `${attr.raw} (${formatElapsedTime(seconds)})`;
             }
         }

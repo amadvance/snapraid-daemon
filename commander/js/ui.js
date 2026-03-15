@@ -694,12 +694,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
         const powerOnYears = dev.smart?.power_on_hours ? ` (${(dev.smart.power_on_hours / (24 * 365)).toFixed(1)} years)` : '';
         let failureProb = '';
-        if (dev.rotational != null) {
-            if (dev.rotational && dev.failure_probability) {
-                failureProb = (dev.failure_probability * 100).toFixed(0) + '% Fail Prob';
-            } else if (!dev.rotational && dev.wear_level) {
-                failureProb = dev.wear_level + '% Wear';
-            }
+        if (dev.failure_probability != null) {
+            failureProb = (dev.failure_probability * 100).toFixed(0) + '% Fail Prob';
+        } else if (dev.wear_level != null) {
+            failureProb = dev.wear_level + '% Wear';
         }
 
         return `
@@ -708,7 +706,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                      <span class="font-mono text-sm font-bold text-sky">${dev.serial || 'Unknown Model'}</span>
                      <div class="flex items-center gap-2">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
-                <div class="text-xs text-muted mb-2">${dev.rotational ? 'HDD' : 'SSD'} ${dev.model || '-'}${powerOnYears}</div>
+                <div class="text-xs text-muted mb-2">${dev.rotational >= 1 ? 'HDD' : dev.rotational === 0 ? 'SSD' : ''} ${dev.model || '-'}${powerOnYears}</div>
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row items-center">
                     <div class="flex-shrink-0 whitespace-nowrap text-xs text-muted">
