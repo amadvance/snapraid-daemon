@@ -1238,6 +1238,16 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, status, msg);
 }
 
+static void json_id_list(ss_t* s, int level, sl_t* sl)
+{
+	ss_json_array_open(s, &level, "ids");
+	for (tommy_node* i = tommy_list_head(sl); i != 0; i = i->next) {
+		sn_t* sn = i->data;
+		ss_json_elem(s, level, sn->str);
+	}
+	ss_json_array_close(s, &level);
+}
+
 #define TEMP_COUNT 144
 
 static void json_temp_list(ss_t* s, int level, tommy_list* list, int64_t reference)
@@ -1378,6 +1388,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 		struct snapraid_device* dev = i->data;
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "device_node", dev->file);
+		json_id_list(s, level, &dev->id_list);
 		ss_json_int(s, level, "split_index", dev->split_index);
 		ss_json_str(s, level, "health", health_name(dev->health));
 		if (*dev->family)

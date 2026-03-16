@@ -34,6 +34,30 @@ void parser_mapping_start(struct snapraid_state* state)
 	tommy_list_init(&state->parser_association);
 }
 
+static int parser_device_has_id(struct snapraid_device* device, const char* id)
+{
+	for (tommy_node* i = tommy_list_head(&device->id_list); i != 0; i = i->next) {
+		sn_t* sn = i->data;
+
+		if (strcmp(id, sn->str) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int parser_association_has_id(struct snapraid_state* state, const char* id)
+{
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		if (strcmp(association->id, id) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
 /**
  * End the mapping process, but only if task complete succesfully
  */
@@ -65,7 +89,9 @@ void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* tas
 	if (task->exit_code != 0)
 		return;
 
-	/* remove any disk that is not referenced */
+	/*
+	 * Remove any disk that is not referenced
+	 */
 	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; ) {
 		struct snapraid_disk* disk = i->data;
 		tommy_node* i_next = i->next;
@@ -77,6 +103,33 @@ void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* tas
 		}
 
 		i = i_next;
+	}
+
+	/*
+	 * Add association to all devices
+	 *
+	 * This is required in case new IDs are found after the device is created.
+	 * This may happen because the kernel or snapraid is updated, and can get new information.
+	 */
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* device = j->data;
+
+			/* for all associations */
+			for (tommy_node* k = tommy_list_head(&state->parser_association); k != 0; k = k->next) {
+				struct snapraid_association* association = k->data;
+
+				/* if it's the righ node */
+				if (strcmp(association->file, device->file) == 0) {
+					/* insert if missing */
+					if (!parser_device_has_id(device, association->id)) {
+						sl_insert_str(&device->id_list, association->id);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -91,26 +144,14 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
 			struct snapraid_device* device = j->data;
 
-			for (tommy_node* k = tommy_list_head(&device->id_list); k != 0; k = k->next) {
-				sn_t* sn = k->data;
-
-				if (strcmp(id, sn->str) == 0) {
-					sncpy(device->file, sizeof(device->file), file);
-				}
+			if (parser_device_has_id(device, id)) {
+				sncpy(device->file, sizeof(device->file), file);
 			}
 		}
 	}
 
-	/* check if the association is already in the set */
-	tommy_node* i;
-	for (i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-		if (strcmp(association->id, id) == 0)
-			break;
-	}
-
 	/* insert if missing */
-	if (i == 0) {
+	if (!parser_association_has_id(state, id)) {
 		struct snapraid_association* association = association_alloc(file, id);
 		tommy_list_insert_tail(&state->parser_association, &association->node, association);
 	}

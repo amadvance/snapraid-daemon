@@ -994,6 +994,7 @@ components:
       type: object
       required:
         - device_node
+        - ids
         - split_index
         - health
         - power
@@ -1002,6 +1003,18 @@ components:
           type: string
           description: >
             System device path (e.g., /dev/sdb1).
+        ids:
+          type: array
+          description: >
+            A list of unique hardware identifiers associated with
+            the device. This may include the Serial Number, WWN, and
+            UUIDs. These are used to persistently identify the disk
+            regardless of changes to the device node path.
+          items:
+            type: string
+            description: >
+              A unique string identifier (e.g., '6000c294-8173-9f81...',
+              'WDC_WD40EFRX-68N32N0', or 'naa.5000cca25ec1e695').
         split_index:
           type: integer
           description: >
