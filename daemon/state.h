@@ -174,6 +174,7 @@ struct snapraid_device {
 	uint64_t flags; /**< Smartctl flags. SMART_UNASSIGNED if not set. */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
+	int last_update_at_number; /**< The latest task number that updated the device */
 	int power; /**< POWER mode. POWER_PENDING if not set. */
 	int health; /**< HEALTH code. HEALTH_PENDING if not set. */
 	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
@@ -298,7 +299,7 @@ struct snapraid_task {
 	unsigned pulse; /**< Pulse flags triggered by the task */
 
 	sl_t arg_list; /**< List of arguments */
-	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument */
+	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument. 0 if none */
 	tommy_list message_list; /**< List of snapraid_message */
 	int message_list_count; /**< Count of messages, just to limit the number. */
 	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */

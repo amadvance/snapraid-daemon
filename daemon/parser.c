@@ -63,35 +63,25 @@ static int parser_association_has_id(struct snapraid_state* state, const char* i
  */
 void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* task)
 {
-	/* only tasks that process snapraid.conf */
-	switch (task->cmd) {
-	case CMD_PROBE :
-	case CMD_UP :
-	case CMD_DOWN :
-	case CMD_SMART :
-	case CMD_LIST :
-	case CMD_DIFF :
-	case CMD_DUP :
-	case CMD_SYNC :
-	case CMD_SCRUB :
-	case CMD_FIX :
-	case CMD_CHECK :
-	case CMD_STATUS :
-	case CMD_READ :
-		break;
-	default :
+	/*
+	 * For simplicity process only on PROBE that access both snapraid.conf and all devices
+	 *
+	 * Note that UP/DOWN don't process "extra" devices
+	 */
+	if (task->cmd != CMD_PROBE)
 		return;
-	}
 
-	/* only if terminated with success */
+	/* if there is any agument, it could be a filter by disk and info will be incomplete */
+	if (task->arg_custom != 0)
+		return;
+
+	/* only if the task terminated with success */
 	if (task->state != PROCESS_STATE_TERM)
 		return;
 	if (task->exit_code != 0)
 		return;
 
-	/*
-	 * Remove any disk that is not referenced
-	 */
+	/* remove any disk that is not referenced */
 	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; ) {
 		struct snapraid_disk* disk = i->data;
 		tommy_node* i_next = i->next;
@@ -100,6 +90,20 @@ void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* tas
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->disk_list, &disk->node);
 			disk_free(disk);
+		} else {
+			/* remove any devices that is not referenced */
+			for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; ) {
+				struct snapraid_device* device = j->data;
+				tommy_node* j_next = j->next;
+
+				if (device->last_update_at_number < task->number) {
+					pulse(state, PULSE_DISKS);
+					tommy_list_remove_existing(&disk->device_list, &device->node);
+					device_free(device);
+				}
+
+				j = j_next;
+			}
 		}
 
 		i = i_next;
@@ -125,6 +129,7 @@ void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* tas
 				if (strcmp(association->file, device->file) == 0) {
 					/* insert if missing */
 					if (!parser_device_has_id(device, association->id)) {
+						pulse(state, PULSE_DISKS);
 						sl_insert_str(&device->id_list, association->id);
 					}
 				}
@@ -297,7 +302,7 @@ static struct snapraid_split* find_split(tommy_list* list, int index)
 	return split;
 }
 
-static struct snapraid_device* find_device_from_file(struct snapraid_state* state, tommy_list* list, const char* file, int split_index)
+static struct snapraid_device* find_device_from_file(struct snapraid_state* state, tommy_list* list, int number, const char* file, int split_index)
 {
 	struct snapraid_device* device;
 	tommy_node* i;
@@ -306,8 +311,10 @@ static struct snapraid_device* find_device_from_file(struct snapraid_state* stat
 	i = tommy_list_head(list);
 	while (i) {
 		device = i->data;
-		if (strcmp(file, device->file) == 0)
+		if (strcmp(file, device->file) == 0) {
+			device->last_update_at_number = number;
 			return device;
+		}
 		i = i->next;
 	}
 
@@ -332,6 +339,7 @@ static struct snapraid_device* find_device_from_file(struct snapraid_state* stat
 	sncpy(device->file, sizeof(device->file), file);
 	sl_init(&device->id_list);
 	parser_mapping_create(state, device);
+	device->last_update_at_number = number;
 	tommy_list_insert_tail(list, &device->node, device);
 
 	return device;
@@ -349,7 +357,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, int num
 		return 0;
 	}
 
-	return find_device_from_file(state, &disk->device_list, file, index);
+	return find_device_from_file(state, &disk->device_list, number, file, index);
 }
 
 static void process_stat(struct snapraid_state* state, char** map, size_t mac)
