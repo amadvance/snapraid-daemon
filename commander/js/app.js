@@ -172,7 +172,7 @@ const app = {
             [...data.parity_disks, ...data.data_disks, ...data.extra_disks].forEach(disk => {
                 disk.devices.forEach(dev => {
                     if (dev.temp_history_24h) {
-                        const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
+                        const safeId = dev.node.replace(/[^a-z0-9]/gi, '-');
                         renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h, dev.smart?.temperature_min_celsius, dev.smart?.temperature_max_celsius);
                     }
                 });
@@ -727,7 +727,7 @@ const app = {
         let device = null;
         [...app.state.disks.parity_disks, ...app.state.disks.data_disks, ...app.state.disks.extra_disks].forEach(disk => {
             disk.devices.forEach(dev => {
-                if (dev.device_node === deviceNode) device = dev;
+                if (dev.node === deviceNode) device = dev;
             });
         });
 

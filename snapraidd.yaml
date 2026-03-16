@@ -993,13 +993,13 @@ components:
     Device:
       type: object
       required:
-        - device_node
+        - node
         - ids
         - split_index
         - health
         - power
       properties:
-        device_node:
+        node:
           type: string
           description: >
             System device path (e.g., /dev/sdb1).

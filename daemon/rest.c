@@ -1387,7 +1387,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_device* dev = i->data;
 		ss_json_open(s, &level);
-		ss_json_str(s, level, "device_node", dev->file);
+		ss_json_str(s, level, "node", dev->file);
 		json_id_list(s, level, &dev->id_list);
 		ss_json_int(s, level, "split_index", dev->split_index);
 		ss_json_str(s, level, "health", health_name(dev->health));

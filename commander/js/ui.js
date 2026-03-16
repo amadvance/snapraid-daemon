@@ -688,7 +688,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
         let sparklinePlaceholder = '';
         if (dev.temp_history_24h) {
-            const safeId = dev.device_node.replace(/[^a-z0-9]/gi, '-');
+            const safeId = dev.node.replace(/[^a-z0-9]/gi, '-');
             sparklinePlaceholder = `<div id="sparkline-${safeId}" class="temp-sparkline-row temp-sparkline-container"></div>`;
         }
 
@@ -720,7 +720,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                     </div>
                 </div>
 
-                <div class="smart-clickable mt-2" data-action="smart-details" data-node="${esc(dev.device_node)}">
+                <div class="smart-clickable mt-2" data-action="smart-details" data-node="${esc(dev.node)}">
                     ${smartStatus}
                 </div>
             </div>
