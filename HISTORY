@@ -1,6 +1,10 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+0.1beta3c 16/03/2026
+====================
+ * Make devices association persistent using unique identifiers
+
 0.1beta3b 15/03/2026
 ===================
  * Fix "Touch Zero Subseconds" option making Maintenance to fail.

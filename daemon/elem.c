@@ -118,6 +118,7 @@ void device_free(void* void_device)
 	if (!device)
 		return;
 	tommy_list_foreach(&device->temp_list, temperature_free);
+	sl_free(&device->id_list);
 	free(device);
 }
 
@@ -165,6 +166,22 @@ struct snapraid_run* run_alloc(int day_of_week, int hour, int minute)
 void run_free(void* void_run)
 {
 	free(void_run);
+}
+
+/****************************************************************************/
+/* association */
+
+struct snapraid_association* association_alloc(const char* file, const char* id)
+{
+	struct snapraid_association* association = calloc_nofail(1, sizeof(struct snapraid_association));
+	sncpy(association->file, sizeof(association->file), file);
+	sncpy(association->id, sizeof(association->id), id);
+	return association;
+}
+
+void association_free(void* void_association)
+{
+	free(void_association);
 }
 
 /****************************************************************************/

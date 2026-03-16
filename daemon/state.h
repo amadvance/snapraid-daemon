@@ -158,24 +158,25 @@ struct smart_attr {
  * Device info entry.
  */
 struct snapraid_device {
-	char file[PATH_MAX]; /**< File device. */
-	char serial[SMART_MAX]; /**< Serial number. */
-	char family[SMART_MAX]; /**< Vendor and model family. */
-	char model[SMART_MAX]; /**< Model. */
-	char interf[SMART_MAX]; /**< Interface. */
+	char file[PATH_MAX]; /**< Device node. Always set. */
+	sl_t id_list; /**< List of unique identifiers of the device */
+	char serial[SMART_MAX]; /**< Serial number. Empty if not set. */
+	char family[SMART_MAX]; /**< Vendor and model family. Empty if not set. */
+	char model[SMART_MAX]; /**< Model. Empty if not set. */
+	char interf[SMART_MAX]; /**< Interface. Empty if not set. */
 	int64_t smart_time; /**< Time of the latest smart measure */
 	struct smart_attr smart[SMART_COUNT]; /**< SMART attributes. */
-	uint64_t size; /**< Physical size in bytes. */
-	uint64_t rotational; /**< 1 if rotational, 0 if SSD. */
+	uint64_t size; /**< Physical size in bytes. SMART_UNASSIGNED if not set. */
+	uint64_t rotational; /**< 1 if rotational, 0 if SSD. SMART_UNASSIGNED if not set. */
 	struct snapraid_tracked error_protocol; /**< Protocol error counter. */
 	struct snapraid_tracked error_medium; /**< Medium error counter. */
-	uint64_t wear_level; /**< Device wear level percentage (SSD only). */
-	uint64_t flags; /**< Smartctl flags */
+	uint64_t wear_level; /**< Device wear level percentage (SSD only). SMART_UNASSIGNED if not set. */
+	uint64_t flags; /**< Smartctl flags. SMART_UNASSIGNED if not set. */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
-	int power; /**< POWER mode. */
-	int health; /**< HEALTH code. */
-	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. */
+	int power; /**< POWER mode. POWER_PENDING if not set. */
+	int health; /**< HEALTH code. HEALTH_PENDING if not set. */
+	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
 	int temperature; /**< Latest measured temperature, 0 if none */
 	int split_index; /**< Index of the split */
 	tommy_list temp_list; /**< Temperature measures */
@@ -529,6 +530,12 @@ struct snapraid_web {
 	time_t page_time; /**< Time of the pages loaded from disk */
 };
 
+struct snapraid_association {
+	char file[PATH_MAX]; /**< Device node. */
+	char id[KEYWORD_MAX]; /**< Unique id. */
+	tommy_node node;
+};
+
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
@@ -536,6 +543,7 @@ struct snapraid_state {
 	/* Data private for the parser. The parser run only one at a time, so no lock is required */
 	int parser_version_major; /**< Major version number */
 	int parser_version_minor; /**< Minor version number */
+	tommy_list parser_association; /**< Associations of device<->id */
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */

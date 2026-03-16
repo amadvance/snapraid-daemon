@@ -55,6 +55,7 @@ void state_done(struct snapraid_state* state)
 	tommy_list_foreach(&state->disk_list, disk_free);
 	tommy_list_foreach(&state->web.page_list, page_free);
 	tommy_list_foreach(&state->config.line_list, config_line_free);
+	tommy_list_foreach(&state->parser_association, association_free);
 	thread_mutex_destroy(&state->state_lock);
 	thread_mutex_destroy(&state->log_lock);
 	thread_rwlock_destroy(&state->web_lock);

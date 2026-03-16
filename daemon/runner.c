@@ -252,6 +252,8 @@ static void runner_go(struct snapraid_state* state)
 	int post_script_skip = 0;
 	state->runner.script_skip = 0;
 
+	parser_mapping_start(state);
+
 	state_unlock();
 
 	int f = -1;
@@ -510,7 +512,7 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			parser_remove_old_disk(state, task);
+			parser_mapping_done(state, task);
 
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */

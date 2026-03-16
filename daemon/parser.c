@@ -25,7 +25,19 @@
 #include "smart.h"
 #include "parser.h"
 
-void parser_remove_old_disk(struct snapraid_state* state, struct snapraid_task* task)
+/**
+ * Cleanup the association list for every parsed file
+ */
+void parser_mapping_start(struct snapraid_state* state)
+{
+	tommy_list_foreach(&state->parser_association, association_free);
+	tommy_list_init(&state->parser_association);
+}
+
+/**
+ * End the mapping process, but only if task complete succesfully
+ */
+void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* task)
 {
 	/* only tasks that process snapraid.conf */
 	switch (task->cmd) {
@@ -53,7 +65,8 @@ void parser_remove_old_disk(struct snapraid_state* state, struct snapraid_task* 
 	if (task->exit_code != 0)
 		return;
 
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; ) {
+	/* remove any disk that is not referenced */
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; ) {
 		struct snapraid_disk* disk = i->data;
 		tommy_node* i_next = i->next;
 
@@ -64,6 +77,55 @@ void parser_remove_old_disk(struct snapraid_state* state, struct snapraid_task* 
 		}
 
 		i = i_next;
+	}
+}
+
+/*
+ * Search all devices of all disks, and if any id match, reset the device node
+ */
+static void parser_mapping_device(struct snapraid_state* state, const char* file, const char* id)
+{
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* device = j->data;
+
+			for (tommy_node* k = tommy_list_head(&device->id_list); k != 0; k = k->next) {
+				sn_t* sn = k->data;
+
+				if (strcmp(id, sn->str) == 0) {
+					sncpy(device->file, sizeof(device->file), file);
+				}
+			}
+		}
+	}
+
+	/* check if the association is already in the set */
+	tommy_node* i;
+	for (i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+		if (strcmp(association->id, id) == 0)
+			break;
+	}
+
+	/* insert if missing */
+	if (i == 0) {
+		struct snapraid_association* association = association_alloc(file, id);
+		tommy_list_insert_tail(&state->parser_association, &association->node, association);
+	}
+}
+
+/**
+ * Add all the associations to the device
+ */
+static void parser_mapping_create(struct snapraid_state* state, struct snapraid_device* device)
+{
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+		if (strcmp(association->file, device->file) == 0) {
+			sl_insert_str(&device->id_list, association->id);
+		}
 	}
 }
 
@@ -116,8 +178,10 @@ static int is_split_parity(char* s, int* index)
 	if (isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
-	if (strncmp(s, "parity", 6) != 0)
+	if (strncmp(s, "parity", 6) != 0) {
+		*index = 0;
 		return 0;
+	}
 
 	s += 6;
 
@@ -192,7 +256,7 @@ static struct snapraid_split* find_split(tommy_list* list, int index)
 	return split;
 }
 
-static struct snapraid_device* find_device_from_file(tommy_list* list, const char* file, int split_index)
+static struct snapraid_device* find_device_from_file(struct snapraid_state* state, tommy_list* list, const char* file, int split_index)
 {
 	struct snapraid_device* device;
 	tommy_node* i;
@@ -225,6 +289,8 @@ static struct snapraid_device* find_device_from_file(tommy_list* list, const cha
 	sncpy(device->health_reason, sizeof(device->health_reason), "SMART telemetry not yet obtained because the device is in stand-by");
 	device->split_index = split_index;
 	sncpy(device->file, sizeof(device->file), file);
+	sl_init(&device->id_list);
+	parser_mapping_create(state, device);
 	tommy_list_insert_tail(list, &device->node, device);
 
 	return device;
@@ -242,7 +308,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, int num
 		return 0;
 	}
 
-	return find_device_from_file(&disk->device_list, file, index);
+	return find_device_from_file(state, &disk->device_list, file, index);
 }
 
 static void process_stat(struct snapraid_state* state, char** map, size_t mac)
@@ -685,6 +751,17 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				tracked_update(&device->smart[index].raw, old_raw, kind, state->global.last_time);
 		}
 	}
+}
+
+static void process_map(struct snapraid_state* state, char** map, size_t mac)
+{
+	if (mac < 3)
+		return;
+
+	const char* file = map[1];
+	const char* id = map[2];
+
+	parser_mapping_device(state, file, id);
 }
 
 static void process_scan(struct snapraid_state* state, char** map, size_t mac)
@@ -1219,6 +1296,10 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_attr(state, map, mac);
 		state_unlock();
+	} else if (strcmp(cmd, "map") == 0) {
+		state_lock();
+		process_map(state, map, mac);
+		state_unlock();
 	} else if (strcmp(cmd, "scan") == 0) {
 		state_lock();
 		process_scan(state, map, mac);
@@ -1589,6 +1670,10 @@ int parse_past_log(struct snapraid_state* state)
 		task->number = ++state->runner.number_allocator;
 		state->runner.latest = task;
 		sncpy(task->log_file, sizeof(task->log_file), path);
+
+		/* start disk mapping */
+		parser_mapping_start(state);
+
 		state_unlock();
 
 		parse_log(state, f, 0, 0);
@@ -1597,7 +1682,7 @@ int parse_past_log(struct snapraid_state* state)
 		state_lock();
 
 		/* remove disks that were not referenced */
-		parser_remove_old_disk(state, task);
+		parser_mapping_done(state, task);
 
 		/* compute the task health */
 		task->health = health_task(task);

@@ -110,6 +110,21 @@ struct snapraid_run* run_alloc(int day_of_week, int hour, int minute);
 void run_free(void* void_run);
 
 /****************************************************************************/
+/* association */
+
+/**
+ * Allocate and initialize a new association.
+ * @return Pointer to newly allocated association
+ */
+struct snapraid_association* association_alloc(const char* file, const char* id);
+
+/**
+ * Free a association.
+ * @param void_association Pointer to the association entry
+ */
+void association_free(void* void_association);
+
+/****************************************************************************/
 /* task */
 
 /**

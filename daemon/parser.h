@@ -45,9 +45,14 @@ int parse_timestamp(const char* name, time_t* out);
 int parse_past_log(struct snapraid_state* state);
 
 /**
- * Remove old disks.
+ * Start disks mapping.
  */
-void parser_remove_old_disk(struct snapraid_state* state, struct snapraid_task* task);
+void parser_mapping_start(struct snapraid_state* state);
+
+/**
+ * Conclude disks mapping.
+ */
+void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* task);
 
 #endif
 
