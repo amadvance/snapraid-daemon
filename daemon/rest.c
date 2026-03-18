@@ -1815,8 +1815,12 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
 		if (free_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(&s, level, "free_space_bytes", free_space_bytes);
-		ss_json_double(&s, level, "annual_failure_rate", afr_array(state));
-		ss_json_double(&s, level, "failure_probability", fp_array(state));
+		double afr = afr_array(state);
+		if (afr != 0)
+			ss_json_double(&s, level, "annual_failure_rate", afr);
+		double fp = fp_array(state);
+		if (fp != 0)
+			ss_json_double(&s, level, "failure_probability", fp);
 		ss_json_u64(&s, level, "files_count", global->file_total);
 		ss_json_u64(&s, level, "blocks_bad", global->block_bad);
 		ss_json_u64(&s, level, "blocks_rehash", global->block_rehash);

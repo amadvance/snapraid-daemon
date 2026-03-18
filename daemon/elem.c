@@ -737,7 +737,10 @@ static double poisson_prob_at_least_one_failure(double rate)
 
 double fp_array(struct snapraid_state* state)
 {
-	return poisson_prob_at_least_one_failure(afr_array(state));
+	double afr = afr_array(state);
+	if (afr == 0)
+		return 0;
+	return poisson_prob_at_least_one_failure(afr);
 }
 
 /****************************************************************************/

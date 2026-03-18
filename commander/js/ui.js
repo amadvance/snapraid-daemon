@@ -419,12 +419,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                         ${arrayInfo.blocks_unsynced > 0 ? `<span class="text-xs text-muted ml-2">(${formatDiskSize(arrayInfo.blocks_unsynced * arrayInfo.block_size_bytes * arrayInfo.data_disks_count)})</span>` : ''}
                     </div>
                 </div>
+                ${arrayInfo.failure_probability != null ? `
                 <div class="property-row">
                     <div class="property-label">Failure Probability</div>
-                    <div class="property-value text-sky">${arrayInfo.failure_probability
-            ? `${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">per year</span>`
-            : healthBadge('pending')}</div>
+                    <div class="property-value text-sky">${(arrayInfo.failure_probability * 100).toFixed(0)}%<span class="text-xs text-muted ml-2">per year</span></div>
                 </div>
+                ` : ''}
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>
                     <div class="property-value text-sky">
