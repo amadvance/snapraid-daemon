@@ -125,8 +125,8 @@ const app = {
                 case 'maintenance': app.triggerMaintenance(); break;
                 case 'refresh': app.triggerRefresh(); break;
                 case 'stop-task': app.triggerStop(); break;
-                case 'spin-up': app.triggerCommand('spinUp'); break;
-                case 'spin-down': app.triggerCommand('spinDown'); break;
+                case 'spin-up': app.triggerUp(); break;
+                case 'spin-down': app.triggerDown(); break;
                 case 'diff': app.triggerDiff(); break;
                 case 'recovery-cancel':
                     app.handleRoute();
@@ -671,12 +671,21 @@ const app = {
         }
     },
 
-    triggerCommand: async (cmd) => {
+    triggerUp: async () => {
         try {
-            await API[cmd]();
-            showToast(`Command ${cmd} sent`, 'info');
+            await API.spinUp();
+            showToast(`Command Up sent`, 'info');
         } catch (e) {
-            showToast('Failed to start command: ' + e.message, 'error');
+            showToast('Failed to start Up command: ' + e.message, 'error');
+        }
+    },
+    
+    triggerDown: async () => {
+        try {
+            await API.spinDown();
+            showToast(`Command Down sent`, 'info');
+        } catch (e) {
+            showToast('Failed to start Down command: ' + e.message, 'error');
         }
     },
 
