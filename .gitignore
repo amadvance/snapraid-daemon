@@ -66,6 +66,7 @@ messages.rc
 *.dst
 *.epr
 *.geany
+session.conf
 
 # certificates
 *.key
