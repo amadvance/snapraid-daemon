@@ -478,7 +478,7 @@ bail:
 		&& !tommy_list_empty(&state->runner.history_list)) {
 		struct snapraid_task* last = tommy_list_tail(&state->runner.history_list)->data;
 		/* if lastest was PROBE, and completed without change, remove it */
-		if (last->cmd == CMD_PROBE
+		if (last->high_cmd == CMD_SUSPEND_IDLE && last->cmd == CMD_PROBE
 			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
 			log_msg(LVL_INFO, "task %d removed probe for no change", last->number);
 			/* delete its log file */
@@ -590,6 +590,10 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		int active = 0;
+
+		/* do not spin down extra disks */
+		if (disk->kind == DISK_EXTRA)
+			continue;
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;

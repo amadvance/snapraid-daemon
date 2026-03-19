@@ -150,7 +150,10 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 			struct snapraid_device* device = j->data;
 
 			if (parser_device_has_id(device, id)) {
-				sncpy(device->file, sizeof(device->file), file);
+				if (strcmp(device->file, file) != 0) {
+					pulse(state, PULSE_DISKS);
+					sncpy(device->file, sizeof(device->file), file);
+				}
 			}
 		}
 	}
@@ -382,7 +385,9 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 	/* if the value is the same, doesn't update the first time */
 	if (disk->access_count != access_count) {
-		pulse(state, PULSE_DISKS);
+		/* do not pulse for "extra" disk as not affected by automatic shutdown */
+		if (disk->kind != DISK_EXTRA)
+			pulse(state, PULSE_DISKS);
 		disk->access_count = access_count;
 		disk->access_count_initial_time = state->global.last_time;
 	}
