@@ -421,8 +421,9 @@ static int is_not_modified(struct mg_connection* conn, time_t file_mtime)
 		return 0;
 
 	char date_buf[64];
-	struct tm* tm = gmtime(&file_mtime);
-	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", tm);
+	struct tm tm_gmt;
+	gmtime_r(&file_mtime, &tm_gmt);
+	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
 
 	/* if the strings match exactly, the browser's cache is still valid */
 	return strcmp(if_mod_since, date_buf) == 0;
