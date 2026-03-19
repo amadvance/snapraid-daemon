@@ -387,7 +387,7 @@ struct snapraid_file* file_alloc_source(int change, const char* disk, const char
 
 void file_free(void* void_file)
 {
-	struct snapraid_filef* file = void_file;
+	struct snapraid_file* file = void_file;
 	free(file);
 }
 
