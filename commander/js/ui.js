@@ -703,8 +703,8 @@ const renderDiskCard = (disk, type, pulseAt) => {
         return `
             <div class="mt-2 border text-sm">
                 <div class="flex justify-between items-center mb-1">
-                     <span class="font-mono text-sm font-bold text-sky">${dev.serial || 'Unknown Model'}</span>
-                     <div class="flex items-center gap-2">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
+                     <span class="font-mono text-sm font-bold text-sky truncate min-w-0">${dev.serial || 'Unknown serial'}</span>
+                     <div class="flex items-center gap-2 flex-shrink-0">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
                 <div class="text-xs text-muted mb-2">${dev.rotational >= 1 ? 'HDD' : dev.rotational === 0 ? 'SSD' : ''} ${dev.model || '-'}${powerOnYears}</div>
                 
