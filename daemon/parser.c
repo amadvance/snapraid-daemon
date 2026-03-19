@@ -526,7 +526,7 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
 	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
-	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->uuid), uuid);
+	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid);
 	pulse_stru64(state, PULSE_DISKS, &split->content_size, size);
 }
 
