@@ -1,6 +1,12 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+0.1beta3d 22/03/2026
+====================
+ * Restored auto deletion of idempodent probe tasks
+ * Avoid to print failure property on NVMe only systems
+ * Automatically remove devices not present anymore
+
 0.1beta3c 16/03/2026
 ====================
  * Make devices association persistent using unique identifiers
