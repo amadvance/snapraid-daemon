@@ -560,8 +560,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_deletes")) == 0) {
 				++j;
 				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_deletes) == 0) {
-				} else {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_deletes);
+				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
@@ -569,8 +569,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_updates")) == 0) {
 				++j;
 				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_updates) == 0) {
-				} else {
 					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_updates);
+				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}
