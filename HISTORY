@@ -1,6 +1,10 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+0.1beta3e 22/03/2026
+====================
+ * Updated SnapRAID CLI v14.0rc3e
+
 0.1beta3d 22/03/2026
 ====================
  * Restored auto deletion of idempodent probe tasks
