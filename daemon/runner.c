@@ -480,7 +480,7 @@ bail:
 		/* if lastest was PROBE, and completed without change, remove it */
 		if (last->high_cmd == CMD_SUSPEND_IDLE && last->cmd == CMD_PROBE
 			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
-			log_msg(LVL_INFO, "task %d removed probe for no change", last->number);
+			log_msg(LVL_INFO, "task %d removed probe for no activity", last->number);
 			/* delete its log file */
 			if (last->log_file[0]) {
 				if (remove(last->log_file) != 0) {
