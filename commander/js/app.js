@@ -797,11 +797,16 @@ const app = {
                         rowClass = 'text-red';
                     else if (attr.when_failed === 'past' || (attr.measure == 'count' && attr.raw > 0))
                         rowClass = 'text-amber';
+                    let attrClass = rowClass;
+                    if (attr.measure == 'vendor')
+                        attrClass = 'text-muted';
+                    else
+                        attrClass += ' font-bold'
 
                     criticalRows.push(`
                         <tr>
                             <td class="font-bold text-xs">${label}</td>
-                            <td class="${rowClass} font-mono text-xs font-bold">${formatAttr(attr)}</td>
+                            <td class="${attrClass} font-mono text-xs">${formatAttr(attr)}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.norm != null ? attr.norm : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.worst != null ? attr.worst : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.thresh != null ? attr.thresh : '-'}</td>
