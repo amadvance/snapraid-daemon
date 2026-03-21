@@ -385,9 +385,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 	/* if the value is the same, doesn't update the first time */
 	if (disk->access_count != access_count) {
-		/* do not pulse for "extra" disk as not affected by automatic shutdown */
-		if (disk->kind != DISK_EXTRA)
-			pulse(state, PULSE_DISKS);
+		/* do not pulse for access count, to do not prevent omission of probes while a disk is in use */
 		disk->access_count = access_count;
 		disk->access_count_initial_time = state->global.last_time;
 	}
