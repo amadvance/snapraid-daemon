@@ -314,9 +314,9 @@ void* scheduler_thread(void* arg)
 
 	last = time(0);
 	localtime_r(&last, &last_tm);
-	last_probe_and_spindown_ts = 0;
-	last_delete_ts = 0;
-	last_history_ts = 0;
+	last_probe_and_spindown_ts = os_tick_sec();
+	last_delete_ts = last_probe_and_spindown_ts;
+	last_history_ts = last_probe_and_spindown_ts;
 
 	state_lock();
 
