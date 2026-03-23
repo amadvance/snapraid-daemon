@@ -1332,6 +1332,8 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(cmd, "smartctl") == 0) {
 		ignore_this_line = 1;
+	} else if (strcmp(cmd, "resolve") == 0) {
+		ignore_this_line = 1;
 	} else if (strcmp(cmd, "data") == 0) {
 		state_lock();
 		process_data(state, map, mac);
