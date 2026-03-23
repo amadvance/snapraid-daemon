@@ -700,13 +700,28 @@ const renderDiskCard = (disk, type, pulseAt) => {
             failureProb = dev.wear_level + '% Wear';
         }
 
+        let interfaceString = '';
+        if (dev.interface != null)
+            interfaceString = dev.interface;
+        if (interfaceString == 'SATA') {
+            if (dev.rotational >= 1)
+               interfaceString = 'HDD';
+            if (dev.rotational === 0)
+                interfaceString = 'SSD';
+        }
+        let modelString = '';
+        if (dev.model != null)
+            modelString = dev.model;
+        if (modelString.includes(interfaceString))
+            interfaceString = '';
+
         return `
             <div class="mt-2 border text-sm">
                 <div class="flex justify-between items-center mb-1">
                      <span class="font-mono text-sm font-bold text-sky truncate min-w-0">${dev.serial || 'Unknown serial'}</span>
                      <div class="flex items-center gap-2 flex-shrink-0">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
-                <div class="text-xs text-muted mb-2">${dev.interface === 'SATA' ? (dev.rotational >= 1 ? 'HDD' : dev.rotational === 0 ? 'SSD' : '') : dev.interface ? dev.interface : ''} ${dev.model || '-'}${powerOnYears}</div>
+                <div class="text-xs text-muted mb-2">${interfaceString} ${modelString}${powerOnYears}</div>
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row items-center">
                     <div class="flex-shrink-0 whitespace-nowrap text-xs text-muted">
