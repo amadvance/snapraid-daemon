@@ -478,8 +478,10 @@ bail:
 		&& !tommy_list_empty(&state->runner.history_list)) {
 		struct snapraid_task* last = tommy_list_tail(&state->runner.history_list)->data;
 		/* if lastest was PROBE, and completed without change, remove it */
-		if (last->high_cmd == CMD_SUSPEND_IDLE && last->cmd == CMD_PROBE
-			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0) {
+		if (last->high_cmd == CMD_SUSPEND_IDLE && last->cmd == CMD_PROBE /* it was an automatic probe */
+			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0 /* nothing changed */
+			&& (task->unix_end_time - last->unix_end_time) < 15 * 60 /* it was not in the past more than 15 mins (keep some temperature measures) */
+		) {
 			log_msg(LVL_INFO, "task %d removed probe for no activity", last->number);
 			/* delete its log file */
 			if (last->log_file[0]) {
