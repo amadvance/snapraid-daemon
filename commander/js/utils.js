@@ -195,10 +195,10 @@ export const formatAttr = (attr) => {
         valStr = `${attr.raw}`;
     }
     if (attr.measure == 'use_ratio') {
-        valStr = `${attr.raw}%`;
+        valStr = `${attr.raw}% &uarr;`;
     }
     if (attr.measure == 'life_ratio') {
-        valStr = `${attr.raw}%`;
+        valStr = `${attr.raw}% &darr;`;
     }
     if (attr.measure == 'vendor') {
         valStr = `(${attr.raw})`;

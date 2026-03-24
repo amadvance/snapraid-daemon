@@ -787,6 +787,15 @@ const app = {
             statusRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono font-bold text-xs ${valClass}">${valStr}</td></tr>`);
         });
 
+        if (device.wear_level != null) {
+            otherRows.push(`
+                        <tr>
+                            <td class="font-bold text-xs">WEAR LEVEL</td>
+                            <td class="font-mono text-xs">${device.wear_level}% &uarr;</td>
+                        </tr>
+            `);
+        }
+
         // 2. Process attributes array for criticalRows and otherRows
         if (s.attributes) {
             s.attributes.forEach(attr => {
