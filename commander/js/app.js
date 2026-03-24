@@ -787,6 +787,15 @@ const app = {
             statusRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono font-bold text-xs ${valClass}">${valStr}</td></tr>`);
         });
 
+        if (device.failure_probability != null) {
+            otherRows.push(`
+                        <tr>
+                            <td class="font-bold text-xs">FAILURE PROBABILITY</td>
+                            <td class="font-mono text-xs">${(device.failure_probability * 100).toFixed(0)}% (in one year)</td>
+                        </tr>
+            `);
+        }
+
         if (device.wear_level != null) {
             otherRows.push(`
                         <tr>
