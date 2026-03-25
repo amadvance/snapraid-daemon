@@ -385,12 +385,22 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 	/* if the value is the same, doesn't update the first time */
 	if (disk->access_count != access_count) {
-		/* do not pulse for access count, to do not prevent omission of probes while a disk is in use */
+		/*
+		 * Do not pulse for access count
+		 *
+		 * We don't want to prevent omission of probes while a disk is in use
+		 * and the access count is continously increasing.
+		 *
+		 * Note that automatic down is not affected, because the
+		 * value is still stored. Only if the deamon is restarted
+		 * it may "lose" the time of idle, because some logs may be
+		 * deleted.
+		 */
 		disk->access_count = access_count;
 		disk->access_count_initial_time = state->global.last_time;
 	}
 
-	/* this is the current time, no need to pulse */
+	/* do not pulse because this is the current time */
 	disk->access_count_latest_time = state->global.last_time;
 }
 
@@ -725,7 +735,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			int health = HEALTH_PENDING;
 			char health_reason[HEALTH_REASON_MAX];
 
-			/* update the time, but do not pulse on this */
+			/* do not pulse when updating just the time */
 			device->smart_time = state->global.last_time;
 
 			if (flags & SMARTCTL_FLAG_FAIL) {
@@ -1166,12 +1176,15 @@ static void process_unixtime(struct snapraid_state* state, char** map, size_t ma
 	if (mac < 2)
 		return;
 
-	/* this is the current time, no need to pulse */
+	/* do not pulse becasue this is the current time */
 	stri64(&state->global.last_time, map[1]);
 
-	/* at any time update, remove too old temperature measurements */
-	if (temperature_cleanup_devices(state, state->global.last_time))
-		pulse(state, PULSE_DISKS);
+	/*
+	 * At any time update, remove too old temperature measurements
+	 *
+	 * Do not pulse because we just trim past history, not the current state
+	 */
+	temperature_cleanup_devices(state, state->global.last_time);
 }
 
 static void process_command(struct snapraid_state* state, char** map, size_t mac)
