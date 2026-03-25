@@ -178,6 +178,42 @@ static int runner_report_locked(struct snapraid_state* state)
 	return 0;
 }
 
+/**
+ * Check if the previous task can be omitted
+ */
+static struct snapraid_task* omit_task(struct snapraid_state* state, struct snapraid_task* task)
+{
+	if (tommy_list_empty(&state->runner.history_list))
+		return 0;
+
+	struct snapraid_task* tail = tommy_list_tail(&state->runner.history_list)->data;
+
+	/* only automatic probe are removed */
+	if (tail->high_cmd != CMD_SUSPEND_IDLE || tail->cmd != CMD_PROBE)
+		return 0;
+
+	/* if something changed, it cannot be removed */
+	if ((tail->pulse & (PULSE_DISKS | PULSE_ARRAY)) != 0)
+		return 0;
+
+	/* previous node is the reference (being a circular list, it's never 0) */
+	struct snapraid_task* reference = tail->node.prev->data;
+
+	/* we need a reference probe different than the tail */
+	if (tail == reference)
+		return 0;
+
+	/* the reference must be a probe */
+	if (reference->high_cmd != CMD_SUSPEND_IDLE || reference->cmd != CMD_PROBE)
+		return 0;
+
+	/* remove only if not creating a hole bigger than 15 minutes to keep temperature measure in the graphs */
+	if ((task->unix_end_time - reference->unix_end_time) > 15 * 60)
+		return 0;
+
+	return tail;
+}
+
 static void runner_go(struct snapraid_state* state)
 {
 	char hook_script[CONFIG_MAX];
@@ -475,13 +511,9 @@ bail:
 		&& pid_ret != -1
 		&& WIFEXITED(status)
 		&& WEXITSTATUS(status) == 0
-		&& !tommy_list_empty(&state->runner.history_list)) {
-		struct snapraid_task* last = tommy_list_tail(&state->runner.history_list)->data;
-		/* if lastest was PROBE, and completed without change, remove it */
-		if (last->high_cmd == CMD_SUSPEND_IDLE && last->cmd == CMD_PROBE /* it was an automatic probe */
-			&& (last->pulse & (PULSE_DISKS | PULSE_ARRAY)) == 0 /* nothing changed */
-			&& (task->unix_end_time - last->unix_end_time) < 15 * 60 /* it was not in the past more than 15 mins (keep some temperature measures) */
-		) {
+	) {
+		struct snapraid_task* last = omit_task(state, task);
+		if (last) {
 			log_msg(LVL_INFO, "task %d removed probe for no activity", last->number);
 			/* delete its log file */
 			if (last->log_file[0]) {
