@@ -4,13 +4,10 @@ SnapRAID Daemon TODO
 Future Releases
 ===============
 
-- Implement a Command Builder panel to support manual triggers for on-demand
-  operations (sync/scrub/etc.), advanced arguments (bandwidth limits, stats,
-  filtering), and custom job sequencing.
+- Compress .log with .gz
 
-- Allow to accept a SMART attribute value as valid/acknowledged and don't show
-  it anymore in the disk card UI as warning. It will remain in the full SMART 
-  attributes list.
+- For every change (pulse) in the commands, emit a message shown in the task
+  messages.
 
 - Send a notification report every time a PREFAIL attribute changes.
   Messages can be generated in the parser, and then a dedicated report can be
@@ -22,7 +19,18 @@ Future Releases
     notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
     smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
 
- - Unprivileged execution mode
+- Implement a Command Builder panel to support manual triggers for on-demand
+  operations (sync/scrub/etc.), advanced arguments (bandwidth limits, stats,
+  filtering), and custom job sequencing.
+
+- Speedometer
+  During an active task, show the same speed stats line "snapraid -A"
+
+- Allow to accept a SMART attribute value as valid/acknowledged and don't show
+  it anymore in the disk card UI as warning. It will remain in the full SMART 
+  attributes list.
+
+- Unprivileged execution mode
    - Implement a configurable option to run the daemon as a non-root user.
      When enabled, the daemon executes the SnapRAID engine via sudo.
    - The implementation must remain compatible with both systemd and
@@ -57,9 +65,6 @@ Future Releases
 
 - Searchable Task Archives
   In the Tasks page, add a search bar that filters historical logs for specific filenames or error codes.
-
-- Speedometer
-  During an active task, show the same speed stats line "snapraid -A"
 
 - Implement initial configuration of SnapRAID directly through the Web UI
 
