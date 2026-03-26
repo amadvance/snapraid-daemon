@@ -192,7 +192,7 @@ static struct snapraid_task* omit_task(struct snapraid_state* state, struct snap
 	if (tail->high_cmd != CMD_SUSPEND_IDLE || tail->cmd != CMD_PROBE)
 		return 0;
 
-	/* if something changed, it cannot be removed */
+	/* if something changed, it cannot be removed (note we don't check PULSE_DISKS_UI) */
 	if ((tail->pulse & (PULSE_DISKS | PULSE_ARRAY)) != 0)
 		return 0;
 

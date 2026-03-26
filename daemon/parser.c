@@ -388,8 +388,8 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 		/*
 		 * Do not pulse for access count
 		 *
-		 * We don't want to prevent omission of probes while a disk is in use
-		 * and the access count is continously increasing.
+		 * We don't want to trigger continous change in the UI while
+		 * a disk is in use and has accesses.
 		 *
 		 * Note that automatic down is not affected, because the
 		 * value is still stored. Only if the deamon is restarted
@@ -702,7 +702,16 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		if (mac >= 6)
 			pulse_double(state, PULSE_DISKS, &device->prob, map[5]);
 	} else if (strcmp(tag, "temperature") == 0) {
-		if (pulse_strint(state, PULSE_DISKS, &device->temperature, val) == 0) {
+		/*
+		 * Here is questionable when to pulse.
+		 *
+		 * The most correct way would be to pulse if the temperature graph data changes
+		 * (temp_history_24h) but it will require to compute it every time.
+		 *
+		 * For now just pulse if the temperature changes, but this means that the graph
+		 * won't show new points until something triggers an update.
+		 */
+		if (pulse_strint(state, PULSE_DISKS_UI, &device->temperature, val) == 0) {
 			struct snapraid_temp* temp = temperature_alloc(device->temperature, state->global.last_time);
 			temperature_insert(device, temp);
 		}
@@ -792,14 +801,23 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			int got_raw;
 
 			if ((kind & SMART_KIND_PULSE) != 0) {
-				got_raw = pulse_stru64(state, PULSE_DISKS, &device->smart[index].raw.value, raw);
-				pulse_stru64(state, PULSE_DISKS, &device->smart[index].norm, norm);
-				pulse_stru64(state, PULSE_DISKS, &device->smart[index].worst, worst);
-				pulse_stru64(state, PULSE_DISKS, &device->smart[index].thresh, thresh);
+				unsigned pulse;
+				if ((kind & SMART_KIND_TEMP) != 0)
+					pulse = PULSE_DISKS_UI;
+				else
+					pulse = PULSE_DISKS;
+				got_raw = pulse_stru64(state, pulse, &device->smart[index].raw.value, raw);
+				pulse_stru64(state, pulse, &device->smart[index].norm, norm);
+				pulse_stru64(state, pulse, &device->smart[index].worst, worst);
+				pulse_stru64(state, pulse, &device->smart[index].thresh, thresh);
 				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
 				device->smart[index].flags = flags;
 			} else {
-				/* these values are not reported with pulse */
+				/*
+				 * Do not pulse because we don't want to trigger an UI update
+				 * on generic attributes that increment for generic usage,
+				 * like the number of HOST_READ_COMMANDS or TOTAL_LBAS_READ.
+				 */
 				got_raw = stru64(&device->smart[index].raw.value, raw);
 				stru64(&device->smart[index].norm, norm);
 				stru64(&device->smart[index].worst, worst);

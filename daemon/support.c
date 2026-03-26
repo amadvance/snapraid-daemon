@@ -630,8 +630,10 @@ unsigned pulse_rev(struct snapraid_state* state, struct snapraid_pulse* pulse)
 		mask |= PULSE_ARRAY;
 	if (state->pulse.config != pulse->config)
 		mask |= PULSE_CONFIG;
-	if (state->pulse.disks != pulse->disks)
+	if (state->pulse.disks_attr != pulse->disks_attr)
 		mask |= PULSE_DISKS;
+	if (state->pulse.disks_ui != pulse->disks_ui)
+		mask |= PULSE_DISKS_UI;
 	if (state->pulse.tasks != pulse->tasks)
 		mask |= PULSE_TASKS;
 	if (state->pulse.activity != pulse->activity)
@@ -646,7 +648,9 @@ void pulse(struct snapraid_state* state, unsigned mask)
 	if ((mask & PULSE_CONFIG) != 0)
 		++state->pulse.config;
 	if ((mask & PULSE_DISKS) != 0)
-		++state->pulse.disks;
+		++state->pulse.disks_attr;
+	if ((mask & PULSE_DISKS_UI) != 0)
+		++state->pulse.disks_ui;
 	if ((mask & PULSE_TASKS) != 0)
 		++state->pulse.tasks;
 	if ((mask & PULSE_ACTIVITY) != 0)

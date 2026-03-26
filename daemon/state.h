@@ -101,8 +101,17 @@ typedef tommy_list sl_t;
 #define PULSE_ARRAY 1 /* change in the /array entry point */
 #define PULSE_CONFIG 2 /* change in the /config entry point */
 #define PULSE_DISKS 4 /* change in the /disks entry point */
-#define PULSE_TASKS 8 /* change in the /tasks entry point */
-#define PULSE_ACTIVITY 16 /* change in the /activity entry point */
+
+/*
+ * Change in the /disks entry point causing an UI update but not an important
+ * attribute change that needs to be kept forever.
+ *
+ * These changes do not prevent the deletion of the probes.
+ */
+#define PULSE_DISKS_UI 8
+
+#define PULSE_TASKS 16 /* change in the /tasks entry point */
+#define PULSE_ACTIVITY 32 /* change in the /activity entry point */
 
 /**
  * Pulse
@@ -110,7 +119,8 @@ typedef tommy_list sl_t;
 struct snapraid_pulse {
 	uint64_t array; /**< State counter for the "array" entry point */
 	uint64_t config; /**< State counter for the "config" entry point */
-	uint64_t disks; /**< State counter for the "disks" entry point */
+	uint64_t disks_attr; /**< State counter for the "disks" entry point */
+	uint64_t disks_ui; /**< State counter for the "disk" entry point for temperature */
 	uint64_t tasks; /**< State counter for the "tasks" entry point */
 	uint64_t activity; /**< State counter for the "activity" entry point */
 };
