@@ -186,6 +186,10 @@ static struct snapraid_task* omit_task(struct snapraid_state* state, struct snap
 	if (tommy_list_empty(&state->runner.history_list))
 		return 0;
 
+	/* only if the new task is a new probe  */
+	if (task->high_cmd != CMD_SUSPEND_IDLE || task->cmd != CMD_PROBE)
+		return 0;
+
 	struct snapraid_task* tail = tommy_list_tail(&state->runner.history_list)->data;
 
 	/* only automatic probe are removed */
@@ -205,10 +209,6 @@ static struct snapraid_task* omit_task(struct snapraid_state* state, struct snap
 
 	/* the reference must be a probe */
 	if (reference->high_cmd != CMD_SUSPEND_IDLE || reference->cmd != CMD_PROBE)
-		return 0;
-
-	/* remove only if not creating a hole bigger than 15 minutes to keep temperature measure in the graphs */
-	if ((task->unix_end_time - reference->unix_end_time) > 15 * 60)
 		return 0;
 
 	return tail;
@@ -506,24 +506,23 @@ bail:
 	/* compare the pulse (after evaluating the array health) */
 	task->pulse = pulse_rev(state, &pulse_before);
 
-	/* if task is a PROBE and completed succesfully */
-	if (task->cmd == CMD_PROBE
-		&& pid_ret != -1
+	/* if task completed succesfully */
+	if (pid_ret != -1
 		&& WIFEXITED(status)
 		&& WEXITSTATUS(status) == 0
 	) {
-		struct snapraid_task* last = omit_task(state, task);
-		if (last) {
-			log_msg(LVL_INFO, "task %d removed probe for no activity", last->number);
+		struct snapraid_task* omit = omit_task(state, task);
+		if (omit) {
+			log_msg(LVL_INFO, "task %d removed probe for no activity", omit->number);
 			/* delete its log file */
-			if (last->log_file[0]) {
-				if (remove(last->log_file) != 0) {
-					log_msg(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", last->log_file, strerror(errno), errno);
+			if (omit->log_file[0]) {
+				if (remove(omit->log_file) != 0) {
+					log_msg(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", omit->log_file, strerror(errno), errno);
 				}
 			}
 			/* remove from the list */
-			tommy_list_remove_existing(&state->runner.history_list, &last->node);
-			task_free(last);
+			tommy_list_remove_existing(&state->runner.history_list, &omit->node);
+			task_free(omit);
 		}
 	}
 
