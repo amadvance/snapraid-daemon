@@ -901,13 +901,14 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 {
 	time_t now = time(0);
 	time_t cutoff_seconds = now - HISTORY_PAST_DAYS * SECONDS_IN_A_DAY;
-	int count = tommy_list_count(&state->runner.history_list);
 
 	sncpy(msg, msg_size, "");
 
 	state_lock();
 
 	pulse(state, PULSE_TASKS);
+
+	int count = tommy_list_count(&state->runner.history_list);
 
 	tommy_node* i = tommy_list_head(&state->runner.history_list);
 	while (i) {
