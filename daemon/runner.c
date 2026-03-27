@@ -290,6 +290,14 @@ static void runner_go(struct snapraid_state* state)
 
 	parser_mapping_start(state);
 
+	/* check if the next task needs a script */
+	int next_need_script = 0;
+	j = tommy_list_head(&state->runner.waiting_list);
+	if (j) {
+		struct snapraid_task* waiting = j->data;
+		next_need_script = runner_need_script(waiting->cmd);
+	}
+
 	state_unlock();
 
 	int f = -1;
@@ -410,16 +418,11 @@ static void runner_go(struct snapraid_state* state)
 
 		if (pid_ret != -1
 			&& WIFEXITED(status)
-			&& WEXITSTATUS(status) == 0) {
-			j = tommy_list_head(&state->runner.waiting_list);
-			if (j) {
-				struct snapraid_task* waiting = j->data;
-				if (runner_need_script(waiting->cmd)) {
-					/* postpone */
-					post_script = 0;
-					post_script_skip = 1;
-				}
-			}
+			&& WEXITSTATUS(status) == 0
+			&& next_need_script) {
+			/* postpone */
+			post_script = 0;
+			post_script_skip = 1;
 		}
 	}
 
@@ -746,8 +749,13 @@ void runner_done(struct snapraid_state* state)
 
 static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
+	if (lock)
+		state_lock();
+
 	const char* snapraid = os_find_engine(state->config.sys_engine);
 	if (!snapraid) {
+		if (lock)
+			state_unlock();
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		*status = 500;
@@ -781,9 +789,6 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 		task->arg_custom = tommy_list_count(&task->arg_list);
 		sl_insert_list(&task->arg_list, arg_list);
 	}
-
-	if (lock)
-		state_lock();
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
