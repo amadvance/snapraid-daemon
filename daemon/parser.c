@@ -151,6 +151,8 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 
 			if (parser_device_has_id(device, id)) {
 				if (strcmp(device->file, file) != 0) {
+					if (state->daemon_running != DAEMON_LOADING)
+						log_msg(LVL_INFO, "remapping device with id %s to %s (was %s)", id, file, device->file);
 					pulse(state, PULSE_DISKS);
 					sncpy(device->file, sizeof(device->file), file);
 				}

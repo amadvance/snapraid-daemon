@@ -148,6 +148,11 @@ int daemon_init(struct snapraid_state* state)
 	 */
 	parse_past_log(state);
 
+	/**
+	 * Log loaded
+	 */
+	state->daemon_running = DAEMON_STARTING;
+
 	/*
 	 * Trigger initial probe to load info into the state
 	 */

@@ -524,9 +524,10 @@ struct snapraid_system {
 };
 
 #define DAEMON_QUIT 0
-#define DAEMON_STARTING 1
-#define DAEMON_RUNNING 2
-#define DAEMON_RELOAD 3
+#define DAEMON_LOADING 1 /**< Loading past logs */
+#define DAEMON_STARTING 2 /**< Starting components */
+#define DAEMON_RUNNING 3
+#define DAEMON_RELOAD 4
 
 struct snapraid_log {
 	int foreground; /**< Daemon running in foreground */

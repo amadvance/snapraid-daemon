@@ -32,7 +32,7 @@ struct snapraid_state* state_init(void)
 	thread_mutex_init(&state->state_lock);
 	thread_mutex_init(&state->log_lock);
 	thread_rwlock_init(&state->web_lock);
-	state->daemon_running = DAEMON_STARTING;
+	state->daemon_running = DAEMON_LOADING;
 	state->global.health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
 	return state;
