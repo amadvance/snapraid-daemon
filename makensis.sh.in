@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-CLI_VERSION="14.0rc3h"
+CLI_VERSION="14.0"
 CLI_TARBALL="snapraid-${CLI_VERSION}.tar.gz"
 CLI_SOURCE_URL="https://github.com/amadvance/snapraid/releases/download/v${CLI_VERSION}/${CLI_TARBALL}"
 CLI_PKG_NAME="snapraid"
