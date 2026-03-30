@@ -1,10 +1,14 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.2 2026/03
+===========
+ * More quoting fixes for configuration options.
+
 1.1 2026/03
 ===========
  * Fixed saving of quoted configuration options.
- * Allow saving configuration with Linux systemd
+ * Allow saving configuration with Linux systemd.
 
 1.0 2026/03
 ===========
