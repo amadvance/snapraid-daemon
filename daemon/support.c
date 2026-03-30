@@ -470,6 +470,111 @@ int sl_compare(const void* void_a, const void* void_b)
 }
 
 /****************************************************************************/
+/* unescape */
+
+static uint16_t hex_to_uint16(const char* s)
+{
+	uint16_t val = 0;
+	for (int i = 0; i < 4; ++i) {
+		char c = s[i];
+		val <<= 4;
+		if (c >= '0' && c <= '9') val |= (c - '0');
+		else if (c >= 'a' && c <= 'f') val |= (c - 'a' + 10);
+		else if (c >= 'A' && c <= 'F') val |= (c - 'A' + 10);
+		else return 0xFFFF; /* error marker */
+	}
+	return val;
+}
+
+static int utf8_encode(uint16_t cp, char* out)
+{
+	if (cp <= 0x7F) {
+		out[0] = (char)cp;
+		return 1;
+	} else if (cp <= 0x7FF) {
+		out[0] = (char)(0xC0 | (cp >> 6));
+		out[1] = (char)(0x80 | (cp & 0x3F));
+		return 2;
+	} else {
+		out[0] = (char)(0xE0 | (cp >> 12));
+		out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+		out[2] = (char)(0x80 | (cp & 0x3F));
+		return 3;
+	}
+}
+
+int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
+{
+	size_t i = 0;  /* input index */
+	size_t j = 0;  /* output index */
+
+	while (i < len) {
+		if (src[i] == '\\' && i + 1 < len) {
+			i++; /* skip backslash */
+
+			char c;
+			switch (src[i]) {
+			case '"' :  c = '"';  break;
+			case '\\' : c = '\\'; break;
+			case '/' :  c = '/';  break;
+			case 'b' :  c = '\b'; break;
+			case 'f' :  c = '\f'; break;
+			case 'n' :  c = '\n'; break;
+			case 'r' :  c = '\r'; break;
+			case 't' :  c = '\t'; break;
+			case 'u' : {
+				/* Unicode escape \uXXXX */
+				if (i + 4 >= len) {
+					return -1; /* invalid unicode escape */
+				}
+				uint16_t cp = hex_to_uint16(src + i + 1);
+				if (cp == 0xFFFF) {
+					return -1; /* invalid hex */
+				}
+
+				char utf8[4];
+				int utf8_len = utf8_encode(cp, utf8);
+
+				/* Check if we have enough space */
+				if (j + (size_t)utf8_len >= dst_size) {
+					return -1; /* buffer overflow */
+				}
+
+				memcpy(dst + j, utf8, utf8_len);
+				j += utf8_len;
+				i += 4;
+				goto next_char;
+			}
+			default :
+				/* Unknown escape - treat as literal backslash + char */
+				c = '\\';
+				if (j + 1 >= dst_size) return -1;
+				dst[j++] = c;
+				c = src[i];
+				break;
+			}
+
+			if (j + 1 >= dst_size) {
+				return -1; /* buffer too small */
+			}
+			dst[j++] = c;
+			i++;
+		} else {
+			/* Normal character */
+			if (j + 1 >= dst_size) {
+				return -1;
+			}
+			dst[j++] = src[i++];
+		}
+next_char:      ;
+	}
+
+	dst[j] = '\0';
+
+	return 0;
+}
+
+/****************************************************************************/
 /* string */
 
 #ifndef HAVE_STRLCPY

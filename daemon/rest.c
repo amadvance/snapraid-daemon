@@ -164,8 +164,8 @@ static int json_string(const char* js, jsmntok_t* jv, char* out, size_t out_size
 		|| len + 1 > out_size)
 		return -1;
 
-	memcpy(out, &js[jv[0].start], len);
-	out[len] = 0;
+	if (json_unescape(&js[jv[0].start], len, out, out_size) != 0)
+		return -1;
 
 	return 0;
 }
