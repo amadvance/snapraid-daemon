@@ -29,6 +29,7 @@ Group=root
 NoNewPrivileges=yes
 ProtectSystem=full
 ProtectHome=read-only
+ReadWritePaths=@sysconfdir@/snapraidd.conf
 
 [Install]
 # Start automatically when the system reaches the standard multi-user state
