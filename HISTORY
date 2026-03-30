@@ -1,38 +1,13 @@
 SnapRAID-Daemon HISTORY
 =======================
 
-0.1beta3h 22/03/2026
-====================
- * Updated SnapRAID CLI v14.0rc3h
-
-0.1beta3f 22/03/2026
-====================
- * Updated SnapRAID CLI v14.0rc3f
-
-0.1beta3g 22/03/2026
-====================
- * Updated SnapRAID CLI v14.0rc3g
-
-0.1beta3e 22/03/2026
-====================
- * Updated SnapRAID CLI v14.0rc3e
-
-0.1beta3d 22/03/2026
-====================
- * Restored auto deletion of idempodent probe tasks
- * Avoid to print failure property on NVMe only systems
+0.1 2026/03
+===========
  * Automatically remove devices not present anymore
-
-0.1beta3c 16/03/2026
-====================
  * Make devices association persistent using unique identifiers
 
-0.1beta3b 15/03/2026
-===================
- * Fix "Touch Zero Subseconds" option making Maintenance to fail.
-
-0.1beta3 15/03/2026
-===================
+0.1beta3 2026/03
+================
  * Added monitoring for disks not part of the array. These are defined in
    the SnapRAID configuration (snapraid.conf) using the 'extra' keyword and
    are monitored identically to array disks for health and status.
@@ -61,12 +36,8 @@ SnapRAID-Daemon HISTORY
    meaning. This ensures the option provides better safety when enabled,
    consistent with 'sync_prehash'.
 
-0.1beta2b 09/03/2026
-====================
- * Fixed handling of net_web_root in Linux when no directory is specified.
-
-0.1beta2 08/03/2026
-===================
+0.1beta2 2026/03
+================
  * Added Windows support with an .exe installer. The installer also contains
    the latest version of SnapRAID required to run the daemon. If you already
    have SnapRAID installed, simply select your existing installation
@@ -103,6 +74,6 @@ SnapRAID-Daemon HISTORY
    that are hidden from the REST API for security and stability.
  * Added a Light Theme with a dedicated toggle in the navigation bar.
 
-0.1beta1 01/03/2026
-===================
+0.1beta1 2026/03
+================
  * First public test release of SnapRAID-Daemon.
