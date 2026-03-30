@@ -426,7 +426,7 @@ int config_reload_locked(struct snapraid_state* state)
  * Checks if a line matches a specific configuration key.
  * Handles: "  key =", " # key =", "key=", etc.
  */
-static int line_matches_key(const char* line, const char* key)
+static int line_matches_key(const char* line, const char* key, int allow_comment)
 {
 	size_t key_len;
 	const char* p = line;
@@ -435,8 +435,10 @@ static int line_matches_key(const char* line, const char* key)
 	while (isspace((unsigned char)*p))
 		++p;
 
-	// if it's a comment, skip the '#' and any following space
+	/* if it's a comment, skip the '#' and any following space */
 	if (*p == '#') {
+		if (!allow_comment)
+			return 0;
 		++p;
 		while (isspace((unsigned char)*p))
 			++p;
@@ -463,11 +465,28 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	tommy_node* i;
 	struct snapraid_config_line* line;
 
+	/* first try searching the effective option */
 	line = 0;
 	i = tommy_list_head(&config->line_list);
 	while (i) {
 		line = i->data;
-		if (line_matches_key(line->text, key)) {
+		if (line_matches_key(line->text, key, 0)) {
+			/* create the new formatted line */
+			if (*value == 0)
+				snprintf(line->text, sizeof(line->text), "#%s =\n", key);
+			else
+				snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
+			return;
+		}
+		i = i->next;
+	}
+
+	/* then retry accepting also commented options */
+	line = 0;
+	i = tommy_list_head(&config->line_list);
+	while (i) {
+		line = i->data;
+		if (line_matches_key(line->text, key, 1)) {
 			/* create the new formatted line */
 			if (*value == 0)
 				snprintf(line->text, sizeof(line->text), "#%s =\n", key);
