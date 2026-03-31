@@ -1,6 +1,10 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.3 2026/03
+===========
+ * Updated NSIS package for Windows with SnapRAID 14.1
+
 1.2 2026/03
 ===========
  * More quoting fixes for configuration options.
