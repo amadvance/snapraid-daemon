@@ -661,7 +661,7 @@ static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 /****************************************************************************/
 /* report */
 
-static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
+static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -778,11 +778,9 @@ static int report_wide_locked(struct snapraid_state* state, ss_t* ss,
 
 	/* footer */
 	print_separator(ss);
-
-	return 0;
 }
 
-int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
+void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -861,12 +859,9 @@ int report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 			ss_prints(ss, "\n");
 		}
 	}
-
-
-	return 0;
 }
 
-int report_locked(struct snapraid_state* state, ss_t* ss,
+void report_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -889,8 +884,8 @@ int report_locked(struct snapraid_state* state, ss_t* ss,
 		is_mail = 0;
 
 	if (is_mail)
-		return report_wide_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_wide_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
 	else
-		return report_narrow_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_narrow_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
 }
 

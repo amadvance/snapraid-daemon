@@ -144,11 +144,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->global.diff_prev;
 
-	if (report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat) != 0) {
-		ss_done(&ss);
-		log_msg(LVL_ERROR, "failed to generate report");
-		return -1;
-	}
+	report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat);
 
 	/* propagate the array health to the report task */
 	/* do not call health_task() as the report cannot fail */
