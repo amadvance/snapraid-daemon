@@ -272,24 +272,24 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 
 	bytes_read = pread(fd, shebang, sizeof(shebang) - 1, 0); /* reserve space for the terminating 0 */
 	if (bytes_read < 0) {
-		log_msg(LVL_ERROR, "failed to read script shebang, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to read script shebang, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
 		return -1;
 	}
 	if (bytes_read < 4) {
-		log_msg(LVL_ERROR, "script %s is too small or missing a shebang", script_path);
+		log_task(LVL_ERROR, "script %s is too small or missing a shebang", script_path);
 		return -1;
 	}
 	shebang[bytes_read] = 0;
 
 	/* check for shebang */
 	if (shebang[0] != '#' || shebang[1] != '!') {
-		log_msg(LVL_ERROR, "script %s is missing shebang (#!)", script_path);
+		log_task(LVL_ERROR, "script %s is missing shebang (#!)", script_path);
 		return -1;
 	}
 
 	char* end_of_line = strchr(shebang, '\n');
 	if (!end_of_line || end_of_line - shebang > 128) {
-		log_msg(LVL_ERROR, "script %s has invalid or overlong shebang (#!), exceeds 126 characters", script_path);
+		log_task(LVL_ERROR, "script %s has invalid or overlong shebang (#!), exceeds 126 characters", script_path);
 		return -1;
 	}
 	*end_of_line = 0;
@@ -300,7 +300,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 		++interpreter;
 
 	if (*interpreter == 0) {
-		log_msg(LVL_ERROR, "script %s has empty shebang", script_path);
+		log_task(LVL_ERROR, "script %s has empty shebang", script_path);
 		return -1;
 	}
 
@@ -321,49 +321,49 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 	}
 
 	if (!found) {
-		log_msg(LVL_ERROR, "script %s uses disallowed interpreter %s", script_path, interpreter);
+		log_task(LVL_ERROR, "script %s uses disallowed interpreter %s", script_path, interpreter);
 		return -1;
 	}
 
 	/* verify interpreter exists and is safe */
 	if (stat(interpreter, &st) != 0) {
-		log_msg(LVL_ERROR, "interpreter %s does not exist, errno=%s(%d)", interpreter, strerror(errno), errno);
+		log_task(LVL_ERROR, "interpreter %s does not exist, errno=%s(%d)", interpreter, strerror(errno), errno);
 		return -1;
 	}
 
 	/* interpreter must be a regular file */
 	if (!S_ISREG(st.st_mode)) {
-		log_msg(LVL_ERROR, "interpreter %s must be a regular file", interpreter);
+		log_task(LVL_ERROR, "interpreter %s must be a regular file", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be owned by root */
 	if (st.st_uid != 0) {
-		log_msg(LVL_ERROR, "interpreter %s not owned by root", interpreter);
+		log_task(LVL_ERROR, "interpreter %s not owned by root", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_msg(LVL_ERROR, "interpreter %s is world-writable", interpreter);
+		log_task(LVL_ERROR, "interpreter %s is world-writable", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not group-writable (unless group is root) */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != 0) {
-		log_msg(LVL_ERROR, "interpreter %s is group-writable by non-root group", interpreter);
+		log_task(LVL_ERROR, "interpreter %s is group-writable by non-root group", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be executable */
 	if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-		log_msg(LVL_ERROR, "interpreter %s is not executable", interpreter);
+		log_task(LVL_ERROR, "interpreter %s is not executable", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
-		log_msg(LVL_ERROR, "file %s has setuid/setgid bits set", interpreter);
+		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", interpreter);
 		return -1;
 	}
 
@@ -395,13 +395,13 @@ int os_script(char** argv, const char* run_as_user)
 
 	/* verify script path is absolute */
 	if (script_path[0] != '/') {
-		log_msg(LVL_ERROR, "script path %s must be absolute", script_path);
+		log_task(LVL_ERROR, "script path %s must be absolute", script_path);
 		return -1;
 	}
 
 	/* resolve the script path to prevent symlink attacks */
 	if (!realpath(script_path, resolved_path)) {
-		log_msg(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
 		return -1;
 	}
 
@@ -414,19 +414,19 @@ int os_script(char** argv, const char* run_as_user)
 		if (stat(dir_path, &st) == 0) {
 			/* script directory must be owned by root or the daemon's real user */
 			if (st.st_uid != daemon_uid && st.st_uid != daemon_euid && st.st_uid != 0) {
-				log_msg(LVL_ERROR, "script directory %s owner must match the daemon owner or be root", dir_path);
+				log_task(LVL_ERROR, "script directory %s owner must match the daemon owner or be root", dir_path);
 				return -1;
 			}
 
 			/* script directory must be not group-writable unless group matches daemon */
 			if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-				log_msg(LVL_ERROR, "script directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
+				log_task(LVL_ERROR, "script directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
 				return -1;
 			}
 
 			/* script directory must be not world-writable */
 			if (st.st_mode & S_IWOTH) {
-				log_msg(LVL_ERROR, "script directory %s must be not world-writable", dir_path);
+				log_task(LVL_ERROR, "script directory %s must be not world-writable", dir_path);
 				return -1;
 			}
 		}
@@ -442,62 +442,62 @@ int os_script(char** argv, const char* run_as_user)
 #endif
 	);
 	if (fd < 0) {
-		log_msg(LVL_ERROR, "failed to open script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to open script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		return -1;
 	}
 
 	/* get the file handle (TOCTOU Protection) */
 	if (fstat(fd, &st) == -1) {
-		log_msg(LVL_ERROR, "failed to stat script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to stat script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(fd);
 		return -1;
 	}
 
 	/* ensure it's a regular file */
 	if (!S_ISREG(st.st_mode)) {
-		log_msg(LVL_ERROR, "script %s is not a regular file", resolved_path);
+		log_task(LVL_ERROR, "script %s is not a regular file", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* ensure it has execute permissions */
 	if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-		log_msg(LVL_ERROR, "script %s is not an executable", resolved_path);
+		log_task(LVL_ERROR, "script %s is not an executable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* script must be owned by root or the daemon's real user */
 	if (st.st_uid != daemon_uid && st.st_uid != daemon_euid && st.st_uid != 0) {
-		log_msg(LVL_ERROR, "script %s owner must match the daemon owner or be root", resolved_path);
+		log_task(LVL_ERROR, "script %s owner must match the daemon owner or be root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* script must be not group-writable unless group matches daemon */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-		log_msg(LVL_ERROR, "script %s must be not group-writable unless group matches daemon owner or root", resolved_path);
+		log_task(LVL_ERROR, "script %s must be not group-writable unless group matches daemon owner or root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* script must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_msg(LVL_ERROR, "script %s must be not world-writable", resolved_path);
+		log_task(LVL_ERROR, "script %s must be not world-writable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* script must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
-		log_msg(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
+		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* verify the file has not been hardlinked multiple times */
 	if (st.st_nlink > 1) {
-		log_msg(LVL_ERROR, "script %s has multiple hard links", resolved_path);
+		log_task(LVL_ERROR, "script %s has multiple hard links", resolved_path);
 		close(fd);
 		return -1;
 	}
@@ -511,7 +511,7 @@ int os_script(char** argv, const char* run_as_user)
 
 	pid = fork();
 	if (pid < 0) {
-		log_msg(LVL_ERROR, "failed to fork script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to fork script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(fd);
 		return -1;
 	}
@@ -602,34 +602,34 @@ int os_script(char** argv, const char* run_as_user)
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_msg(LVL_ERROR, "failed to wait for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to wait for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		return -1;
 	}
 
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_msg(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
+		log_task(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
+			log_task(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
 		else
-			log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
+			log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
-			log_msg(LVL_WARNING, "script %s timeout after %" PRId64 " seconds", resolved_path, execution_time);
+			log_task(LVL_WARNING, "script %s timeout after %" PRId64 " seconds", resolved_path, execution_time);
 		} else {
-			log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
+			log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
+		log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
 		return -1;
 	}
 }
@@ -645,7 +645,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	/* create pipe only if we have text to send */
 	if (stdin_text != NULL) {
 		if (pipe(pipe_fds) < 0) {
-			log_msg(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
+			log_task(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
 			return -1;
 		}
 	}
@@ -654,7 +654,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 
 	pid = fork();
 	if (pid < 0) {
-		log_msg(LVL_ERROR, "failed to fork command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to fork command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		if (pipe_fds[0] != -1) {
 			close(pipe_fds[0]);
 			close(pipe_fds[1]);
@@ -750,7 +750,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		/* write text to child's stdin */
 		ssize_t len = strlen(stdin_text);
 		if (write(pipe_fds[1], stdin_text, len) != len) {
-			log_msg(LVL_WARNING, "failed to write full stdin to command %s", command);
+			log_task(LVL_WARNING, "failed to write full stdin to command %s", command);
 		}
 		/* closing the pipe sends EOF to the child (e.g., tells curl data is done) */
 		close(pipe_fds[1]);
@@ -761,34 +761,34 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_msg(LVL_ERROR, "failed to wait for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to wait for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		return -1;
 	}
 
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_msg(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
+		log_task(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
+			log_task(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
 		else
-			log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
+			log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
-			log_msg(LVL_WARNING, "command %s timeout after %" PRId64 " seconds", command, execution_time);
+			log_task(LVL_WARNING, "command %s timeout after %" PRId64 " seconds", command, execution_time);
 		} else {
-			log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
+			log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
+		log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
 		return -1;
 	}
 }
@@ -876,7 +876,7 @@ pid_t os_spawn(char** argv, int* stderr_fd)
 
 	/* set the pipe buffer to the minimum to improve responsiveness */
 	if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
-		log_msg(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
 		/* log non-fatal error or ignore */
 	}
 

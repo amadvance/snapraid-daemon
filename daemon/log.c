@@ -18,6 +18,7 @@
 #include "portable.h"
 
 #include "state.h"
+#include "elem.h"
 #include "log.h"
 
 /****************************************************************************/
@@ -81,6 +82,8 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 }
 #endif
 
+#define LOG_MAX 1024
+
 void log_msg(int level, const char* fmt, ...)
 {
 	int syslog;
@@ -93,6 +96,7 @@ void log_msg(int level, const char* fmt, ...)
 	syslog = state->log.syslog && level <= state->log.syslog_level;
 	termlog = state->log.foreground;
 	verboselog = state->log.verbose;
+
 	log_unlock();
 
 	if (level == LVL_DEBUG && !verboselog)
@@ -101,6 +105,76 @@ void log_msg(int level, const char* fmt, ...)
 	va_start(ap, fmt);
 	log_out(level, syslog, termlog, fmt, ap);
 	va_end(ap);
+}
+
+void log_task(int level, const char* fmt, ...)
+{
+	int syslog;
+	int termlog;
+	int verboselog;
+	va_list ap;
+
+	log_lock();
+	struct snapraid_state* state = state_ptr();
+	syslog = state->log.syslog && level <= state->log.syslog_level;
+	termlog = state->log.foreground;
+	verboselog = state->log.verbose;
+
+	/* output also in the task log */
+	if (level < LVL_INFO) {
+		va_list ap2;
+		char buf[LOG_MAX];
+
+		strcpy(buf, "syslog: ");
+		size_t len = strlen(buf);
+
+		va_start(ap2, fmt);
+		vsnprintf(buf + len, sizeof(buf) - len, fmt, ap2);
+		va_end(ap2);
+
+		message_insert(&state->log.task_list, level, MESSAGE_TYPE_SOFTWARE, buf);
+	}
+
+	log_unlock();
+
+	if (level == LVL_DEBUG && !verboselog)
+		return;
+
+	va_start(ap, fmt);
+	log_out(level, syslog, termlog, fmt, ap);
+	va_end(ap);
+}
+
+void log_task_reset(void)
+{
+	log_lock();
+
+	struct snapraid_state* state = state_ptr();
+	tommy_list_foreach(&state->log.task_list, message_free);
+	tommy_list_init(&state->log.task_list);
+
+	log_unlock();
+}
+
+void log_task_push(tommy_list* message_list)
+{
+	log_lock();
+
+	struct snapraid_state* state = state_ptr();
+
+	tommy_node* i = tommy_list_head(&state->log.task_list);
+	while (i != 0) {
+		tommy_node* i_next = i->next;
+		struct snapraid_message* message = i->data;
+
+		tommy_list_insert_tail(message_list, &message->node, message);
+
+		i = i_next;
+	}
+
+	tommy_list_init(&state->log.task_list);
+
+	log_unlock();
 }
 
 void log_done(void)

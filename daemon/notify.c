@@ -197,7 +197,7 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	ss_init(&ss, strlen(report_text) + 128);
 
 	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
-		log_msg(LVL_ERROR, "command string overflow, notification not sent");
+		log_task(LVL_ERROR, "command string overflow, notification not sent");
 		goto bail;
 	}
 
@@ -221,11 +221,11 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	int ret = os_command(cmd, run_as_user, ss_extract(&ss));
 	if (ret != 0) {
 		report_level = level_mix(report_level, LVL_ERROR); /* mix the levels, if it's CRITICAL, log as CRITICAL */
-		log_msg(report_level, "failed to send %s report", config_level_str(report_level));
+		log_task(report_level, "failed to send %s report", config_level_str(report_level));
 		goto bail;
 	}
 
-	log_msg(LVL_INFO, "sent %s report", config_level_str(report_level));
+	log_task(LVL_INFO, "sent %s report", config_level_str(report_level));
 
 	ss_done(&ss);
 	state_lock();
@@ -253,11 +253,11 @@ static int heartbeat_locked(struct snapraid_state* state)
 
 	int ret = os_command(cmd, run_as_user, 0);
 	if (ret != 0) {
-		log_msg(LVL_ERROR, "failed to hearbeat");
+		log_task(LVL_ERROR, "failed to hearbeat");
 		goto bail;
 	}
 
-	log_msg(LVL_INFO, "sent hearbeat");
+	log_task(LVL_INFO, "sent hearbeat");
 
 	state_lock();
 	return 0;

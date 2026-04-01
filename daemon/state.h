@@ -534,6 +534,7 @@ struct snapraid_log {
 	int verbose; /**< Verbose output */
 	int syslog; /**< 1 if syslog is enabled, 0 otherwise */
 	int syslog_level; /**< Minimum level for syslog messages */
+	tommy_list task_list; /**< List of snapraid_message */
 };
 
 struct snapraid_web {

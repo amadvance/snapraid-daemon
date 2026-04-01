@@ -1300,14 +1300,14 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	/* create a pipe for the child process's STDERR */
 	if (!CreatePipe(&stderr_read_handle, &stderr_write_handle, &sa, 0)) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
 	/* ensure the reading handle to the pipe is not inherited */
 	if (!SetHandleInformation(stderr_read_handle, HANDLE_FLAG_INHERIT, 0)) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
 		CloseHandle(stderr_read_handle);
 		return -1;
@@ -1319,7 +1319,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	for (int i = 0; argv[i]; ++i) {
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
-			log_msg(LVL_ERROR, "command to long for spawn");
+			log_task(LVL_ERROR, "command to long for spawn");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1352,7 +1352,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	);
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to create process for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
 		CloseHandle(stderr_read_handle);
 		return -1;
@@ -1367,7 +1367,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	int f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
 	if (f == -1) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_read_handle);
 		return -1;
 	}
@@ -1438,14 +1438,14 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	/* create pipe for child's STDIN */
 	if (!CreatePipe(&stdin_read_handle, &stdin_write_handle, &sa, 0)) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
 	/* ensure the parent's write end is NOT inherited */
 	if (!SetHandleInformation(stdin_write_handle, HANDLE_FLAG_INHERIT, 0)) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stdin_read_handle);
 		CloseHandle(stdin_write_handle);
 		return -1;
@@ -1491,7 +1491,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		 * Service Account before attempting logon.
 		 */
 		if (_stricmp(run_as_user, "LocalService") != 0 && _stricmp(run_as_user, "NetworkService") != 0) {
-			log_msg(LVL_ERROR, "only supported users are LocalService and NetworkService");
+			log_task(LVL_ERROR, "only supported users are LocalService and NetworkService");
 			CloseHandle(stdin_read_handle);
 			CloseHandle(stdin_write_handle);
 			return -1;
@@ -1499,7 +1499,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 
 		if (!LogonUserW(u8tou16(conv, run_as_user), L"NT AUTHORITY", NULL, LOGON32_LOGON_SERVICE, LOGON32_PROVIDER_DEFAULT, &h_token)) {
 			windows_errno(GetLastError());
-			log_msg(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			log_task(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
 			CloseHandle(stdin_read_handle);
 			CloseHandle(stdin_write_handle);
 			return -1;
@@ -1528,7 +1528,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	}
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stdin_read_handle);
 		CloseHandle(stdin_write_handle);
 		return -1;
@@ -1558,23 +1558,23 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_msg(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
+		log_task(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
+			log_task(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
 		else
-			log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
+			log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
-		log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
+		log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
 		return 128 + sig;
 	} else {
 		/* in Windows it can happen */
-		log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", command, execution_time, (unsigned)status);
+		log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", command, execution_time, (unsigned)status);
 		return -1;
 	}
 }
@@ -1592,7 +1592,7 @@ int os_script(char** argv, const char* run_as_user)
 
 	/* resolve the script path to prevent symlink attacks */
 	if (!realpath(script_path, resolved_path)) {
-		log_msg(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
 		return -1;
 	}
 
@@ -1613,19 +1613,19 @@ int os_script(char** argv, const char* run_as_user)
 	pos = fixcat(cmd_buffer, COMMAND_LINE_MAX, pos, L"cmd.exe /c \" ");
 	pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, resolved_path));
 	if (pos < 0) {
-		log_msg(LVL_ERROR, "command to long for script");
+		log_task(LVL_ERROR, "command to long for script");
 		exit(EXIT_FAILURE);
 	}
 	for (int i = 1; argv[i]; ++i) {
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
-			log_msg(LVL_ERROR, "command to long for script");
+			log_task(LVL_ERROR, "command to long for script");
 			exit(EXIT_FAILURE);
 		}
 	}
 	pos = fixcat(cmd_buffer, COMMAND_LINE_MAX, pos, L" \"");
 	if (pos < 0) {
-		log_msg(LVL_ERROR, "command to long for script");
+		log_task(LVL_ERROR, "command to long for script");
 		exit(EXIT_FAILURE);
 	}
 	cmd_buffer[pos] = 0;
@@ -1662,13 +1662,13 @@ int os_script(char** argv, const char* run_as_user)
 		 * Service Account before attempting logon.
 		 */
 		if (_stricmp(run_as_user, "LocalService") != 0 && _stricmp(run_as_user, "NetworkService") != 0) {
-			log_msg(LVL_ERROR, "only supported users are LocalService and NetworkService");
+			log_task(LVL_ERROR, "only supported users are LocalService and NetworkService");
 			return -1;
 		}
 
 		if (!LogonUserW(u8tou16(conv, run_as_user), L"NT AUTHORITY", NULL, LOGON32_LOGON_SERVICE, LOGON32_PROVIDER_DEFAULT, &h_token)) {
 			windows_errno(GetLastError());
-			log_msg(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			log_task(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
 			return -1;
 		}
 
@@ -1695,7 +1695,7 @@ int os_script(char** argv, const char* run_as_user)
 	}
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_msg(LVL_ERROR, "failed to create process for script, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process for script, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
 
@@ -1710,23 +1710,23 @@ int os_script(char** argv, const char* run_as_user)
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_msg(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
+		log_task(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
+			log_task(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
 		else
-			log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
+			log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
-		log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
+		log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
 		return 128 + sig;
 	} else {
 		/* in Windows it can happen */
-		log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", resolved_path, execution_time, (unsigned)status);
+		log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", resolved_path, execution_time, (unsigned)status);
 		return -1;
 	}
 }

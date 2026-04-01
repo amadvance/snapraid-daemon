@@ -167,10 +167,13 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (latest_not_canceled_task != 0)
 		state->runner.latest = latest_not_canceled_task;
 
+	log_task_reset();
+
 	/* notify the report */
 	if (notify_locked(state, report_high_cmd, report_level, ss_extract(&ss)) != 0) {
 		char exit_msg[MSG_MAX];
 		report_task->exit_code = -1;
+		log_task_push(&report_task->message_list);
 		snprintf(exit_msg, sizeof(exit_msg), "Notification failed (check " SYSLOG " for details)");
 		message_insert(&report_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_msg);
 	}
@@ -300,6 +303,8 @@ static void runner_go(struct snapraid_state* state)
 		next_need_script = runner_need_script(waiting->cmd);
 	}
 
+	log_task_reset();
+
 	state_unlock();
 
 	int f = -1;
@@ -308,7 +313,7 @@ static void runner_go(struct snapraid_state* state)
 	if (log_path[0] != 0) {
 		log_f = fopen(log_path, "w" FOPEN_TEXT FOPEN_CLOEXEC);
 		if (log_f == 0) {
-			log_msg(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+			log_task(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
 	}
 
@@ -328,7 +333,7 @@ static void runner_go(struct snapraid_state* state)
 		char* hook_argv[3];
 		char hook_event[KEYWORD_MAX];
 		int script_ret;
-		log_msg(LVL_INFO, "task %d run %s", number, hook_script);
+		log_task(LVL_INFO, "task %d run %s", number, hook_script);
 		if (log_f != 0)
 			fprintf(log_f, "daemon:pre:%s\n", hook_script);
 		sncpy(hook_event, sizeof(hook_event), "task-begin");
@@ -337,25 +342,25 @@ static void runner_go(struct snapraid_state* state)
 		hook_argv[2] = 0;
 		script_ret = os_script(hook_argv, hook_run_as_user);
 		if (script_ret < 0) {
-			log_msg(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, hook_script, strerror(errno), errno);
+			log_task(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_fail\n");
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script failed to start (check " SYSLOG " for details), errno=%s(%d)", strerror(errno), errno);
 			pid_ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
-			log_msg(LVL_INFO, "task %d end %s", number, hook_script);
+			log_task(LVL_INFO, "task %d end %s", number, hook_script);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_term:0\n");
 		} else if (script_ret < 128) {
-			log_msg(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
+			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_term:%d\n", script_ret);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script terminated with exit code %d", script_ret);
 			pid_ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
@@ -369,15 +374,15 @@ static void runner_go(struct snapraid_state* state)
 	int success = 0;
 	pid = os_spawn(argv, &f);
 	if (pid < 0) {
-		log_msg(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
+		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 		pid_ret = -1;
 		/* continue to run the hook_script */
 	} else {
 		if (log_f != 0)
-			log_msg(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), (uint64_t)pid, log_path);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), (uint64_t)pid, log_path);
 		else
-			log_msg(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
 
 		/* store the pid to allow stop actions */
 		state_lock();
@@ -390,22 +395,22 @@ static void runner_go(struct snapraid_state* state)
 		pid_ret = os_wait(pid, &status);
 
 		if (pid_ret == -1) {
-			log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
+			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:fail\n");
 		} else {
 			if (WIFEXITED(status)) {
 				if (WEXITSTATUS(status) == 0) {
-					log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
 					success = 1;
 				} else {
-					log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, WEXITSTATUS(status));
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, WEXITSTATUS(status));
 				}
 				if (log_f != 0)
 					fprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
 			} else if (WIFSIGNALED(status)) {
-				log_msg(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, signal_name(WTERMSIG(status)), WTERMSIG(status));
+				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
 					fprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
@@ -432,7 +437,7 @@ static void runner_go(struct snapraid_state* state)
 		char* hook_argv[3];
 		char hook_event[KEYWORD_MAX];
 		int script_ret;
-		log_msg(LVL_INFO, "task %d run %s", number, hook_script);
+		log_task(LVL_INFO, "task %d run %s", number, hook_script);
 		if (log_f != 0)
 			fprintf(log_f, "daemon:post:%s\n", hook_script);
 		if (success)
@@ -444,25 +449,25 @@ static void runner_go(struct snapraid_state* state)
 		hook_argv[2] = 0;
 		script_ret = os_script(hook_argv, hook_run_as_user);
 		if (script_ret < 0) {
-			log_msg(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
+			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_fail\n");
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script failed to start, errno=%s(%d)", strerror(errno), errno);
 			pid_ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
-			log_msg(LVL_INFO, "task %d end %s", number, hook_script);
+			log_task(LVL_INFO, "task %d end %s", number, hook_script);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_term:0\n");
 		} else if (script_ret < 128) {
-			log_msg(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
+			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_term:%d\n", script_ret);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script terminated with exit code %d", script_ret);
 			pid_ret = -1;
 			goto bail;
 		} else {
-			log_msg(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
@@ -485,7 +490,7 @@ bail:
 	if (log_f != 0) {
 		fprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
 		if (fclose(log_f) != 0) {
-			log_msg(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+			log_task(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
 	}
 
@@ -497,6 +502,8 @@ bail:
 	free(argv);
 
 	state_lock();
+
+	log_task_push(&task->message_list);
 
 	/* the task is not running anymore */
 	task->running = 0;
@@ -522,7 +529,7 @@ bail:
 			/* delete its log file */
 			if (omit->log_file[0]) {
 				if (remove(omit->log_file) != 0) {
-					log_msg(LVL_WARNING, "failed to close remove log file %s, errno=%s(%d)", omit->log_file, strerror(errno), errno);
+					log_msg(LVL_WARNING, "failed to remove log file %s, errno=%s(%d)", omit->log_file, strerror(errno), errno);
 				}
 			}
 			/* remove from the list */

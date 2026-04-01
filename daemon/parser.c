@@ -152,7 +152,7 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 			if (parser_device_has_id(device, id)) {
 				if (strcmp(device->file, file) != 0) {
 					if (state->daemon_running != DAEMON_LOADING)
-						log_msg(LVL_INFO, "remapping device with id %s to %s (was %s)", id, file, device->file);
+						log_task(LVL_WARNING, "remapping device with id %s to %s (was %s)", id, file, device->file);
 					pulse(state, PULSE_DISKS);
 					sncpy(device->file, sizeof(device->file), file);
 				}
@@ -358,7 +358,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, int num
 
 	struct snapraid_disk* disk = find_disk(&state->disk_list, number, name, DISK_UNDEFINED);
 	if (!disk) {
-		log_msg(LVL_WARNING, "unknown disk %s", name);
+		log_task(LVL_WARNING, "unknown disk %s", name);
 		return 0;
 	}
 
@@ -381,7 +381,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, name, DISK_UNDEFINED);
 	if (!disk) {
-		log_msg(LVL_WARNING, "unknown disk %s", name);
+		log_task(LVL_WARNING, "unknown disk %s", name);
 		return;
 	}
 
@@ -1598,7 +1598,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 						if (is_old_snapraid) {
 							/* don't log error in syslog if it's a past log */
 							if (log_f != 0)
-								log_msg(LVL_ERROR, "requires SnapRAID 14.0 or newer");
+								log_task(LVL_ERROR, "requires SnapRAID 14.0 or newer");
 							if (state->runner.latest)
 								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
 							disable = 1;
@@ -1610,7 +1610,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 					/* write dup to the log */
 					if (!ignore_this_line && log_f != 0) {
 						if (fwrite(dup, dup_len, 1, log_f) != 1) {
-							log_msg(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+							log_task(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 						}
 					}
 
@@ -1754,6 +1754,7 @@ int parse_past_log(struct snapraid_state* state)
 		struct snapraid_task* task = task_alloc();
 
 		state_lock();
+
 		task->number = ++state->runner.number_allocator;
 		state->runner.latest = task;
 		sncpy(task->log_file, sizeof(task->log_file), path);
@@ -1761,12 +1762,16 @@ int parse_past_log(struct snapraid_state* state)
 		/* start disk mapping */
 		parser_mapping_start(state);
 
+		log_task_reset();
+
 		state_unlock();
 
 		parse_log(state, f, 0, 0);
 		++count;
 
 		state_lock();
+
+		log_task_push(&task->message_list);
 
 		/* remove disks that were not referenced */
 		parser_mapping_done(state, task);

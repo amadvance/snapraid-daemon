@@ -42,6 +42,7 @@ void state_done(struct snapraid_state* state)
 {
 	assert(state == &STATE);
 
+	tommy_list_foreach(&state->log.task_list, message_free);
 	tommy_list_foreach(&state->runner.waiting_list, task_free);
 	if (state->runner.latest && state->runner.latest->running) /* if running it isn't in the lists */
 		task_free(state->runner.latest);
