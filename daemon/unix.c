@@ -612,21 +612,24 @@ int os_script(char** argv, const char* run_as_user)
 		log_msg(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
 
 	if (WIFEXITED(status)) {
-		/* child's exit(code) or return from main */
-		log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, WEXITSTATUS(status));
-		return WEXITSTATUS(status);
+		int exit_code = WEXITSTATUS(status);
+		if (exit_code == 0)
+			log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
+		else
+			log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
+		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "script %s timeout after %" PRId64 " seconds", resolved_path, execution_time);
 		} else {
-			log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
+			log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_msg(LVL_INFO, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
+		log_msg(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
 		return -1;
 	}
 }
@@ -768,21 +771,24 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		log_msg(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
 
 	if (WIFEXITED(status)) {
-		/* child's exit(code) or return from main */
-		log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, WEXITSTATUS(status));
-		return WEXITSTATUS(status);
+		int exit_code = WEXITSTATUS(status);
+		if (exit_code == 0)
+			log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
+		else
+			log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
+		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
 			log_msg(LVL_WARNING, "command %s timeout after %" PRId64 " seconds", command, execution_time);
 		} else {
-			log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
+			log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_msg(LVL_INFO, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
+		log_msg(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
 		return -1;
 	}
 }
