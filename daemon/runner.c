@@ -338,7 +338,7 @@ static void runner_go(struct snapraid_state* state)
 			log_msg(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:pre_fail\n");
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script failed to start, errno=%s(%d)", strerror(errno), errno);
+			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script failed to start (check " SYSLOG " for details), errno=%s(%d)", strerror(errno), errno);
 			pid_ret = -1;
 			goto bail;
 		} else if (script_ret == 0) {
@@ -368,7 +368,7 @@ static void runner_go(struct snapraid_state* state)
 	pid = os_spawn(argv, &f);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
-		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
+		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 		pid_ret = -1;
 		/* continue to run the hook_script */
 	} else {
@@ -442,7 +442,7 @@ static void runner_go(struct snapraid_state* state)
 		hook_argv[2] = 0;
 		script_ret = os_script(hook_argv, hook_run_as_user);
 		if (script_ret < 0) {
-			log_msg(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, hook_script, strerror(errno), errno);
+			log_msg(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
 				fprintf(log_f, "daemon:post_fail\n");
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script failed to start, errno=%s(%d)", strerror(errno), errno);

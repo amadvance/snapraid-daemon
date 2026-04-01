@@ -31,6 +31,8 @@
 #define O_BINARY 0 /**< Not used in Unix. */
 #define O_SEQUENTIAL 0 /**< In Unix posix_fadvise() shall be used. */
 
+#define SYSLOG "syslog"
+
 /****************************************************************************/
 /* thread */
 

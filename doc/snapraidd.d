@@ -524,10 +524,20 @@ Configuration
 	unrecognized events
 
 	SECURITY REQUIREMENTS:
-	* The path MUST be absolute (starting with /).
-	* The script file MUST NOT be world-writable (recommended: 700 or 755).
-	* The script owner MUST match the user running the daemon or be root.
-	* The script MUST contain a valid shebang (e.g., #!/bin/sh).
+	* The script path MUST be absolute (must start with /).
+	* The script AND the directory containing the script MUST be owned by
+		the daemon's real UID, effective UID, or root (UID 0).
+	* The script AND directory containing the script MUST NOT be
+		group-writable, unless its group matches the daemon's GID/EGID
+		or is root.
+	* The script AND directory containing the script MUST NOT be
+		world-writable (S_IWOTH).
+	* The script MUST have at least one execute bit set (S_IXUSR, S_IXGRP, or S_IXOTH).
+	* The script MUST NOT have the setuid or setgid bits set (S_ISUID or S_ISGID).
+	* The script MUST NOT have multiple hard links (st_nlink == 1 only).
+
+	If the execution fails, check your syslog (EventLog in Windows) to get
+	the exact reason.
 
 	This remains inactive if no path is defined.
 
