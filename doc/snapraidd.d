@@ -655,7 +655,12 @@ Configuration
 	It utilizes the --narrow flag to ensure the report is readable on mobile devices
 	and maps SnapRAID status to ntfy titles, priorities, and emojis via placeholders.
 
-	:notify_result = curl --narrow -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" -H "Email: your_email@example.com" --data-binary @- https://ntfy.sh/your_private_topic
+	:notify_result = curl --narrow -f --max-time 30 --retry 3 -H "Title: %s" -H "Priority: %n" -H "Tag: %t" --data-binary @- https://ntfy.sh/your_private_topic
+
+	If you want to also send an email, you can add '-H "Email: your_email@example.com"'
+	but you also need to authenticate by sending an authentication token. See:
+
+		+https://docs.ntfy.sh/publish/#authentication
 
     Local System Mail (mail)
 	A traditional approach using the standard Linux mail utility. This is

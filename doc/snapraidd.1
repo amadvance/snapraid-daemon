@@ -777,9 +777,19 @@ This uses curl to send the report as a POST request to a push notification servi
 It utilizes the \-\-narrow flag to ensure the report is readable on mobile devices
 and maps SnapRAID status to ntfy titles, priorities, and emojis via placeholders.
 .PP
-notify_result = curl \-\-narrow \-f \-\-max\-time 30 \-\-retry 3 \-H \[dq]Title: %s\[dq] \-H \[dq]Priority: %n\[dq] \-H \[dq]Tag: %t\[dq] \-H \[dq]Email: your_email@example.com\[dq] \-\-data\-binary @\- https://ntfy.sh/your_private_topic
+notify_result = curl \-\-narrow \-f \-\-max\-time 30 \-\-retry 3 \-H \[dq]Title: %s\[dq] \-H \[dq]Priority: %n\[dq] \-H \[dq]Tag: %t\[dq] \-\-data\-binary @\- https://ntfy.sh/your_private_topic
 .PD 0
 .PD
+.PP
+If you want to also send an email, you can add \'\-H \[dq]Email: your_email@example.com\[dq]\'
+but you also need to authenticate by sending an authentication token. See:
+.PP
+.RS 4
+https://docs.ntfy.sh/publish/#authentication
+.PD 0
+.PP
+.PD
+.RE
 .SS Local System Mail (mail) 
 A traditional approach using the standard Linux mail utility. This is
 ideal if you have a local Mail Transfer Agent (MTA) like Postfix or
