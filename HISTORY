@@ -1,6 +1,14 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.4 2026/04
+===========
+ * Propagates errors logged to syslog (or EventLog on Windows) to the task log
+   displayed in the UI. This makes troubleshooting script execution problems
+   much easier.
+ * Updated the documentation with the new authentication requirements for
+   ntfy.sh.
+
 1.3 2026/03
 ===========
  * Updated NSIS package for Windows with SnapRAID 14.1
