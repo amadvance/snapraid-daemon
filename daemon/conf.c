@@ -463,38 +463,37 @@ static int line_matches_key(const char* line, const char* key, int allow_comment
 static void config_set(struct snapraid_config* config, const char* key, const char* value)
 {
 	tommy_node* i;
-	struct snapraid_config_line* line;
+	struct snapraid_config_line* found = 0;
 
 	/* first try searching the effective option */
-	line = 0;
 	i = tommy_list_head(&config->line_list);
 	while (i) {
-		line = i->data;
+		struct snapraid_config_line* line = i->data;
 		if (line_matches_key(line->text, key, 0)) {
-			/* create the new formatted line */
-			if (*value == 0)
-				snprintf(line->text, sizeof(line->text), "#%s =\n", key);
-			else
-				snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
-			return;
+			found = line; /* if multiple options are found, change the latest */
 		}
 		i = i->next;
 	}
 
-	/* then retry accepting also commented options */
-	line = 0;
-	i = tommy_list_head(&config->line_list);
-	while (i) {
-		line = i->data;
-		if (line_matches_key(line->text, key, 1)) {
-			/* create the new formatted line */
-			if (*value == 0)
-				snprintf(line->text, sizeof(line->text), "#%s =\n", key);
-			else
-				snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
-			return;
+	if (!found) {
+		/* retry accepting also commented options */
+		i = tommy_list_head(&config->line_list);
+		while (i) {
+			struct snapraid_config_line* line = i->data;
+			if (line_matches_key(line->text, key, 1)) {
+				found = line; /* if multiple options are found, change the latest */
+			}
+			i = i->next;
 		}
-		i = i->next;
+	}
+
+	/* create the new formatted line */
+	if (found) {
+		if (*value == 0)
+			snprintf(found->text, sizeof(found->text), "#%s =\n", key);
+		else
+			snprintf(found->text, sizeof(found->text), "%s = %s\n", key, value);
+		return;
 	}
 
 	/* do not clear if already missing */
@@ -502,7 +501,8 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 		return;
 	}
 
-	line = malloc_nofail(sizeof(struct snapraid_config_line));
+	/* create a new line at the end */
+	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
 	snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
 	tommy_list_insert_tail(&config->line_list, &line->node, line);
 }
