@@ -29,8 +29,9 @@
  * @param high_cmd High-level command ID
  * @param report_level Importance level of the report
  * @param report_text Textual content of the report
+ * @return 0 on success
  */
-void notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text);
+int notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text);
 
 #endif
 

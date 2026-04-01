@@ -127,7 +127,7 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 	return 0;
 }
 
-static void result_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
+static int result_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -221,18 +221,23 @@ static void result_locked(struct snapraid_state* state, int high_cmd, int report
 	int ret = os_command(cmd, run_as_user, ss_extract(&ss));
 	if (ret != 0) {
 		report_level = level_mix(report_level, LVL_ERROR); /* mix the levels, if it's CRITICAL, log as CRITICAL */
-		log_msg(report_level, "failed to send %s report (check " SYSLOG " for details)", config_level_str(report_level));
+		log_msg(report_level, "failed to send %s report", config_level_str(report_level));
 		goto bail;
 	}
 
 	log_msg(LVL_INFO, "sent %s report", config_level_str(report_level));
 
+	ss_done(&ss);
+	state_lock();
+	return 0;
+
 bail:
 	ss_done(&ss);
 	state_lock();
+	return -1;
 }
 
-static void heartbeat_locked(struct snapraid_state* state)
+static int heartbeat_locked(struct snapraid_state* state)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -248,30 +253,42 @@ static void heartbeat_locked(struct snapraid_state* state)
 
 	int ret = os_command(cmd, run_as_user, 0);
 	if (ret != 0) {
-		log_msg(LVL_ERROR, "failed to hearbeat (check " SYSLOG " for details)");
+		log_msg(LVL_ERROR, "failed to hearbeat");
 		goto bail;
 	}
 
 	log_msg(LVL_INFO, "sent hearbeat");
 
+	state_lock();
+	return 0;
+
 bail:
 	state_lock();
+	return -1;
 }
 
-void notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
+int notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
 {
+	int ret = 0;
+
 	if (!high_cmd)
 		high_cmd = CMD_REPORT;
 
 	/* result is notified on ALL reports */
 	if (state->config.notify_result[0] != 0
-		&& report_level <= state->config.notify_result_level)
-		result_locked(state, high_cmd, report_level, report_text);
+		&& report_level <= state->config.notify_result_level) {
+		if (result_locked(state, high_cmd, report_level, report_text) != 0)
+			ret = -1;
+	}
 
 	/* heartbeat is notified only on MAINTENANCE reports */
 	if (state->config.notify_heartbeat[0] != 0
 		&& high_cmd == CMD_MAINTENANCE
-		&& report_level >= LVL_INFO)
-		heartbeat_locked(state);
+		&& report_level >= LVL_INFO) {
+		if (heartbeat_locked(state) != 0)
+			ret = -1;
+	}
+
+	return ret;
 }
 

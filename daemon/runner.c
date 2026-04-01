@@ -157,6 +157,7 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	report_task->running = 0;
 	report_task->state = PROCESS_STATE_TERM;
+	report_task->exit_code = 0;
 	report_task->unix_end_time = report_task->unix_start_time;
 
 	/* insert the task in the done list */
@@ -167,7 +168,12 @@ static int runner_report_locked(struct snapraid_state* state)
 		state->runner.latest = latest_not_canceled_task;
 
 	/* notify the report */
-	notify_locked(state, report_high_cmd, report_level, ss_extract(&ss));
+	if (notify_locked(state, report_high_cmd, report_level, ss_extract(&ss)) != 0) {
+		char exit_msg[MSG_MAX];
+		report_task->exit_code = -1;
+		snprintf(exit_msg, sizeof(exit_msg), "Notification failed (check " SYSLOG " for details)");
+		message_insert(&report_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_msg);
+	}
 
 	ss_done(&ss);
 
