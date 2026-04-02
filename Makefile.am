@@ -138,12 +138,12 @@ LIST_XML = doc/snapraidd.xml $(patsubst %, doc/snapraidd-%.xml, $(LANG_CODES))
 
 EXTRA_DIST = \
 	autogen.sh autover.sh \
-	README COPYING HISTORY INSTALL AUTHORS \
+	README HISTORY INSTALL AUTHORS \
+	COPYING LICENSES/GPL-3.0 LICENSES/BSD-2-Clause \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \
 	acinclude.m4 \
-	tommyds/LICENSE \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
 	daemon/messages.mc \

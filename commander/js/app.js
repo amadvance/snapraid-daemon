@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2025 Andrea Mazzoleni
 
 import { API } from './api.js';
 import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';

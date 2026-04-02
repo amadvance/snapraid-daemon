@@ -55,7 +55,8 @@ make install DESTDIR="../${PKG_ROOT}"
 
 # Add example config and docs
 mkdir -p "../${PKG_ROOT}/usr/share/doc/@PACKAGE@"
-cp snapraidd.conf.example snapraidd.yaml COPYING AUTHORS HISTORY README "../${PKG_ROOT}/usr/share/doc/@PACKAGE@/"
+cp snapraidd.conf.example snapraidd.yaml AUTHORS HISTORY README "../${PKG_ROOT}/usr/share/doc/@PACKAGE@/"
+cp LICENSES/GPL-3.0 "../${PKG_ROOT}/usr/share/doc/@PACKAGE@/COPYING"
 mkdir -p "../${PKG_ROOT}/etc"
 cp snapraidd.conf.example "../${PKG_ROOT}/etc/snapraidd.conf"
 

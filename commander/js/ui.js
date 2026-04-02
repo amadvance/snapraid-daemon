@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2025 Andrea Mazzoleni
 
 import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, Icons } from './utils.js';
 

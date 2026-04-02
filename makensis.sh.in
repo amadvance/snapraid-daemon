@@ -71,7 +71,6 @@ osslsigncode sign \
 cp doc/*.txt "../${NSIS_PKG_ROOT}"
 todos < snapraid.conf.example > "../${NSIS_PKG_ROOT}/snapraid.conf.example"
 todos < AUTHORS > "../${NSIS_PKG_ROOT}/authors.txt"
-todos < COPYING > "../${NSIS_PKG_ROOT}/copying.txt"
 todos < HISTORY > "../${NSIS_PKG_ROOT}/history.txt"
 todos < README > "../${NSIS_PKG_ROOT}/readme.txt"
 
@@ -108,6 +107,7 @@ echo | todos >> "../${NSIS_PKG_ROOT}/history.txt"
 todos < HISTORY >> "../${NSIS_PKG_ROOT}/history.txt"
 echo | todos >> "../${NSIS_PKG_ROOT}/readme.txt"
 todos < README >> "../${NSIS_PKG_ROOT}/readme.txt"
+todos < LICENSES/GPL-3.0 > "../${NSIS_PKG_ROOT}/copying.txt"
 
 cd ..
 

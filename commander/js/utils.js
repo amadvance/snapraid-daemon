@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2025 Andrea Mazzoleni
+
 export const formatFullTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
         return '-';

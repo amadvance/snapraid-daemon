@@ -74,7 +74,7 @@ if [ $1 -ge 1 ] ; then
 fi
 
 %files
-%license COPYING
+%license LICENSES/GPL-3.0
 %doc AUTHORS HISTORY README snapraidd.conf.example snapraidd.yaml
 %{_bindir}/snapraidd
 %{_mandir}/man1/snapraidd.1*
