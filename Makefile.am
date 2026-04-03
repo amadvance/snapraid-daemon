@@ -45,7 +45,7 @@ COMMANDER_DIST = \
 data_DATA = commander.zip
 
 commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
-	cd $(srcdir)/commander && $(ZIP) -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
+	cd $(srcdir)/commander && $(ZIP) -0 -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
 endif
 
 # Windows

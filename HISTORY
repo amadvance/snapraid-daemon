@@ -1,6 +1,11 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.5 2026/04
+===========
+ * Don't compress commander.zip, but just store the files as-is (no
+   compression). This is in case the binary is built without zlib support.
+
 1.4 2026/04
 ===========
  * Propagates errors logged to syslog (or EventLog on Windows) to the task log
