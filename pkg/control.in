@@ -4,7 +4,7 @@ Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: Andrea Mazzoleni <amadvance@gmail.com>
-Depends: zlib1g, libzstd1, snapraid (>= 14.0), systemd
+Depends: zlib1g, libzstd1, snapraid (>= 14.1), systemd
 Description: A background service with a built-in Web UI that automates SnapRAID operations
  SnapRAID Daemon is a lightweight background service that transforms manual parity
  tasks into an automated workflow. It integrates directly with SnapRAID to

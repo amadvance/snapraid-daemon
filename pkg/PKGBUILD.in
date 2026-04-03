@@ -6,7 +6,7 @@ pkgdesc="A background service with a built-in Web UI that automates SnapRAID ope
 arch=('x86_64')
 url="https://www.snapraid.it/"
 license=('GPL3')
-depends=('zlib' 'zstd' 'snapraid>=14.0' 'systemd')
+depends=('zlib' 'zstd' 'snapraid>=14.1' 'systemd')
 makedepends=('gcc' 'make')
 backup=('etc/snapraidd.conf')
 install="${pkgname}.install"
