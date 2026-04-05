@@ -30,7 +30,7 @@ void scheduler_pulse(struct snapraid_state* state);
 /**
  * Schedule a maintenance operation (sync followed by optional scrub).
  * @param state Current snapraid state
- * @param spindown 1 to spindown disks after completion, 0 otherwise
+ * @param spindown 1 to spindown disks after completion, 0 to don't spindown, -1 use configured management
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
  * @param status Pointer to store HTTP status code
@@ -40,7 +40,7 @@ void schedule_maintenance(struct snapraid_state* state, int spindown, char* msg,
 /**
  * Schedule a heal operation (fix errors).
  * @param state Current snapraid state
- * @param spindown 1 to spindown disks after completion, 0 otherwise
+ * @param spindown 1 to spindown disks after completion, 0 to don't spindown, -1 use configured management
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
  * @param status Pointer to store HTTP status code

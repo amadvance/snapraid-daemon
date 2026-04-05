@@ -45,6 +45,11 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
 	}
 
+	if (spindown < 0) {
+		/* if config has spindown management, don't wait, and spin down just after */
+		spindown = state->config.spindown_idle_minutes != 0;
+	}
+
 	/*
 	 * Schedule all the actions, note that they are just scheduled,
 	 * the eventual failure won't be detected here.
@@ -92,6 +97,11 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	sl_insert_str(&fix_arg_list, "-e");
 	sl_insert_str(&scrub_arg_list, "-p");
 	sl_insert_str(&scrub_arg_list, "bad");
+
+	if (spindown < 0) {
+		/* if config has spindown management, don't wait, and spin down just after */
+		spindown = state->config.spindown_idle_minutes != 0;
+	}
 
 	/*
 	 * Schedule all the actions, note that they are just scheduled,
@@ -368,7 +378,7 @@ void* scheduler_thread(void* arg)
 					state->runner.hold_off = 0;
 					pulse(state, PULSE_ARRAY);
 				} else {
-					schedule_maintenance_locked(state, now, 1, msg, sizeof(msg), &status);
+					schedule_maintenance_locked(state, now, -1 /* autodetect spindown */, msg, sizeof(msg), &status);
 				}
 				/* do not schedule other tasks */
 				break;
