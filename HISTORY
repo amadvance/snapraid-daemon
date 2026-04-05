@@ -1,6 +1,12 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.6 2026/04
+===========
+ * In scheduled maintenance, spin down only if the daemon is configured
+   to manage spindown, specifically if spindown_idle_minutes is
+   different from 0.
+
 1.5 2026/04
 ===========
  * Don't compress commander.zip, but just store the files as-is (no
