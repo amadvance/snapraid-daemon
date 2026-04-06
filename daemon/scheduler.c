@@ -10,7 +10,7 @@
 #include "scheduler.h"
 #include "daemon.h"
 
-static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, char* msg, size_t msg_size, int* status)
+static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, char* msg, size_t msg_size, int* status)
 {
 	sl_t diff_arg_list;
 	sl_t sync_arg_list;
@@ -29,13 +29,15 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (state->config.touch_zero_subseconds) {
 		sl_insert_str(&sync_arg_list, "--gui-touch-before");
 	}
-	if (state->config.sync_threshold_deletes) {
-		sl_insert_str(&sync_arg_list, "--gui-threshold-removes");
-		sl_insert_int(&sync_arg_list, state->config.sync_threshold_deletes);
-	}
-	if (state->config.sync_threshold_updates) {
-		sl_insert_str(&sync_arg_list, "--gui-threshold-updates");
-		sl_insert_int(&sync_arg_list, state->config.sync_threshold_updates);
+	if (threshold) {
+		if (state->config.sync_threshold_deletes) {
+			sl_insert_str(&sync_arg_list, "--gui-threshold-removes");
+			sl_insert_int(&sync_arg_list, state->config.sync_threshold_deletes);
+		}
+		if (state->config.sync_threshold_updates) {
+			sl_insert_str(&sync_arg_list, "--gui-threshold-updates");
+			sl_insert_int(&sync_arg_list, state->config.sync_threshold_updates);
+		}
 	}
 	if (state->config.scrub_percentage > 0) {
 		do_scrub = 1;
@@ -76,11 +78,11 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_free(&scrub_arg_list);
 }
 
-void schedule_maintenance(struct snapraid_state* state, int spindown, char* msg, size_t msg_size, int* status)
+void schedule_maintenance(struct snapraid_state* state, int spindown, int threshold, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 	state_lock();
-	schedule_maintenance_locked(state, now, spindown, msg, msg_size, status);
+	schedule_maintenance_locked(state, now, spindown, threshold, msg, msg_size, status);
 	state_unlock();
 }
 
@@ -378,7 +380,7 @@ void* scheduler_thread(void* arg)
 					state->runner.hold_off = 0;
 					pulse(state, PULSE_ARRAY);
 				} else {
-					schedule_maintenance_locked(state, now, -1 /* autodetect spindown */, msg, sizeof(msg), &status);
+					schedule_maintenance_locked(state, now, -1 /* autodetect spindown */, 1 /* apply_thresolds */, msg, sizeof(msg), &status);
 				}
 				/* do not schedule other tasks */
 				break;

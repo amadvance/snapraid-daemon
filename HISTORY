@@ -6,6 +6,7 @@ SnapRAID-Daemon HISTORY
  * In scheduled maintenance, spin down only if the daemon is configured
    to manage spindown, specifically if spindown_idle_minutes is
    different from 0.
+ * In manual maintenance, added support for ignoring configured thresholds.
 
 1.5 2026/04
 ===========

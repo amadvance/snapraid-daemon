@@ -330,6 +330,58 @@ export const showConfirmDown = (message, title = 'Confirmation Required') => {
     });
 };
 
+export const showConfirmDownThreshold = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-container">
+                <div class="modal-title">${title}</div>
+                <div class="modal-body">
+                    ${message}
+                    <div class="mt-4 flex items-center gap-2">
+                        <label class="switch switch-sm">
+                            <input type="checkbox" id="modal-ignore-thresholds">
+                            <span class="slider"></span>
+                        </label>
+                        <label for="modal-ignore-thresholds" class="text-sm cursor-pointer mb-0">Ignore Update/Delete Thresholds</label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                    <button class="btn btn-primary" id="modal-confirm">Run</button>
+                    <button class="btn btn-primary" id="modal-spindown">Run & SpinDown</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Force reflow for animation
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+
+        const cleanup = (result) => {
+            const ignoreThresholds = overlay.querySelector('#modal-ignore-thresholds').checked;
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                overlay.remove();
+                if (result === null) resolve(null);
+                else resolve({ action: result, ignoreThresholds });
+            }, 200);
+        };
+
+        overlay.querySelector('#modal-cancel').addEventListener('click', () => cleanup(null));
+        overlay.querySelector('#modal-confirm').addEventListener('click', () => cleanup('confirm'));
+        overlay.querySelector('#modal-spindown').addEventListener('click', () => cleanup('spindown'));
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(null);
+        });
+    });
+};
+
 export const showModal = (title, content, large = false) => {
     return new Promise((resolve) => {
         const overlay = document.createElement('div');

@@ -637,6 +637,13 @@ components:
             restoration scope. Each item corresponds to a '-f'
             argument in the SnapRAID CLI.
             Valid only for `undelete`.
+        ignore_thresholds:
+          type: boolean
+          default: false
+          description: >
+            If true, the maintenance task will ignore any configured
+            thresholds and proceed with the sync commands.
+            Valid only for `maintenance`.
         spindown_on_finish:
           type: boolean
           default: false

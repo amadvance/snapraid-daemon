@@ -2,7 +2,7 @@
 // Copyright (C) 2025 Andrea Mazzoleni
 
 import { API } from './api.js';
-import { Icons, showToast, showConfirm, showConfirmDown, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';
+import { Icons, showToast, showConfirm, showConfirmDown, showConfirmDownThreshold, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
 
 const app = {
@@ -566,10 +566,13 @@ const app = {
     /* --- Actions --- */
 
     triggerMaintenance: async () => {
-        const res = await showConfirmDown('Start full maintenance sequence?');
+        const res = await showConfirmDownThreshold('Start full maintenance sequence?');
         if (res) {
             try {
-                await API.startMaintenance({ spindown_on_finish: res === 'spindown' });
+                await API.startMaintenance({
+                    spindown_on_finish: res.action === 'spindown',
+                    ignore_thresholds: res.ignoreThresholds
+                });
                 showToast('Maintenance Triggered', 'info');
                 setTimeout(app.loadDashboard, 500);
             } catch (e) {
