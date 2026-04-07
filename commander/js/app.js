@@ -357,7 +357,7 @@ const app = {
                     const health = app.state.dashboardArray?.health;
                     const isBad = health === 'failing' || health === 'prefail';
                     actions.innerHTML = isBad ? `
-                        <button class="btn btn-primary" data-tooltip="Refresh array state" data-action="refresh">Refresh</button>
+                        <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
                     ` : `
                         <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
                     `;

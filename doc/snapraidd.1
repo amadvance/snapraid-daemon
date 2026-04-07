@@ -221,6 +221,11 @@ problems identified during that specific operation.
 For example, an array in a CORRUPT state may still produce a PASSED
 result for a \`probe\` task if that operation encountered no specific
 errors.
+.PP
+In the PREFAIL or FAILING state, the \`Maintenance\` button in the Web
+UI is replaced with a \`Refresh\` button. This allows you to force the
+daemon to re\-scan the state of the array (by re\-reading the content
+file) after any manual fixes have been performed via the command line.
 .SH CONFIGURATION 
 The SnapRAID Daemon is configured via a plain\-text .conf file,
 defaulting to $PREFIX/etc/snapraidd.conf and if not found to
