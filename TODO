@@ -6,8 +6,14 @@ Future Releases
 
 - Compress .log with .gz
 
-- For every change (pulse) in the commands, emit a message shown in the task
-  messages.
+- For every change (pulse) detected while running commands, emit a message
+  shown in the task messages. Like:
+  Disk d2 changed path from xxx to yyyy
+  Disk d3 changed UUID from xxx to yyyy
+  Device /dev/sda changed serial from xxx to yyyy
+  Device /dev/sda changed power from standby to active
+  Device /dev/sda changed smart attribute XXXX from xxx to yyy
+
 
 - Send a notification report every time a PREFAIL attribute changes.
   Messages can be generated in the parser, and then a dedicated report can be
@@ -18,6 +24,9 @@ Future Releases
     notify_smartignore = DISK/DEVICE/* ATTRS...
     notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
     smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
+
+- Support for Basic HTTP Authentication to allow simple password protection
+  for the UI.
 
 - Implement a Command Builder panel to support manual triggers for on-demand
   operations (sync/scrub/etc.), advanced arguments (bandwidth limits, stats,
