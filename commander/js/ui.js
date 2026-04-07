@@ -993,8 +993,8 @@ export const renderSettings = (config) => {
             <!-- Monitor -->
             <div class="card">
                 <h3>Monitor</h3>
-                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning.')}
-                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity.')}
+                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.')}
+                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.')}
             </div>
             </div>
 
