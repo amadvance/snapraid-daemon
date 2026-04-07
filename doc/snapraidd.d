@@ -192,6 +192,11 @@ Health
 	result for a `probe` task if that operation encountered no specific
 	errors.
 
+	In the PREFAIL or FAILING state, the `Maintenance` button in the Web
+	UI is replaced with a `Refresh` button. This allows you to force the
+	daemon to re-scan the state of the array (by re-reading the content
+	file) after any manual fixes have been performed via the command line.
+
 Configuration
 	The SnapRAID Daemon is configured via a plain-text .conf file,
 	defaulting to $PREFIX/etc/snapraidd.conf and if not found to
