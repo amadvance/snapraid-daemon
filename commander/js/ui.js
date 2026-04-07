@@ -976,7 +976,7 @@ export const renderSettings = (config) => {
             <div class="card">
                 <h3>Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the maintenance sequence (e.g., 02:00 or Mon 03:00, Wed 02:00). Leave empty to disable.')}
-                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'The fraction of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%).', false, 'step="0.1"')}
+                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'The percentage of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%). Set to 0 to disable scrub.', false, 'step="0.1"')}
                 ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Only scrubs data blocks that haven\'t been verified within this many days.')}
                 ${boolField('touch_zero_subseconds', 'Touch Zero Subseconds', 'Update timestamps lacking sub-second precision to accurately identify moved or renamed files.')}
             </div>
@@ -984,8 +984,8 @@ export const renderSettings = (config) => {
             <!-- Data Integrity -->
             <div class="card">
                 <h3>Data Integrity</h3>
-                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of deletions allowed. If exceeded, the sync will not start to prevent accidental mass data loss.')}
-                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates allowed. If exceeded, the sync will not start to prevent unintended mass changes.')}
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of deletions allowed. If exceeded, the sync will not start to prevent accidental mass data loss. Set to 0 to disable.')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates allowed. If exceeded, the sync will not start to prevent unintended mass changes. Set to 0 to disable.')}
                 ${boolField('sync_prehash', 'Safety Pre-hash', 'Pre-calculates hashes before syncing to verify them during the process. This provides a second read pass to catch silent data errors and faulty memory corruption.')}
                 ${boolField('sync_prevent_truncations', 'Prevent File Truncations', 'Stops the synchronization if files that previously contained data are now empty. Prevent parity updates when data may have been accidentally cleared.')}
             </div>
