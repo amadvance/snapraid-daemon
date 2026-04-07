@@ -198,9 +198,9 @@ Health
 	file) after any manual fixes have been performed via the command line.
 
 Configuration
-	The SnapRAID Daemon is configured via a plain-text .conf file,
-	defaulting to $PREFIX/etc/snapraidd.conf and if not found to
-	/etc/snapraidd.conf. The $PREFIX variable represents the installation
+	The SnapRAID Daemon is configured via a plain-text `.conf` file,
+	defaulting to `$PREFIX/etc/snapraidd.conf` and if not found to
+	`/etc/snapraidd.conf`. The $PREFIX variable represents the installation
 	path chosen at build time (typically via the `--prefix` argument to
 	the configure script).
 
@@ -493,13 +493,17 @@ Configuration
 	Manages power consumption by automatically spinning down disks after
 	the specified duration of inactivity.
 
+	Note that this applies only to `data` and `parity` disks configured in
+	`snapraid.conf`. Any other disks, including `extra` disks, are not
+	subject to spindown.
+
 	This timer monitors the global activity of the disks across the entire
 	operating system. A disk will only be spun down if it has remained
 	completely idle for the specified period. If any other application,
 	service, or system process accesses the disk, the idle timer is reset.
 
-	If this option is unset, the daemon will not manage disk power states,
-	relying instead on the OS or hardware controllers.
+	If set to 0 or left blank, the daemon will not manage disk power
+	states, relying instead on the OS or hardware controllers.
 
     hook_script
 	Defines an absolute path to an executable script to be triggered by

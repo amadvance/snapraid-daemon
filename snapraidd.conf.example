@@ -262,19 +262,24 @@ touch_zero_subseconds = 1
 
 ### Disk Monitoring & Power
 # The probe_interval_minutes setting controls how often the daemon checks
-# SMART attributes, provided the disks are already spinning. If this is
-# set to 0 or left blank, SMART monitoring is disabled.
+# SMART attributes, provided the disks are already spinning.
+# If this is set to 0 or left blank, SMART monitoring is disabled.
 probe_interval_minutes = 3
 
-# To save power, spindown_idle_minutes will automatically spin down disks
-# after the specified period of inactivity.
+# To save power, spindown_idle_minutes will automatically spin down data and
+# parity disks after the specified period of inactivity.
+#
+# Note that this applies only to 'data' and 'parity' disks configured in
+# snapraid.conf. Any other disks, including 'extra' disks, are not subject to
+# spindown.
 #
 # This timer monitors the global activity of the disks across the entire
 # operating system. A disk will only be spun down if it has remained
 # completely idle for the specified period. If any other application, service,
 # or system process accesses the disk, the idle timer is reset.
 #
-# If unset, the daemon will not manage disk power states.
+# If this is set to 0 or left blank, the daemon will not manage disk power
+# states.
 spindown_idle_minutes = 15
 
 # Specify an absolute path for 'hook_script' to trigger custom logic for various
