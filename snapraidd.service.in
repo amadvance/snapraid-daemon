@@ -1,10 +1,13 @@
 [Unit]
 Description=SnapRAID Daemon
+Documentation=https://www.snapraid.it
 
-# Ensures the network is up and local disks are mounted before starting
-After=network-online.target local-fs.target
-Wants=network-online.target local-fs.target
-Documentation=https://github.com/amadvance/snapraid-daemon
+# Ensures data/parity disks are mounted before starting.
+# Waits until all interfaces are fully configured with their IP addresses
+# assigned. This works regardless of whether the daemon is configured to bind
+# to all interfaces (0.0.0.0), a specific interface, or a specific IP address.
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
 
 [Service]
 Type=forking
@@ -22,13 +25,37 @@ RestartSec=5
 Nice=19
 IOSchedulingClass=idle
 
-# Security Hardening
-# Runs as root (required for SnapRAID disk access) but limits capabilities
+# --- SECURITY & HARDENING ---
+# The daemon runs as root so that the 'snapraid' child process it spawns 
+# has the necessary block-level access to parity/data disks.
 User=root
 Group=root
+
+# NoNewPrivileges=yes prevents the daemon and its child processes (like
+# snapraid) from gaining additional privileges via setuid/setgid bits.
 NoNewPrivileges=yes
+
+# ProtectHome=no is the default to ensure the 'snapraid' child can access 
+# data disks mounted under /home or restore files to user directories.
+#
+# HARDENING OPTIONS:
+# 1. If your data/content files are NOT in /home:
+#    Set 'ProtectHome=yes' to completely hide /home from the daemon.
+#
+# 2. If your data is in /home but you want to restrict write access:
+#    Set 'ProtectHome=read-only' to make all of /home visible but
+#    immutable to the daemon, then use 'ReadWritePaths=' to carve out
+#    write access only where SnapRAID needs it.
+#    Example:
+#       ProtectHome=read-only
+#       ReadWritePaths=/home/user/storage /home/user/snapraid.content
+ProtectHome=no
+
+# ProtectSystem=full makes /usr, /boot, and /etc read-only for this service.
+# This prevents the daemon from modifying the core OS configuration.
+# To allow the daemon to update its own configuration while keeping the 
+# rest of /etc protected, we explicitly grant write access to the config file.
 ProtectSystem=full
-ProtectHome=read-only
 ReadWritePaths=@sysconfdir@/snapraidd.conf
 
 [Install]
