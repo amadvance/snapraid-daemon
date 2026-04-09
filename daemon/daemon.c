@@ -142,19 +142,9 @@ int daemon_init(struct snapraid_state* state)
 	/*
 	 * Trigger initial probe to load info into the state
 	 */
-	if (runner(state, 0, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
-		log_msg(LVL_ERROR, "failed to run the first probe command");
+	if (runner(state, CMD_STARTUP, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
+		log_msg(LVL_ERROR, "failed to run the startup probe command");
 		/* continue anyway to provide an interface */
-	}
-
-	/*
-	 * Trigger read of the content file if is the first run
-	 */
-	if (state->global.content[0] == 0) {
-		if (runner(state, 0, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
-			log_msg(LVL_ERROR, "failed to run the first status command");
-			/* continue anyway to provide an interface */
-		}
 	}
 
 	/**

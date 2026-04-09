@@ -236,6 +236,7 @@ struct snapraid_disk {
 #define CMD_UNDELETE 203 /**< High level command. Never enter the queue. */
 #define CMD_SUSPEND_IDLE 204 /**< High level command. Never enter the queue. */
 #define CMD_REFRESH 205  /**< High level command. Never enter the queue. */
+#define CMD_STARTUP 206  /**< High level command. Never enter the queue. */
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */
@@ -388,6 +389,8 @@ struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
+	int64_t content_probe_unixtime; /**< Modification time of the content file. 0 if unknown. */
+	int64_t content_last_unixtime; /**< Last write or read of the content file. 0 if unknown. */
 	unsigned blocksize; /**< Block size */
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
