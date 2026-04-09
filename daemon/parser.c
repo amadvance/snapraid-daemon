@@ -550,6 +550,12 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 		pulse_stru64(state, PULSE_ARRAY, &state->global.block_unsynced, val);
 	} else if (strcmp(tag, "block") == 0) {
 		pulse_stru64(state, PULSE_ARRAY, &state->global.block_total, val);
+	} else if (strcmp(tag, "probe_unixtime") == 0) {
+		stri64(&state->global.content_probe_unixtime, val);
+	} else if (strcmp(tag, "read_unixtime") == 0) {
+		stri64(&state->global.content_last_unixtime, val);
+	} else if (strcmp(tag, "write_unixtime") == 0) {
+		stri64(&state->global.content_last_unixtime, val);
 	}
 }
 

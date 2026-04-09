@@ -608,6 +608,28 @@ static int runner_precondition(struct snapraid_state* state)
 	return 0;
 }
 
+static void runner_postcondition(struct snapraid_state* state)
+{
+	struct snapraid_task* task = state->runner.latest;
+	char msg[MSG_MAX];
+	int status;
+
+	if (task->high_cmd == CMD_STARTUP && task->cmd == CMD_PROBE) {
+		/*
+		 * Trigger read of the content file if needed
+		 */
+		if (state->global.content[0] == 0 /* it's the first run */
+		        /* the content file was modified from command line */
+			|| (state->global.content_last_unixtime != 0 && state->global.content_probe_unixtime > state->global.content_last_unixtime)
+		) {
+			if (runner_locked(state, CMD_STARTUP, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
+				log_msg(LVL_ERROR, "failed to run the startup read command");
+				/* continue anyway to provide an interface */
+			}
+		}
+	}
+}
+
 static void runner_spindown_inactive_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -694,6 +716,7 @@ static void* runner_thread(void* arg)
 					runner_spindown_inactive_locked(state);
 				} else {
 					runner_go(state);
+					runner_postcondition(state);
 				}
 			} else {
 				task->state = PROCESS_STATE_CANCEL;

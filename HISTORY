@@ -7,6 +7,10 @@ SnapRAID-Daemon HISTORY
    to manage spindown, specifically if spindown_idle_minutes is
    different from 0.
  * In manual maintenance, added support for ignoring configured thresholds.
+ * Automatically reload the content file at startup if it was modified
+   using the SnapRAID CLI.
+ * Don't protect the home directory in systemd to allow to use it as a data
+   disk.
 
 1.5 2026/04
 ===========

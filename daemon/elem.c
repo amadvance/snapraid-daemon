@@ -39,6 +39,7 @@ struct {
 	{ CMD_UNDELETE, "undelete" },
 	{ CMD_SUSPEND_IDLE, "suspend_idle" },
 	{ CMD_REFRESH, "refresh" },
+	{ CMD_STARTUP, "startup" },
 	{ 0 }
 };
 
