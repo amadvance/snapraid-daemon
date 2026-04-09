@@ -6,11 +6,13 @@ SnapRAID-Daemon HISTORY
  * In scheduled maintenance, spin down only if the daemon is configured
    to manage spindown, specifically if spindown_idle_minutes is
    different from 0.
- * In manual maintenance, added support for ignoring configured thresholds.
- * Automatically reload the content file at startup if it was modified
-   using the SnapRAID CLI.
- * Don't protect the home directory in systemd to allow to use it as a data
+ * In manual maintenance from the UI, added a checkbox for ignoring configured
+   thresholds.
+ * Don't protect the home directory in systemd to allow using it as a data
    disk.
+ * Automatically reload the content file at startup if it was modified
+   outside the daemon using the SnapRAID CLI. This change has effect only with
+   SnapRAID 14.2.
 
 1.5 2026/04
 ===========
