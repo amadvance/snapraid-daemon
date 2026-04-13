@@ -691,6 +691,10 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_result_level")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
 				++j;
 				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
 					&& config_parse_level(keyword, &state->config.notify_result_level) == 0) {
