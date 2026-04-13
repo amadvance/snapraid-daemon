@@ -128,6 +128,7 @@ net_allowed_origin = self
 #   - notify_run_as_user
 #   - notify_heartbeat
 #   - notify_result
+#   - notify_result_level
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.

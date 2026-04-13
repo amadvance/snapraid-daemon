@@ -1016,7 +1016,7 @@ export const renderSettings = (config) => {
                 <h4 class="font-bold mb-3">Result</h4>
                 <div class="form-row">
                     ${boolField('notify_differences', 'Include Differences', 'Includes a detailed list of all detected file changes in the report before the synchronization starts.')}
-                    ${selectField('notify_result_level', 'Log Level', logLevels, 'The minimum task severity required to trigger the result notification command.')}
+                    ${selectField('notify_result_level', 'Log Level', logLevels, 'The minimum task severity required to trigger the result notification command.', !fullAccess)}
                 </div>                
                 <div class="form-row mt-2">
                     ${inputField('notify_result', 'Result Command (Always)', 'text', 'The command used to deliver the full task report via email or push notification services.', !fullAccess)}
