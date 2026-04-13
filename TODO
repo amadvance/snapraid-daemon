@@ -28,6 +28,8 @@ Future Releases
 - Support for Basic HTTP Authentication to allow simple password protection
   for the UI.
 
+- Implement Windows installer signature with SignPath.io
+
 - Implement a Command Builder panel to support manual triggers for on-demand
   operations (sync/scrub/etc.), advanced arguments (bandwidth limits, stats,
   filtering), and custom job sequencing.
