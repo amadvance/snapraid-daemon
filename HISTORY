@@ -1,6 +1,11 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.7 2026/04
+===========
+ * Set NoNewPrivileges=no by default in the systemd unit file to support
+   system-level mailers like Postfix.
+
 1.6 2026/04
 ===========
  * In scheduled maintenance, spin down only if the daemon is configured

@@ -31,9 +31,16 @@ IOSchedulingClass=idle
 User=root
 Group=root
 
-# NoNewPrivileges=yes prevents the daemon and its child processes (like
-# snapraid) from gaining additional privileges via setuid/setgid bits.
-NoNewPrivileges=yes
+# NoNewPrivileges=no allows child processes to gain privileges via
+# SetUID/SetGID bits. This is required if the daemon needs to execute
+# system-level mailers like 'postfix' or 'sendmail', which rely on these
+# bits to write to the mail queue.
+#
+# HARDENING OPTIONS:
+# 1. If you do not use SetUID tools (e.g., you use user-level tools like 
+#    'msmtp', 'ssmtp', or 'curl' for emails), you can set 'NoNewPrivileges=yes' 
+#    to further restrict the process and its children from gaining privileges.
+NoNewPrivileges=no
 
 # ProtectHome=no is the default to ensure the 'snapraid' child can access 
 # data disks mounted under /home or restore files to user directories.
