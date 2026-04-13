@@ -6,6 +6,16 @@ Future Releases
 
 - Compress .log with .gz
 
+- Extend hook script with environment variables.
+  - Which high command is going to be run -> SNAPRAID_HIGH_CMD=maintenance/undelete/heal
+  - The specific low command, useful for the task-error case, SNAPRAID_CMD=scrub
+  - The exit code or signal for the task-error case SNAPRAID_EXIT_CODE, SNAPRAID_EXIT_SIGNAL
+
+- Add a new "notify_start" that can be used to notify the start of a high level task like maintenance.
+  - Add a macro for the subject %s like notify_result.
+  - Add a macro in notify_result and notify_start for the task name. Like %t/maintenance/heal/undelete...
+  - Add a macro in notify_result for the exit code %c.
+
 - For every change (pulse) detected while running commands, emit a message
   shown in the task messages. Like:
   Disk d2 changed path from xxx to yyyy
@@ -13,7 +23,6 @@ Future Releases
   Device /dev/sda changed serial from xxx to yyyy
   Device /dev/sda changed power from standby to active
   Device /dev/sda changed smart attribute XXXX from xxx to yyy
-
 
 - Send a notification report every time a PREFAIL attribute changes.
   Messages can be generated in the parser, and then a dedicated report can be
