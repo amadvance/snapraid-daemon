@@ -333,7 +333,9 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "notify_syslog_level") == 0) {
 				int level;
 				if (config_parse_level(val, &level) == 0) {
+					log_lock();
 					state->log.syslog_level = level;
+					log_unlock();
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
