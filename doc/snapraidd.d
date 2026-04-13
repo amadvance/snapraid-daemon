@@ -90,9 +90,10 @@ Getting Started
 	file is provisioned to enable the REST API and the Web UI. For users
 	installing via binary packages, this file is typically placed at
 	`/etc/snapraidd.conf`. If you are installing from source, it is
-	recommended to run `./configure --sysconfdir=/etc` during the build
-	process to ensure the configuration is placed in the standard `/etc`
-	directory.
+	recommended to run `./configure --prefix=/usr --sysconfdir=/etc`
+	during the build process to ensure the program is installed in the
+	standard `/usr` directory, and the configuration is placed in the
+	standard `/etc` directory.
 
 	Using this default configuration file, the UI is accessible locally
 	via a web browser at the following address:

@@ -9,7 +9,7 @@ http://www.snapraid.it and unpack it with the following commands:
 
 To configure the build environment and compile the binary, run:
 
-    ./configure
+    ./configure --prefix=/usr --sysconfdir=/etc
     make
 
 If the compilation completes without errors, install the application,
