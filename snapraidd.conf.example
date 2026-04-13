@@ -362,7 +362,7 @@ notify_syslog_level = info
 # %s : Replaced with the subject string (e.g., "[ERROR] SnapRAID Maintenance").
 # %l : Replaced with the task level (critical, error, warning, info, debug).
 # %n : Replaced with the ntfy priority (urgent, high, default, low, min).
-# %t : Replaced with the ntfy tag (rotating_light, warning, default, -1, +1, heavy_check_mark).
+# %t : Replaced with the ntfy tag (rotating_light, warning, -1, +1, heavy_check_mark).
 #
 # Examples of usage:
 # 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as
