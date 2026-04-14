@@ -63,8 +63,15 @@ paths:
                     Set to false to resume the normal
                     maintenance schedule.
       responses:
-        200:
+        '200':
           description: "Hold-off state updated successfully"
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: "Invalid request body."
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: "Invalid method."
+          $ref: '#/components/responses/CommandResult' 
 
   /snapraid/v1/heal:
     post:
