@@ -35,9 +35,16 @@ paths:
               $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
+          description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
           $ref: '#/components/responses/CommandResult'
         '500':
-          description: Engine not found or execution failed.
+          description: Engine not found.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/hold_off:
@@ -67,11 +74,11 @@ paths:
           description: "Hold-off state updated successfully"
           $ref: '#/components/responses/CommandResult'
         '400':
-          description: "Invalid request body."
+          description: Invalid request body.
           $ref: '#/components/responses/CommandResult'
         '405':
-          description: "Invalid method."
-          $ref: '#/components/responses/CommandResult' 
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/heal:
     post:
@@ -99,8 +106,16 @@ paths:
               $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
+          description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
           $ref: '#/components/responses/CommandResult'
         '500':
+          description: Engine not found.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/undelete:
@@ -129,8 +144,16 @@ paths:
               $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
+          description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
           $ref: '#/components/responses/CommandResult'
         '500':
+          description: Engine not found.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/suspend_idle:
@@ -152,9 +175,10 @@ paths:
         resulting command sequence via the /activity endpoint.
       responses:
         '202':
+          description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
         '500':
-          description: Engine not found or execution failed.
+          description: Engine not found.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/refresh:
@@ -183,8 +207,16 @@ paths:
               $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
+          description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
           $ref: '#/components/responses/CommandResult'
         '500':
+          description: Engine not found.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/schedule:
@@ -219,9 +251,17 @@ paths:
                     $ref: '#/components/schemas/TaskSchedule'
       responses:
         '202':
-          description: "Tasks accepted and added to the execution queue."
-        '409':
-          description: "Conflict: A task is already running and the queue is locked."
+          description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/stop:
     post:
@@ -237,7 +277,14 @@ paths:
         Note that the hook_script is never terminated.
       responses:
         '202':
+          description: Stop signal scheduled.
           $ref: '#/components/responses/CommandStopped'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
         '409':
           description: No task is currently running.
           $ref: '#/components/responses/CommandResult'
@@ -339,6 +386,12 @@ paths:
 
                       This field is omitted if the daemon is idle, or if an
                       estimate is not yet available/supported for the current task.
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/disks:
     get:
@@ -375,6 +428,12 @@ paths:
                     description: "Ordered list of extra disks (boot, data, ...)"
                     items:
                       $ref: '#/components/schemas/Disk'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/activity:
     get:
@@ -409,6 +468,12 @@ paths:
                   - $ref: '#/components/schemas/Task'
         '204':
           description: No task available (system idle since startup).
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/tasks:
     get:
@@ -450,6 +515,12 @@ paths:
                       Chronological record of completed tasks.
                     items:
                       $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/config:
     get:
@@ -470,6 +541,12 @@ paths:
                     $ref: '#/components/schemas/Pulse'
                 allOf:
                   - $ref: '#/components/schemas/Config'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
 
     patch:
       summary: Update configuration (Permanent)
@@ -505,6 +582,9 @@ paths:
             Updates are processed sequentially. All configuration options provided
             before the one that caused the issue are successfully set. All options
             appearing after the failing field are not processed and remain unchanged.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/array:
@@ -543,6 +623,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/System'
+        '400':
+          description: Invalid request body.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
+
 
 components:
   responses:
