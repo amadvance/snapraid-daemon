@@ -37,6 +37,11 @@ Future Releases
 - Support for Basic HTTP Authentication to allow simple password protection
   for the UI.
 
+- Allow to customize the DAEMON/SERVICE_NAME tags to allow multiple
+  daemon/services at the same time.
+  It can be automatically imported from the executable name.
+  Unify DAEMON/SERVICE_NAME in DAEMON_TAG.
+
 - Implement Windows installer signature with SignPath.io
 
 - Implement a Command Builder panel to support manual triggers for on-demand
