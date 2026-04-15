@@ -6,12 +6,9 @@ Verification is NOT a requirement for installation, but it is available
 if you want to manually confirm the integrity and origin of the software
 before running it.
 
-Regardless of the signature or whether you have trusted the author, Windows
-SmartScreen may still display a "Blue Box" warning. To proceed, users must
-typically click "More info" and then select "Run anyway" on the SmartScreen
-prompt.
 
 OPTION 1: INSTALL THE ROOT CERTIFICATE
+--------------------------------------
 
 By installing the 'am_ca.crt' file, Windows will be able to automatically
 verify the digital signature of this and all future SnapRAID Daemon
@@ -26,24 +23,38 @@ Steps:
 6. Click OK, then Next, then Finish.
 7. Accept the security confirmation.
 
-Once installed, right-click the installer .exe, select Properties, and the
-"Digital Signatures" tab will show "This digital signature is OK."
+Once installed, right-click the installer .exe, select Properties, and
+the "Digital Signatures" tab will show "This digital signature is OK."
+
+By signing the installer with a self-signed certificate and having the
+user install that certificate into their Trusted Root Certification
+Authorities container, several "Unknown Publisher" warnings are
+suppressed. Specifically:
+
+    User Account Control (UAC): The elevation prompt will change from
+    a high-risk Yellow banner (Unknown Publisher) to a standard Blue
+    banner, correctly identifying the author.
+
+    Security Warnings: It prevents Windows from displaying the "The
+    publisher could not be verified" dialog box when the file is
+    executed.
 
 Installing a Root Certificate involves a high level of trust in the author.
-By adding 'am_rootCA.crt' to your Trusted Root Store, you are granting the
-author the ability to sign any software or certificate that your computer will
-then trust implicitly.
+By adding 'am_rootCA.crt' to your Trusted Root Store, you are granting
+the author the ability to sign any software or certificate that your
+computer will then trust implicitly.
 
 - Recommended for: Home Labs, Personal Servers, and Testing environments.
-- NOT Recommended for: Mission-critical production machines or enterprise
-  environments where strict security policies are required.
+- NOT Recommended for: Mission-critical production machines or
+  enterprise environments where strict security policies are required.
 
----
 
 OPTION 2: MANUAL SHA-256 HASH VERIFICATION
-If you prefer not to install the certificate, you can manually verify that
-the file has not been tampered with by checking its hash against the official
-record.
+------------------------------------------
+
+If you prefer not to install the certificate, you can manually verify
+that the file has not been tampered with by checking its hash against
+the official record.
 
 Steps:
 1. Obtain the official SHA-256 hash from https://www.snapraid.it
@@ -51,5 +62,33 @@ Steps:
 3. Type the following command: Get-FileHash .\snapraid-daemon-*.exe
 4. Compare the output to the official hash.
 
-If the hashes match exactly, the file is authentic and safe to run, even if
-Windows displays an "Unknown Publisher" warning.
+If the hashes match exactly, the file is authentic and safe to run, even
+if Windows displays an "Unknown Publisher" warning.
+
+
+WINDOWS SMARTSCREEN ("BLUE BOX")
+--------------------------------
+
+Regardless of the self-signature or whether you have trusted the author,
+Windows SmartScreen may still display a "Blue Box" warning.
+
+Only expensive EV (Extended Validation) certificates can automatically
+bypass the Smart Screen, making them generally unsuitable for a free
+OpenSource project.
+
+When the SmartScreen prompt first appears, users can simply click
+"More info" and then select "Run anyway" to proceed.
+
+If you would prefer to permanently "unblock" the installer on your
+machine and prevent the prompt from appearing again, you follow these
+steps:
+
+1. Right-click the installer file (.exe) and select Properties.
+2. Stay on the General tab (the default view).
+3. Look for the Security section at the very bottom of the window.
+4. Check the box labeled Unblock.
+5. Click Apply and then OK.
+
+Once unblocked, the file is treated as safe by your local system, and
+you will be able to launch the installer directly without the
+SmartScreen overlay.
