@@ -787,8 +787,8 @@ components:
                 Generates a full summary of last operations and statistics.
             - const: down_idle
               description: >
-               	Executes a conditional spindown operation of the disks that
-               	have exceeded the 'spindown_idle_minutes' threshold.
+                Executes a conditional spindown operation of the disks that
+                have exceeded the 'spindown_idle_minutes' threshold.
         args:
           type: array
           items:
@@ -1297,6 +1297,7 @@ components:
                       since returned to a nominal normalized value.
                   raw:
                     type: integer
+                    format: int64
                     description: >
                       The raw value processed by the daemon.
                       This is the actual data point (e.g., total hours or
