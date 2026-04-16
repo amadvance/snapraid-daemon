@@ -1011,7 +1011,7 @@ export const renderSettings = (config) => {
 
                 <h4 class="font-bold mb-3">Heartbeat</h4>
                 <div class="form-row">
-                    ${inputField('notify_heartbeat', 'Heartbeat Command (On Success)', 'text', 'A custom command (like a URL ping) triggered only after successful maintenance to verify the server is alive.', !fullAccess)}
+                    ${inputField('notify_heartbeat', 'Heartbeat Command On Success', 'text', 'A custom command (like a URL ping) triggered only after successful maintenance to verify the server is alive.', !fullAccess)}
                 </div>
                 <h4 class="font-bold mb-3">Result</h4>
                 <div class="form-row">
@@ -1019,7 +1019,7 @@ export const renderSettings = (config) => {
                     ${selectField('notify_result_level', 'Log Level', logLevels, 'The minimum task severity required to trigger the result notification command.', !fullAccess)}
                 </div>                
                 <div class="form-row mt-2">
-                    ${inputField('notify_result', 'Result Command (Always)', 'text', 'The command used to deliver the full task report via email or push notification services.', !fullAccess)}
+                    ${inputField('notify_result', 'Result Command', 'text', 'The command used to deliver the full task report via email or push notification services.', !fullAccess)}
                 </div>
                 <div class="mt-2 text-sm">
                     ${inputField('notify_run_as_user', 'Run Notification As User', 'text', 'The system user account responsible for executing heartbeat pings and notification commands.', !fullAccess, '', 'w-1-2')}
