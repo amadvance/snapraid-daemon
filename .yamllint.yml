@@ -1,0 +1,25 @@
+extends: default
+
+rules:
+  # Disable the annoying document-start warning for OpenAPI files
+  document-start: disable
+
+  # Be stricter on whitespace
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+    check-multi-line-strings: false
+
+  # Increase line length
+  line-length:
+    max: 128
+    level: error
+
+  # Other useful rules
+  new-line-at-end-of-file: enable
+  empty-lines: enable
+
+  # Enforce single quotes
+  quoted-strings:
+    quote-type: single
+    required: false

@@ -14,7 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Validate OpenAPI definition
-      run: npx -y @redocly/cli lint --config=.redocly.yaml snapraidd.yaml
+      run: npx -y @redocly/cli lint --config=.redocly.yaml --max-problems=0 snapraidd.yaml
+    - name: Lint YAML with yamllint (strict)
+      run: |
+        pip install yamllint
+        yamllint --strict -c .yamllint.yml snapraidd.yaml
     - run: autoreconf -i
     - run: ./configure
     - run: make distcheck

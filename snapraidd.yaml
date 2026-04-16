@@ -49,7 +49,7 @@ paths:
 
   /snapraid/v1/hold_off:
     post:
-      summary: "Hold off next maintenance"
+      summary: 'Hold off next maintenance'
       description: >
         Controls the one-shot skip state for the next scheduled
         maintenance task. If enabled, the immediate next
@@ -71,7 +71,7 @@ paths:
                     maintenance schedule.
       responses:
         '200':
-          description: "Hold-off state updated successfully"
+          description: 'Hold-off state updated successfully'
           $ref: '#/components/responses/CommandResult'
         '400':
           description: Invalid request body.
@@ -317,7 +317,7 @@ paths:
         them only for equality.
       responses:
         '200':
-          description: "Current subsystem pulse counters."
+          description: 'Current subsystem pulse counters.'
           content:
             application/json:
               schema:
@@ -414,17 +414,17 @@ paths:
                     $ref: '#/components/schemas/Pulse'
                   data_disks:
                     type: array
-                    description: "Ordered list of data disks (d1, d2, ...)"
+                    description: 'Ordered list of data disks (d1, d2, ...)'
                     items:
                       $ref: '#/components/schemas/Disk'
                   parity_disks:
                     type: array
-                    description: "Ordered list of parity disks (parity, 2-parity, ...)"
+                    description: 'Ordered list of parity disks (parity, 2-parity, ...)'
                     items:
                       $ref: '#/components/schemas/Disk'
                   extra_disks:
                     type: array
-                    description: "Ordered list of extra disks (boot, data, ...)"
+                    description: 'Ordered list of extra disks (boot, data, ...)'
                     items:
                       $ref: '#/components/schemas/Disk'
         '400':
@@ -650,7 +650,7 @@ components:
                   internal worker queue
               message:
                 type: string
-                example: "Operation completed successfully."
+                example: 'Operation completed successfully.'
                 description: >
                   A human-readable status message or error detail.
 
@@ -673,7 +673,7 @@ components:
                   Indicates if the operation was successful.
               message:
                 type: string
-                example: "Signal sent."
+                example: 'Signal sent.'
                 description: >
                   A human-readable status message.
               number:
@@ -702,7 +702,7 @@ components:
             The immediate previous value held before the latest change.
         prev_at:
           type: string
-          example: "2026-02-26T10:30:00"
+          example: '2026-02-26T10:30:00'
           description: >
             The timestamp when the value transitioned from 'prev'
             to the current value.
@@ -713,7 +713,7 @@ components:
             The historical minimum value observed by the daemon.
         lowest_at:
           type: string
-          example: "2026-02-20T14:15:00"
+          example: '2026-02-20T14:15:00'
           description: >
             The timestamp of the most recent occurrence where
             the value reached the 'lowest' record.
@@ -753,7 +753,7 @@ components:
       properties:
         command:
           type: string
-          description: "The SnapRAID CLI action to perform."
+          description: 'The SnapRAID CLI action to perform.'
           oneOf:
             - const: probe
               description: >
@@ -809,7 +809,7 @@ components:
       properties:
         current_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             The current local system time of the server.
             This acts as the master reference point for the client to
@@ -966,19 +966,19 @@ components:
             so scrub was skipped) or a safety suspension (e.g., sync_threshold_deletes reached).
         scheduled_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             The time when the task was added to the queue.
             This timestamp is in local time.
         started_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             The server time when the task moved from 'queued' to 'starting'.
             This timestamp is in local time.
         finished_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             The server time when the task reached a terminal state
             (terminated, signaled, or canceled).
@@ -1036,7 +1036,7 @@ components:
             Size of blocks processed.
         log_file:
           type: string
-          example: "/var/log/snapraid/20260112-sync.log"
+          example: '/var/log/snapraid/20260112-sync.log'
           description: >
             The absolute path to the log file for this specific task execution.
             This file is stored in the directory defined by 'sys_log_directory' in the config.
@@ -1154,22 +1154,22 @@ components:
               probe is performed.
         family:
           type: string
-          example: "Western Digital Red"
+          example: 'Western Digital Red'
           description: >
             Vendor and Model Family.
         model:
           type: string
-          example: "WDC WD40EFRX-68N32N0"
+          example: 'WDC WD40EFRX-68N32N0'
           description: >
             Model of the disk.
         serial:
           type: string
-          example: "WD-WCC7K1XN2L3P"
+          example: 'WD-WCC7K1XN2L3P'
           description: >
             Serial of the disk.
         interface:
           type: string
-          example: "USB"
+          example: 'USB'
           description: >
             Interface of the disk. Typical values are SATA, SCSI, USB, NVMe.
         size_bytes:
@@ -1197,7 +1197,7 @@ components:
             This counter is cumulative and never resets to zero, even if
             the underlying error condition is resolved.
         error_protocol_history:
-            $ref: '#/components/schemas/ValueHistory'
+          $ref: '#/components/schemas/ValueHistory'
         error_medium:
           type: integer
           format: int64
@@ -1208,7 +1208,7 @@ components:
             This counter is cumulative and never resets to zero, even if
             the underlying error condition is resolved.
         error_medium_history:
-            $ref: '#/components/schemas/ValueHistory'
+          $ref: '#/components/schemas/ValueHistory'
         wear_level:
           type: integer
           description: >
@@ -1256,7 +1256,7 @@ components:
           properties:
             measured_at:
               type: string
-              example: "2026-01-12T08:00:00"
+              example: '2026-01-12T08:00:00'
               description: >
                 The timestamp representing the exact moment the S.M.A.R.T.
                 telemetry was captured from the physical disk.
@@ -1514,7 +1514,7 @@ components:
             counter provided by the kernel.
         access_count_initial_time:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             The timestamp when the daemon first sampled 'access_count'.
             This timestamp is in local time.
@@ -1581,7 +1581,7 @@ components:
             manually editing the 'snapraidd.conf' file and reloading the daemon.
         maintenance_schedule:
           type: string
-          example: "02:00"
+          example: '02:00'
           description: >
             Execution schedule for the automated 'sync' and 'scrub' sequence.
             Accepted formats: "HH:MM" or "<day> HH:MM". If empty,
@@ -1684,7 +1684,7 @@ components:
             Set to 0 to disable.
         hook_run_as_user:
           type: string
-          example: "nobody"
+          example: 'nobody'
           description: >
             The system user account utilized for the execution of 'hook_script'.
 
@@ -1696,7 +1696,7 @@ components:
             enabled in the static configuration file.
         hook_script:
           type: string
-          example: "/usr/local/bin/snapraid-hook.sh"
+          example: '/usr/local/bin/snapraid-hook.sh'
           description: >
             Absolute path to a custom script to trigger custom logic for
             various daemon events.
@@ -1719,7 +1719,7 @@ components:
             Defaults to 'error' if unset.
         notify_run_as_user:
           type: string
-          example: "nobody"
+          example: 'nobody'
           description: >
             Specifies the system user account under which notification
             subprocesses are executed.
@@ -1735,7 +1735,7 @@ components:
             enabled in the static configuration file.
         notify_heartbeat:
           type: string
-          example: "curl -fsS --max-time 30 --retry 3 https://hc-ping.com/..."
+          example: 'curl -fsS --max-time 30 --retry 3 https://hc-ping.com/...'
           description: >
             Shell command executed only upon task success (exit code 0).
             Used for external 'dead man's switch' telemetry.
@@ -1746,7 +1746,7 @@ components:
             enabled in the static configuration file.
         notify_result:
           type: string
-          example: "mail -s '%s' your_user@localhost"
+          example: 'mail -s "%s" your_user@localhost'
           description: >
             Shell command executed after task completion. The daemon pipes
             the task report (plain-text) into the command's stdin.
@@ -1789,29 +1789,29 @@ components:
             - copied: New file is a copy from another disk.
             - relocated: New file is moved from another disk.
             - restored: Inode changed but metadata matches. Likely a backup restore.
-          example: "moved"
+          example: 'moved'
         disk:
           type: string
           description: >
             The name of the disk where the file currently resides.
-          example: "d1"
+          example: 'd1'
         path:
           type: string
           description: >
             The current relative path of the file on the disk.
-          example: "movies/file.mkv"
+          example: 'movies/file.mkv'
         source_disk:
           type: string
           description: >
             The name of the originating disk. This field is only populated if
             the reason is 'moved', 'copied' or 'relocated'.
-          example: "d2"
+          example: 'd2'
         source_path:
           type: string
           description: >
             The original path of the file. This field is only populated if the
             reason is 'moved', 'copied' or 'relocated'.
-          example: "downloads/file.mkv"
+          example: 'downloads/file.mkv'
 
     Fix:
       type: object
@@ -1833,12 +1833,12 @@ components:
           type: string
           description: >
             The name of the disk where the file currently resides.
-          example: "d1"
+          example: 'd1'
         path:
           type: string
           description: >
             The current relative path of the file on the disk.
-          example: "movies/file.mkv"
+          example: 'movies/file.mkv'
 
     System:
       type: object
@@ -1968,12 +1968,12 @@ components:
       properties:
         daemon_version:
           type: string
-          example: "13.1"
+          example: '13.1'
           description: >
             The version of the SnapRAID Daemon currently running.
         daemon_conf:
           type: string
-          example: "/etc/snapraid.conf"
+          example: '/etc/snapraid.conf'
           description: >
             Absolute path to the SnapRAID Daemon configuration file.
         health:
@@ -1997,17 +1997,17 @@ components:
               determined.
         engine_version:
           type: string
-          example: "13.1"
+          example: '13.1'
           description: >
             The version of the underlying SnapRAID CLI binary.
         engine_conf:
           type: string
-          example: "/etc/snapraid.conf"
+          example: '/etc/snapraid.conf'
           description: >
             Absolute path to the SnapRAID CLI configuration file.
         engine_content:
           type: string
-          example: "/var/snapraid/snapraid.content"
+          example: '/var/snapraid/snapraid.content'
           description: >
             Absolute path to the primary SnapRAID CLI content file.
         block_size_bytes:
@@ -2032,7 +2032,7 @@ components:
             SnapRAID CLI configuration.
         last_command_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             Local timestamp of the most recently concluded task.
         last_command:
@@ -2110,22 +2110,22 @@ components:
             percentage of the array that is unsynced, unscrubbed, or bad.
         last_sync_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             Local timestamp of the last parity synchronization ('sync').
         last_scrub_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             Local timestamp of the last data integrity verification ('scrub').
         last_diff_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             Local timestamp of the last array change analysis ('diff').
         last_fix_at:
           type: string
-          example: "2026-01-12T08:00:00"
+          example: '2026-01-12T08:00:00'
           description: >
             Local timestamp of the last array fix ('fix').
         hold_off:
