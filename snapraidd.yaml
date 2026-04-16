@@ -380,7 +380,6 @@ paths:
                       progress telemetry (e.g., 'up' or 'smart').
                   eta_seconds:
                     type: integer
-                    format: int64
                     description: >
                       Estimated seconds remaining until the active command completes.
 
@@ -698,6 +697,7 @@ components:
       properties:
         prev:
           type: integer
+          format: int64
           description: >
             The immediate previous value held before the latest change.
         prev_at:
@@ -708,6 +708,7 @@ components:
             to the current value.
         lowest:
           type: integer
+          format: int64
           description: >
             The historical minimum value observed by the daemon.
         lowest_at:
@@ -1187,6 +1188,7 @@ components:
             * >1: The actual detected rotational speed (e.g., 5400, 7200, 10000).
         error_protocol:
           type: integer
+          format: int64
           description: >
             Counts command, transport, or controller-level errors reported
             by the device. These reflect failed I/O operations not directly
@@ -1198,6 +1200,7 @@ components:
             $ref: '#/components/schemas/ValueHistory'
         error_medium:
           type: integer
+          format: int64
           description: >
             Counts media-level errors where data could not be reliably
             read or written. These indicate actual storage surface or
@@ -1585,7 +1588,6 @@ components:
             background maintenance is disabled.
         sync_threshold_deletes:
           type: integer
-          format: int32
           default: 0
           example: 50
           description: >
@@ -1598,7 +1600,6 @@ components:
             Set to 0 for no threshold.
         sync_threshold_updates:
           type: integer
-          format: int32
           default: 0
           example: 500
           description: >
