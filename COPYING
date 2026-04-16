@@ -1,18 +1,19 @@
-The SnapRAID-Daemon project is provided under:
+The SnapRAID-Daemon project as a whole, including all its contributions and
+modifications to included libraries, is provided under the GPL-3.0-or-later
+License.
 
-	SPDX-License-Identifier: GPL-3.0-or-later
+The TommyDS library is provided under the BSD-2-Clause License.
 
-Being under the terms of the GNU General Public License version 3 or any later
-version according with:
+The CivetWeb library is provided under the MIT License.
 
-	LICENSES/GPL-3.0
+	Note: While the CivetWeb library may be subject to different 
+	licenses depending on enabled features, the specific configuration 
+	included and distributed within this project is released under 
+	the MIT License.
 
-The TommyDS project is provided under:
+The JSMN library is provided under the MIT License.
 
-	SPDX-License-Identifier: BSD-2-Clause
+The full text for these licenses is available in the LICENSES/ directory.
 
-Being under the terms of the BSD 2 Clause version according with:
-
-	LICENSES/BSD-2-Clause
-
-All contributions to the SnapRAID-Daemon project are subject to this COPYING file.
+All contributions to the SnapRAID-Daemon project are subject to this COPYING
+file.
