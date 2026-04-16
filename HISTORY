@@ -5,6 +5,10 @@ SnapRAID-Daemon HISTORY
 ===========
  * Set NoNewPrivileges=no by default in the systemd unit file to support
    system-level mailers like Postfix.
+ * Hid notify_result_level in the UI when net_config_full_access is
+   disabled.
+ * Fixed the arrow direction in the report for files that are moved,
+   copied, or relocated.
 
 1.6 2026/04
 ===========

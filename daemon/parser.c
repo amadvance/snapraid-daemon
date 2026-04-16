@@ -861,15 +861,15 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, path, disk, map[4]);
+		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, map[4], disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, disk, path, map[4], map[5]);
+		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, map[4], map[5], disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "relocate") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_RELOCATE, disk, path, map[4], map[5]);
+		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_RELOCATE, map[4], map[5], disk, path);
 		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
 	} else if (strcmp(tag, "restore") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
