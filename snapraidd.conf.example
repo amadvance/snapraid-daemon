@@ -325,7 +325,7 @@ spindown_idle_minutes = 15
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-hook_run_as_user = nobody
+#hook_run_as_user = nobody
 
 ### Notifications
 # --- System Log (syslog/journald) ---
@@ -443,7 +443,7 @@ notify_result_level = error
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-notify_run_as_user = nobody
+#notify_run_as_user = nobody
 
 # If set to 1, the daemon will log a detailed list of file changes discovered
 # before the sync begins.
