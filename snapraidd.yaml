@@ -1013,7 +1013,7 @@ components:
           format: int64
           description: >
             Ending block index + 1.
-        block_count:
+        blocks_count:
           type: integer
           format: int64
           description: >
