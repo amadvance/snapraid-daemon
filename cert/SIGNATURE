@@ -64,31 +64,3 @@ Steps:
 
 If the hashes match exactly, the file is authentic and safe to run, even
 if Windows displays an "Unknown Publisher" warning.
-
-
-WINDOWS SMARTSCREEN ("BLUE BOX")
---------------------------------
-
-Regardless of the self-signature or whether you have trusted the author,
-Windows SmartScreen may still display a "Blue Box" warning.
-
-Only expensive EV (Extended Validation) certificates can automatically
-bypass the Smart Screen, making them generally unsuitable for a free
-OpenSource project.
-
-When the SmartScreen prompt first appears, users can simply click
-"More info" and then select "Run anyway" to proceed.
-
-If you would prefer to permanently "unblock" the installer on your
-machine and prevent the prompt from appearing again, you follow these
-steps:
-
-1. Right-click the installer file (.exe) and select Properties.
-2. Stay on the General tab (the default view).
-3. Look for the Security section at the very bottom of the window.
-4. Check the box labeled Unblock.
-5. Click Apply and then OK.
-
-Once unblocked, the file is treated as safe by your local system, and
-you will be able to launch the installer directly without the
-SmartScreen overlay.
