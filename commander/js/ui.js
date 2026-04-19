@@ -984,8 +984,8 @@ export const renderSettings = (config) => {
             <!-- Data Integrity -->
             <div class="card">
                 <h3>Data Integrity</h3>
-                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'Maximum number of deletions allowed. If exceeded, the sync will not start to prevent accidental mass data loss. Set to 0 to disable.')}
-                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'Maximum number of file updates allowed. If exceeded, the sync will not start to prevent unintended mass changes. Set to 0 to disable.')}
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'If the number of deletions reaches or exceeds this value, the sync will not start to prevent accidental mass data loss. Set to 0 to disable.')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'If the number of updates reaches or exceeds this value, the sync will not start to prevent unintended mass changes. Set to 0 to disable.')}
                 ${boolField('sync_prehash', 'Safety Pre-hash', 'Pre-calculates hashes before syncing to verify them during the process. This provides a second read pass to catch silent data errors and faulty memory corruption.')}
                 ${boolField('sync_prevent_truncations', 'Prevent File Truncations', 'Stops the synchronization if files that previously contained data are now empty. Prevent parity updates when data may have been accidentally cleared.')}
             </div>

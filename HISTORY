@@ -3,6 +3,11 @@ SnapRAID-Daemon HISTORY
 
 1.8 2026/04
 ===========
+ * Updated sync_threshold_deletes and sync_threshold_updates to trigger
+   when the file count is equal to or greater than the threshold (previously
+   only greater than). This allows using a value of 1 to abort on a single
+   file deletion or change.
+   This change has effect only with SnapRAID CLI 14.4.
  * Made the presence of the zip tool a strong requirement for building from
    source.
  * Made systemd detection when building from source independent of the
@@ -32,8 +37,8 @@ SnapRAID-Daemon HISTORY
  * Don't protect the home directory in systemd to allow using it as a data
    disk.
  * Automatically reload the content file at startup if it was modified
-   outside the daemon using the SnapRAID CLI. This change has effect only with
-   SnapRAID 14.2.
+   outside the daemon using the SnapRAID CLI directly.
+   This change has effect only with SnapRAID CLI 14.2.
 
 1.5 2026/04
 ===========

@@ -200,21 +200,23 @@ net_web_root = commander.zip
 #
 maintenance_schedule = 02:00
 
-# Defines the maximum number of deleted or missing files allowed before
-# a 'sync' operation is aborted to prevent accidental parity loss.
+# Defines the number of deleted or missing files that will trigger a 'sync'
+# operation abort to prevent accidental parity loss.
+# The check triggers when the count is equal to or greater than this value.
+# For example, set to 1 to abort if any single file is deleted.
 # This safety mechanism is enforced during 'scheduled_run' tasks and
 # the '/api/v1/maintenance' API sequence.
-# It is bypassed for standalone '/api/v1/sync' API requests to allow
-# manual overrides.
+# It is bypassed for standalone '/api/v1/sync' API requests.
 # Set to 0 to disable this check.
 sync_threshold_deletes = 50
 
-# Defines the maximum number of modified or updated files allowed before
-# a 'sync' operation is aborted.
+# Defines the number of modified or updated files that will trigger a 'sync'
+# operation abort.
+# The check triggers when the count is equal to or greater than this value.
+# For example, set to 1 to abort if any single file is modified.
 # This safety mechanism is enforced during 'scheduled_run' tasks and
 # the '/api/v1/maintenance' API sequence.
-# It is bypassed for standalone '/api/v1/sync' API requests to allow
-# manual overrides.
+# It is bypassed for standalone '/api/v1/sync' API requests.
 # Set to 0 to disable this check.
 sync_threshold_updates = 100
 
