@@ -11,7 +11,6 @@ AC_USE_SYSTEM_EXTENSIONS
 
 dnl Checks for programs.
 AC_PROG_CC
-PKG_PROG_PKG_CONFIG
 AC_CHECK_PROG([ADVD2],[advd2],[advd2],[])
 AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
 AC_CHECK_PROG([ZIP],[zip],[zip],[])
@@ -210,33 +209,35 @@ AC_ARG_WITH([init-type],
     [init_type=$withval],
     [init_type=auto])
 
-AC_MSG_CHECKING([checking init system])
+AC_MSG_CHECKING([for init system])
 if test "x$init_type" = "xauto"; then
-    # Check systemd first (more specific)
-    if $PKG_CONFIG --exists systemd; then
-        init_type=systemd
-    # Then check for BSD directory existence
-    elif test -d /etc/rc.d; then
-        init_type=bsd
-    else
-        init_type=none
-    fi
+  # Check for standard systemd directories
+  if test -d /usr/lib/systemd/system || test -d /lib/systemd/system; then
+    init_type=systemd
+  # Then check for BSD directory existence
+  elif test -d /etc/rc.d; then
+    init_type=bsd
+  else
+    init_type=none
+  fi
 fi
 AC_MSG_RESULT([$init_type])
 
 if test "x$init_type" = "xsystemd"; then
   # Set a default for SERVICEDIR based on prefix
   if test "x$prefix" = "x/usr"; then
-    # Standard system install: Use pkg-config to find the "real" path
-    PKG_CHECK_EXISTS([systemd], 
-      [default_unitdir=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`],
-      [default_unitdir='${libdir}/systemd/system'])
+    # Standard system install
+    if test -d /usr/lib/systemd/system; then
+        default_unitdir=/usr/lib/systemd/system
+    else
+        default_unitdir=/lib/systemd/system
+    fi
   else
       # Custom/Local install: Keep it inside the prefix sandbox
       default_unitdir='${libdir}/systemd/system'
   fi
   AC_ARG_WITH([systemdsystemunitdir],
-    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [directory for systemd service files (default: PREFIX/lib/systemd/system)])],
+    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [directory for systemd service files (default: from pkg-config, or /usr/lib/systemd/system for system installs, or \${libdir}/systemd/system for custom prefix installs)])],
     [SERVICEDIR="$with_systemdsystemunitdir"],
     [SERVICEDIR="$default_unitdir"]
   )
