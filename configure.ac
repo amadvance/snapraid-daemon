@@ -13,8 +13,11 @@ dnl Checks for programs.
 AC_PROG_CC
 AC_CHECK_PROG([ADVD2],[advd2],[advd2],[])
 AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
-AC_CHECK_PROG([ZIP],[zip],[zip],[])
-AM_CONDITIONAL(HAVE_ZIP, [test x"$ZIP" != x])
+AC_CHECK_PROG([ZIP], [zip], [zip])
+
+if test "x$ZIP" = "x"; then
+    AC_MSG_ERROR([zip not found. This package is required for the build.])
+fi
 
 # Check if we are targeting Windows
 is_windows=no
@@ -144,20 +147,29 @@ dnl Checks for architecture
 AC_C_BIGENDIAN
 
 dnl Checks for libraries
-PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.11], [
-    AC_DEFINE([HAVE_ZLIB], [1], [Define if you have zlib])
-    AC_SUBST([ZLIB_CFLAGS])
-    AC_SUBST([ZLIB_LIBS])
+AC_CHECK_HEADER([zlib.h], [
+    AC_CHECK_LIB([z], [gzopen], [
+        AC_DEFINE([HAVE_ZLIB], [1], [Define if you have zlib])
+        ZLIB_LIBS="-lz"
+        AC_SUBST([ZLIB_LIBS])
+    ], [
+        AC_MSG_WARN([zlib library not found. Gzip support disabled.])
+    ])
 ], [
-    AC_MSG_WARN([zlib not found. Gzip support will be disabled.])
+    AC_MSG_WARN([zlib headers not found. Gzip support disabled.])
 ])
 
-PKG_CHECK_MODULES([ZSTD], [libzstd >= 1.4.0], [
-    AC_DEFINE([HAVE_ZSTD], [1], [Define if you have libzstd])
-    AC_SUBST([ZSTD_CFLAGS])
-    AC_SUBST([ZSTD_LIBS])
+dnl Checks for libzstd
+AC_CHECK_HEADER([zstd.h], [
+    AC_CHECK_LIB([zstd], [ZSTD_compress], [
+        AC_DEFINE([HAVE_ZSTD], [1], [Define if you have libzstd])
+        ZSTD_LIBS="-lzstd"
+        AC_SUBST([ZSTD_LIBS])
+    ], [
+        AC_MSG_WARN([libzstd library not found. Zstd support disabled.])
+    ])
 ], [
-    AC_MSG_WARN([libzstd not found. Zstd support will be disabled.])
+    AC_MSG_WARN([libzstd headers not found. Zstd support disabled.])
 ])
 
 dnl Checks for compiler

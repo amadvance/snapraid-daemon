@@ -26,7 +26,6 @@ noinst_DATA = rc.snapraidd snapraidd.service
 CLEANFILES = rc.snapraidd snapraidd.service
 
 # Web UI
-if HAVE_ZIP
 COMMANDER_DIST = \
 	index.html \
 	site.webmanifest \
@@ -46,7 +45,6 @@ data_DATA = commander.zip
 
 commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
 	cd $(srcdir)/commander && $(ZIP) -0 -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
-endif
 
 # Windows
 if HOST_WINDOWS
