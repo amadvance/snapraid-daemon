@@ -143,6 +143,8 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 		}
 
 		free(out_buf);
+#else
+		(void)crc32;
 #endif
 	} else {
 		log_msg(LVL_ERROR, "crawler zip %s unsupported compression method %d for %s", path, compression_method, file);
