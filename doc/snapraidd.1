@@ -522,17 +522,22 @@ Examples:
 \[dq]02:00\[dq] \- Run every night at 2 AM.
 \[dq]Mon 03:00, Thu 04:00\[dq] \- Run every Monday at 3 AM and Thursday at 4 AM.
 .SS sync_threshold_deletes 
-Sets the maximum number of deleted or missing files allowed before a
-sync operation is automatically aborted. This serves as a safety
-mechanism to prevent accidental parity loss due to unintended mass
-deletions. This safety check is enforced during automated maintenance
-schedules and tasks initiated through the Web UI.
+Sets the number of deleted or missing files that will trigger an automatic
+abort of a sync operation. The abort occurs when the number of deletions
+is equal to or greater than this value. This serves as a safety mechanism
+to prevent accidental parity loss; for example, setting this to 1 will
+abort the operation if any single file is deleted. This check is
+enforced during automated maintenance schedules and tasks initiated
+through the Web UI.
 .SS sync_threshold_updates 
-Sets the maximum number of modified or updated files allowed before a
-sync operation is aborted. Similar to the delete threshold, this
-prevents the parity from being overwritten if an unexpected number
-of files have changed. This safety check is enforced during automated
-maintenance schedules and tasks initiated through the Web UI.
+Sets the number of modified or updated files that will trigger an
+automatic abort of a sync operation. The abort occurs when the number
+of updates is equal to or greater than this value. This prevents the
+parity from being overwritten if an unexpected number of files have
+changed. Similar to the delete threshold, setting this to 1 will abort
+the operation if any single file is modified. This check is enforced
+during automated maintenance schedules and tasks initiated through
+the Web UI.
 .SS sync_prehash 
 If set to 1, the sync command is executed with the \-\-prehash option.
 This calculates the hash of all files before the synchronization process
