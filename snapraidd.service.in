@@ -12,8 +12,7 @@ Wants=local-fs.target network-online.target
 [Service]
 Type=forking
 PIDFile=/run/snapraidd.pid
-ExecStartPre=/usr/bin/test -f @sysconfdir@/snapraidd.conf
-ExecStart=@bindir@/snapraidd --conf @sysconfdir@/snapraidd.conf
+ExecStart=@bindir@/snapraidd
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Automatically restart the daemon if it crashes
@@ -63,7 +62,7 @@ ProtectHome=no
 # To allow the daemon to update its own configuration while keeping the 
 # rest of /etc protected, we explicitly grant write access to the config file.
 ProtectSystem=full
-ReadWritePaths=@sysconfdir@/snapraidd.conf
+ReadWritePaths=@readwritepaths@
 
 [Install]
 # Start automatically when the system reaches the standard multi-user state
