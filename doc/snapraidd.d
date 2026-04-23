@@ -561,7 +561,11 @@ Configuration
 	If this is missing or blank, the script is executed with the
 	same privileges as the daemon process.
 
-	On Linux, `nobody` is the standard choice for maximum isolation.
+	On Linux, `nobody` is the standard choice for maximum isolation. Note that
+	using `nobody` may prevent certain tools, such as Docker, from functioning
+	correctly due to restricted permissions. Ensure you are aware of these
+	limitations before applying this setting.
+
 	On Windows, `LocalService` is the preferred choice as it provides
 	minimal local access while maintaining network capabilities.
 	Alternatively, `NetworkService` can be used if the script specifically
@@ -640,7 +644,12 @@ Configuration
 	notifications. If missing or left blank, the task runs with the
 	daemon's current privileges.
 
-	On Linux, `nobody` is the standard choice for maximum isolation.
+	On Linux, `nobody` is the standard choice for maximum isolation. However,
+	while sufficient for simple `curl` commands, it may cause failures for
+	mailers (like sendmail or postfix) that require specific group memberships
+	or access to mail queues. Verify that your notification tools can operate
+	without a home directory or write access to system logs.
+
 	On Windows, `LocalService` is the preferred choice as it provides
 	minimal local access while maintaining network capabilities.
 	Alternatively, `NetworkService` can be used if the script specifically
