@@ -4,19 +4,23 @@ SnapRAID-Daemon HISTORY
 1.8 2026/04
 ===========
  * Updated sync_threshold_deletes and sync_threshold_updates to trigger
-   when the file count is equal to or greater than the threshold (previously
-   only greater than). This allows using a value of 1 to abort on a single
-   file deletion or change.
+   when the file count is equal to or greater than the threshold
+   (previously only greater than). This allows using a value of 1 to
+   abort on a single file deletion or change.
    This change has effect only with SnapRAID CLI 14.4.
- * Made the presence of the zip tool a strong requirement for building from
-   source.
+ * Removed the default "run_as_user nobody" from the example .conf file.
+   It was too strict a requirement for running external tools and
+   incorrect on Windows.
+ * Made the presence of the zip tool a strong requirement for building
+   from source.
  * Made systemd detection when building from source independent of the
    presence of pkg-config.
- * Removed the default "run_as_user nobody" from the example .conf file. It
-   was too strict a requirement for running external tools and incorrect on
-   Windows.
- * Renamed block_count to blocks_count and added some missing "format: int64"
-   entries in the snapraid.yaml to match the API results.
+ * Remove redundant ExecStartPre config check and explicit --conf
+   argument from the service file, as the daemon resolves its
+   configuration path internally with fallback to /etc/snapraidd.conf.
+ * Renamed "block_count" to "blocks_count" and added some missing
+   "format: int64" entries in the snapraid.yaml to match the API
+   results.
 
 1.7 2026/04
 ===========
@@ -32,10 +36,10 @@ SnapRAID-Daemon HISTORY
  * In scheduled maintenance, spin down only if the daemon is configured
    to manage spindown, specifically if spindown_idle_minutes is
    different from 0.
- * In manual maintenance from the UI, added a checkbox for ignoring configured
-   thresholds.
- * Don't protect the home directory in systemd to allow using it as a data
-   disk.
+ * In manual maintenance from the UI, added a checkbox for ignoring
+   configured thresholds.
+ * Don't protect the home directory in systemd to allow using it as a
+   data disk.
  * Automatically reload the content file at startup if it was modified
    outside the daemon using the SnapRAID CLI directly.
    This change has effect only with SnapRAID CLI 14.2.
@@ -43,15 +47,17 @@ SnapRAID-Daemon HISTORY
 1.5 2026/04
 ===========
  * Don't compress commander.zip, but just store the files as-is (no
-   compression). This is in case the binary is built without zlib support.
+   compression). This is in case the binary is built without zlib
+   support.
 
 1.4 2026/04
 ===========
- * Propagates errors logged to syslog (or EventLog on Windows) to the task log
-   displayed in the UI. This makes troubleshooting script execution problems
+ * Propagates errors logged to syslog (or EventLog on Windows) to the
+   task log displayed in the UI. This makes troubleshooting script
+   execution problems
    much easier.
- * Updated the documentation with the new authentication requirements for
-   ntfy.sh.
+ * Updated the documentation with the new authentication requirements
+   for ntfy.sh.
 
 1.3 2026/03
 ===========
@@ -74,32 +80,32 @@ SnapRAID-Daemon HISTORY
 0.1beta3 2026/03
 ================
  * Added monitoring for disks not part of the array. These are defined in
-   the SnapRAID configuration (snapraid.conf) using the 'extra' keyword and
+   the SnapRAID configuration (snapraid.conf) using the "extra" keyword and
    are monitored identically to array disks for health and status.
-   The only exception is that they are excluded from 'up', 'down', and
-   'down_idle' power management operations.
- * Introduced the 'relocated' file state to unify the previous 'copied/removed'
+   The only exception is that they are excluded from "up", "down", and
+   "down_idle" power management operations.
+ * Introduced the "relocated" file state to unify the previous "copied/removed"
    logic. This new status specifically identifies files moved to a different
    path or disk with a new inode where the original has disappeared.
  * Added support for multiple maintenance schedules using a comma-separated
    list.
- * Added a one-shot 'hold_off' API endpoint to bypass the next scheduled
+ * Added a one-shot "hold_off" API endpoint to bypass the next scheduled
    maintenance window, featuring an automatic reset mechanism once a skip
    occurs.
  * Added IPv6 support. If no "net_port" is specified, it binds to both IPv4
    and IPv6 on the default port 7627, retrying with only IPv4 if it fails.
- * Added 'touch_zero_subseconds' configuration option to the automated maintenance 
+ * Added "touch_zero_subseconds" configuration option to the automated maintenance 
    lifecycle. This feature refreshes file timestamps with zero nanosecond 
-   precision using the 'touch' command prior to a sync.
+   precision using the "touch" command prior to a sync.
  * Improved the scheduler to catch up on missed tasks during "Spring Forward"
    DST jumps while preventing double execution during "Fall Back" repeats.
    Added a UTC-based safety check to detect and skip processing during large
    manual time changes.
  * Added support for the ZSTD compression in the HTTP protocol at the Windows
    Service.
- * Renamed 'sync_force_zero' to 'sync_prevent_truncations' with the opposite
+ * Renamed "sync_force_zero" to "sync_prevent_truncations" with the opposite
    meaning. This ensures the option provides better safety when enabled,
-   consistent with 'sync_prehash'.
+   consistent with "sync_prehash".
 
 0.1beta2 2026/03
 ================
@@ -110,32 +116,32 @@ SnapRAID-Daemon HISTORY
    Once the installation is complete, open http://127.0.0.1:7267 in your web
    browser to access the dashboard.
  * Task numbers are now persistent and don't change if the daemon is restarted.
- * Added 'hook_script' and 'hook_run_as_user' to replace 'script_pre_run',
-   'script_post_run' and 'script_run_as_user'.
-   The new 'hook_script' uses a unified task-lifecycle model ('task-begin', 
-   'task-end', 'task-error') passed as a single positional argument. These
+ * Added "hook_script" and "hook_run_as_user" to replace "script_pre_run",
+   "script_post_run" and "script_run_as_user".
+   The new "hook_script" uses a unified task-lifecycle model ("task-begin", 
+   "task-end", "task-error") passed as a single positional argument. These
    events are triggered whenever an action that accesses the array is
    scheduled and executed.
    Future versions will introduce new event types. Scripts should be 
    designed to handle unknown events gracefully. Future releases will 
    also provide additional information via environment variables.
-   Legacy 'script_pre_run', 'script_post_run' and script_run_as_user
+   Legacy "script_pre_run", "script_post_run" and script_run_as_user
    configuration options are now deprecated and ignored in favor of the new
-   'hook_script' architecture.
- * If a disk changes its UUID, the array now enters a 'failing' state 
+   "hook_script" architecture.
+ * If a disk changes its UUID, the array now enters a "failing" state 
    because it is assumed the original disk has disappeared. This condition 
    persists until the content file reports a UUID matching the effective one.
- * Added 'refresh' command to the REST API. This triggers a 'read' followed by 
-   a 'report' to re-synchronize the daemon state after manual external 
+ * Added "refresh" command to the REST API. This triggers a "read" followed by 
+   a "report" to re-synchronize the daemon state after manual external 
    actions (e.g., resolving UUID mismatches or disk replacements). This is 
-   specifically intended to clear 'FAILING' or 'PREFAIL' states.
- * In the UI, a 'Refresh' button is now displayed instead of 'Maintenance'
+   specifically intended to clear "FAILING" or "PREFAIL" states.
+ * In the UI, a "Refresh" button is now displayed instead of "Maintenance"
    when the array is in a state requiring manual intervention (FAILING/PREFAIL).
- * Added 'sys_engine' configuration option to specify a custom location for
+ * Added "sys_engine" configuration option to specify a custom location for
    the SnapRAID executable. Standard system paths are searched by default.
- * Renamed 'log_*' options to 'sys_log_*' to align with the new system-level
+ * Renamed "log_*" options to "sys_log_*" to align with the new system-level
    namespace.
- * Established the 'sys_' prefix for static, manual-edit-only options 
+ * Established the "sys_" prefix for static, manual-edit-only options 
    that are hidden from the REST API for security and stability.
  * Added a Light Theme with a dedicated toggle in the navigation bar.
 
