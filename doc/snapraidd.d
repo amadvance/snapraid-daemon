@@ -600,6 +600,16 @@ Configuration
 	The daemon pipes a structured, plain-text task report directly into
 	the command's stdin.
 
+	Examples of usage:
+
+	ntfy.sh - (Modern Push Notifications) Uses curl to send the report as
+		a POST request that you can receive on your phone.
+	mail - (Local System Mail) Uses the standard Linux 'mail' utility.
+		This is ideal if you have a local MTA (like Postfix or Exim) configured.
+	SMTP-over-SSL - (Direct Delivery) Uses curl's built-in SMTP engine with
+		the --netrc option. This is the most secure method for direct
+		SMTP, as it keeps your login credentials out of persistent logs.
+
 	The daemon automatically chooses a wide (80-col) or narrow (32-col)
 	report based on the command and arguments used (e.g., presence of `mail`
 	or `smtps` strings). Users can manually override this by adding --wide or
@@ -623,15 +633,20 @@ Configuration
 	This allows curl to read credentials from a local file rather than
 	exposing passwords in the command line or process list.
 
-	File format (~/.netrc):
+	Linux - Curl looks for `.netrc` in the HOME directory of the executing
+		user. For a daemon running as root, place the file in: `/root/.netrc`
+		The `.netrc` file MUST have 600 permissions and be owned by the
+		executing user. Otherwise, curl will fail with error 55.
+	Windows - Curl looks for '_netrc' in the user profile. For a Windows
+		Service running as 'LocalSystem', place the file in:
+		`C:\Windows\System32\config\systemprofile\_netrc`
+		Ensure the `_netrc` file has permissions restricted to System and
+		Administrators.
+
+	File format (.netrc or _netrc):
 		:machine smtp.gmail.com
 		:login your_email@gmail.com
-		:password your-16-char-app-password
-
-	If `notify_run_as_user` is configured, ensure that user has a valid
-	home directory containing a .netrc file with 600 permissions for SMTP
-	authentication. Failure to do so may result in authentication errors
-	(e.g., curl error 55).
+		:password your-16-char-app-password-without-spaces
 
     notify_result_level
 	Controls the filter for `notify_result`. The notification is sent only

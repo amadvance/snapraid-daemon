@@ -360,6 +360,15 @@ notify_syslog_level = info
 # The daemon pipes a structured, plain-text task report directly into the
 # command's stdin.
 #
+# Examples of usage:
+# 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as
+#    a POST request that you can receive on your phone.
+# 2. mail (Local System Mail): Uses the standard Linux 'mail' utility.
+#    This is ideal if you have a local MTA (like Postfix or Exim) configured.
+# 3. SMTP-over-SSL (Direct Delivery): Uses curl's built-in SMTP engine with
+#    the --netrc option. This is the most secure method for direct
+#    SMTP, as it keeps your login credentials out of persistent logs.
+#
 # Format Selection:
 # The daemon automatically chooses a 'wide' (80-col) or 'narrow' (32-col)
 # report based on the command and arguments used (e.g., 'mail' triggers wide).
@@ -371,15 +380,6 @@ notify_syslog_level = info
 # %l : Replaced with the task level (critical, error, warning, info, debug).
 # %n : Replaced with the ntfy priority (urgent, high, default, low, min).
 # %t : Replaced with the ntfy tag (rotating_light, warning, -1, +1, heavy_check_mark).
-#
-# Examples of usage:
-# 1. ntfy.sh (Modern Push Notifications): Uses curl to send the report as
-#    a POST request that you can receive on your phone.
-# 2. mail (Local System Mail): Uses the standard Linux 'mail' utility.
-#    This is ideal if you have a local MTA (like Postfix or Exim) configured.
-# 3. SMTP-over-SSL (Direct Delivery): Uses curl's built-in SMTP engine with
-#    the --netrc (or --user) option. This is the most secure method for direct
-#    SMTP, as it keeps your login credentials out of persistent logs.
 #
 # Automatic Header Injection:
 # If the command contains --mail-from or --mail-rcpt options, the
@@ -404,10 +404,6 @@ notify_syslog_level = info
 # machine smtp.gmail.com
 # login your_email@gmail.com
 # password your-16-char-app-password-without-spaces
-#
-# Using --netrc and notify_run_as_user:
-# If notify_run_as_user is defined, curl will look for the '.netrc' file
-# within the HOME directory of that specific user.
 #
 # For security enforcement, this parameter is immutable via the REST API
 # unless 'net_config_full_access' is explicitly enabled in the static
