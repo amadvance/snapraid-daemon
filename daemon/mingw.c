@@ -1495,14 +1495,21 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		 * Create an environment block to ensure PATH is loaded.
 		 */
 		LPVOID env = NULL;
-		CreateEnvironmentBlock(&env, h_token, FALSE);
+		if (!CreateEnvironmentBlock(&env, h_token, FALSE)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to get user %s environment, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			CloseHandle(stdin_read_handle);
+			CloseHandle(stdin_write_handle);
+			CloseHandle(h_token);
+			return -1;
+		}
 
 		ret = CreateProcessAsUserW(
 			h_token,
 			NULL,
 			u8tou16(conv, command),
 			NULL, NULL,
-			FALSE,
+			TRUE, /* inherit pipe handles */
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
 			env, cwd,
 			&si, &pi
@@ -1572,7 +1579,6 @@ int os_script(char** argv, const char* run_as_user)
 	STARTUPINFOW si;
 	BOOL ret;
 	char resolved_path[PATH_MAX];
-	WCHAR command_line[PATH_MAX + 32];
 	int64_t start, stop;
 	const char* script_path = argv[0];
 
@@ -1662,12 +1668,17 @@ int os_script(char** argv, const char* run_as_user)
 		 * Create an environment block to ensure PATH is loaded.
 		 */
 		LPVOID env = NULL;
-		CreateEnvironmentBlock(&env, h_token, FALSE);
+		if (!CreateEnvironmentBlock(&env, h_token, FALSE)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to get user %s environment, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			CloseHandle(h_token);
+			return -1;
+		}
 
 		ret = CreateProcessAsUserW(
 			h_token,
 			NULL,
-			command_line,
+			cmd_buffer,
 			NULL, NULL,
 			FALSE,
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,

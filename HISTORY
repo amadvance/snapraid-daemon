@@ -1,6 +1,12 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.9 2026/04
+===========
+ * Resolved an issue where the script execution failed on Windows with
+   the error 87  (ERROR_INVALID_PARAMETER) when a specific user was
+   requested with "hook_run_as_user".
+
 1.8 2026/04
 ===========
  * Updated sync_threshold_deletes and sync_threshold_updates to trigger
