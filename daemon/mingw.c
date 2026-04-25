@@ -1661,7 +1661,13 @@ int os_script(char** argv, const char* run_as_user)
 		 * Create an environment block to ensure PATH is loaded.
 		 */
 		LPVOID env = NULL;
-		CreateEnvironmentBlock(&env, h_token, FALSE);
+
+		if (!CreateEnvironmentBlock(&env, h_token, FALSE)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to get user %s environment, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			CloseHandle(h_token);
+			return -1;
+		}
 
 		ret = CreateProcessAsUserW(
 			h_token,
