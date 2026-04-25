@@ -1502,7 +1502,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 			NULL,
 			u8tou16(conv, command),
 			NULL, NULL,
-			FALSE,
+			TRUE, /* inherit pipe handles */
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
 			env, cwd,
 			&si, &pi
@@ -1572,7 +1572,6 @@ int os_script(char** argv, const char* run_as_user)
 	STARTUPINFOW si;
 	BOOL ret;
 	char resolved_path[PATH_MAX];
-	WCHAR command_line[PATH_MAX + 32];
 	int64_t start, stop;
 	const char* script_path = argv[0];
 
@@ -1667,7 +1666,7 @@ int os_script(char** argv, const char* run_as_user)
 		ret = CreateProcessAsUserW(
 			h_token,
 			NULL,
-			command_line,
+			cmd_buffer,
 			NULL, NULL,
 			FALSE,
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
