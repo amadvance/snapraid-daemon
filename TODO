@@ -1,8 +1,8 @@
 SnapRAID Daemon TODO
 ====================
 
-Future Releases
-===============
+2.x Releases
+============
 
 - Compress .log with .gz
 
@@ -53,6 +53,11 @@ Future Releases
   daemon/services at the same time.
   It can be automatically imported from the executable name.
   Unify DAEMON/SERVICE_NAME in DAEMON_TAG.
+  Add also support to customize the snapraid command line.
+  Required to use a different snapraid.conf for selecting the array.
+
+Future Releases
+===============
 
 - Implement Windows installer signature with SignPath.io
 
