@@ -247,6 +247,12 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			continue; /* fd consumed by recursion */
 		} else if (S_ISREG(st.st_mode)) {
 			const char* relative = path + skip;
+			const char* mime_type = get_mime_type(relative);
+			if (mime_type == 0) {
+				log_msg(LVL_WARNING, "crawler ignore unknown file %s", path);
+				continue;
+			}
+
 			struct snapraid_page* page = page_alloc(relative, st.st_size);
 
 #ifdef _WIN32
@@ -265,9 +271,7 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 
 			close(fd);
 
-			page->mime_type = get_mime_type(relative);
-			if (!page->mime_type)
-				page->mime_type = MIME_BINARY;
+			page->mime_type = mime_type;
 
 			tommy_list_insert_tail(page_list, &page->node, page);
 		} else {
@@ -476,8 +480,8 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	if (strcmp(target_uri, "/") == 0)
 		target_uri = "/index.html";
 
-	const char* mime = get_mime_type(target_uri);
-	if (mime == 0)
+	const char* mime_type = get_mime_type(target_uri);
+	if (mime_type == 0)
 		return send_error(conn, 403);
 
 	state_lock();
@@ -523,7 +527,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 		return send_error(conn, 500);
 	}
 
-	int status = send_file(conn, st.st_mtime, body, body_len, mime);
+	int status = send_file(conn, st.st_mtime, body, body_len, mime_type);
 
 	free(body);
 

@@ -82,13 +82,17 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 
 	snprintf(root, sizeof(root), "/%s", file);
 
+	const char* mime_type = get_mime_type(file);
+	if (mime_type == 0) {
+		log_msg(LVL_WARNING, "crawler ignore unknown file %s", file);
+		return;
+	}
+
 	struct snapraid_page* page = page_alloc(root, uncompressed_size);
 
 	memcpy(page->content, uncompressed_data, uncompressed_size);
 
-	page->mime_type = get_mime_type(file);
-	if (!page->mime_type)
-		page->mime_type = MIME_BINARY;
+	page->mime_type = mime_type;
 
 	tommy_list_insert_tail(page_list, &page->node, page);
 }
