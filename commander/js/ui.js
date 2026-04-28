@@ -791,7 +791,7 @@ export const renderTasks = (data, hidePeriodic) => {
         ? history.filter(t => t.command !== 'probe')
         : history;
 
-    const queueRows = pending.length ? pending.reverse().map(t => `
+    const queueRows = pending.length ? pending.map(t => `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
             <td class="font-bold text-sky">${formatFullCommand(t)}</td>
@@ -815,7 +815,7 @@ export const renderTasks = (data, hidePeriodic) => {
         `;
     }).join('') : `<tr><td colspan="5" class="text-muted p-4">No active tasks</td></tr>`;
 
-    const historyRows = filteredHistory.length ? filteredHistory.reverse().map(t => {
+    const historyRows = filteredHistory.length ? filteredHistory.map(t => {
         let exitStatus = '';
         if (t.status === 'terminated' && t.exit_code !== 0) {
             exitStatus = `<div class="text-yellow mb-1">Exit Code: ${t.exit_code}</div>`;

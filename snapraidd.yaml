@@ -453,6 +453,16 @@ paths:
 
         Returns 204 No Content if the daemon has not initiated any tasks
         since the last service restart.
+      parameters:
+        - name: limit_messages
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            Limits the maximum number of log entries returned in the 'messages'
+            array of the active or latest task. If omitted, all messages are returned.
       responses:
         '200':
           description: Active or latest task state retrieved.
@@ -484,6 +494,25 @@ paths:
         The 'active' field is returned as an array. In the current version of the
         daemon, this array will contain at most one task. If no task is
         currently executing, the array will be empty.
+      parameters:
+        - name: limit_history
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            Limits the maximum number of tasks returned in the 'history' array.
+            Newest tasks should be prioritized.
+        - name: limit_messages
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            Limits the maximum number of log entries returned inside the
+            'messages' array for each task. If omitted, all messages are returned.
       responses:
         '200':
           description: Successfully retrieved the global task collection.
@@ -597,6 +626,25 @@ paths:
         The 'diff' statistics represent the drift between the actual
         files on disk and the parity information, as recorded during
         the last array check.
+      parameters:
+        - name: limit_diffs
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            Limits the maximum number of elements returned in the 'diffs' array.
+            If omitted, all differences are returned.
+        - name: limit_fixes
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            Limits the maximum number of elements returned in the 'fixes' array.
+            If omitted, all fixes are returned.
       responses:
         '200':
           description: Global array information retrieved successfully.
