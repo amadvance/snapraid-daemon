@@ -246,11 +246,13 @@ struct snapraid_disk {
 #define PROCESS_STATE_CANCEL 5 /**< The task is canceled */
 
 #define HISTORY_PAST_DAYS 120 /**< Number of days the history is kept in memory (not affecting log files) */
-#define HISTORY_TASKS_MAX 5000 /**< Max number of tasks in the history kept in memory */
+#define HISTORY_TASKS_MAX 10000 /**< Max number of tasks in the history kept in memory */
 
 #define SECONDS_IN_A_DAY (24 * 3600)
 
-#define MESSAGES_MAX 1000 /**< Max number of messages and errors kept in memory for each task */
+#define MESSAGES_MAX 5000 /**< Max number of messages and errors kept in memory for each task */
+
+#define FILES_MAX 100000 /**< Max number of files in fix/diff kept in memory. The correct counters are obtained regardless of this. */
 
 #define MESSAGE_LEVEL_FATAL 0
 #define MESSAGE_LEVEL_ERROR 1
@@ -299,7 +301,9 @@ struct snapraid_task {
 	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument. 0 if none */
 	tommy_list message_list; /**< List of snapraid_message */
 	int message_list_count; /**< Count of messages, just to limit the number. */
-	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file */
+
+	uint64_t fix_counter; /**< Number of elements inserted in fix_list */
+	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file. Limit of FILES_MAX applied. */
 
 	char* text_report; /**< for CMD_REPORT it's the final text report */
 
@@ -368,14 +372,15 @@ struct snapraid_diff_stat {
 	int64_t diff_copied; /**< Number of copied files */
 	int64_t diff_relocated; /**< Number of relocated files */
 	int64_t diff_restored; /**< Number of restored files */
-	tommy_list file_list; /**< List of snapraid_file entries */
+	uint64_t file_counter; /**< Number of elements inserted in file_list */
+	tommy_list file_list; /**< List of snapraid_file entries. Limit of FILES_MAX applied. */
 };
 
 struct snapraid_fix_stat {
 	/* fix counters. Updated in fix and sync */
 	int64_t fix_recovered; /**< Number of recovered files */
 	int64_t fix_unrecoverable; /**< Number of unrecoverable files */
-	tommy_list file_list; /**< List of snapraid_file entries */
+	tommy_list file_list; /**< List of snapraid_file entries. Limit of FILES_MAX applied in the task and not here. */
 };
 
 struct snapraid_bucket {
