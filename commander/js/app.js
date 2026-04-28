@@ -410,10 +410,10 @@ const app = {
         try {
             const promises = [];
 
-            if (refreshFlags.array) promises.push(API.getArray());
+            if (refreshFlags.array) promises.push(API.getArray({ limit_diffs: 0, limit_fixes: 0 }));
             else promises.push(Promise.resolve(app.state.dashboardArray));
 
-            if (refreshFlags.activity) promises.push(API.getActivity());
+            if (refreshFlags.activity) promises.push(API.getActivity({ limit_messages: 500 }));
             else promises.push(Promise.resolve(app.state.dashboardActivity));
 
             if (refreshFlags.system) promises.push(API.getSystem());
@@ -503,7 +503,7 @@ const app = {
 
     loadTasks: async () => {
         try {
-            const data = await API.getTasks();
+            const data = await API.getTasks({ limit_history: 2000, limit_messages: 500 });
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
             const view = document.getElementById('view-container');
@@ -517,7 +517,7 @@ const app = {
 
     loadDifferences: async () => {
         try {
-            const array = await API.getArray();
+            const array = await API.getArray({ limit_diffs: 2000, limit_fixes: 0 });
             if (array.pulse) app.state.pulse = array.pulse;
             app.setConnection(true);
             const view = document.getElementById('view-container');
@@ -531,7 +531,7 @@ const app = {
 
     loadRecovery: async () => {
         try {
-            const array = await API.getArray();
+            const array = await API.getArray({ limit_diffs: 0, limit_fixes: 2000 });
             if (array.pulse) app.state.pulse = array.pulse;
             app.setConnection(true);
             // Dynamic import to avoid circular dependency issues if any, though we can likely just use the import at top
