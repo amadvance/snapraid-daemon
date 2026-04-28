@@ -181,6 +181,7 @@ struct snapraid_task* task_alloc(void)
 	tommy_list_init(&task->message_list);
 	task->message_list_count = 0;
 	sl_init(&task->fix_list);
+	task->fix_counter = 0;
 	task->health = HEALTH_PENDING;
 	return task;
 }
@@ -394,6 +395,7 @@ void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal)
 
 	tommy_list_foreach(&diff->file_list, file_free);
 	tommy_list_init(&diff->file_list);
+	diff->file_counter = 0;
 }
 
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest)
@@ -405,6 +407,7 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 
 	/* reset the list */
 	tommy_list_init(&diff_src->file_list);
+	diff_src->file_counter = 0;
 
 	diff_src->diff_equal = diff_dest->diff_equal;
 	diff_src->diff_equal += diff_dest->diff_added;
@@ -465,6 +468,7 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 				++fix_dest->fix_recovered;
 			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
 				++fix_dest->fix_unrecoverable;
+
 			tommy_list_insert_tail(&fix_dest->file_list, &dup->node, dup);
 			i = i->next;
 			continue;
@@ -491,6 +495,7 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 				++fix_dest->fix_recovered;
 			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
 				++fix_dest->fix_unrecoverable;
+
 			tommy_list_insert_before(&fix_dest->file_list, j, &dup->node, dup);
 			i = i->next;
 			continue;
