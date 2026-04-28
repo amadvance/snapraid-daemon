@@ -37,11 +37,20 @@ async function request(endpoint, options = {}) {
 }
 
 export const API = {
-    getArray: () => request('/array'),
+    getArray: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/array${query ? `?${query}` : ''}`);
+    },
     getState: () => request('/state'),
     getDisks: () => request('/disks'),
-    getActivity: () => request('/activity'),
-    getTasks: () => request('/tasks'),
+    getActivity: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/activity${query ? `?${query}` : ''}`);
+    },
+    getTasks: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/tasks${query ? `?${query}` : ''}`);
+    },
     getConfig: () => request('/config'),
     getSystem: () => request('/system'),
     updateConfig: (config) => request('/config', { method: 'PATCH', body: JSON.stringify(config) }),
