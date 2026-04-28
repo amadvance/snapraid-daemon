@@ -849,32 +849,46 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(tag, "add") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "remove") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "update") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, map[4], disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, map[4], disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, map[4], map[5], disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, map[4], map[5], disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "relocate") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_RELOCATE, map[4], map[5], disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_RELOCATE, map[4], map[5], disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	} else if (strcmp(tag, "restore") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
-		tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		if (++state->global.diff_parse.file_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
+			tommy_list_insert_tail(&state->global.diff_parse.file_list, &file->node, file);
+		}
 	}
 }
 
@@ -1072,12 +1086,16 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
-		tommy_list_insert_tail(&task->fix_list, &file->node, file);
+		if (++task->fix_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
+			tommy_list_insert_tail(&task->fix_list, &file->node, file);
+		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
-		struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
-		tommy_list_insert_tail(&task->fix_list, &file->node, file);
+		if (++task->fix_counter <= FILES_MAX) {
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
+			tommy_list_insert_tail(&task->fix_list, &file->node, file);
+		}
 	}
 }
 
