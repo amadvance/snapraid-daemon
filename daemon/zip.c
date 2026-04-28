@@ -87,8 +87,6 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 	memcpy(page->content, uncompressed_data, uncompressed_size);
 
 	page->mime_type = get_mime_type(file);
-	if (!page->mime_type)
-		page->mime_type = MIME_BINARY;
 
 	tommy_list_insert_tail(page_list, &page->node, page);
 }

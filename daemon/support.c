@@ -21,7 +21,9 @@ static const mime_entry MIME[] =
 	{ ".js", "text/javascript" },
 	{ ".mjs", "text/javascript" },
 	{ ".css", "text/css" },
-	{ ".tsx", "application/x-typescript" },
+	{ ".webmanifest", "application/manifest+json" },
+	{ ".wasm", "application/wasm" },
+	{ ".xhtml", "application/xhtml+xml" },
 
 	/* images */
 	{ ".svg", "image/svg+xml" },
@@ -32,6 +34,19 @@ static const mime_entry MIME[] =
 	{ ".webp", "image/webp" },
 	{ ".avif", "image/avif" },
 	{ ".gif", "image/gif" },
+	{ ".apng", "image/apng" },
+
+	/* video/audio */
+	{ ".mp4", "video/mp4" },
+	{ ".webm", "video/webm" },
+	{ ".mp3", "audio/mpeg" },
+	{ ".wav", "audio/wav" },
+	{ ".mov", "video/quicktime" },
+	{ ".mpeg", "video/mpeg" },
+	{ ".opus", "audio/opus" },
+	{ ".ogv", "video/ogg" },
+	{ ".aac", "audio/aac" },
+	{ ".flac", "audio/flac" },
 
 	/* fonts */
 	{ ".woff2", "font/woff2" },
@@ -48,11 +63,13 @@ static const mime_entry MIME[] =
 	{ ".txt", "text/plain" },
 	{ ".log", "text/plain" },
 	{ ".csv", "text/csv" },
+	{ ".md", "text/markdown" },
 
 	/* archives */
 	{ ".zip", "application/zip" },
 	{ ".gz", "application/gzip" },
-	{ ".wasm", "application/wasm" },
+	{ ".tar", "application/x-tar" },
+	{ ".7z", "application/x-7z-compressed" },
 
 	{ 0 }
 };
@@ -60,7 +77,7 @@ static const mime_entry MIME[] =
 const char* get_mime_type(const char* path)
 {
 	if (!path)
-		return 0;
+		return MIME_BINARY;
 
 	for (int i = 0; MIME[i].extension != 0; ++i) {
 		if (strstr(path, MIME[i].extension)) {
@@ -68,7 +85,7 @@ const char* get_mime_type(const char* path)
 		}
 	}
 
-	return 0;
+	return MIME_BINARY;
 }
 
 /****************************************************************************/

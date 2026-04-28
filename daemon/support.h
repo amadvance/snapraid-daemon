@@ -14,10 +14,9 @@
 /**
  * Get MIME type for a file path based on its extension.
  * @param path File path or name
- * @return MIME type string
+ * @return MIME type string. Fall back to MIME_BINARY if unknown.
  */
 const char* get_mime_type(const char* path);
-
 
 /****************************************************************************/
 /* crc32 */

@@ -266,8 +266,6 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			close(fd);
 
 			page->mime_type = get_mime_type(relative);
-			if (!page->mime_type)
-				page->mime_type = MIME_BINARY;
 
 			tommy_list_insert_tail(page_list, &page->node, page);
 		} else {
@@ -477,8 +475,6 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 		target_uri = "/index.html";
 
 	const char* mime = get_mime_type(target_uri);
-	if (mime == 0)
-		return send_error(conn, 403);
 
 	state_lock();
 	char root[PATH_MAX];
