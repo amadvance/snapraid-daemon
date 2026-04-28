@@ -6,6 +6,9 @@ SnapRAID-Daemon HISTORY
  * Resolved an issue where the script execution failed on Windows with
    the error 87  (ERROR_INVALID_PARAMETER) when a specific user was
    requested with "hook_run_as_user".
+ * Added optional limit_diffs, limit_fixes, limit_history, and
+   limit_messages query parameters to GET endpoints to reduce network
+   payload sizes.
 
 1.8 2026/04
 ===========

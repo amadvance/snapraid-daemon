@@ -1487,6 +1487,26 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list, int kind, int64
 	}
 }
 
+static int limit_parse(const struct mg_request_info* ri, const char* name, int def)
+{
+	char buf[16];
+
+	if (ri->query_string == 0)
+		return def;
+
+	int ret = mg_get_var(ri->query_string, strlen(ri->query_string), name, buf, sizeof(buf));
+	if (ret <= 0)
+		return def;
+
+	int v;
+	if (strint(&v, buf) != 0)
+		return def;
+	if (v < 0)
+		return def;
+
+	return v;
+}
+
 /**
  * GET /snapraid/v1/disks
  * Returns detailed disk status lists
@@ -1530,7 +1550,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	return 200;
 }
 
-static void json_task(ss_t* s, int level, struct snapraid_task* task, struct snapraid_pulse* pulse)
+static void json_task(ss_t* s, int level, struct snapraid_task* task, struct snapraid_pulse* pulse, int limit_messages)
 {
 	ss_json_open(s, &level);
 	if (pulse)
@@ -1601,6 +1621,8 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 	ss_json_array_open(s, &level, "messages");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		struct snapraid_message* message = i->data;
+		if (--limit_messages < 0)
+			break;
 		ss_json_open(s, &level);
 		switch (message->level) {
 		case MESSAGE_LEVEL_FATAL :
@@ -1660,6 +1682,8 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
+	int limit_messages = limit_parse(ri, "limit_messages", INT_MAX);
+
 	ss_init(&s, JSON_INITIAL_SIZE);
 
 	state_lock();
@@ -1671,7 +1695,7 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 		return send_no_content(conn);
 	}
 
-	json_task(&s, level, task, &state->pulse);
+	json_task(&s, level, task, &state->pulse, limit_messages);
 
 	state_unlock();
 
@@ -1698,6 +1722,9 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
+	int limit_history = limit_parse(ri, "limit_history", INT_MAX);
+	int limit_messages = limit_parse(ri, "limit_messages", INT_MAX);
+
 	ss_init(&s, JSON_INITIAL_SIZE);
 
 	state_lock();
@@ -1705,23 +1732,35 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "pending");
-	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i; i = i->next) {
+	/* backward order, like is shown in the UI */
+	tommy_node* i = tommy_list_tail(&state->runner.waiting_list);
+	while (i != 0) {
 		struct snapraid_task* task = i->data;
+		json_task(&s, level, task, 0, limit_messages);
 
-		json_task(&s, level, task, 0);
+		if (i == tommy_list_head(&state->runner.waiting_list))
+			break;
+		i = i->prev;
 	}
 	ss_json_array_close(&s, &level);
 
 	ss_json_array_open(&s, &level, "active");
 	if (state->runner.latest && state->runner.latest->running)
-		json_task(&s, level, state->runner.latest, 0);
+		json_task(&s, level, state->runner.latest, 0, limit_messages);
 	ss_json_array_close(&s, &level);
 
 	ss_json_array_open(&s, &level, "history");
-	for (tommy_node* i = tommy_list_head(&state->runner.history_list); i; i = i->next) {
+	/* backward order, like is shown in the UI */
+	i = tommy_list_tail(&state->runner.history_list);
+	while (i != 0) {
 		struct snapraid_task* task = i->data;
+		if (--limit_history < 0)
+			break;
+		json_task(&s, level, task, 0, limit_messages);
 
-		json_task(&s, level, task, 0);
+		if (i == tommy_list_head(&state->runner.history_list))
+			break;
+		i = i->prev;
 	}
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
@@ -1751,6 +1790,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	if (strcmp(ri->request_method, "GET") != 0)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
+
+	int limit_diffs = limit_parse(ri, "limit_diffs", INT_MAX);
+	int limit_fixes = limit_parse(ri, "limit_fixes", INT_MAX);
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
@@ -1840,8 +1882,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_array_open(&s, &level, "diffs");
 		for (tommy_node* i = tommy_list_head(&global->diff_current.file_list); i; i = i->next) {
 			struct snapraid_file* file = i->data;
+			if (--limit_diffs < 0)
+				break;
 			ss_json_open(&s, &level);
-
 			ss_json_str(&s, level, "change", change_name(file->change));
 			if (file->source_disk[0])
 				ss_json_str(&s, level, "source_disk", file->source_disk);
@@ -1857,8 +1900,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_array_open(&s, &level, "fixes");
 		for (tommy_node* i = tommy_list_head(&global->fix_current.file_list); i; i = i->next) {
 			struct snapraid_file* file = i->data;
+			if (--limit_fixes < 0)
+				break;
 			ss_json_open(&s, &level);
-
 			ss_json_str(&s, level, "result", change_name(file->change));
 			ss_json_str(&s, level, "disk", file->disk);
 			ss_json_str(&s, level, "path", file->path);
