@@ -4,11 +4,12 @@ SnapRAID-Daemon HISTORY
 1.9 2026/04
 ===========
  * Resolved an issue where the script execution failed on Windows with
-   the error 87  (ERROR_INVALID_PARAMETER) when a specific user was
+   the error 87 (ERROR_INVALID_PARAMETER) when a specific user was
    requested with "hook_run_as_user".
  * Added optional limit_diffs, limit_fixes, limit_history, and
-   limit_messages query parameters to GET endpoints to reduce network
-   payload sizes.
+   limit_messages query parameters to the REST API to reduce network
+   payload sizes. The WebUI now uses them to limit the number of entries
+   to 2000.
 
 1.8 2026/04
 ===========
