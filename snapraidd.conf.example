@@ -416,6 +416,12 @@ notify_syslog_level = info
 #notify_result = mail -s "%s" your_user@localhost
 # (Using direct delivery via netrc)
 #notify_result = curl --netrc --url smtps://smtp.gmail.com:465 --ssl-reqd --mail-from your_email@gmail.com --mail-rcpt your_email@gmail.com --upload-file -
+# (Using a custom shell script on Linux)
+#notify_result = sh /usr/local/bin/snapraid-notify.sh "%s" "%l"
+# (Using a custom batch script on Windows)
+# NOTE! Extra outer quotes are required to prevent cmd /c from stripping
+# necessary internal quotes around the path and arguments.
+#notify_result = cmd /c ""C:\snapraid\notify.bat" "%s" "%l""
 
 # Controls the filter for 'notify_result'. The notification is sent only
 # if the task result is equal to or more severe than this level.
