@@ -64,7 +64,7 @@ const char* config_level_str(int level)
 
 void config_schedule_str(struct snapraid_config* config, char* buf, size_t size)
 {
-	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
+	const char* days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
 	size_t len = 0;
 	buf[len] = 0;
@@ -94,7 +94,7 @@ void config_schedule_str(struct snapraid_config* config, char* buf, size_t size)
  */
 static int get_day_index(const char* input)
 {
-	const char* days[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
+	const char* days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
 	for (int i = 0; i < 7; i++) {
 		if (strncasecmp(input, days[i], 3) == 0)
