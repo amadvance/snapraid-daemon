@@ -1437,12 +1437,29 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		return -1;
 	}
 
+	/* create a handle to the NUL device */
+	HANDLE nul = CreateFileW(
+		L"NUL",
+		GENERIC_WRITE,
+		FILE_SHARE_WRITE | FILE_SHARE_READ,
+		&sa,
+		OPEN_EXISTING,
+		0,
+		NULL);
+	if (nul == INVALID_HANDLE_VALUE) {
+		windows_errno(GetLastError());
+		log_task(LVL_ERROR, "failed to create nul device, errno=%s(%d)", strerror(errno), errno);
+		CloseHandle(stdin_read_handle);
+		CloseHandle(stdin_write_handle);
+		return -1;
+	}
+
 	ZeroMemory(&pi, sizeof(pi));
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	si.hStdInput = stdin_read_handle;
-	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-	si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+	si.hStdOutput = nul;
+	si.hStdError = nul;
 	si.dwFlags |= STARTF_USESTDHANDLES;
 
 	/*
@@ -1480,6 +1497,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 			log_task(LVL_ERROR, "only supported users are LocalService and NetworkService");
 			CloseHandle(stdin_read_handle);
 			CloseHandle(stdin_write_handle);
+			CloseHandle(nul);
 			return -1;
 		}
 
@@ -1488,6 +1506,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 			log_task(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
 			CloseHandle(stdin_read_handle);
 			CloseHandle(stdin_write_handle);
+			CloseHandle(nul);
 			return -1;
 		}
 
@@ -1500,6 +1519,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 			log_task(LVL_ERROR, "failed to get user %s environment, errno=%s(%d)", run_as_user, strerror(errno), errno);
 			CloseHandle(stdin_read_handle);
 			CloseHandle(stdin_write_handle);
+			CloseHandle(nul);
 			CloseHandle(h_token);
 			return -1;
 		}
@@ -1524,8 +1544,12 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		log_task(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stdin_read_handle);
 		CloseHandle(stdin_write_handle);
+		CloseHandle(nul);
 		return -1;
 	}
+
+	/* clode nul device */
+	CloseHandle(nul);
 
 	/* close the read end in the parent immediately */
 	CloseHandle(stdin_read_handle);
@@ -1680,7 +1704,7 @@ int os_script(char** argv, const char* run_as_user)
 			NULL,
 			cmd_buffer,
 			NULL, NULL,
-			FALSE,
+			FALSE, /* no need to inherit handles */
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
 			env, cwd,
 			&si, &pi
