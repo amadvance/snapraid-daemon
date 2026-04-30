@@ -141,7 +141,8 @@ EXTRA_DIST = \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \
-	acinclude.m4 \
+	m4/ax_pthread.m4 \
+	m4/m4_ax_check_compile_flag.m4 \
 	jsmn/LICENSE \
 	civetweb/LICENSE.md \
 	daemon/messages.mc \
