@@ -41,6 +41,10 @@
 
 #define json_const(v) v, sizeof(v) - 1
 
+/**
+ * Returns the raw string as it's in the received raw buffer.
+ * Note that this means that the string is ESCAPED by the client if it needed to be.
+ */
 static char* json_token(char* js, jsmntok_t* jv)
 {
 	js[jv[0].end] = 0;
@@ -169,7 +173,9 @@ static void json_error_parse(char* str, size_t str_size, int jc)
 
 static void json_error_arg(char* str, size_t str_size, char* js, jsmntok_t* je, jsmntok_t* ja)
 {
-	snprintf(str, str_size, "Invalid JSON argument %s for %s", json_token(js, ja), json_token(js, je));
+	const char* entry = json_token(js, je);
+	const char* arg = json_token(js, ja);
+	snprintf(str, str_size, "Invalid JSON argument %s for %s", arg, entry);
 }
 
 static void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv)
@@ -985,7 +991,7 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 
 	jsmn_init(&jp);
 	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc < 0) {
+	if (jc <= 0) {
 		json_error_parse(msg, sizeof(msg), jc);
 		goto bad;
 	} else {
@@ -1078,6 +1084,7 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 
 bad:
 	free(js);
+	tommy_list_foreach(&scheds, schedule_free);
 	return send_json_error(conn, 400, "Unrecognized json");
 }
 
@@ -1151,7 +1158,7 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 
 	jsmn_init(&jp);
 	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc < 0) {
+	if (jc <= 0) {
 		json_error_parse(msg, sizeof(msg), jc);
 		goto bad;
 	} else {
