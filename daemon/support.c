@@ -515,7 +515,7 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 
 	while (i < len) {
 		if (src[i] == '\\' && i + 1 < len) {
-			i++; /* skip backslash */
+			++i; /* skip backslash */
 
 			char c;
 			switch (src[i]) {
@@ -528,22 +528,20 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 			case 'r' :  c = '\r'; break;
 			case 't' :  c = '\t'; break;
 			case 'u' : {
-				/* Unicode escape \uXXXX */
-				if (i + 4 >= len) {
+				/* unicode escape \uXXXX */
+				if (i + 4 >= len)
 					return -1; /* invalid unicode escape */
-				}
+
 				uint16_t cp = hex_to_uint16(src + i + 1);
-				if (cp == 0xFFFF) {
+				if (cp == 0xFFFF)
 					return -1; /* invalid hex */
-				}
 
 				char utf8[4];
 				int utf8_len = utf8_encode(cp, utf8);
 
-				/* Check if we have enough space */
-				if (j + (size_t)utf8_len >= dst_size) {
+				/* check if we have enough space */
+				if (j + (size_t)utf8_len >= dst_size)
 					return -1; /* buffer overflow */
-				}
 
 				memcpy(dst + j, utf8, utf8_len);
 				j += utf8_len;
@@ -551,24 +549,26 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 				goto next_char;
 			}
 			default :
-				/* Unknown escape - treat as literal backslash + char */
+				/* unknown escape, treat as literal backslash + char */
 				c = '\\';
-				if (j + 1 >= dst_size) return -1;
+				if (j + 1 >= dst_size)
+					return -1;
+
 				dst[j++] = c;
 				c = src[i];
 				break;
 			}
 
-			if (j + 1 >= dst_size) {
+			if (j + 1 >= dst_size)
 				return -1; /* buffer too small */
-			}
+
 			dst[j++] = c;
 			i++;
 		} else {
-			/* Normal character */
-			if (j + 1 >= dst_size) {
+			/* normal character */
+			if (j + 1 >= dst_size)
 				return -1;
-			}
+
 			dst[j++] = src[i++];
 		}
 next_char:      ;
