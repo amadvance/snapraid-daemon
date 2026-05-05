@@ -678,6 +678,29 @@ paths:
           $ref: '#/components/responses/CommandResult'
 
 
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: >
+        Returns daemon metrics in Prometheus exposition format.
+
+        The endpoint respects all `net_acl` and other network settings but
+        requires no authentication.
+
+        Metrics cover array health, block integrity, per-disk errors,
+        task history, and configuration thresholds.
+      responses:
+        '200':
+          description: Metrics in Prometheus exposition format.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)
+                  # TYPE snapraid_array_health gauge
+                  snapraid_array_health 1
+
 components:
   responses:
     CommandResult:
