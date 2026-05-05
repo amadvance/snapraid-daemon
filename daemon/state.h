@@ -549,6 +549,7 @@ struct snapraid_association {
 struct snapraid_state {
 	volatile int daemon_running; /**< If the daemon is running or terminating */
 	volatile int daemon_sig; /**< Signal received by the daemon that made it stopping */
+	time_t daemon_start_time; /**< Time the daemon started */
 
 	/* Data private for the parser. The parser run only one at a time, so no lock is required */
 	int parser_version_major; /**< Major version number */

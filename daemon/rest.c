@@ -36,6 +36,21 @@
  */
 #define JSON_MAX_SIZE 16384
 
+/**
+ * Initial size for building Prometheus metrics text
+ */
+#define METRICS_INITIAL_SIZE 32768
+
+/**
+ * Max distinct (command, status, health) tuples for snapraid_tasks_history_size
+ */
+#define METRICS_TASK_TUPLES_MAX 256
+
+/**
+ * Max commands tracked for latest-terminated-task metrics
+ */
+#define METRICS_LATEST_TASK_MAX 32
+
 /****************************************************************************/
 /* json */
 
@@ -378,6 +393,58 @@ static int send_no_content(struct mg_connection* conn)
 
 	ss_done(&s);
 	return 204;
+}
+
+static int send_text_answer(struct mg_connection* conn, int status, ss_t* body)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	size_t body_len = ss_len(body);
+	int z = mg_accept_z(conn);
+
+	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
+	send_headers(conn, &s);
+	ss_prints(&s, "Content-Type: text/plain; version=0.0.4; charset=utf-8\r\n");
+	switch (z) {
+#if HAVE_ZLIB
+	case Z_ZLIB :
+		ss_printf(&s, "Content-Encoding: gzip\r\n");
+		ss_prints(&s, "Transfer-Encoding: chunked\r\n");
+		break;
+#endif
+#if HAVE_ZSTD
+	case Z_ZSTD :
+		ss_printf(&s, "Content-Encoding: zstd\r\n");
+		ss_prints(&s, "Transfer-Encoding: chunked\r\n");
+		break;
+#endif
+	default :
+		ss_printf(&s, "Content-Length: %zd\r\n", body_len);
+	}
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+
+	switch (z) {
+#if HAVE_ZLIB
+	case Z_ZLIB :
+		mg_write_gzip(conn, ss_ptr(body), body_len);
+		break;
+#endif
+#if HAVE_ZSTD
+	case Z_ZSTD :
+		mg_write_zstd(conn, ss_ptr(body), body_len);
+		break;
+#endif
+	default :
+		mg_write(conn, ss_ptr(body), body_len);
+	}
+
+	return status;
 }
 
 /****************************************************************************/
@@ -2011,6 +2078,473 @@ void civetweb_log_message(const struct mg_connection* conn, const char* str)
 	log_internal_callback(conn, str);
 }
 
+/****************************************************************************/
+/* metrics */
+
+#define METRICS_DISK_ROLE_COUNT 3
+
+static const struct {
+	int kind;
+	const char* role;
+} METRICS_DISK_ROLES[METRICS_DISK_ROLE_COUNT] = {
+	{ DISK_DATA, "data" },
+	{ DISK_PARITY, "parity" },
+	{ DISK_EXTRA, "extra" }
+};
+
+static int metrics_health_numeric(int health)
+{
+	switch (health) {
+	case HEALTH_PENDING : return 0;
+	case HEALTH_PASSED : return 1;
+	case HEALTH_CORRUPT : return 2;
+	case HEALTH_PREFAIL : return 3;
+	case HEALTH_FAILING : return 4;
+	}
+
+	return 0;
+}
+
+static const char* metrics_task_status(struct snapraid_task* task)
+{
+	if (task->running) {
+		switch (task->state) {
+		case PROCESS_STATE_START : return "starting";
+		case PROCESS_STATE_RUN : return "processing";
+		case PROCESS_STATE_TERM : return "finalizing";
+		case PROCESS_STATE_SIGNAL : return "stopping";
+		}
+	} else {
+		switch (task->state) {
+		case PROCESS_STATE_QUEUE : return "queued";
+		case PROCESS_STATE_SIGNAL : return "signaled";
+		case PROCESS_STATE_CANCEL : return "canceled";
+		case PROCESS_STATE_TERM : return "terminated";
+		}
+	}
+	return "";
+}
+
+struct metrics_task_tuple {
+	const char* command;
+	const char* status;
+	const char* health;
+	int count;
+};
+
+struct metrics_latest_task {
+	int cmd;
+	struct snapraid_task* task;
+};
+
+static void ss_prints_prometheus_escaped(ss_t* s, const char* str)
+{
+	for (const char* p = str; *p; ++p) {
+		if (*p == '\\') {
+			ss_prints(s, "\\\\");
+		} else if (*p == '"') {
+			ss_prints(s, "\\\"");
+		} else if (*p == '\n') {
+			ss_prints(s, "\\n");
+		} else {
+			ss_printc(s, *p, 1);
+		}
+	}
+}
+
+/**
+ * GET /metrics — Prometheus exposition format
+ */
+static int handler_metrics(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "GET") != 0)
+		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
+
+	ss_t s;
+	ss_init(&s, METRICS_INITIAL_SIZE);
+
+	state_lock();
+
+	struct snapraid_global* global = &state->global;
+	struct snapraid_config* config = &state->config;
+	struct snapraid_runner* runner = &state->runner;
+	struct snapraid_pulse* pulse = &state->pulse;
+
+	/* array health */
+	ss_prints(&s, "# HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
+	ss_prints(&s, "# TYPE snapraid_array_health gauge\n");
+	ss_printf(&s, "snapraid_array_health %d\n", metrics_health_numeric(global->health));
+	ss_prints(&s, "\n");
+
+	/* build info */
+	ss_prints(&s, "# HELP snapraid_build_info Daemon and engine version info (always 1)\n");
+	ss_prints(&s, "# TYPE snapraid_build_info gauge\n");
+	ss_printf(&s, "snapraid_build_info{daemon_version=\"%s\",engine_version=\"%s\"} 1\n",
+		PACKAGE_VERSION,
+		*global->version ? global->version : "");
+	ss_prints(&s, "\n");
+
+	/* array scalars (only when engine has run) */
+	if (global->blocksize) {
+		ss_prints(&s, "# HELP snapraid_array_block_size_bytes SnapRAID block size in bytes\n");
+		ss_prints(&s, "# TYPE snapraid_array_block_size_bytes gauge\n");
+		ss_printf(&s, "snapraid_array_block_size_bytes %u\n", global->blocksize);
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_array_data_disks_count Number of configured data disks\n");
+		ss_prints(&s, "# TYPE snapraid_array_data_disks_count gauge\n");
+		ss_printf(&s, "snapraid_array_data_disks_count %d\n", disk_count(&state->disk_list, DISK_DATA));
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_array_parity_disks_count Number of configured parity disks\n");
+		ss_prints(&s, "# TYPE snapraid_array_parity_disks_count gauge\n");
+		ss_printf(&s, "snapraid_array_parity_disks_count %d\n", disk_count(&state->disk_list, DISK_PARITY));
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_array_extra_disks_count Number of configured extra disks\n");
+		ss_prints(&s, "# TYPE snapraid_array_extra_disks_count gauge\n");
+		ss_printf(&s, "snapraid_array_extra_disks_count %d\n", disk_count(&state->disk_list, DISK_EXTRA));
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_array_files Current count of tracked files (gauge snapshot, not a counter)\n");
+		ss_prints(&s, "# TYPE snapraid_array_files gauge\n");
+		ss_printf(&s, "snapraid_array_files %" PRIu64 "\n", global->file_total);
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_array_blocks Total number of blocks in the array\n");
+		ss_prints(&s, "# TYPE snapraid_array_blocks gauge\n");
+		ss_printf(&s, "snapraid_array_blocks %" PRIu64 "\n", global->block_total);
+		ss_prints(&s, "\n");
+	}
+
+	/* block integrity */
+	ss_prints(&s, "# HELP snapraid_blocks_bad Number of bad blocks detected\n");
+	ss_prints(&s, "# TYPE snapraid_blocks_bad gauge\n");
+	ss_printf(&s, "snapraid_blocks_bad %" PRIu64 "\n", global->block_bad);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_blocks_unsynced Number of blocks not yet synced to parity\n");
+	ss_prints(&s, "# TYPE snapraid_blocks_unsynced gauge\n");
+	ss_printf(&s, "snapraid_blocks_unsynced %" PRIu64 "\n", global->block_unsynced);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_blocks_unscrubbed Number of blocks not yet scrubbed\n");
+	ss_prints(&s, "# TYPE snapraid_blocks_unscrubbed gauge\n");
+	ss_printf(&s, "snapraid_blocks_unscrubbed %" PRIu64 "\n", global->block_unscrubbed);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_blocks_rehash Number of blocks scheduled for rehash\n");
+	ss_prints(&s, "# TYPE snapraid_blocks_rehash gauge\n");
+	ss_printf(&s, "snapraid_blocks_rehash %" PRIu64 "\n", global->block_rehash);
+	ss_prints(&s, "\n");
+
+	/* timestamps (omitted if operation never ran) */
+	if (global->sync_time || global->scrub_time || global->diff_time || global->fix_time || global->last_time) {
+		ss_prints(&s, "# HELP snapraid_last_command_timestamp_seconds Unix timestamp of the last completed command\n");
+		ss_prints(&s, "# TYPE snapraid_last_command_timestamp_seconds gauge\n");
+		if (global->sync_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"sync\"} %" PRIi64 "\n", (int64_t)global->sync_time);
+		}
+		if (global->scrub_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"scrub\"} %" PRIi64 "\n", (int64_t)global->scrub_time);
+		}
+		if (global->diff_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"diff\"} %" PRIi64 "\n", (int64_t)global->diff_time);
+		}
+		if (global->fix_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"fix\"} %" PRIi64 "\n", (int64_t)global->fix_time);
+		}
+		if (global->last_time) {
+			const char* last_c = *global->last_cmd ? global->last_cmd : "any";
+			if (strcmp(last_c, "sync") != 0 && strcmp(last_c, "scrub") != 0 && strcmp(last_c, "diff") != 0 && strcmp(last_c, "fix") != 0) {
+				ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"%s\"} %" PRIi64 "\n",
+					last_c, (int64_t)global->last_time);
+			}
+		}
+		ss_prints(&s, "\n");
+	}
+
+	/* diff counts */
+	ss_prints(&s, "# HELP snapraid_diff_files File diff counts from the last diff run by change type\n");
+	ss_prints(&s, "# TYPE snapraid_diff_files gauge\n");
+	ss_printf(&s, "snapraid_diff_files{change=\"equal\"} %" PRIi64 "\n", global->diff_current.diff_equal);
+	ss_printf(&s, "snapraid_diff_files{change=\"added\"} %" PRIi64 "\n", global->diff_current.diff_added);
+	ss_printf(&s, "snapraid_diff_files{change=\"removed\"} %" PRIi64 "\n", global->diff_current.diff_removed);
+	ss_printf(&s, "snapraid_diff_files{change=\"updated\"} %" PRIi64 "\n", global->diff_current.diff_updated);
+	ss_printf(&s, "snapraid_diff_files{change=\"moved\"} %" PRIi64 "\n", global->diff_current.diff_moved);
+	ss_printf(&s, "snapraid_diff_files{change=\"copied\"} %" PRIi64 "\n", global->diff_current.diff_copied);
+	ss_printf(&s, "snapraid_diff_files{change=\"relocated\"} %" PRIi64 "\n", global->diff_current.diff_relocated);
+	ss_printf(&s, "snapraid_diff_files{change=\"restored\"} %" PRIi64 "\n", global->diff_current.diff_restored);
+	ss_prints(&s, "\n");
+
+	/* config thresholds */
+	ss_prints(&s, "# HELP snapraid_config_sync_threshold_deletes Sync delete threshold (0 = disabled)\n");
+	ss_prints(&s, "# TYPE snapraid_config_sync_threshold_deletes gauge\n");
+	ss_printf(&s, "snapraid_config_sync_threshold_deletes %d\n", config->sync_threshold_deletes);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_config_sync_threshold_updates Sync update threshold (0 = disabled)\n");
+	ss_prints(&s, "# TYPE snapraid_config_sync_threshold_updates gauge\n");
+	ss_printf(&s, "snapraid_config_sync_threshold_updates %d\n", config->sync_threshold_updates);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_config_scrub_percentage Percentage of array scrubbed per scrub run\n");
+	ss_prints(&s, "# TYPE snapraid_config_scrub_percentage gauge\n");
+	ss_printf(&s, "snapraid_config_scrub_percentage %g\n", config->scrub_percentage);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_config_scrub_older_than_days Only scrub blocks older than this many days (0 = ignore)\n");
+	ss_prints(&s, "# TYPE snapraid_config_scrub_older_than_days gauge\n");
+	ss_printf(&s, "snapraid_config_scrub_older_than_days %d\n", config->scrub_older_than);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_config_spindown_idle_minutes Spin down disks after this many idle minutes (0 = disabled)\n");
+	ss_prints(&s, "# TYPE snapraid_config_spindown_idle_minutes gauge\n");
+	ss_printf(&s, "snapraid_config_spindown_idle_minutes %d\n", config->spindown_idle_minutes);
+	ss_prints(&s, "\n");
+
+	ss_prints(&s, "# HELP snapraid_config_probe_interval_minutes Interval between probe commands in minutes (0 = disabled)\n");
+	ss_prints(&s, "# TYPE snapraid_config_probe_interval_minutes gauge\n");
+	ss_printf(&s, "snapraid_config_probe_interval_minutes %d\n", config->probe_interval_minutes);
+	ss_prints(&s, "\n");
+
+	/* hold-off */
+	ss_prints(&s, "# HELP snapraid_config_hold_off Hold-off state\n");
+	ss_prints(&s, "# TYPE snapraid_config_hold_off gauge\n");
+	ss_printf(&s, "snapraid_config_hold_off %d\n", runner->hold_off ? 1 : 0);
+	ss_prints(&s, "\n");
+
+	/* per-disk health */
+	ss_prints(&s, "# HELP snapraid_disk_health Per-disk health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
+	ss_prints(&s, "# TYPE snapraid_disk_health gauge\n");
+	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
+		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+			struct snapraid_disk* disk = i->data;
+			if (disk->kind != METRICS_DISK_ROLES[r].kind)
+				continue;
+			ss_prints(&s, "snapraid_disk_health{disk=\"");
+			ss_prints_prometheus_escaped(&s, disk->name);
+			ss_printf(&s, "\",role=\"%s\"} %d\n", METRICS_DISK_ROLES[r].role, metrics_health_numeric(health_disk(disk, 0, 0)));
+		}
+	}
+	ss_prints(&s, "\n");
+
+	/* per-disk I/O error counters */
+	ss_prints(&s, "# HELP snapraid_disk_error Session errors per disk (cleared after clean scrub)\n");
+	ss_prints(&s, "# TYPE snapraid_disk_error gauge\n");
+	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
+		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+			struct snapraid_disk* disk = i->data;
+			if (disk->kind != METRICS_DISK_ROLES[r].kind)
+				continue;
+			ss_prints(&s, "snapraid_disk_error{disk=\"");
+			ss_prints_prometheus_escaped(&s, disk->name);
+			ss_printf(&s, "\",role=\"%s\",kind=\"io\"} %" PRIu64 "\n",
+				METRICS_DISK_ROLES[r].role, disk->error_io);
+			ss_prints(&s, "snapraid_disk_error{disk=\"");
+			ss_prints_prometheus_escaped(&s, disk->name);
+			ss_printf(&s, "\",role=\"%s\",kind=\"data\"} %" PRIu64 "\n",
+				METRICS_DISK_ROLES[r].role, disk->error_data);
+		}
+	}
+	ss_prints(&s, "\n");
+
+	/* task queue depth */
+	ss_prints(&s, "# HELP snapraid_task_queue_depth Number of tasks queued (pending)\n");
+	ss_prints(&s, "# TYPE snapraid_task_queue_depth gauge\n");
+	ss_printf(&s, "snapraid_task_queue_depth %zu\n", tommy_list_count(&runner->waiting_list));
+	ss_prints(&s, "\n");
+
+	/* active task (omitted when idle) */
+	if (runner->latest && runner->latest->running) {
+		struct snapraid_task* task = runner->latest;
+
+		ss_prints(&s, "# HELP snapraid_task_active Currently active task (1 = running, omitted when idle)\n");
+		ss_prints(&s, "# TYPE snapraid_task_active gauge\n");
+		ss_printf(&s, "snapraid_task_active{command=\"%s\",high_command=\"%s\"} 1\n",
+			command_name(task->cmd),
+			task->high_cmd ? command_name(task->high_cmd) : "");
+		ss_prints(&s, "\n");
+
+		if (task->cmd == CMD_SYNC || task->cmd == CMD_SCRUB
+			|| task->cmd == CMD_FIX || task->cmd == CMD_CHECK) {
+			if (task->state == PROCESS_STATE_RUN) {
+				ss_prints(&s, "# HELP snapraid_task_active_progress_percent Progress of the active task in percent\n");
+				ss_prints(&s, "# TYPE snapraid_task_active_progress_percent gauge\n");
+				ss_printf(&s, "snapraid_task_active_progress_percent %u\n", task->progress);
+				ss_prints(&s, "\n");
+
+				ss_prints(&s, "# HELP snapraid_task_active_eta_seconds Estimated seconds until the active task completes\n");
+				ss_prints(&s, "# TYPE snapraid_task_active_eta_seconds gauge\n");
+				ss_printf(&s, "snapraid_task_active_eta_seconds %u\n", task->eta_seconds);
+				ss_prints(&s, "\n");
+			}
+
+			if (task->state == PROCESS_STATE_RUN
+				|| task->state == PROCESS_STATE_TERM
+				|| task->state == PROCESS_STATE_SIGNAL) {
+				ss_prints(&s, "# HELP snapraid_task_active_speed_mbytes_per_second Speed of the active task in MiB/s\n");
+				ss_prints(&s, "# TYPE snapraid_task_active_speed_mbytes_per_second gauge\n");
+				ss_printf(&s, "snapraid_task_active_speed_mbytes_per_second %u\n", task->speed_mbs);
+				ss_prints(&s, "\n");
+
+				ss_prints(&s, "# HELP snapraid_task_active_elapsed_seconds Seconds elapsed since the active task started\n");
+				ss_prints(&s, "# TYPE snapraid_task_active_elapsed_seconds gauge\n");
+				ss_printf(&s, "snapraid_task_active_elapsed_seconds %u\n", task->elapsed_seconds);
+				ss_prints(&s, "\n");
+			}
+		}
+	}
+
+	/* task history: accumulate (command, status, health) counts */
+	struct metrics_task_tuple tuples[METRICS_TASK_TUPLES_MAX];
+	int tuple_count = 0;
+
+	struct metrics_latest_task latest_tasks[METRICS_LATEST_TASK_MAX];
+	int latest_task_count = 0;
+
+	for (tommy_node* i = tommy_list_head(&runner->history_list); i; i = i->next) {
+		struct snapraid_task* task = i->data;
+		const char* cmd_str = command_name(task->cmd);
+		const char* status_str = metrics_task_status(task);
+		const char* health_str = health_name(health_task(task, 0, 0));
+
+		/* accumulate count for this (command, status, health) tuple */
+		int found = 0;
+		for (int j = 0; j < tuple_count; ++j) {
+			if (tuples[j].command == cmd_str
+				&& tuples[j].status == status_str
+				&& tuples[j].health == health_str) {
+				++tuples[j].count;
+				found = 1;
+				break;
+			}
+		}
+		if (!found && tuple_count < METRICS_TASK_TUPLES_MAX) {
+			tuples[tuple_count].command = cmd_str;
+			tuples[tuple_count].status = status_str;
+			tuples[tuple_count].health = health_str;
+			tuples[tuple_count].count = 1;
+			++tuple_count;
+		}
+
+		/* track latest terminated task per command */
+		if (!task->running && task->state == PROCESS_STATE_TERM) {
+			int found_latest = 0;
+			for (int j = 0; j < latest_task_count; ++j) {
+				if (latest_tasks[j].cmd == task->cmd) {
+					latest_tasks[j].task = task;
+					found_latest = 1;
+					break;
+				}
+			}
+			if (!found_latest && latest_task_count < METRICS_LATEST_TASK_MAX) {
+				latest_tasks[latest_task_count].cmd = task->cmd;
+				latest_tasks[latest_task_count].task = task;
+				++latest_task_count;
+			}
+		}
+	}
+
+	if (tuple_count > 0) {
+		ss_prints(&s, "# HELP snapraid_tasks_history_size Snapshot count of completed tasks in daemon history buffer\n");
+		ss_prints(&s, "# TYPE snapraid_tasks_history_size gauge\n");
+		for (int j = 0; j < tuple_count; ++j) {
+			ss_printf(&s, "snapraid_tasks_history_size{command=\"%s\",status=\"%s\",health=\"%s\"} %d\n",
+				tuples[j].command, tuples[j].status, tuples[j].health, tuples[j].count);
+		}
+		ss_prints(&s, "\n");
+	}
+
+	/* last terminated task per command */
+	if (latest_task_count > 0) {
+		ss_prints(&s, "# HELP snapraid_task_last_exit_code Exit code of the most recent terminated task per command\n");
+		ss_prints(&s, "# TYPE snapraid_task_last_exit_code gauge\n");
+		for (int j = 0; j < latest_task_count; ++j) {
+			struct snapraid_task* task = latest_tasks[j].task;
+			ss_printf(&s, "snapraid_task_last_exit_code{command=\"%s\"} %d\n",
+				command_name(task->cmd), task->exit_code);
+		}
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_task_last_duration_seconds Duration in seconds of the most recent terminated task per command\n");
+		ss_prints(&s, "# TYPE snapraid_task_last_duration_seconds gauge\n");
+		for (int j = 0; j < latest_task_count; ++j) {
+			struct snapraid_task* task = latest_tasks[j].task;
+			if (task->unix_start_time && task->unix_end_time) {
+				ss_printf(&s, "snapraid_task_last_duration_seconds{command=\"%s\"} %" PRIi64 "\n",
+					command_name(task->cmd),
+					task->unix_end_time - task->unix_start_time);
+			}
+		}
+		ss_prints(&s, "\n");
+
+		ss_prints(&s, "# HELP snapraid_task_last_errors Error counts from the most recent terminated task per command and error kind\n");
+		ss_prints(&s, "# TYPE snapraid_task_last_errors gauge\n");
+		for (int j = 0; j < latest_task_count; ++j) {
+			struct snapraid_task* task = latest_tasks[j].task;
+			const char* cmd_str = command_name(task->cmd);
+			switch (task->cmd) {
+			case CMD_SYNC :
+			case CMD_SCRUB :
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"soft\"} %" PRIu64 "\n",
+					cmd_str, task->error_soft);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"io\"} %" PRIu64 "\n",
+					cmd_str, task->error_io);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"data\"} %" PRIu64 "\n",
+					cmd_str, task->error_data);
+				break;
+			case CMD_FIX :
+			case CMD_CHECK :
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"unrecoverable\"} %" PRIu64 "\n",
+					cmd_str, task->error_unrecoverable);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"soft\"} %" PRIu64 "\n",
+					cmd_str, task->error_soft);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"io\"} %" PRIu64 "\n",
+					cmd_str, task->error_io);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"data\"} %" PRIu64 "\n",
+					cmd_str, task->error_data);
+				break;
+			}
+		}
+		ss_prints(&s, "\n");
+	}
+
+	/* pulse counters */
+	ss_prints(&s, "# HELP snapraid_exporter_last_pulse Pulse counter value per subsystem from the daemon\n");
+	ss_prints(&s, "# TYPE snapraid_exporter_last_pulse gauge\n");
+	ss_printf(&s, "snapraid_exporter_last_pulse{subsystem=\"array\"} %" PRIu64 "\n", pulse->array);
+	ss_printf(&s, "snapraid_exporter_last_pulse{subsystem=\"config\"} %" PRIu64 "\n", pulse->config);
+	ss_printf(&s, "snapraid_exporter_last_pulse{subsystem=\"disks\"} %" PRIu64 "\n", pulse->disks_attr + pulse->disks_ui);
+	ss_printf(&s, "snapraid_exporter_last_pulse{subsystem=\"tasks\"} %" PRIu64 "\n", pulse->tasks);
+	ss_printf(&s, "snapraid_exporter_last_pulse{subsystem=\"activity\"} %" PRIu64 "\n", pulse->activity);
+	ss_prints(&s, "\n");
+
+	/* daemon uptime */
+	ss_prints(&s, "# HELP snapraid_daemon_uptime_seconds Seconds the daemon has been running\n");
+	ss_prints(&s, "# TYPE snapraid_daemon_uptime_seconds gauge\n");
+	ss_printf(&s, "snapraid_daemon_uptime_seconds %" PRIi64 "\n", (int64_t)(time(0) - state->daemon_start_time));
+	ss_prints(&s, "\n");
+
+	/* exporter up */
+	ss_prints(&s, "# HELP snapraid_exporter_up 1 if the daemon is running and serving metrics\n");
+	ss_prints(&s, "# TYPE snapraid_exporter_up gauge\n");
+	ss_prints(&s, "snapraid_exporter_up 1\n");
+
+	state_unlock();
+
+	send_text_answer(conn, 200, &s);
+	ss_done(&s);
+
+	return 200;
+}
+
 int rest_init(struct snapraid_state* state)
 {
 	const char* options[20];
@@ -2079,6 +2613,7 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/system", handler_system, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/hold_off", handler_hold_off, state);
+	mg_set_request_handler(state->rest_context, "/metrics", handler_metrics, state);
 	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");
