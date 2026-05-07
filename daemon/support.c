@@ -300,31 +300,115 @@ void ss_jsons(ss_t* s, int level, const char* arg)
 
 static void ss_json_esc(ss_t* s, const char* arg)
 {
-	while (*arg) {
-		ssize_t len = strcspn(arg, "\"\\\n\r\t");
-		if (len == 0) {
-			switch (*arg) {
-			case '"' :
-				ss_write(s, "\\\"", 2);
-				break;
-			case '\\' :
-				ss_write(s, "\\\\", 2);
-				break;
-			case '\n' :
-				ss_write(s, "\\n", 2);
-				break;
-			case '\r' :
-				ss_write(s, "\\r", 2);
-				break;
-			case '\t' :
-				ss_write(s, "\\t", 2);
+	const unsigned char* p = (const unsigned char*)arg;
+
+	while (*p) {
+		/* named JSON escapes */
+		switch (*p) {
+		case '"' :  ss_write(s, "\\\"", 2); ++p; continue;
+		case '\\' : ss_write(s, "\\\\", 2); ++p; continue;
+		case '\b' : ss_write(s, "\\b", 2); ++p; continue;
+		case '\f' : ss_write(s, "\\f", 2); ++p; continue;
+		case '\n' : ss_write(s, "\\n", 2); ++p; continue;
+		case '\r' : ss_write(s, "\\r", 2); ++p; continue;
+		case '\t' : ss_write(s, "\\t", 2); ++p; continue;
+		}
+
+		/* control characters: U+0000–U+001F and U+007F (DEL) */
+		if (*p < 0x20 || *p == 0x7F) {
+			char buf[7];
+			snprintf(buf, sizeof(buf), "\\u%04x", *p);
+			ss_write(s, buf, 6);
+			++p;
+			continue;
+		}
+
+		/* printable ASCII: 0x20–0x7E */
+		if (*p < 0x80) {
+			ss_write(s, (const char*)p, 1);
+			++p;
+			continue;
+		}
+
+		/* UTF-8 multi-byte sequences (0x80 and above) */
+		int len;
+		uint32_t min_cp; /* minimum valid codepoint for this sequence length */
+
+		if ((*p & 0xE0) == 0xC0) { /* 110xxxxx */
+			len = 2;
+			min_cp = 0x80;
+		} else if ((*p & 0xF0) == 0xE0) { /* 1110xxxx */
+			len = 3;
+			min_cp = 0x800;
+		} else if ((*p & 0xF8) == 0xF0) { /* 11110xxx */
+			len = 4;
+			min_cp = 0x10000;
+		} else {
+			/* bare continuation byte (0x80–0xBF) or invalid byte (0xF8–0xFF) */
+			ss_write(s, "\\ufffd", 6);
+			++p;
+			continue;
+		}
+
+		/* validate continuation bytes (10xxxxxx) and check for truncation */
+		int valid = 1;
+		for (int i = 1; i < len; i++) {
+			if (p[i] == '\0' || (p[i] & 0xC0) != 0x80) {
+				valid = 0;
 				break;
 			}
-			++arg;
-		} else {
-			ss_write(s, arg, len);
-			arg += len;
 		}
+		if (!valid) {
+			/* emit one replacement char and advance a single byte to resync */
+			ss_write(s, "\\ufffd", 6);
+			++p;
+			continue;
+		}
+
+		/* decode the codepoint */
+		uint32_t cp;
+		switch (len) {
+		case 2 :
+			cp = (uint32_t)(p[0] & 0x1F) << 6
+				| (uint32_t)(p[1] & 0x3F);
+			break;
+		case 3 :
+			cp = (uint32_t)(p[0] & 0x0F) << 12
+				| (uint32_t)(p[1] & 0x3F) << 6
+				| (uint32_t)(p[2] & 0x3F);
+			break;
+		default : /* 4 */
+			cp = (uint32_t)(p[0] & 0x07) << 18
+				| (uint32_t)(p[1] & 0x3F) << 12
+				| (uint32_t)(p[2] & 0x3F) << 6
+				| (uint32_t)(p[3] & 0x3F);
+			break;
+		}
+
+		/* overlong encoding: codepoint is representable in a shorter sequence */
+		if (cp < min_cp) {
+			ss_write(s, "\\ufffd", 6);
+			++p; /* advance only 1 byte; continuation bytes may be valid elsewhere */
+			continue;
+		}
+
+		/* surrogate halves U+D800–U+DFFF are forbidden in UTF-8 (RFC 3629) */
+		if (cp >= 0xD800 && cp <= 0xDFFF) {
+			ss_write(s, "\\ufffd", 6);
+			p += len;
+			continue;
+		}
+
+		/* codepoints above U+10FFFF are outside the Unicode range */
+		if (cp > 0x10FFFF) {
+			ss_write(s, "\\ufffd", 6);
+			p += len;
+			continue;
+		}
+
+		/* structurally and semantically valid UTF-8: pass through as raw bytes */
+		ss_write(s, (const char*)p, len);
+		p += len;
 	}
 }
 

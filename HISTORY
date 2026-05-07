@@ -1,6 +1,13 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.10 2026/05
+============
+ * Enhanced JSON sanitization to properly escape control characters.
+   Ensures compatibility with low-end devices that transmit
+   non-printable characters in serial numbers, preventing parsing
+   failures.
+
 1.9 2026/04
 ===========
  * Resolved an issue where the script execution failed on Windows with
