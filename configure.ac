@@ -213,6 +213,7 @@ AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debugging])],
 	[
 	CFLAGS="-O0 -g -pthread -Wall -Wextra -fno-omit-frame-pointer -rdynamic"
+	LDFLAGS="-g"
 	],
 	[])
 
