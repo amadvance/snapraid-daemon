@@ -485,7 +485,7 @@ void ss_json_elem(ss_t* s, int level, const char* arg)
 	ss_json_tab(s, level);
 
 	ss_prints(s, "\"");
-	ss_prints(s, arg);
+	ss_json_esc(s, arg);
 	ss_prints(s, "\",\n");
 }
 

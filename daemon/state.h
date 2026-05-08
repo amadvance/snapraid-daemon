@@ -35,7 +35,6 @@ typedef tommy_list sl_t;
 /**
  * Max filesystem type/label length
  */
-
 #define FSINFO_MAX 64
 
 /**
@@ -551,6 +550,7 @@ struct snapraid_state {
 	int parser_version_major; /**< Major version number */
 	int parser_version_minor; /**< Minor version number */
 	tommy_list parser_association; /**< Associations of device<->id */
+	int parser_previous_was_association; /**< If the previous entry was an association */
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */

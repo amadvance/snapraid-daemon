@@ -279,7 +279,7 @@ static void runner_go(struct snapraid_state* state)
 	int post_script_skip = 0;
 	state->runner.script_skip = 0;
 
-	parser_mapping_start(state);
+	parse_begin(state);
 
 	/* check if the next task needs a script */
 	int next_need_script = 0;
@@ -543,7 +543,7 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			parser_mapping_done(state, task);
+			parse_end(state, task);
 
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */

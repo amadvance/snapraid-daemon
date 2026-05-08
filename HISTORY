@@ -7,6 +7,9 @@ SnapRAID-Daemon HISTORY
    Ensures compatibility with low-end devices that transmit
    non-printable characters in serial numbers, preventing parsing
    failures.
+ * Handle cases where different devices report the same serial number.
+   Duplicates are now ignored, which may lead to inconsistent SMART
+   diagnostic mapping.
 
 1.9 2026/04
 ===========

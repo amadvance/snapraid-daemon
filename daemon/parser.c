@@ -14,10 +14,11 @@
 /**
  * Cleanup the association list for every parsed file
  */
-void parser_mapping_start(struct snapraid_state* state)
+static void parser_mapping_start(struct snapraid_state* state)
 {
 	tommy_list_foreach(&state->parser_association, association_free);
 	tommy_list_init(&state->parser_association);
+	state->parser_previous_was_association = 0;
 }
 
 static int parser_device_has_id(struct snapraid_device* device, const char* id)
@@ -32,12 +33,15 @@ static int parser_device_has_id(struct snapraid_device* device, const char* id)
 	return 0;
 }
 
-static int parser_association_has_id(struct snapraid_state* state, const char* id)
+/**
+ * Check if the association already exists
+ */
+static int parser_association_is_present(struct snapraid_state* state, const char* file, const char* id)
 {
 	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
 		struct snapraid_association* association = i->data;
 
-		if (strcmp(association->id, id) == 0)
+		if (strcmp(association->file, file) == 0 && strcmp(association->id, id) == 0)
 			return 1;
 	}
 
@@ -45,9 +49,187 @@ static int parser_association_has_id(struct snapraid_state* state, const char* i
 }
 
 /**
- * End the mapping process, but only if task complete succesfully
+ * Check if there are multiple association for the same id
+ *
+ * This happens only if the system has broken devices reporting the same
+ * identifier like the same serial number.
  */
-void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* task)
+static int parser_association_is_duplicate(struct snapraid_state* state, const char* id)
+{
+	const char* file = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		if (strcmp(association->id, id) == 0) {
+			if (file != 0 && strcmp(file, association->file) != 0)
+				return 1;
+			file = association->file;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Check if there are multiple device for the same id
+ *
+ * This happens only if the system has broken devices reporting the same
+ * identifier like the same serial number.
+ *
+ * Note that the association duplicate check normally prevents this to
+ * happen, but it can still happen with older versions, of if the devices
+ * are connected/disconneted at different time.
+ */
+static int parser_device_is_duplicate(struct snapraid_state* state, const char* id)
+{
+	const char* file = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* device = j->data;
+
+			if (parser_device_has_id(device, id)) {
+				if (file != 0 && strcmp(file, device->file) != 0)
+					return 1;
+				file = device->file;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Insert a new mapping entry
+ */
+static void parser_mapping_device(struct snapraid_state* state, const char* file, const char* id)
+{
+	if (!parser_association_is_present(state, file, id)) {
+		struct snapraid_association* association = association_alloc(file, id);
+		tommy_list_insert_tail(&state->parser_association, &association->node, association);
+	}
+}
+
+/**
+ * Remap the device using the specified association
+ */
+static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_association* association)
+{
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* device = j->data;
+
+			if (parser_device_has_id(device, association->id)) {
+				if (strcmp(device->file, association->file) != 0) {
+					if (state->daemon_running != DAEMON_LOADING)
+						log_task(LVL_WARNING, "remapping device with id '%s' to %s (was %s)", association->id, association->file, device->file);
+					pulse(state, PULSE_DISKS);
+					sncpy(device->file, sizeof(device->file), association->file);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Add missing ids assuming the device is mapped correctly
+ */
+static void parser_mapping_add(struct snapraid_state* state, struct snapraid_association* association)
+{
+	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* device = j->data;
+
+			if (strcmp(association->file, device->file) == 0) {
+				/* insert only if missing */
+				if (!parser_device_has_id(device, association->id)) {
+					pulse(state, PULSE_DISKS);
+					sl_insert_str(&device->id_list, association->id);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Apply the association to all devices
+ */
+static void parser_mapping_process(struct snapraid_state* state)
+{
+	/*
+	 * Remap devices using the listed association
+	 *
+	 * Duplicated id in associations or devices are ignored
+	 */
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		if (parser_association_is_duplicate(state, association->id)) {
+			if (state->daemon_running != DAEMON_LOADING)
+				log_task(LVL_WARNING, "ignore duplicate association id '%s' to %s", association->id, association->file);
+		} else if (parser_device_is_duplicate(state, association->id)) {
+			if (state->daemon_running != DAEMON_LOADING)
+				log_task(LVL_WARNING, "ignore duplicate device id '%s' to %s", association->id, association->file);
+		} else {
+			parser_mapping_apply(state, association);
+		}
+	}
+
+	/*
+	 * After remapping add new associations to all devices
+	 *
+	 * This is required in case new IDs are found after the device is created.
+	 * This may happen because the kernel or snapraid is updated, and can get new information.
+	 *
+	 * Duplicated id in associations or devices are ignored
+	 */
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		if (parser_association_is_duplicate(state, association->id)) {
+			/* already reported */
+		} else if (parser_device_is_duplicate(state, association->id)) {
+			/* already reported */
+		} else {
+			parser_mapping_add(state, association);
+		}
+	}
+}
+
+/**
+ * Add all the associations to the device
+ */
+static void parser_mapping_create(struct snapraid_state* state, struct snapraid_device* device)
+{
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		if (strcmp(association->file, device->file) == 0) {
+
+			/*
+			 * Do no insert duplicate associations
+			 *
+			 * Instead, insert duplicate devices, to allow to recognize
+			 * them as duplicate in following parsing of new commands.
+			 */
+			if (!parser_association_is_duplicate(state, association->id)) {
+				sl_insert_str(&device->id_list, association->id);
+			}
+		}
+	}
+}
+
+/**
+ * Remove the disappeared disks or devices, but only if task complete succesfully
+ */
+static void remove_disappeared_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
 	/*
 	 * For simplicity process only on PROBE that access both snapraid.conf and all devices
@@ -93,76 +275,6 @@ void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* tas
 		}
 
 		i = i_next;
-	}
-
-	/*
-	 * Add association to all devices
-	 *
-	 * This is required in case new IDs are found after the device is created.
-	 * This may happen because the kernel or snapraid is updated, and can get new information.
-	 */
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* device = j->data;
-
-			/* for all associations */
-			for (tommy_node* k = tommy_list_head(&state->parser_association); k != 0; k = k->next) {
-				struct snapraid_association* association = k->data;
-
-				/* if it's the righ node */
-				if (strcmp(association->file, device->file) == 0) {
-					/* insert if missing */
-					if (!parser_device_has_id(device, association->id)) {
-						pulse(state, PULSE_DISKS);
-						sl_insert_str(&device->id_list, association->id);
-					}
-				}
-			}
-		}
-	}
-}
-
-/*
- * Search all devices of all disks, and if any id match, reset the device node
- */
-static void parser_mapping_device(struct snapraid_state* state, const char* file, const char* id)
-{
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i != 0; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* device = j->data;
-
-			if (parser_device_has_id(device, id)) {
-				if (strcmp(device->file, file) != 0) {
-					if (state->daemon_running != DAEMON_LOADING)
-						log_task(LVL_WARNING, "remapping device with id %s to %s (was %s)", id, file, device->file);
-					pulse(state, PULSE_DISKS);
-					sncpy(device->file, sizeof(device->file), file);
-				}
-			}
-		}
-	}
-
-	/* insert if missing */
-	if (!parser_association_has_id(state, id)) {
-		struct snapraid_association* association = association_alloc(file, id);
-		tommy_list_insert_tail(&state->parser_association, &association->node, association);
-	}
-}
-
-/**
- * Add all the associations to the device
- */
-static void parser_mapping_create(struct snapraid_state* state, struct snapraid_device* device)
-{
-	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-		if (strcmp(association->file, device->file) == 0) {
-			sl_insert_str(&device->id_list, association->id);
-		}
 	}
 }
 
@@ -1373,6 +1485,25 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 
 	cmd = map[0];
 
+	/* first process map associations */
+	if (strcmp(cmd, "map") == 0) {
+		state_lock();
+		process_map(state, map, mac);
+		state_unlock();
+
+		state->parser_previous_was_association = 1; /* no lock required for parser_* fields as private to parser */
+		return 0;
+	}
+
+	/* if there are association, after the first not "map", process them */
+	if (state->parser_previous_was_association) {
+		state->parser_previous_was_association = 0; /* no lock required for parser_* fields as private to parser */
+
+		state_lock();
+		parser_mapping_process(state);
+		state_unlock();
+	}
+
 	if (strcmp(cmd, "smartctl") == 0) {
 		ignore_this_line = 1;
 	} else if (strcmp(cmd, "resolve") == 0) {
@@ -1392,10 +1523,6 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "attr") == 0) {
 		state_lock();
 		process_attr(state, map, mac);
-		state_unlock();
-	} else if (strcmp(cmd, "map") == 0) {
-		state_lock();
-		process_map(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "scan") == 0) {
 		state_lock();
@@ -1689,6 +1816,18 @@ int parse_timestamp(const char* name, int64_t* out)
 	return 0;
 }
 
+void parse_begin(struct snapraid_state* state)
+{
+	/* clear the association mapping */
+	parser_mapping_start(state);
+}
+
+void parse_end(struct snapraid_state* state, struct snapraid_task* task)
+{
+	/* remove disks that were not referenced */
+	remove_disappeared_disks(state, task);
+}
+
 int parse_past_log(struct snapraid_state* state)
 {
 	char* sys_log_directory = state->config.sys_log_directory;
@@ -1769,8 +1908,7 @@ int parse_past_log(struct snapraid_state* state)
 		state->runner.latest = task;
 		sncpy(task->log_file, sizeof(task->log_file), path);
 
-		/* start disk mapping */
-		parser_mapping_start(state);
+		parse_begin(state);
 
 		log_task_reset();
 
@@ -1783,8 +1921,7 @@ int parse_past_log(struct snapraid_state* state)
 
 		log_task_push(&task->message_list);
 
-		/* remove disks that were not referenced */
-		parser_mapping_done(state, task);
+		parse_end(state, task);
 
 		/* compute the task health */
 		task->health = health_task(task);

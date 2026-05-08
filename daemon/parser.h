@@ -31,14 +31,14 @@ int parse_timestamp(const char* name, time_t* out);
 int parse_past_log(struct snapraid_state* state);
 
 /**
- * Start disks mapping.
+ * Start the parsing
  */
-void parser_mapping_start(struct snapraid_state* state);
+void parse_begin(struct snapraid_state* state);
 
 /**
- * Conclude disks mapping.
+ * End the parsing
  */
-void parser_mapping_done(struct snapraid_state* state, struct snapraid_task* task);
+void parse_end(struct snapraid_state* state, struct snapraid_task* task);
 
 #endif
 
