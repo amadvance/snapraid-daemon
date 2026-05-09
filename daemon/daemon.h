@@ -46,7 +46,7 @@ int os_term(pid_t pid);
  * @param stderr_fd Pointer to store file descriptor for stderr
  * @return Process ID of spawned process
  */
-pid_t os_spawn(char** argv, int* stderr_fd);
+pid_t os_spawn_stderr(char** argv, int* stderr_fd);
 
 /**
  * Execute a system command with optional user context and input.
