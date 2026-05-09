@@ -371,124 +371,177 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 	return 0;
 }
 
-/**
- * Executes a script directly via its file descriptor.
+/*
+ * Securely verify and open an executable file.
+ *
+ * Performs a series of security checks on the file at @exec_path before
+ * returning an open file descriptor suitable for use with fexecve(2), or
+ * falling back to execve(2) on systems that lack it.
+ *
+ * Security model:
+ *   - @exec_path must be absolute.
+ *   - The path is resolved via realpath(3) to canonicalize it and eliminate
+ *     symlinks before any further checks are performed.
+ *   - The parent directory is opened with O_PATH | O_NOFOLLOW to pin its
+ *     inode, and the file is opened with openat(2) relative to that pinned
+ *     descriptor. This closes the TOCTOU window between path resolution
+ *     and file open.
+ *   - Both the parent directory and the file must be owned by root or the
+ *     daemon's real/effective UID, must not be world-writable, and must not
+ *     be group-writable by a group other than the daemon's real/effective GID.
+ *   - The file must be a regular file with at least one execute bit set.
+ *   - The setuid and setgid bits must not be set.
+ *   - The file must not have more than one hard link, to prevent an attacker
+ *     from linking a controlled file into a trusted directory.
+ *   - On systems with fexecve(2) support, the returned fd is opened without
+ *     O_CLOEXEC so it can be passed directly to fexecve(2). On other systems
+ *     O_CLOEXEC is set and execve(2) must be used with @resolved_path.
+ *
+ * @exec_path     Absolute path to the executable to verify.
+ * @resolved_path Caller-allocated buffer of at least PATH_MAX bytes. On
+ *                success, filled with the canonicalized path from realpath(3).
+ *
+ * Returns an open file descriptor (>= 0) on success. The caller is
+ * responsible for closing it. Returns -1 on any verification failure;
+ * the specific reason is emitted via log_task(LVL_ERROR, ...).
  */
-int os_script(char** argv, const char* run_as_user)
+static int verify_executable(const char* exec_path, char* resolved_path)
 {
-	int fd;
 	struct stat st;
-	pid_t pid;
-	int ret;
-	char resolved_path[PATH_MAX];
-	char dir_path[PATH_MAX];
-	int status;
-	uid_t daemon_uid, daemon_euid;
-	gid_t daemon_gid, daemon_egid;
-	int64_t start, stop;
-	const char* script_path = argv[0];
+	uid_t process_uid, process_euid;
+	gid_t process_gid, process_egid;
 
-	daemon_uid = getuid();
-	daemon_euid = geteuid();
-	daemon_gid = getgid();
-	daemon_egid = getegid();
+	process_uid = getuid();
+	process_euid = geteuid();
+	process_gid = getgid();
+	process_egid = getegid();
 
-	/* verify script path is absolute */
-	if (script_path[0] != '/') {
-		log_task(LVL_ERROR, "script path %s must be absolute", script_path);
+	/* verify path is absolute */
+	if (exec_path[0] != '/') {
+		log_task(LVL_ERROR, "path %s must be absolute", exec_path);
 		return -1;
 	}
 
-	/* resolve the script path to prevent symlink attacks */
-	if (!realpath(script_path, resolved_path)) {
-		log_task(LVL_ERROR, "failed to resolve script, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+	/* resolve the path to prevent symlink attacks */
+	if (!realpath(exec_path, resolved_path)) {
+		log_task(LVL_ERROR, "failed to resolve %s, errno=%s(%d)", exec_path, strerror(errno), errno);
 		return -1;
 	}
 
 	char* last_slash = strrchr(resolved_path, '/');
-	if (last_slash && last_slash != resolved_path) {
-		size_t dir_len = last_slash - resolved_path;
-		memcpy(dir_path, resolved_path, dir_len);
-		dir_path[dir_len] = 0;
+	if (last_slash == 0) {
+		log_task(LVL_ERROR, "relative execution of %s not allowed", resolved_path);
+		return -1;
+	}
+	if (last_slash == resolved_path) {
+		log_task(LVL_ERROR, "root dir execution of %s not allowed", resolved_path);
+		return -1;
+	}
 
-		if (stat(dir_path, &st) == 0) {
-			/* script directory must be owned by root or the daemon's real user */
-			if (st.st_uid != daemon_uid && st.st_uid != daemon_euid && st.st_uid != 0) {
-				log_task(LVL_ERROR, "script directory %s owner must match the daemon owner or be root", dir_path);
-				return -1;
-			}
+	const char* exec_name = last_slash + 1;
+	if (exec_name[0] == 0) {
+		log_task(LVL_ERROR, "no executable name in %s", exec_path);
+		return -1;
+	}
 
-			/* script directory must be not group-writable unless group matches daemon */
-			if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-				log_task(LVL_ERROR, "script directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
-				return -1;
-			}
+	char dir_path[PATH_MAX];
+	size_t dir_len = last_slash - resolved_path;
+	memcpy(dir_path, resolved_path, dir_len);
+	dir_path[dir_len] = 0;
 
-			/* script directory must be not world-writable */
-			if (st.st_mode & S_IWOTH) {
-				log_task(LVL_ERROR, "script directory %s must be not world-writable", dir_path);
-				return -1;
-			}
-		}
+	int dir_fd = open(dir_path, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+	if (dir_fd < 0) {
+		log_task(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		return -1;
+	}
+
+	if (fstat(dir_fd, &st) != 0) {
+		log_task(LVL_ERROR, "failed to stat directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		close(dir_fd);
+		return -1;
+	}
+
+	/* directory must be owned by root or the daemon's real user */
+	if (st.st_uid != process_uid && st.st_uid != process_euid && st.st_uid != 0) {
+		log_task(LVL_ERROR, "directory %s owner must match the daemon owner or be root", dir_path);
+		close(dir_fd);
+		return -1;
+	}
+
+	/* directory must be not group-writable unless group matches daemon */
+	if ((st.st_mode & S_IWGRP) && st.st_gid != process_gid && st.st_gid != process_egid && st.st_gid != 0) {
+		log_task(LVL_ERROR, "directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
+		close(dir_fd);
+		return -1;
+	}
+
+	/* directory must be not world-writable */
+	if (st.st_mode & S_IWOTH) {
+		log_task(LVL_ERROR, "directory %s must be not world-writable", dir_path);
+		close(dir_fd);
+		return -1;
 	}
 
 	/*
-	 * Open the script
+	 * Open the executable
 	 * O_NOFOLLOW prevents following symlinks to mitigate redirection attacks
 	 */
-	fd = open(resolved_path, O_RDONLY | O_NOFOLLOW
+	int fd = openat(dir_fd, exec_name, O_RDONLY | O_NOFOLLOW
 #if !HAVE_FEXECVE
 			| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
 #endif
 	);
 	if (fd < 0) {
-		log_task(LVL_ERROR, "failed to open script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to open %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		close(dir_fd);
 		return -1;
 	}
 
+	close(dir_fd);
+
 	/* get the file handle (TOCTOU Protection) */
 	if (fstat(fd, &st) == -1) {
-		log_task(LVL_ERROR, "failed to stat script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to stat %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(fd);
 		return -1;
 	}
 
 	/* ensure it's a regular file */
 	if (!S_ISREG(st.st_mode)) {
-		log_task(LVL_ERROR, "script %s is not a regular file", resolved_path);
+		log_task(LVL_ERROR, "file %s is not a regular file", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* ensure it has execute permissions */
 	if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-		log_task(LVL_ERROR, "script %s is not an executable", resolved_path);
+		log_task(LVL_ERROR, "file %s is not an executable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must be owned by root or the daemon's real user */
-	if (st.st_uid != daemon_uid && st.st_uid != daemon_euid && st.st_uid != 0) {
-		log_task(LVL_ERROR, "script %s owner must match the daemon owner or be root", resolved_path);
+	/* must be owned by root or the daemon's real user */
+	if (st.st_uid != process_uid && st.st_uid != process_euid && st.st_uid != 0) {
+		log_task(LVL_ERROR, "file %s owner must match the daemon owner or be root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must be not group-writable unless group matches daemon */
-	if ((st.st_mode & S_IWGRP) && st.st_gid != daemon_gid && st.st_gid != daemon_egid && st.st_gid != 0) {
-		log_task(LVL_ERROR, "script %s must be not group-writable unless group matches daemon owner or root", resolved_path);
+	/* must be not group-writable unless group matches daemon */
+	if ((st.st_mode & S_IWGRP) && st.st_gid != process_gid && st.st_gid != process_egid && st.st_gid != 0) {
+		log_task(LVL_ERROR, "file %s must be not group-writable unless group matches daemon owner or root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must be not world-writable */
+	/* must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_task(LVL_ERROR, "script %s must be not world-writable", resolved_path);
+		log_task(LVL_ERROR, "file %s must be not world-writable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
-	/* script must be not setuid / setgid */
+	/* must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
 		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
 		close(fd);
@@ -497,8 +550,27 @@ int os_script(char** argv, const char* run_as_user)
 
 	/* verify the file has not been hardlinked multiple times */
 	if (st.st_nlink > 1) {
-		log_task(LVL_ERROR, "script %s has multiple hard links", resolved_path);
+		log_task(LVL_ERROR, "file %s has multiple hard links", resolved_path);
 		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+/**
+ * Executes a script directly via its file descriptor.
+ */
+int os_script(char** argv, const char* run_as_user)
+{
+	char resolved_path[PATH_MAX];
+	pid_t pid;
+	int ret;
+	int status;
+	int64_t start, stop;
+
+	int fd = verify_executable(argv[0], resolved_path);
+	if (fd < 0) {
 		return -1;
 	}
 
@@ -819,18 +891,50 @@ bail:
 #endif
 }
 
-pid_t os_spawn(char** argv, int* stderr_fd)
+/*
+ * os_spawn_stderr() - Fork and execute a verified executable, capturing stderr.
+ *
+ * Spawns @argv[0] in a new process with stderr connected to a pipe whose
+ * read end is returned in @stderr_fd. stdin and stdout are redirected to
+ * /dev/null. Use this when the child's error output needs to be read and
+ * processed by the daemon.
+
+ * The child is placed in its own process group (setpgid) to isolate it
+ * from signals sent to the daemon's process group. The daemon can terminate
+ * the child and all its descendants with kill(-pid, SIGTERM).
+ *
+ * The pipe is created with O_CLOEXEC on both ends. The write end is closed
+ * in the parent after fork. The read end's buffer is reduced to 4096 bytes
+ * to improve read responsiveness on low-volume output.
+ *
+ * @argv       NULL-terminated argument vector. argv[0] must be the absolute
+ *             path to the executable.
+ * @stderr_fd  On success, set to the read end of the stderr pipe. The caller
+ *             is responsible for closing it when done.
+ *
+ * Returns the child PID on success, or -1 on failure.
+ */
+pid_t os_spawn_stderr(char** argv, int* stderr_fd)
 {
+	char resolved_path[PATH_MAX];
 	int err_pipe[2];
 	pid_t pid;
 
-	if (pipe_cloexec(err_pipe) < 0)
+	int fd = verify_executable(argv[0], resolved_path);
+	if (fd < 0) {
 		return -1;
+	}
+
+	if (pipe_cloexec(err_pipe) < 0) {
+		close(fd);
+		return -1;
+	}
 
 	pid = fork();
 	if (pid < 0) {
 		close(err_pipe[0]);
 		close(err_pipe[1]);
+		close(fd);
 		return -1;
 	}
 
@@ -865,14 +969,38 @@ pid_t os_spawn(char** argv, int* stderr_fd)
 		if (null_fd > STDERR_FILENO)
 			close(null_fd);
 
+#if defined(CLOSE_RANGE_CLOEXEC) && defined(HAVE_CLOSE_RANGE)
+		/*
+		 * Set all fd to be closed on exec as extra safety measure
+		 *
+		 * fallback: if it fails, we assume to be still safe, as all fds and
+		 * sockets should be already created with CLOEXEC.
+		 */
+		close_range(3, fd - 1, CLOSE_RANGE_CLOEXEC);
+		close_range(fd + 1, ~0U, CLOSE_RANGE_CLOEXEC);
+#endif
+
 		/* restore and unblock signals */
 		os_signal_restore_after_fork();
 
-		execve(argv[0], (char* const*)argv, envp_scrubbed);
+		/* use the resolved path for execution */
+		argv[0] = resolved_path;
+
+		/*
+		 * Direct Execution via File Descriptor
+		 * The kernel uses the shebang in the FD to find the interpreter.
+		 */
+#if HAVE_FEXECVE
+		fexecve(fd, argv, envp_scrubbed);
+#else
+		/* fallback: unfortunately must use the path */
+		execve(resolved_path, argv, envp_scrubbed);
+#endif
 		_exit(127);
 	}
 
 	/* parent */
+	close(fd);
 
 	/* set the pipe buffer to the minimum to improve responsiveness */
 	if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {

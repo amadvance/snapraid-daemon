@@ -1373,7 +1373,7 @@ static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 	return pos;
 }
 
-pid_t os_spawn(char** argv, int* stderr_read_int)
+pid_t os_spawn_stderr(char** argv, int* stderr_read_int)
 {
 	wchar_t conv[CONV_MAX];
 	HANDLE stderr_write_handle;
