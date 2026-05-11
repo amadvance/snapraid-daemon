@@ -1258,23 +1258,17 @@ int windows_join(thread_id_t thread, void** retval)
 /****************************************************************************/
 /* exec */
 
-const char* os_find_engine(const char* sys_engine)
+const char* os_find_engine(void)
 {
 	wchar_t conv[CONV_MAX];
-	const char* path;
 
-	if (sys_engine && sys_engine[0])
-		path = sys_engine;
-	else
-		path = path_snapraid;
-
-	DWORD attrib = GetFileAttributesW(u8tou16(conv, path));
+	DWORD attrib = GetFileAttributesW(u8tou16(conv, path_snapraid));
 
 	/* check for existence every time in case it's installed at later time */
 	if (attrib == INVALID_FILE_ATTRIBUTES)
 		return 0;
 
-	return path;
+	return path_snapraid;
 }
 
 void os_default_log(char* dst, size_t dst_size)

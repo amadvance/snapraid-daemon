@@ -331,7 +331,7 @@ int config_load_locked(struct snapraid_state* state)
 			*key_end = 0;
 
 			if (strcmp(key, "sys_engine") == 0) {
-				sncpy(config->sys_engine, sizeof(config->sys_engine), val);
+				log_msg(LVL_WARNING, "deprecated config option %s=%s", key, val);
 			} else if (strcmp(key, "sys_log_directory") == 0) {
 				sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), val);
 			} else if (strcmp(key, "sys_log_retention_days") == 0) {
@@ -693,7 +693,6 @@ void config_default_locked(struct snapraid_state* state)
 	struct snapraid_config* config = &state->config;
 
 	/* set default */
-	config->sys_engine[0] = 0;
 	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
 	config->sys_log_retention_days = 0;
 	config->net_enabled = 0;
@@ -734,7 +733,6 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	/* preset to zero to clear also private part */
 	memset(transient, 0, sizeof(*transient));
 
-	sncpy(transient->sys_engine, sizeof(transient->sys_engine), config->sys_engine);
 	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
 	transient->sys_log_retention_days = config->sys_log_retention_days;
 	transient->net_enabled = config->net_enabled;
@@ -781,7 +779,6 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	struct snapraid_config* config = &state->config;
 
 	/* copy fields */
-	sncpy(config->sys_engine, sizeof(config->sys_engine), transient->sys_engine);
 	sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), transient->sys_log_directory);
 	config->sys_log_retention_days = transient->sys_log_retention_days;
 	config->net_enabled = transient->net_enabled;
