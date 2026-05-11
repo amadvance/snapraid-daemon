@@ -111,6 +111,10 @@ static void os_signal_init(void)
 /* exec */
 
 static const char* snapraid_paths[] = {
+#ifdef SNAPRAID_PATH
+	/* Path configured at build time (e.g. on NixOS). */
+	SNAPRAID_PATH,
+#else
 	/* Linux & BSD */
 	"/usr/bin/snapraid",
 	"/usr/local/bin/snapraid",
@@ -118,20 +122,15 @@ static const char* snapraid_paths[] = {
 	/* macOS (Intel & Apple Silicon) */
 	"/opt/homebrew/bin/snapraid",
 #endif
+#endif
 	0
 };
 
-const char* os_find_engine(const char* sys_engine)
+const char* os_find_engine(void)
 {
-	/* check for existence every time in case it's installed at later time */
-	if (sys_engine != 0 && sys_engine[0] != 0) {
-		if (eaccess(sys_engine, X_OK) == 0)
-			return sys_engine;
-	} else {
-		for (int i = 0; snapraid_paths[i]; ++i) {
-			if (eaccess(snapraid_paths[i], X_OK) == 0)
-				return snapraid_paths[i];
-		}
+	for (int i = 0; snapraid_paths[i]; ++i) {
+		if (eaccess(snapraid_paths[i], X_OK) == 0)
+			return snapraid_paths[i];
 	}
 
 	return 0;
@@ -486,9 +485,12 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 	 * Open the executable
 	 * O_NOFOLLOW prevents following symlinks to mitigate redirection attacks
 	 */
-	int fd = openat(dir_fd, exec_name, O_RDONLY | O_NOFOLLOW
+	int fd = openat(dir_fd, exec_name, O_RDONLY
+#if !HAVE_SYMLINK_TOOLS
+		| O_NOFOLLOW
+#endif
 #if !HAVE_FEXECVE
-			| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
+		| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
 #endif
 	);
 	if (fd < 0) {
