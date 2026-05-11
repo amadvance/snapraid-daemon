@@ -1,6 +1,14 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+2.0 WIP
+=======
+ * Removed the "sys_engine" option and replaced it with a new
+   "./configure --with-snapraid=PATH" option to allow hardcoding the
+   utility path at build time. The default runtime discovery behavior
+   remains unchanged if this option is omitted.
+   Primarily intended for NixOS and other non-FHS systems.
+
 1.15 2026/08
 ============
  * Fixed diff summary counters being reset to zero after rescan operations
