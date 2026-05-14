@@ -371,10 +371,12 @@ static void json_attr(ss_t* s, int* level, int kind_and_format, struct smart_att
 	else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
 		ss_json_str(s, *level, "when_failed", "never");
 	json_tracked(s, *level, "raw", &attr->raw, format);
-	if (attr->norm || attr->worst || attr->thresh) {
+	if (attr->norm) {
 		ss_json_u64(s, *level, "norm", attr->norm);
-		ss_json_u64(s, *level, "worst", attr->worst);
-		ss_json_u64(s, *level, "thresh", attr->thresh);
+		if (attr->worst)
+			ss_json_u64(s, *level, "worst", attr->worst);
+		if (attr->thresh)
+			ss_json_u64(s, *level, "thresh", attr->thresh);
 	}
 	if (format == FORMAT_16_MAXMINVAL) {
 		uint64_t value = attr->raw.value & 0xFFFF;
