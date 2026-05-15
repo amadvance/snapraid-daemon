@@ -424,9 +424,9 @@ static struct snapraid_device* find_device_from_file(struct snapraid_state* stat
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
 	for (j = 0; j < SMART_COUNT; ++j) {
 		tracked_init(&device->smart[j].raw);
-		device->smart[j].norm = 0;
-		device->smart[j].worst = 0;
-		device->smart[j].thresh = 0;
+		device->smart[j].norm = SMART_UNASSIGNED;
+		device->smart[j].worst = SMART_UNASSIGNED;
+		device->smart[j].thresh = SMART_UNASSIGNED;
 		device->smart[j].flags = 0;
 	}
 	tracked_init(&device->error_protocol);
