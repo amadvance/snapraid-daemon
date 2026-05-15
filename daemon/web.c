@@ -21,16 +21,6 @@ void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_m
 	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
 	ss_printf(s, "Date: %s\r\n", date_buf);
 
-	/* allowing the browser to cache for 1 day (86400 seconds) */
-	ss_prints(s, "Cache-Control: public, max-age=86400\r\n");
-
-	if (last_modified != 0) {
-		gmtime_r(&last_modified, &tm_gmt);
-		strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-		ss_printf(s, "Last-Modified: %s\r\n", date_buf);
-	}
-
-
 	/*
 	 * Forces the browser to always fetch fresh data from the daemon.
 	 * 'no-store' prevents the sensitive JSON status from being saved to disk.
