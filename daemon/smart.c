@@ -116,9 +116,9 @@ struct smart_entry {
 	{ 187, FORMAT_48, "Uncorrectable_ECC_Ct", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 	{ 187, FORMAT_48, "Uncorrectable_Error_Cnt", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
-	/* adjusted from 48 to 16 */
+	/* adjusted from 48 to 16 to avoid Seagate packed values https://www.smartmontools.org/ticket/551 */
 	{ 188, FORMAT_16, "Command_Timeout", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE }, /* default entry */
-	/* adjusted from 48 to 16 */
+	/* adjusted from 48 to 16 to avoid Seagate packed values https://www.smartmontools.org/ticket/551 */
 	{ 188, FORMAT_16, "Command_Timeouts", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
 #if 0
