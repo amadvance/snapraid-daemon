@@ -383,6 +383,7 @@ struct snapraid_page {
 	char* content; /**< File buffer */
 	ssize_t size; /**< File size */
 	const char* mime_type; /**< MIME type */
+	int is_static; /**< Page is static and will have relaxed headers */
 	char str[];
 };
 

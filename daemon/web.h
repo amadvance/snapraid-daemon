@@ -39,11 +39,10 @@ int web_reload(struct snapraid_state* state, const char* net_web_root);
  * @param conn Current HTTP connection
  * @param s String stream for output
  * @param now Current timestamp
- * @param last_modified Last modified time of the resource
  * @param net_security_headers 1 to enable security headers, 0 otherwise
  * @param net_allowed_origin Allowed origin for CORS, or NULL
  */
-void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers, const char* net_allowed_origin);
+void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int net_security_headers, const char* net_allowed_origin);
 
 #endif
 

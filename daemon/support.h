@@ -14,9 +14,10 @@
 /**
  * Get MIME type for a file path based on its extension.
  * @param path File path or name
+ * @param is_static If the path should be served with static headers.
  * @return MIME type string. 0 if unknown
  */
-const char* get_mime_type(const char* path);
+const char* get_mime_type(const char* path, int* is_static);
 
 /****************************************************************************/
 /* crc32 */

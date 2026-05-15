@@ -82,7 +82,8 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 
 	snprintf(root, sizeof(root), "/%s", file);
 
-	const char* mime_type = get_mime_type(file);
+	int is_static = 0;
+	const char* mime_type = get_mime_type(file, &is_static);
 	if (mime_type == 0) {
 		log_msg(LVL_WARNING, "crawler ignore unknown file %s", file);
 		return;
@@ -93,6 +94,7 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 	memcpy(page->content, uncompressed_data, uncompressed_size);
 
 	page->mime_type = mime_type;
+	page->is_static = is_static;
 
 	tommy_list_insert_tail(page_list, &page->node, page);
 }

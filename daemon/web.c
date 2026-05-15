@@ -11,7 +11,25 @@
 #include "zip.h"
 #include "web.h"
 
-void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers, const char* net_allowed_origin)
+/**
+ * Standardizes the emission of HTTP response headers for dynamic API endpoints.
+ *
+ * This function implements a "Defense in Depth" security posture by applying strict
+ * cache-control policies to prevent sensitive system state from being stored on
+ * disk, and configuring modern browser isolation headers (CSP, COOP, etc.) to
+ * mitigate common web vulnerabilities like XSS and clickjacking.
+ *
+ * It supports configurable CORS (Cross-Origin Resource Sharing) through the
+ * net_allowed_origin parameter to allow integration with external dashboards.
+ *
+ * @param conn                The web server connection handle.
+ * @param s                   The output string buffer.
+ * @param now                 Current Unix timestamp for the Date header.
+ * @param last_modified       Unix timestamp of the last resource change (0 to omit).
+ * @param net_security_headers Boolean to toggle strict browser security policies.
+ * @param net_allowed_origin  CORS policy: "none", "self" (host-matching), or a specific URL.
+ */
+void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int net_security_headers, const char* net_allowed_origin)
 {
 	ss_printf(s, "Server: %s/%s\r\n", DAEMON, PACKAGE_VERSION);
 
@@ -119,6 +137,82 @@ void http_headers(struct mg_connection* conn, ss_t* s, time_t now, time_t last_m
 		ss_prints(s, "Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\n");
 		ss_prints(s, "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
 	}
+}
+
+/**
+ * Sends HTTP headers optimized for static assets (CSS, JS, Images, Icons).
+ * Unlike the standard API headers, this function enables aggressive caching
+ * and permissive cross-origin access to ensure the UI remains fast and assets
+ * are accessible across different local contexts.
+ *
+ * @param conn                The web server connection handle.
+ * @param s                   The output string buffer.
+ * @param now                 Current Unix timestamp for the Date header.
+ * @param last_modified       Unix timestamp of the last resource change (0 to omit).
+ */
+void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t last_modified, int net_security_headers)
+{
+	(void)conn;
+
+	/* Identify the server and version */
+	ss_printf(s, "Server: %s/%s\r\n", DAEMON, PACKAGE_VERSION);
+
+	/* Standard HTTP Date header */
+	char date_buf[64];
+	struct tm tm_gmt;
+	gmtime_r(&now, &tm_gmt);
+	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
+	ss_printf(s, "Date: %s\r\n", date_buf);
+
+	/**
+	 * Cache-Control: public, max-age=604800
+	 * Encourages the browser to cache static files for 7 days. This significantly
+	 * reduces the load on the daemon and speeds up UI rendering. We specifically
+	 * omit 'no-store' and 'no-cache' here to allow persistent disk caching.
+	 */
+	ss_prints(s, "Cache-Control: public, max-age=604800\r\n");
+
+	/* Conditional serving: allows browsers to skip download if the file hasn't changed */
+	if (last_modified != 0) {
+		gmtime_r(&last_modified, &tm_gmt);
+		strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
+		ss_printf(s, "Last-Modified: %s\r\n", date_buf);
+	}
+
+	/**
+	 * Vary: Accept-Encoding
+	 * Notifies caches that the response body may differ based on compression support.
+	 * We omit 'Vary: Origin' for static files to improve cache hit rates.
+	 */
+	ss_prints(s, "Vary: Accept-Encoding\r\n");
+
+	/*
+	 * These headers provide "Defense in Depth" against common web vulnerabilities.
+	 */
+	if (net_security_headers) {
+		/**
+		 * X-Content-Type-Options: nosniff
+		 * Forces the browser to strictly adhere to the provided Content-Type,
+		 * mitigating MIME-type sniffing attacks.
+		 */
+		ss_prints(s, "X-Content-Type-Options: nosniff\r\n");
+
+		/**
+		 * Referrer-Policy: no-referrer
+		 * Ensures that the local daemon's address is not leaked to external sites
+		 * when the browser fetches assets or follows links.
+		 */
+		ss_prints(s, "Referrer-Policy: no-referrer\r\n");
+	}
+
+	/**
+	 * Access-Control-Allow-Origin: *
+	 * Permits static assets to be loaded by any local origin. This is necessary
+	 * for browser dashboards, extensions, or third-party UIs that may need to
+	 * reference the daemon's icons or stylesheets from a different origin context.
+	 */
+	ss_prints(s, "Access-Control-Allow-Origin: *\r\n");
+	ss_prints(s, "Access-Control-Allow-Methods: GET, OPTIONS\r\n");
 }
 
 static ssize_t read_fd(int fd, void* buffer, ssize_t size)
@@ -237,7 +331,8 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			continue; /* fd consumed by recursion */
 		} else if (S_ISREG(st.st_mode)) {
 			const char* relative = path + skip;
-			const char* mime_type = get_mime_type(relative);
+			int is_static = 0;
+			const char* mime_type = get_mime_type(relative, &is_static);
 			if (mime_type == 0) {
 				log_msg(LVL_WARNING, "crawler ignore unknown file %s", path);
 				continue;
@@ -262,6 +357,7 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			close(fd);
 
 			page->mime_type = mime_type;
+			page->is_static = is_static;
 
 			tommy_list_insert_tail(page_list, &page->node, page);
 		} else {
@@ -288,7 +384,7 @@ static void crawl_directory(tommy_list* page_list, size_t skip, const char* curr
 	crawl_directory_fd(page_list, skip, FD_ARG(fd), current_path);
 }
 
-static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modified)
+static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modified, int is_static)
 {
 	int net_security_headers;
 	char net_allowed_origin[CONFIG_MAX];
@@ -300,7 +396,11 @@ static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modifi
 	sncpy(net_allowed_origin, sizeof(net_allowed_origin), state_ptr()->config.net_allowed_origin);
 	state_unlock();
 
-	http_headers(conn, s, now, last_modified, net_security_headers, net_allowed_origin);
+	if (is_static) {
+		http_headers_static(conn, s, now, last_modified, net_security_headers);
+	} else {
+		http_headers_secure(conn, s, now, net_security_headers, net_allowed_origin);
+	}
 }
 
 static int send_no_content(struct mg_connection* conn)
@@ -309,7 +409,7 @@ static int send_no_content(struct mg_connection* conn)
 	ss_init(&s, HTTP_HEADERS_MAX);
 
 	ss_prints(&s, "HTTP/1.1 204 No Content\r\n");
-	send_headers(conn, &s, 0);
+	send_headers(conn, &s, 0, 0);
 	ss_prints(&s, "Connection: close\r\n\r\n");
 	ss_prints(&s, "\r\n");
 
@@ -325,7 +425,7 @@ static int send_error(struct mg_connection* conn, int status)
 	ss_init(&s, HTTP_HEADERS_MAX);
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
-	send_headers(conn, &s, 0);
+	send_headers(conn, &s, 0, 0);
 	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
@@ -336,7 +436,7 @@ static int send_error(struct mg_connection* conn, int status)
 	return status;
 }
 
-static int send_file(struct mg_connection* conn, time_t page_time, const char* body, size_t body_len, const char* mime)
+static int send_file(struct mg_connection* conn, time_t page_time, const char* body, size_t body_len, const char* mime, int is_static)
 {
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
@@ -344,7 +444,7 @@ static int send_file(struct mg_connection* conn, time_t page_time, const char* b
 	int z = mg_accept_z(conn);
 
 	ss_printf(&s, "HTTP/1.1 200 OK\r\n");
-	send_headers(conn, &s, page_time);
+	send_headers(conn, &s, page_time, is_static);
 	ss_printf(&s, "Content-Type: %s\r\n", mime);
 	switch (z) {
 #if HAVE_ZLIB
@@ -446,7 +546,7 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 				return send_error(conn, 304);
 			}
 
-			int status = send_file(conn, page_time, page->content, page->size, page->mime_type);
+			int status = send_file(conn, page_time, page->content, page->size, page->mime_type, page->is_static);
 			web_unlock();
 			return status;
 		}
@@ -474,7 +574,8 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	if (strcmp(target_uri, "/") == 0)
 		target_uri = "/index.html";
 
-	const char* mime_type = get_mime_type(target_uri);
+	int is_static = 0;
+	const char* mime_type = get_mime_type(target_uri, &is_static);
 	if (mime_type == 0)
 		return send_error(conn, 403);
 
@@ -521,7 +622,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 		return send_error(conn, 500);
 	}
 
-	int status = send_file(conn, st.st_mtime, body, body_len, mime_type);
+	int status = send_file(conn, st.st_mtime, body, body_len, mime_type, is_static);
 
 	free(body);
 

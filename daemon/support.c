@@ -11,70 +11,71 @@
 typedef struct {
 	const char* extension;
 	const char* mime_type;
+	int is_static; /* 1 for static headers, 0 for secure headers */
 } mime_entry;
 
 static const mime_entry MIME[] =
 {
-	/* core */
-	{ ".html", "text/html" },
-	{ ".htm", "text/html" },
-	{ ".js", "text/javascript" },
-	{ ".mjs", "text/javascript" },
-	{ ".css", "text/css" },
-	{ ".webmanifest", "application/manifest+json" },
-	{ ".wasm", "application/wasm" },
-	{ ".xhtml", "application/xhtml+xml" },
+	/* core - HTML is secure, assets are static */
+	{ ".html", "text/html", 0 },
+	{ ".htm", "text/html", 0 },
+	{ ".js", "text/javascript", 1 },
+	{ ".mjs", "text/javascript", 1 },
+	{ ".css", "text/css", 1 },
+	{ ".webmanifest", "application/manifest+json", 1 },
+	{ ".wasm", "application/wasm", 1 },
+	{ ".xhtml", "application/xhtml+xml", 0 },
 
-	/* images */
-	{ ".svg", "image/svg+xml" },
-	{ ".png", "image/png" },
-	{ ".jpg", "image/jpeg" },
-	{ ".jpeg", "image/jpeg" },
-	{ ".ico", "image/x-icon" },
-	{ ".webp", "image/webp" },
-	{ ".avif", "image/avif" },
-	{ ".gif", "image/gif" },
-	{ ".apng", "image/apng" },
+	/* images - all static */
+	{ ".svg", "image/svg+xml", 1 },
+	{ ".png", "image/png", 1 },
+	{ ".jpg", "image/jpeg", 1 },
+	{ ".jpeg", "image/jpeg", 1 },
+	{ ".ico", "image/x-icon", 1 },
+	{ ".webp", "image/webp", 1 },
+	{ ".avif", "image/avif", 1 },
+	{ ".gif", "image/gif", 1 },
+	{ ".apng", "image/apng", 1 },
 
-	/* video/audio */
-	{ ".mp4", "video/mp4" },
-	{ ".webm", "video/webm" },
-	{ ".mp3", "audio/mpeg" },
-	{ ".wav", "audio/wav" },
-	{ ".mov", "video/quicktime" },
-	{ ".mpeg", "video/mpeg" },
-	{ ".opus", "audio/opus" },
-	{ ".ogv", "video/ogg" },
-	{ ".aac", "audio/aac" },
-	{ ".flac", "audio/flac" },
+	/* video/audio - all static */
+	{ ".mp4", "video/mp4", 1 },
+	{ ".webm", "video/webm", 1 },
+	{ ".mp3", "audio/mpeg", 1 },
+	{ ".wav", "audio/wav", 1 },
+	{ ".mov", "video/quicktime", 1 },
+	{ ".mpeg", "video/mpeg", 1 },
+	{ ".opus", "audio/opus", 1 },
+	{ ".ogv", "video/ogg", 1 },
+	{ ".aac", "audio/aac", 1 },
+	{ ".flac", "audio/flac", 1 },
 
-	/* fonts */
-	{ ".woff2", "font/woff2" },
-	{ ".woff", "font/woff" },
-	{ ".ttf", "font/ttf" },
-	{ ".otf", "font/otf" },
-	{ ".eot", "application/vnd.ms-fontobject" },
+	/* fonts - all static */
+	{ ".woff2", "font/woff2", 1 },
+	{ ".woff", "font/woff", 1 },
+	{ ".ttf", "font/ttf", 1 },
+	{ ".otf", "font/otf", 1 },
+	{ ".eot", "application/vnd.ms-fontobject", 1 },
 
-	/* data */
-	{ ".json", "application/json" },
-	{ ".map", "application/json" },
-	{ ".xml", "application/xml" },
-	{ ".pdf", "application/pdf" },
-	{ ".txt", "text/plain" },
-	{ ".log", "text/plain" },
-	{ ".csv", "text/csv" },
-	{ ".md", "text/markdown" },
+	/* data - JSON is secure (sensitive), others static */
+	{ ".json", "application/json", 0 },
+	{ ".map", "application/json", 1 },
+	{ ".xml", "application/xml", 1 },
+	{ ".pdf", "application/pdf", 1 },
+	{ ".txt", "text/plain", 1 },
+	{ ".log", "text/plain", 1 },
+	{ ".csv", "text/csv", 1 },
+	{ ".md", "text/markdown", 1 },
 
-	/* archives */
-	{ ".zip", "application/zip" },
-	{ ".gz", "application/gzip" },
-	{ ".tar", "application/x-tar" },
-	{ ".7z", "application/x-7z-compressed" },
+	/* archives - all static */
+	{ ".zip", "application/zip", 1 },
+	{ ".gz", "application/gzip", 1 },
+	{ ".tar", "application/x-tar", 1 },
+	{ ".7z", "application/x-7z-compressed", 1 },
 
 	{ 0 }
 };
 
-const char* get_mime_type(const char* path)
+const char* get_mime_type(const char* path, int* is_static)
 {
 	/* find the last '.' in the path */
 	const char* dot = strrchr(path, '.');
@@ -83,6 +84,8 @@ const char* get_mime_type(const char* path)
 
 	for (int i = 0; MIME[i].extension; ++i) {
 		if (strcasecmp(dot, MIME[i].extension) == 0) {
+			if (is_static)
+				*is_static = MIME[i].is_static;
 			return MIME[i].mime_type;
 		}
 	}

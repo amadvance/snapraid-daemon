@@ -245,7 +245,7 @@ static void send_headers(struct mg_connection* conn, ss_t* s)
 	sncpy(net_allowed_origin, sizeof(net_allowed_origin), state_ptr()->config.net_allowed_origin);
 	state_unlock();
 
-	http_headers(conn, s, now, 0, net_security_headers, net_allowed_origin);
+	http_headers_secure(conn, s, now, net_security_headers, net_allowed_origin);
 }
 
 static int send_json_answer(struct mg_connection* conn, int status, ss_t* body)

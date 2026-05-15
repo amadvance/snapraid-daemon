@@ -10,6 +10,8 @@ SnapRAID-Daemon HISTORY
  * Handle cases where different devices report the same serial number.
    Duplicates are now ignored, which may lead to inconsistent SMART
    diagnostic mapping.
+ * Implemented permissive CORS and caching headers for static assets to
+   ensure icons display correctly in browser dashboards and smart links.
 
 1.9 2026/04
 ===========

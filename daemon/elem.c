@@ -841,6 +841,8 @@ struct snapraid_page* page_alloc(const char* path, size_t content_size)
 	page->path = page->str;
 	page->size = content_size;
 	page->content = page->path + path_len + 1;
+	page->mime_type = 0;
+	page->is_static = 0;
 
 	memcpy(page->path, path, path_len + 1);
 
