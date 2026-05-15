@@ -36,8 +36,8 @@ void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int ne
 	char date_buf[64];
 	struct tm tm_gmt;
 	gmtime_r(&now, &tm_gmt);
-	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-	ss_printf(s, "Date: %s\r\n", date_buf);
+	if (strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt) > 0)
+		ss_printf(s, "Date: %s\r\n", date_buf);
 
 	/*
 	 * Forces the browser to always fetch fresh data from the daemon.
@@ -170,8 +170,8 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 	char date_buf[64];
 	struct tm tm_gmt;
 	gmtime_r(&now, &tm_gmt);
-	strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-	ss_printf(s, "Date: %s\r\n", date_buf);
+	if (strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt) > 0)
+		ss_printf(s, "Date: %s\r\n", date_buf);
 
 	/**
 	 * Cache-Control: public, max-age=604800
@@ -184,8 +184,8 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 	/* Conditional serving: allows browsers to skip download if the file hasn't changed */
 	if (last_modified != 0) {
 		gmtime_r(&last_modified, &tm_gmt);
-		strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt);
-		ss_printf(s, "Last-Modified: %s\r\n", date_buf);
+		if (strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt) > 0)
+			ss_printf(s, "Last-Modified: %s\r\n", date_buf);
 	}
 
 	/**
