@@ -34,7 +34,7 @@ COMMANDER_DIST = \
 	image/apple-touch-icon.png \
 	image/android-chrome-192x192.png \
 	image/favicon-32x32.png \
-	image/favicon.ico \
+	favicon.ico \
 	css/style.css \
 	js/api.js \
 	js/app.js \
@@ -183,7 +183,7 @@ EXTRA_DIST = \
 	commander/image/apple-touch-icon.png \
 	commander/image/android-chrome-192x192.png \
 	commander/image/favicon-32x32.png \
-	commander/image/favicon.ico \
+	commander/favicon.ico \
 	commander/css/style.css \
 	commander/js/ui.js \
 	commander/js/api.js \
