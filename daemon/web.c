@@ -123,7 +123,16 @@ void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int ne
 		 */
 		if (strcmp(net_allowed_origin, "self") == 0) {
 			const char* host = mg_get_header(conn, "Host");
-			ss_printf(s, "Access-Control-Allow-Origin: http://%s\r\n", host ? host : "null");
+			const struct mg_request_info* ri = mg_get_request_info(conn);
+
+			/* check if a proxy explicitly told us the original protocol was HTTPS */
+			const char* x_proto = mg_get_header(conn, "X-Forwarded-Proto");
+
+			/* determine the protocol: HTTPS if forwarded by proxy OR if native SSL is used */
+			int is_https = (x_proto && strcasecmp(x_proto, "https") == 0) || ri->is_ssl;
+			const char* proto = is_https ? "https" : "http";
+
+			ss_printf(s, "Access-Control-Allow-Origin: %s://%s\r\n", proto, host ? host : "null");
 		} else {
 			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
 		}
