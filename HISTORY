@@ -8,6 +8,8 @@ SnapRAID-Daemon HISTORY
    utility path at build time. The default runtime discovery behavior
    remains unchanged if this option is omitted.
    Primarily intended for NixOS and other non-FHS systems.
+ * Added --enable-symlink-tools configure option to allow the validation
+   logic to accept symbolic links for the specified --with-* paths.
    
 1.11 2026/06
 ============
