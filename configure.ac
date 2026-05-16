@@ -365,6 +365,15 @@ AC_DEFUN([WITH_TOOL], [
 
 WITH_TOOL([snapraid], [snapraid],  [SnapRAID CLI engine])
 
+# Enable support for symlinked tool paths
+AC_ARG_ENABLE([symlink-tools],
+	[AS_HELP_STRING([--enable-symlink-tools], [allow paths specified with --with-* options to be symbolic links])],
+	[
+		AS_IF([test "x$enableval" = "xyes"], [
+			AC_DEFINE([HAVE_SYMLINK_TOOLS], [1], [Define to 1 if paths specified with --with-* options are allowed to be symlinks.])
+		])
+	])
+
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])
