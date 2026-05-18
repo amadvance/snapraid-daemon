@@ -12,6 +12,7 @@ SnapRAID-Daemon HISTORY
    diagnostic mapping.
  * Implemented permissive CORS and caching headers for static assets to
    ensure icons display correctly in browser dashboards and smart links.
+ * Various security improvements and memory leak fixes.
 
 1.9 2026/04
 ===========
