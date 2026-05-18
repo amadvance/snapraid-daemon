@@ -1135,11 +1135,14 @@ int windows_join(thread_id_t thread, void** retval)
 
 	if (WaitForSingleObject(context->h, INFINITE) != WAIT_OBJECT_0) {
 		windows_errno(GetLastError());
+		CloseHandle(context->h);
+		free(context);
 		return -1;
 	}
 
 	if (!CloseHandle(context->h)) {
 		windows_errno(GetLastError());
+		free(context);
 		return -1;
 	}
 
@@ -1299,6 +1302,15 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 		return -1;
 	}
 
+	int f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
+	if (f == -1) {
+		windows_errno(GetLastError());
+		log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
+		CloseHandle(stderr_write_handle);
+		CloseHandle(stderr_read_handle);
+		return -1;
+	}
+
 	/* prepare command line string (Windows uses a single string, not an array) */
 	WCHAR cmd_buffer[COMMAND_LINE_MAX];
 	int pos = 0;
@@ -1340,7 +1352,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 		windows_errno(GetLastError());
 		log_task(LVL_ERROR, "failed to create process for spawn, errno=%s(%d)", strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
-		CloseHandle(stderr_read_handle);
+		close(f); /* close also stderr_read_handle */
 		return -1;
 	}
 
@@ -1349,14 +1361,6 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 
 	/* close the handle to the primary thread, we don't need it */
 	CloseHandle(pi.hThread);
-
-	int f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
-	if (f == -1) {
-		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
-		CloseHandle(stderr_read_handle);
-		return -1;
-	}
 
 	*stderr_read_int = f;
 	return (intptr_t)pi.hProcess;
@@ -1370,9 +1374,12 @@ int os_wait(pid_t pid, int* status)
 	WaitForSingleObject(h, INFINITE);
 
 	if (GetExitCodeProcess(h, &exit_code)) {
+		CloseHandle(h);
 		*status = exit_code;
 		return 0;
 	}
+
+	CloseHandle(h);
 
 	return -1;
 }
