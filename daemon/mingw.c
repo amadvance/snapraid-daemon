@@ -556,6 +556,26 @@ static void windows_finddata2dirent(const WIN32_FIND_DATAW* info, struct windows
 	windows_finddata2stat(info, &dirent->d_stat);
 }
 
+int windows_rename(const char* from, const char* to)
+{
+	wchar_t conv_buf_from[CONV_MAX];
+	wchar_t conv_buf_to[CONV_MAX];
+
+	/*
+	 * Implements an atomic rename in Windows.
+	 * Not really atomic at now to support XP.
+	 *
+	 * Is an atomic file rename (with overwrite) possible on Windows?
+	 * http://stackoverflow.com/questions/167414/is-an-atomic-file-rename-with-overwrite-possible-on-windows
+	 */
+	if (!MoveFileExW(convert(conv_buf_from, from), convert(conv_buf_to, to), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+		windows_errno(GetLastError());
+		return -1;
+	}
+
+	return 0;
+}
+
 int windows_remove(const char* file)
 {
 	wchar_t conv_buf[CONV_MAX];
@@ -841,6 +861,51 @@ int windows_mkdir(const char* file)
 	if (!CreateDirectoryW(convert(conv_buf, file), 0)) {
 		windows_errno(GetLastError());
 		return -1;
+	}
+
+	return 0;
+}
+
+int windows_fsync(int fd)
+{
+	HANDLE h;
+
+	if (fd == -1) {
+		errno = EBADF;
+		return -1;
+	}
+
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == INVALID_HANDLE_VALUE) {
+		errno = EBADF;
+		return -1;
+	}
+
+	/*
+	 * "The FlushFileBuffers API can be used to flush all the outstanding data
+	 * and metadata on a single file or a whole volume. However, frequent use
+	 * of this API can cause reduced throughput. Internally, Windows uses the
+	 * SCSI Synchronize Cache or the IDE/ATAPI Flush cache commands."
+	 *
+	 * From:
+	 * "Windows Write Caching - Part 2 An overview for Application Developers"
+	 * http://winntfs.com/2012/11/29/windows-write-caching-part-2-an-overview-for-application-developers/
+	 */
+	if (!FlushFileBuffers(h)) {
+		DWORD error = GetLastError();
+
+		switch (error) {
+		case ERROR_ACCESS_DENIED :
+			/*
+			 * FlushFileBuffers returns this error for read-only
+			 * data, that cannot have to be flushed.
+			 */
+			return 0;
+
+		default :
+			windows_errno(error);
+			return -1;
+		}
 	}
 
 	return 0;

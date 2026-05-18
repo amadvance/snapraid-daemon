@@ -547,10 +547,13 @@ int config_save_locked(struct snapraid_config* config)
 {
 	tommy_node* i;
 	struct snapraid_config_line* line;
+	char conf_tmp[PATH_MAX + 4];
 
-	FILE* fp = fopen(config->conf, "w" FOPEN_TEXT FOPEN_CLOEXEC);
+	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
+
+	FILE* fp = fopen(conf_tmp, "w" FOPEN_TEXT FOPEN_CLOEXEC);
 	if (!fp) {
-		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		return -1;
 	}
 
@@ -558,21 +561,39 @@ int config_save_locked(struct snapraid_config* config)
 	while (i) {
 		line = i->data;
 		if (fputs(line->text, fp) == EOF) {
-			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 			fclose(fp);
+			remove(conf_tmp);
 			return -1;
 		}
 		i = i->next;
 	}
 
 	if (fflush(fp) != 0) {
-		log_msg(LVL_ERROR, "failed to save config in flush, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to save config in flush, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		fclose(fp);
+		remove(conf_tmp);
 		return -1;
 	}
 
+#if HAVE_FSYNC
+	if (fsync(fileno(fp)) != 0) {
+		log_msg(LVL_ERROR, "failed to save config in fsync, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
+		fclose(fp);
+		remove(conf_tmp);
+		return -1;
+	}
+#endif
+
 	if (fclose(fp) != 0) {
-		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
+		remove(conf_tmp);
+		return -1;
+	}
+
+	if (rename(conf_tmp, config->conf) != 0) {
+		log_msg(LVL_ERROR, "failed to save config in rename, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		remove(conf_tmp);
 		return -1;
 	}
 
