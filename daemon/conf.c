@@ -203,6 +203,9 @@ int config_load_locked(struct snapraid_state* state)
 	char buffer[CONFIG_LINE_MAX];
 	FILE* fp;
 
+	/* restore the configuration to the default state */
+	config_default_locked(state);
+
 	fp = fopen(config->conf, "r" FOPEN_TEXT FOPEN_CLOEXEC);
 	if (!fp) {
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
@@ -561,11 +564,12 @@ int config_save_locked(struct snapraid_config* config)
 	return 0;
 }
 
-void config_init(struct snapraid_state* state)
+void config_default_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 
-	memset(config, 0, sizeof(*config));
+	/* free any previous content */
+	tommy_list_foreach(&state->config.maintenance_list, run_free);
 
 	/* set default */
 	config->sys_engine[0] = 0;
@@ -599,7 +603,20 @@ void config_init(struct snapraid_state* state)
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_ERROR;
 	config->notify_differences = 0;
+
+	/* intentionally don't set the config->conf as it should never change */
+}
+
+void config_init(struct snapraid_state* state)
+{
+	struct snapraid_config* config = &state->config;
+
+	memset(config, 0, sizeof(*config));
+
+	/* set the default configuration file */
 	os_default_conf(config->conf, sizeof(config->conf));
+
+	config_default_locked(state);
 }
 
 void config_done(struct snapraid_state* state)

@@ -66,6 +66,12 @@ void config_init(struct snapraid_state* state);
 void config_done(struct snapraid_state* state);
 
 /**
+ * Set the configuration to default values
+ * @param state Current snapraid state
+ */
+void config_default_locked(struct snapraid_state* state);
+
+/**
  * Load configuration from file.
  * @param state Current snapraid state
  * @return 0 on success, -1 on error
