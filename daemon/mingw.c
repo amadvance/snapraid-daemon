@@ -66,26 +66,32 @@ static void exedir_init(void)
  */
 static wchar_t* u8tou16(wchar_t* conv_buf, const char* src)
 {
-	int ret;
-
-	ret = MultiByteToWideChar(CP_UTF8, 0, src, -1, conv_buf, CONV_MAX);
-
+	/* flags at 0 forces the API to never fail on malformed UTF-8 sequences */
+	int ret = MultiByteToWideChar(CP_UTF8, 0, src, -1, conv_buf, CONV_MAX);
 	if (ret <= 0) {
+		DWORD error = GetLastError();
+		if (error == ERROR_INSUFFICIENT_BUFFER) {
+			log_msg(LVL_CRITICAL, "path too long converting '%s' from UTF-8 to UTF-16", src);
+		} else {		
+			log_msg(LVL_CRITICAL, "error %u converting '%s' from UTF-8 to UTF-16", (unsigned)error, src);
+		}
 		exit(EXIT_FAILURE);
 	}
 
 	return conv_buf;
 }
 
-/**
- * Convert a generic string from UTF16 to UTF8.
- */
 static char* u16tou8ex(char* conv_buf, const wchar_t* src, size_t number_of_wchar, size_t* result_length_without_terminator)
 {
-	int ret;
-
-	ret = WideCharToMultiByte(CP_UTF8, 0, src, number_of_wchar, conv_buf, CONV_MAX, 0, 0);
+	/* flags at 0 forces the API to never fail on malformed UTF-16 sequences */
+	int ret = WideCharToMultiByte(CP_UTF8, 0, src, number_of_wchar, conv_buf, CONV_MAX, 0, 0);
 	if (ret <= 0) {
+		DWORD error = GetLastError();
+		if (error == ERROR_INSUFFICIENT_BUFFER) {
+			log_msg(LVL_CRITICAL, "path too long converting from UTF-16 to UTF-8 with len %u", (unsigned)number_of_wchar);
+		} else {		
+			log_msg(LVL_CRITICAL, "error %u converting from UTF-16 to UTF-8 with len %u", (unsigned)error, (unsigned)number_of_wchar);
+		}
 		exit(EXIT_FAILURE);
 	}
 
@@ -226,8 +232,13 @@ static wchar_t* convert_arg(wchar_t* conv_buf, const char* src, int only_if_requ
 	count = dst - conv_buf;
 
 	ret = MultiByteToWideChar(CP_UTF8, 0, src, -1, dst, CONV_MAX - count);
-
 	if (ret <= 0) {
+		DWORD error = GetLastError();
+		if (error == ERROR_INSUFFICIENT_BUFFER) {
+			log_msg(LVL_CRITICAL, "path too long converting '%s' from UTF-8 to UTF-16", src);
+		} else {
+			log_msg(LVL_CRITICAL, "error %u converting '%s' from UTF-8 to UTF-16", (unsigned)error, src);
+		}
 		exit(EXIT_FAILURE);
 	}
 
@@ -535,6 +546,7 @@ static void windows_finddata2dirent(const WIN32_FIND_DATAW* info, struct windows
 	name = u16tou8ex(conv_buf, info->cFileName, wcslen(info->cFileName), &len);
 
 	if (len + 1 >= sizeof(dirent->d_name)) {
+		log_msg(LVL_CRITICAL, "name too long");
 		exit(EXIT_FAILURE);
 	}
 
@@ -693,6 +705,7 @@ windows_dir* windows_opendir(const char* dir)
 
 	dirstream = malloc(sizeof(windows_dir));
 	if (!dirstream) {
+		log_msg(LVL_CRITICAL, "low memory");
 		exit(EXIT_FAILURE);
 	}
 
