@@ -811,7 +811,7 @@ char* strtrim(char* str)
 void strupr(char* str)
 {
 	while (*str) {
-		*str = toupper((int)*str);
+		*str = toupper((unsigned char)*str);
 		++str;
 	}
 }

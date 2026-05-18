@@ -139,7 +139,7 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	ss_t ss;
 
 	sncpy(command, sizeof(command), command_name(high_cmd));
-	command[0] = toupper((int)command[0]);
+	command[0] = toupper((unsigned char)command[0]);
 	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
 	sncpy(template, sizeof(template), state->config.notify_result);
 	sncpy(level, sizeof(level), config_level_str(report_level));
