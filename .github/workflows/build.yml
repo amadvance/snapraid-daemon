@@ -9,7 +9,7 @@ on:
     branches: [ "master", "stable" ]
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
@@ -22,3 +22,19 @@ jobs:
     - run: autoreconf -i
     - run: ./configure
     - run: make distcheck
+  build-win:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc autoconf automake make zip
+      - run: autoreconf -i
+      - run: ./configure --enable-warning-as-error
+      - run: make all dist check
+
