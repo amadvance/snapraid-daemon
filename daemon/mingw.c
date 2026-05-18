@@ -1810,18 +1810,25 @@ void os_system(struct snapraid_system* system)
 
 	HKEY hKey;
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-		DWORD cpuSize = MSG_MAX;
-		RegQueryValueExA(hKey, "ProcessorNameString", NULL, NULL, (LPBYTE)system->cpu_model, &cpuSize);
+		DWORD cpu_model_size = sizeof(system->cpu_model) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
+		if (RegQueryValueExA(hKey, "ProcessorNameString", NULL, NULL, (LPBYTE)system->cpu_model, &cpu_model_size) != ERROR_SUCCESS)
+			cpu_model_size = 0;
+		system->cpu_model[cpu_model_size] = 0;
 		RegCloseKey(hKey);
 	}
 
 	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-		char vendor[256] = { 0 };
-		char product[256] = { 0 };
-		DWORD vSize = 256, pSize = 256;
-		RegQueryValueExA(hKey, "BaseBoardManufacturer", NULL, NULL, (LPBYTE)vendor, &vSize);
-		RegQueryValueExA(hKey, "BaseBoardProduct", NULL, NULL, (LPBYTE)product, &pSize);
-		snprintf(system->motherboard, MSG_MAX, "%s %s", vendor, product);
+		char vendor[128];
+		char product[128];
+		DWORD vendor_size = sizeof(vendor) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
+		DWORD product_size = sizeof(product) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
+		if (RegQueryValueExA(hKey, "BaseBoardManufacturer", NULL, NULL, (LPBYTE)vendor, &vendor_size) != ERROR_SUCCESS)
+			vendor_size = 0;
+		if (RegQueryValueExA(hKey, "BaseBoardProduct", NULL, NULL, (LPBYTE)product, &product_size) != ERROR_SUCCESS)
+			product_size = 0;
+		vendor[vendor_size] = 0;
+		product[product_size] = 0;
+		snprintf(system->motherboard, sizeof(system->motherboard), "%s %s", vendor, product);
 		RegCloseKey(hKey);
 	}
 
