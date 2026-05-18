@@ -1075,8 +1075,13 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 		}
 	}
 
-	/* open the file, create if missing, open for reading/writing */
-	int fd = open(pidfile_path, O_RDWR | O_CREAT, 0644);
+	/* 
+	 * Open the file, create if missing, open for reading/writing
+	 * 
+	 * O_NOFOLLOW Prevents attacks about making a dangling link pointing
+	 * to another file that will be created with the daemon ownership.
+	 */
+	int fd = open(pidfile_path, O_RDWR | O_CREAT | O_NOFOLLOW, 0644);
 	if (fd == -1) {
 		fprintf(stderr, "Error: Could not open PID file %s: %s\n", pidfile_path, strerror(errno));
 		return -1;
