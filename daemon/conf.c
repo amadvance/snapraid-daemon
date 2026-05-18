@@ -219,7 +219,6 @@ int config_load_locked(struct snapraid_state* state)
 	tommy_list_init(&config->line_list);
 
 	while (fgets(buffer, sizeof(buffer), fp)) {
-		char key[CONFIG_MAX], val[CONFIG_MAX];
 		char* s;
 		struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
 		sncpy(line->text, sizeof(line->text), buffer);
@@ -234,7 +233,25 @@ int config_load_locked(struct snapraid_state* state)
 		if (*s == 0 || *s == '#')
 			continue;
 
-		if (sscanf(s, "%127[^=]=%511[^\n]", key, val) == 2) { /* CONFIG_MAX == 512 */
+		/* skip key */
+		char* key = s;
+		while (*s != 0 && !isspace((unsigned char)*s) && *s != '=')
+			++s;
+
+		/* skip space */
+		while (*s != 0 && isspace((unsigned char)*s))
+			++s;
+
+		if (*s == '=') {
+			/* clear and skip equal sign */
+			*s++ = 0;
+
+			/* skip space (avoid strtrim to move memory) */
+			while (*s != 0 && isspace((unsigned char)*s))
+				++s;
+
+			char* val = s;
+
 			strtrim(key);
 			strtrim(val);
 
