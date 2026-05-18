@@ -25,7 +25,7 @@ The daemon is organized into focused C modules:
 
 | Module | Purpose |
 |--------|---------|
-| `daemon.c` | Main entry point, daemonization, signal handling |
+| `daemon.c/h` | Main entry point, daemonization, signal handling |
 | `state.c/h` | Global state management, threading primitives (mutex/rwlock) |
 | `runner.c/h` | Task execution engine, spawns SnapRAID processes, parses output |
 | `scheduler.c/h` | Cron-like scheduling thread for automated maintenance |
@@ -36,8 +36,13 @@ The daemon is organized into focused C modules:
 | `log.c/h` | Logging subsystem (syslog integration) |
 | `elem.c/h` | Memory management for data structures (disks, tasks, messages) |
 | `report.c/h` | Text report generation for notifications |
-| `support.c/h` | Utility functions (string handling, SMART analysis, disk probing) |
-| `unix.c` | UNIX-specific system calls (fork, exec, user switching) |
+| `support.c/h` | Utility functions (string handling, file paths, time) |
+| `smart.c/h` | SMART monitoring, health classification, failure prediction |
+| `notify.c/h` | Notification system (syslog, webhooks, result scripts) |
+| `zip.c/h` | ZIP archive parsing, used for serving bundled web assets |
+| `unix.c/h` | UNIX-specific system calls (fork, exec, user switching) |
+| `mingw.c/h` | Windows-specific system calls (process creation, paths) |
+| `portable.h` | Platform detection macros and abstraction layer |
 
 ### State Management (`daemon/state.h`)
 
@@ -254,7 +259,9 @@ Generated reports include:
 - **Format**: Enforce via `uncrustify -c uncrustify.cfg --no-backup *.c *.h`
 - **Naming**: Snake_case for functions, UPPER_CASE for macros/constants
 - **Headers**: All `.h` files have include guards (`#ifndef __NAME_H`)
-
+- **Preferences**: Use 0 instead of NULL and '\0'
+- **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
+ 
 #### Adding a New API Endpoint
 
 1. Update `snapraidd.yaml` with OpenAPI schema
