@@ -947,7 +947,8 @@ char* sysattr(const char* path, const char* tag, char separator, int position, c
 		}
 
 		if (match && position < 0) {
-			char* token = strtok(content, "\n\r");
+			char* tokptr;
+			char* token = strtok_r(content, "\n\r", &tokptr);
 			if (token) {
 				sncpy(out, out_size, token);
 				result = out;
@@ -957,7 +958,8 @@ char* sysattr(const char* path, const char* tag, char separator, int position, c
 
 		if (match && position >= 0) {
 			/* tokenize the line content to find the argument at 'position' */
-			char* token = strtok(content, " \t\n\r");
+			char* tokptr;
+			char* token = strtok_r(content, " \t\n\r", &tokptr);
 			int i = 0;
 
 			if (tag)
@@ -970,7 +972,7 @@ char* sysattr(const char* path, const char* tag, char separator, int position, c
 					break;
 				}
 
-				token = strtok(NULL, " \t\n\r");
+				token = strtok_r(NULL, " \t\n\r", &tokptr);
 				++i;
 			}
 
