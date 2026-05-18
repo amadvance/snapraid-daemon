@@ -193,12 +193,6 @@
 #define SWITCH_GETOPT_LONG(a, b) b
 #endif
 
-#ifdef _WIN32
-#include <string.h>
-/* map Windows name to POSIX name */
-#define strncasecmp _strnicmp
-#endif
-
 #ifdef HAVE_LINUX_CLOSE_RANGE_H
 #include <linux/close_range.h>
 #endif
@@ -215,6 +209,17 @@ static inline int close_range_impl(unsigned int first, unsigned int last, unsign
 	return syscall(__NR_close_range, first, last, flags);
 }
 #define HAVE_CLOSE_RANGE 1
+#endif
+
+/*
+ * Flags for open()
+ */
+#ifndef O_PATH
+#ifdef O_SEARCH
+#define O_PATH O_SEARCH /* macOS */
+#else
+#define O_PATH O_RDONLY /* POSIX */
+#endif
 #endif
 
 /**
