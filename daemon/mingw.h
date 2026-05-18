@@ -10,6 +10,9 @@
 
 #define SYSLOG "EventLog"
 
+/* map Windows name to POSIX name */
+#define strncasecmp _strnicmp
+
 /****************************************************************************/
 /* file */
 
