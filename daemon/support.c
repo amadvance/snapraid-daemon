@@ -717,6 +717,14 @@ int struint(unsigned* out, const char* s)
 	char* e;
 	unsigned long v;
 
+	while (*s && isspace((unsigned char)*s))
+		++s;
+
+	if (*s == '-') {
+		errno = ERANGE;
+		return -1; /* negative (accepted by strtoul) */
+	}
+
 	errno = 0;
 	v = strtoul(s, &e, 10);
 	if (errno != 0)
@@ -753,6 +761,14 @@ int stru64(uint64_t* out, const char* s)
 {
 	char* e;
 	unsigned long long v;
+
+	while (*s && isspace((unsigned char)*s))
+		++s;
+
+	if (*s == '-') {
+		errno = ERANGE;
+		return -1; /* negative (accepted by strtoul) */
+	}
 
 	errno = 0;
 	v = strtoull(s, &e, 10);
