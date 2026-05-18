@@ -1318,7 +1318,9 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
 			log_task(LVL_ERROR, "command to long for spawn");
-			exit(EXIT_FAILURE);
+			CloseHandle(stderr_write_handle);
+			close(f); /* close also stderr_read_handle */
+			return -1;
 		}
 	}
 	cmd_buffer[pos] = 0;
@@ -1637,19 +1639,19 @@ int os_script(char** argv, const char* run_as_user)
 	pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, resolved_path));
 	if (pos < 0) {
 		log_task(LVL_ERROR, "command to long for script");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	for (int i = 1; argv[i]; ++i) {
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
 			log_task(LVL_ERROR, "command to long for script");
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 	}
 	pos = fixcat(cmd_buffer, COMMAND_LINE_MAX, pos, L" \"");
 	if (pos < 0) {
 		log_task(LVL_ERROR, "command to long for script");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	cmd_buffer[pos] = 0;
 
