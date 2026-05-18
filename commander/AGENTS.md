@@ -49,6 +49,8 @@ tasks, viewing history, and configuring system settings.
 *   **Role**: Abstraction layer for HTTP requests.
 *   **Base URL**: `/snapraid/v1`
 *   **Error Handling**: Centralized error throwing for non-2xx responses.
+*   **Optimization**: Uses query parameters (`limit_diffs`, `limit_fixes`, `limit_history`, `limit_messages`) to request only the necessary arrays for specific views, applying a zero-fill policy (`limit_*: 0`) elsewhere to minimize payload size.
+*   **Headers**: Injects `X-Pinggy-No-Screen: true` for tunneling compatibility.
 
 ### 4. Styling (`css/style.css`)
 *   **Theme**: Deep Dark Mode using CSS Variables (e.g., `--c-slate-950`).
@@ -127,16 +129,16 @@ Form to view and modify `snapraidd.conf` and daemon settings.
 ### Polling Mechanism
 The application maintains a synchronized state with the backend via a polling loop managed in `js/app.js`:
 
-*   **Frequency**: Polls `GET /state` every 3 seconds (active window).
+*   **Frequency**: Polls `GET /state` every 3 seconds (active window). Independent of the pulse, `GET /system` data is refreshed on the dashboard every 60 seconds.
 *   **State Object**: The backend returns a light `state` object containing a `pulse` property.
 *   **Reactivity**: The app compares the new `pulse` data (checksums/timestamps
     for different subsystems) against its local state.
-    *   If `pulse.array` changes -> Refreshes Dashboard/Diff.
+    *   If `pulse.array` changes -> Refreshes Dashboard, Differences, and Recovery.
     *   If `pulse.activity` changes -> Refreshes Dashboard.
     *   If `pulse.disks` changes -> Refreshes Disks page.
     *   If `pulse.tasks` changes -> Refreshes Tasks page.
     *   If `pulse.config` changes -> Refreshes Settings page.
-*   **Efficiency**: Full data fetches (`loadDashboard`, `loadDisks`, etc.) only occur when the pulse indicates a change.
+*   **Efficiency**: Full data fetches (`loadDashboard`, `loadDisks`, etc.) only occur when the pulse indicates a change. To further optimize, data fetches use strict array limits (e.g., `limit_diffs: 0` when loading the Dashboard) to avoid transferring unneeded data.
 
 ### Connection State
 *   **Heartbeat**: The sidebar displays a "Connected" status with a pulsing green dot.
