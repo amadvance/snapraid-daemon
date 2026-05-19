@@ -636,33 +636,33 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 	int count = 0;
 
 	int spindown_idle_minutes = state->config.spindown_idle_minutes;
-	if (spindown_idle_minutes == 0)
-		return; /* nothing to do */
 
 	/* insert in the argument list the disk to spin down */
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		int active = 0;
+	if (spindown_idle_minutes != 0) {
+		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+			struct snapraid_disk* disk = i->data;
+			int active = 0;
 
-		/* do not spin down extra disks */
-		if (disk->kind == DISK_EXTRA)
-			continue;
+			/* do not spin down extra disks */
+			if (disk->kind == DISK_EXTRA)
+				continue;
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-			if (device->power == POWER_ACTIVE)
-				active = 1;
-		}
+			for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
+				struct snapraid_device* device = j->data;
+				/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
+				if (device->power == POWER_ACTIVE)
+					active = 1;
+			}
 
-		int unused_minutes = (disk->access_count_latest_time - disk->access_count_initial_time) / 60;
-		if (active && unused_minutes >= spindown_idle_minutes) {
-			char msg[MSG_MAX];
-			snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", disk->name, unused_minutes);
-			message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
-			sl_insert_str(&task->arg_list, "-d");
-			sl_insert_str(&task->arg_list, disk->name);
-			++count;
+			int unused_minutes = (disk->access_count_latest_time - disk->access_count_initial_time) / 60;
+			if (active && unused_minutes >= spindown_idle_minutes) {
+				char msg[MSG_MAX];
+				snprintf(msg, sizeof(msg), "Selecting disk %s unused by %d minutes", disk->name, unused_minutes);
+				message_insert(&task->message_list, MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
+				sl_insert_str(&task->arg_list, "-d");
+				sl_insert_str(&task->arg_list, disk->name);
+				++count;
+			}
 		}
 	}
 
