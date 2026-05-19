@@ -200,17 +200,42 @@ int config_parse_level(const char* input, int* out)
 int config_load_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
-	char buffer[CONFIG_LINE_MAX];
-	FILE* fp;
+	int f;
 
-	/* restore the configuration to the default state */
-	config_default_locked(state);
-
-	fp = fopen(config->conf, "r" FOPEN_TEXT FOPEN_CLOEXEC);
-	if (!fp) {
+	f = open(config->conf, O_RDONLY | O_BINARY | O_CLOEXEC);
+	if (f == -1) {
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
 	}
+
+	struct stat st;
+	if (fstat(f, &st) != 0) {
+		log_msg(LVL_ERROR, "failed to load config in stat, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		close(f);
+		return -1;
+	}
+
+	size_t buffer_len = st.st_size;
+	char* buffer = malloc_nofail(buffer_len + 1);
+
+	ssize_t ret = read(f, buffer, buffer_len);
+	if (ret < 0 || (size_t)ret != buffer_len) {
+		log_msg(LVL_ERROR, "failed to load config in read, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		close(f);
+		free(buffer);
+		return -1;
+	}
+
+	if (close(f) != 0) {
+		log_msg(LVL_ERROR, "failed to load config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+		free(buffer);
+		return -1;
+	}
+
+	buffer[buffer_len] = 0;
+
+	/* restore the configuration to the default state */
+	config_default_locked(state);
 
 	pulse(state, PULSE_CONFIG);
 
@@ -218,14 +243,35 @@ int config_load_locked(struct snapraid_state* state)
 	tommy_list_foreach(&config->line_list, config_line_free);
 	tommy_list_init(&config->line_list);
 
-	while (fgets(buffer, sizeof(buffer), fp)) {
-		char* s;
+	char* next = buffer;
+	while (*next) {
+		char* begin = next;
+		char* end = next;
+
+		/* find the end of the line */
+		while (*end && *end != '\n')
+			++end;
+
+		/* set the next line */
+		if (*end) {
+			next = end + 1;
+		} else {
+			next = end;
+		}
+
+		/* trim spaces at the end, this also handle Windows CRLF */
+		while (begin < end && isspace((unsigned char)end[-1]))
+			--end;
+
+		/* set end of line marker */
+		*end = 0;
+
 		struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
-		sncpy(line->text, sizeof(line->text), buffer);
+		sncpy(line->text, sizeof(line->text), begin);
 		tommy_list_insert_tail(&config->line_list, &line->node, line);
 
 		/* skip initial spaces */
-		s = buffer;
+		char* s = begin;
 		while (*s != 0 && isspace((unsigned char)*s))
 			++s;
 
@@ -239,21 +285,22 @@ int config_load_locked(struct snapraid_state* state)
 			++s;
 
 		/* skip space */
+		char* key_end = s;
 		while (*s != 0 && isspace((unsigned char)*s))
 			++s;
 
 		if (*s == '=') {
-			/* clear and skip equal sign */
-			*s++ = 0;
+			/* skip equal sign */
+			++s;
 
-			/* skip space (avoid strtrim to move memory) */
+			/* skip space */
 			while (*s != 0 && isspace((unsigned char)*s))
 				++s;
 
 			char* val = s;
 
-			strtrim(key);
-			strtrim(val);
+			/* trim key, val is already trimmed */
+			*key_end = 0;
 
 			if (strcmp(key, "sys_engine") == 0) {
 				sncpy(config->sys_engine, sizeof(config->sys_engine), val);
@@ -379,19 +426,11 @@ int config_load_locked(struct snapraid_state* state)
 				log_msg(LVL_ERROR, "unknown config option %s=%s", key, val);
 			}
 		} else {
-			log_msg(LVL_ERROR, "unrecognized config line '%s'", buffer);
+			log_msg(LVL_ERROR, "unrecognized config line '%s'", begin);
 		}
 	}
-	if (ferror(fp)) {
-		log_msg(LVL_ERROR, "failed to load config in read, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
-		fclose(fp);
-		return -1;
-	}
 
-	if (fclose(fp) != 0) {
-		log_msg(LVL_ERROR, "failed to load config in close, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
-		return -1;
-	}
+	free(buffer);
 
 	log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
 
@@ -498,9 +537,9 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	/* create the new formatted line */
 	if (found) {
 		if (*value == 0)
-			snprintf(found->text, sizeof(found->text), "#%s =\n", key);
+			snprintf(found->text, sizeof(found->text), "#%s =", key);
 		else
-			snprintf(found->text, sizeof(found->text), "%s = %s\n", key, value);
+			snprintf(found->text, sizeof(found->text), "%s = %s", key, value);
 		return;
 	}
 
@@ -511,7 +550,7 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 
 	/* create a new line at the end */
 	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
-	snprintf(line->text, sizeof(line->text), "%s = %s\n", key, value);
+	snprintf(line->text, sizeof(line->text), "%s = %s", key, value);
 	tommy_list_insert_tail(&config->line_list, &line->node, line);
 }
 
@@ -545,47 +584,53 @@ void config_set_double(struct snapraid_config* config, const char* key, double v
 
 int config_save_locked(struct snapraid_config* config)
 {
-	tommy_node* i;
-	struct snapraid_config_line* line;
 	char conf_tmp[PATH_MAX + 4];
+	ss_t ss;
 
-	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
-
-	FILE* fp = fopen(conf_tmp, "w" FOPEN_TEXT FOPEN_CLOEXEC);
-	if (!fp) {
-		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
-		return -1;
-	}
-
-	i = tommy_list_head(&config->line_list);
+	ss_init(&ss, 48 * 1024);
+	tommy_node* i = tommy_list_head(&config->line_list);
 	while (i) {
-		line = i->data;
-		if (fputs(line->text, fp) == EOF) {
-			log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
-			fclose(fp);
-			remove(conf_tmp);
-			return -1;
-		}
+		struct snapraid_config_line* line = i->data;
+
+		ss_write(&ss, line->text, strlen(line->text));
+#ifdef _WIN32
+		ss_write(&ss, "\r\n", 2); /* Windows CRLF */
+#else
+		ss_write(&ss, "\n", 1);
+#endif
 		i = i->next;
 	}
 
-	if (fflush(fp) != 0) {
-		log_msg(LVL_ERROR, "failed to save config in flush, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
-		fclose(fp);
+	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
+
+	int f = open(conf_tmp, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_CLOEXEC, 0644);
+	if (f == -1) {
+		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
+		ss_done(&ss);
+		return -1;
+	}
+
+	ssize_t ret = write(f, ss_ptr(&ss), ss_len(&ss));
+	if (ret < 0 || ret != ss_len(&ss)) {
+		log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
+		close(f);
+		ss_done(&ss);
 		remove(conf_tmp);
 		return -1;
 	}
 
+	ss_done(&ss);
+
 #if HAVE_FSYNC
-	if (fsync(fileno(fp)) != 0) {
+	if (fsync(f) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in fsync, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
-		fclose(fp);
+		close(f);
 		remove(conf_tmp);
 		return -1;
 	}
 #endif
 
-	if (fclose(fp) != 0) {
+	if (close(f) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		remove(conf_tmp);
 		return -1;

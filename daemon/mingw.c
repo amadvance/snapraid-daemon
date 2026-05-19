@@ -701,6 +701,30 @@ ssize_t windows_read(int fd, void* buffer, size_t size)
 	return count;
 }
 
+ssize_t windows_write(int fd, const void* buffer, size_t size)
+{
+	HANDLE h;
+	DWORD count;
+
+	if (fd == -1) {
+		errno = EBADF;
+		return -1;
+	}
+
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == INVALID_HANDLE_VALUE) {
+		errno = EBADF;
+		return -1;
+	}
+
+	if (!WriteFile(h, buffer, size, &count, 0)) {
+		windows_errno(GetLastError());
+		return -1;
+	}
+
+	return count;
+}
+
 struct windows_dir_struct {
 	BY_HANDLE_FILE_INFORMATION info;
 	WIN32_FIND_DATAW find;
