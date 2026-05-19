@@ -846,13 +846,12 @@ int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t
 }
 
 /**
- * Deletes all **regular files** in the specified directory (non-recursively)
+ * Deletes all files in the specified directory (non-recursively)
  * that have a name representing a time older than N days.
  *
  * Note:
  * - This function does **not** recurse into subdirectories.
  * - It skips "." and ".." entries.
- * - It only deletes regular files (not directories, symlinks, etc.).
  */
 static int delete_old_files(const char* dir_path, int days)
 {
