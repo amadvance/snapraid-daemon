@@ -351,10 +351,14 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 		if (task->exit_code == 0) {
 			ss_prints(ss, "Completed successfully\n");
 		} else {
-			if (reason)
-				ss_printf(ss, "Failed: %s\n", reason->msg);
-			else
+			if (reason) {
+				if (reason->type == MESSAGE_TYPE_HARDWARE)
+					ss_printf(ss, "Failed: [HARDWARE FAILURE] %s\n", reason->msg);
+				else
+					ss_printf(ss, "Failed: %s\n", reason->msg);
+			} else {
 				ss_printf(ss, "Failed (exit code %d)\n", task->exit_code);
+			}
 		}
 	} else if (task->state == PROCESS_STATE_SIGNAL) {
 		if (reason)
@@ -393,7 +397,7 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 					first = 0;
 				}
 				if (message->type == MESSAGE_TYPE_HARDWARE)
-					ss_printf(ss, "  - %s [HARDWARE FAILURE]\n", message->msg);
+					ss_printf(ss, "  - [HARDWARE FAILURE] %s\n", message->msg);
 				else
 					ss_printf(ss, "  - %s\n", message->msg);
 				break;
@@ -422,8 +426,12 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 			ss_prints(ss, "COMPLETED\n");
 		} else {
 			ss_printf(ss, "FAILED (%d)\n", task->exit_code);
-			if (reason)
-				ss_printf(ss, "!! %s\n", reason->msg);
+			if (reason) {
+				if (reason->type == MESSAGE_TYPE_HARDWARE)
+					ss_printf(ss, "!! [HW FAIL] %s\n", reason->msg);
+				else
+					ss_printf(ss, "!! %s\n", reason->msg);
+			}
 		}
 	} else if (task->state == PROCESS_STATE_SIGNAL) {
 		ss_printf(ss, "SIGNALED (%s)\n", signal_name(task->exit_sig));
