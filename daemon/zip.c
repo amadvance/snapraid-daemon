@@ -261,7 +261,7 @@ int crawl_zip(tommy_list* page_list, const char* path)
 		size_t u_size = read32(cd_ptr + OFF_CD_UNCOMP_SIZE);
 		uint16_t mod_time = read16(cd_ptr + OFF_CD_MOD_TIME);
 		uint16_t mod_date = read16(cd_ptr + OFF_CD_MOD_DATE);
-		size_t local_off = read32(cd_ptr + OFF_CD_LOCAL_OFFSET);
+		uint64_t local_off = read32(cd_ptr + OFF_CD_LOCAL_OFFSET); /* uint64_t avoid overflows if following checks */
 
 		/* resolve data pointer via Local Header */
 		if (local_off + LOCAL_FIXED_SIZE > buf_size) {
@@ -278,7 +278,7 @@ int crawl_zip(tommy_list* page_list, const char* path)
 		size_t loc_name_len = read16(local_ptr + OFF_LOCAL_FILENAME_LEN);
 		size_t loc_extra_len = read16(local_ptr + OFF_LOCAL_EXTRA_LEN);
 
-		size_t data_offset = local_off + LOCAL_FIXED_SIZE + loc_name_len + loc_extra_len;
+		uint64_t data_offset = local_off + LOCAL_FIXED_SIZE + loc_name_len + loc_extra_len;
 
 		/* final bounds check: data */
 		if (data_offset > buf_size || c_size > (buf_size - data_offset)) {
