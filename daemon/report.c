@@ -595,8 +595,9 @@ static void print_disk_list_wide(tommy_list* disk_list, int kind, ss_t* ss, stru
 		ss_printl(ss, disk->name, sp->name_len);
 		ss_prints(ss, health_report_wide(disk_health));
 
+		int has_none = tommy_list_empty(&disk->device_list);
 		int has_many = disk_count_device(disk) > 1;
-		if (has_many)
+		if (has_many || has_none)
 			ss_prints(ss, "\n");
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
@@ -627,8 +628,9 @@ static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 		ss_prints(ss, " ");
 		ss_prints(ss, health_report_narrow(disk_health));
 
+		int has_none = tommy_list_empty(&disk->device_list);
 		int has_many = disk_count_device(disk) > 1;
-		if (has_many)
+		if (has_many || has_none)
 			ss_prints(ss, "\n");
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
