@@ -246,6 +246,8 @@ struct smart_entry {
 
 uint64_t smart_conv(uint64_t raw, int format)
 {
+	unsigned counter;
+
 	format &= FORMAT_MASK;
 
 	switch (format) {
@@ -273,7 +275,7 @@ uint64_t smart_conv(uint64_t raw, int format)
 		return raw;
 	case FORMAT_8_BM :
 		/* count bits */
-		unsigned counter = 0;
+		counter = 0;
 		for (int i = 0; i < 8; ++i)
 			if (raw & (1ULL << i))
 				++counter;
