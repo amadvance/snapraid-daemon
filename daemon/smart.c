@@ -476,7 +476,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		if (entry->index > 0) {
 			/* if the entry has a specific ID, check only that SMART ID */
 			struct smart_attr* pos = &dev->smart[entry->index];
-			if (strcmp(pos->name, entry->name) == 0) {
+			if (pos->raw.value != SMART_UNASSIGNED && strcmp(pos->name, entry->name) == 0) {
 				attr = pos;
 				id = entry->index;
 			}
