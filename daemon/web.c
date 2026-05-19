@@ -353,7 +353,8 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			int fd = open(path, O_RDONLY | O_BINARY);
 			if (fd == -1) {
 				log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
-				return;
+				page_free(page);
+				continue;
 			}
 #endif
 			if (read_fd(fd, page->content, page->size) != page->size) {
