@@ -1709,7 +1709,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 				}
 
 				if (c == ':' && (mac_limit == 0 || mac <= mac_limit)) {
-					if (mac + 1 < RUN_FIELD_MAX) {
+					if (mac + 1 < RUN_FIELD_MAX && plain_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
 						plain[plain_len++] = 0;
 						if (mac == 1) {
 							if (strcmp(map[0], "msg") == 0)
