@@ -452,9 +452,7 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 	/* assume dest is alreay sorted */
 	tommy_list_sort(fix_src, fix_compare);
 
-	fix_dest->fix_recovered = 0;
-	fix_dest->fix_unrecoverable = 0;
-
+	/* merge all elements from src to dest avoiding duplicates */
 	tommy_node* i = tommy_list_head(fix_src);
 	tommy_node* j = tommy_list_head(&fix_dest->file_list);
 	while (i) {
@@ -464,11 +462,6 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 		if (j == 0) {
 			/* insert at the end of the dest */
 			struct snapraid_file* dup = file_dup(src);
-			if (dup->change == FILE_CHANGE_RECOVERED)
-				++fix_dest->fix_recovered;
-			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
-				++fix_dest->fix_unrecoverable;
-
 			tommy_list_insert_tail(&fix_dest->file_list, &dup->node, dup);
 			i = i->next;
 			continue;
@@ -478,11 +471,6 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 
 		int cmd = fix_compare(i->data, j->data);
 		if (cmd > 0) {
-			if (dst->change == FILE_CHANGE_RECOVERED)
-				++fix_dest->fix_recovered;
-			if (dst->change == FILE_CHANGE_UNRECOVERABLE)
-				++fix_dest->fix_unrecoverable;
-
 			/* next dest */
 			j = j->next;
 			continue;
@@ -491,11 +479,6 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 		if (cmd < 0) {
 			/* file is missing in dest */
 			struct snapraid_file* dup = file_dup(src);
-			if (dup->change == FILE_CHANGE_RECOVERED)
-				++fix_dest->fix_recovered;
-			if (dup->change == FILE_CHANGE_UNRECOVERABLE)
-				++fix_dest->fix_unrecoverable;
-
 			tommy_list_insert_before(&fix_dest->file_list, j, &dup->node, dup);
 			i = i->next;
 			continue;
@@ -504,13 +487,23 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 		/* file is already present in dest */
 		if (src->change == FILE_CHANGE_RECOVERED && dst->change == FILE_CHANGE_UNRECOVERABLE)
 			dst->change = FILE_CHANGE_RECOVERED; /* now it's recovered */
+
+		i = i->next;
+		j = j->next;
+	}
+
+	/* recompute counters */
+	fix_dest->fix_recovered = 0;
+	fix_dest->fix_unrecoverable = 0;
+	
+	i = tommy_list_head(&fix_dest->file_list);
+	while (i) {
+		struct snapraid_file* dst = i->data;
 		if (dst->change == FILE_CHANGE_RECOVERED)
 			++fix_dest->fix_recovered;
 		if (dst->change == FILE_CHANGE_UNRECOVERABLE)
 			++fix_dest->fix_unrecoverable;
-
 		i = i->next;
-		j = j->next;
 	}
 }
 
