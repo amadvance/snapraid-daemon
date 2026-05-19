@@ -363,6 +363,9 @@ static struct snapraid_disk* find_disk(tommy_list* list, int number, const char*
 		i = i->next;
 	}
 
+	if (kind == DISK_UNDEFINED) /* do not create undefined disks */
+		return 0;
+
 	disk = disk_alloc(name, kind);
 	disk->last_update_at_number = number;
 
