@@ -126,16 +126,6 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	char from[KEYWORD_MAX];
 	char to[KEYWORD_MAX];
 	int email_format = 0;
-	const char* placeholders[7] = {
-		"%s",
-		"%l",
-		"%n",
-		"%t",
-		"--wide",
-		"--narrow",
-		0
-	};
-	const char* values[6];
 	ss_t ss;
 
 	sncpy(command, sizeof(command), command_name(high_cmd));
@@ -170,12 +160,25 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 		break;
 	}
 
-	values[0] = subject;
-	values[1] = config_level_str(report_level);
-	values[2] = ntfy_priority;
-	values[3] = ntfy_tag;
-	values[4] = ""; /* --wide */
-	values[5] = ""; /* --narrow */
+#define PLACEHOLDERS 7
+	const char* placeholders[PLACEHOLDERS] = {
+		"%s",
+		"%l",
+		"%n",
+		"%t",
+		"--wide",
+		"--narrow",
+		0
+	};
+	const char* values[PLACEHOLDERS] = {
+		subject,
+		config_level_str(report_level),
+		ntfy_priority,
+		ntfy_tag,
+		"", /* --wide */
+		"", /* --narrow */
+		0
+	};
 
 	/* release the lock to call the command */
 	state_unlock();
