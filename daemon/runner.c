@@ -118,7 +118,7 @@ static int runner_report_locked(struct snapraid_state* state)
 		i = i->prev;
 	}
 
-	ss_init(&ss, 16384);
+	ss_init(&ss, 48 * 1024);
 
 	struct snapraid_diff_stat* diff_stat = 0;
 
