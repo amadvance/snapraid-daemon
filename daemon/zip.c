@@ -146,6 +146,10 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 				free(out_buf);
 				return -1;
 			}
+		} else {
+			log_msg(LVL_ERROR, "crawler zip %s decompression initialization failed for file %s", path, file);
+			free(out_buf);
+			return -1;
 		}
 
 		free(out_buf);
