@@ -856,6 +856,10 @@ int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t
  */
 static int delete_old_files(const char* dir_path, int days)
 {
+	/* nothing to do if disabled */
+	if (days == 0)
+		return 0;
+	
 	DIR* dir = opendir(dir_path);
 	if (dir == NULL) {
 		log_msg(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
