@@ -599,16 +599,14 @@ static int health_split_list(const char* disk, tommy_list* list, char* reason, s
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_split* split = i->data;
 
-		if (split->uuid[0] != 0 && split->content_uuid[0] != 0) {
-			/* if the UUID change it's a FAIL condition because the disk disappeared */
-			if (strcmp(split->uuid, split->content_uuid) != 0) {
-				snprintf(msg, sizeof(msg), "Disk %s has split %d with UUID changed from %s to %s", disk, split->index, split->content_uuid, split->uuid);
-				health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
-			}
-			if (split->uuid[0] == 0 && split->content_uuid[0] != 0) {
-				snprintf(msg, sizeof(msg), "Disk %s has split %d with UUID changed from %s to nothing", disk, split->index, split->content_uuid);
-				health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
-			}
+		/*
+		 * If the UUID was present and it's now different (but not empty) it's a FAIL condition
+		 *
+		 * Accept an empty UUID in case probe is disabled and it's just not retrieved.
+		 */
+		if (split->content_uuid[0] != 0 && split->uuid[0] != 0 && strcmp(split->uuid, split->content_uuid) != 0) {
+			snprintf(msg, sizeof(msg), "Disk %s has split %d with UUID changed from %s to %s", disk, split->index, split->content_uuid, split->uuid);
+			health = health_worse(health, HEALTH_FAILING, reason, reason_size, msg);
 		}
 	}
 
