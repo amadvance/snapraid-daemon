@@ -51,6 +51,10 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 #else
 static void log_out(int level, int syslog, int termlog, const char* fmt, va_list ap)
 {
+	va_list ap2;
+
+	va_copy(ap2, ap);
+
 	(void)level;
 	(void)syslog;
 
@@ -61,10 +65,12 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 	}
 
 	if (termlog) {
-		vfprintf(stderr, fmt, ap);
+		vfprintf(stderr, fmt, ap2);
 		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
+
+	va_end(ap2);
 }
 #endif
 
