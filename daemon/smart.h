@@ -39,9 +39,9 @@ int smart_kind(int index, const char* name);
 /**
  * Extract historic temperature extremes from SMART attributes.
  * @param dev Device structure to analyze
- * @param temp Pointer to store current temperature
- * @param temp_min Pointer to store minimum temperature
- * @param temp_max Pointer to store maximum temperature
+ * @param temp Pointer to store current temperature. Set to SMART_UNASSIGNED if unknown.
+ * @param temp_min Pointer to store minimum temperature. Set to SMART_UNASSIGNED if unknown.
+ * @param temp_max Pointer to store maximum temperature. Set to SMART_UNASSIGNED if unknown.
  */
 void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64_t* temp_min, uint64_t* temp_max);
 

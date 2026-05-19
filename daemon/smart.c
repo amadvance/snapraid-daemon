@@ -310,6 +310,10 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 {
 	uint64_t l, h, r;
 
+	*temp = SMART_UNASSIGNED;
+	*temp_min = SMART_UNASSIGNED;
+	*temp_max = SMART_UNASSIGNED;
+
 	/* first 190 */
 	r = dev->smart[190].raw.value;
 	if (r != SMART_UNASSIGNED) {

@@ -1423,9 +1423,9 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 		if (dev->smart[9].raw.value != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw.value & 0xFFFFFF);
 		/* high level attributes */
-		uint64_t temp = SMART_UNASSIGNED;
-		uint64_t temp_min = SMART_UNASSIGNED;
-		uint64_t temp_max = SMART_UNASSIGNED;
+		uint64_t temp;
+		uint64_t temp_min;
+		uint64_t temp_max;
 		smart_temperature_range(dev, &temp, &temp_min, &temp_max);
 		if (temp != SMART_UNASSIGNED) {
 			ss_json_u64(s, level, "temperature_celsius", temp);
