@@ -89,7 +89,7 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 		case 'v' :
 			state->log.verbose = 1;
 			break;
-		case 'h' :
+		case 'H' :
 			usage(state->config.conf);
 			exit(EXIT_SUCCESS);
 		case 'V' :
