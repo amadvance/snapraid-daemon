@@ -802,27 +802,6 @@ int strdouble(double* out, const char* s)
 	return 0;
 }
 
-char* strtrim(char* str)
-{
-	char* begin;
-	char* end;
-
-	begin = str;
-	while (begin[0] && isspace((unsigned char)begin[0]))
-		++begin;
-
-	end = begin + strlen(begin);
-	while (end > begin && isspace((unsigned char)end[-1]))
-		--end;
-
-	end[0] = 0;
-
-	if (begin != end)
-		memmove(str, begin, end - begin + 1);
-
-	return str;
-}
-
 #ifndef _WIN32
 void strupr(char* str)
 {

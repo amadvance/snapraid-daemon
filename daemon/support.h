@@ -434,12 +434,6 @@ int stru64(uint64_t* out, const char* src);
 int strdouble(double* out, const char* src);
 
 /**
- * Trim leading and trailing whitespace.
- * @return Pointer to trimmed string
- */
-char* strtrim(char* str);
-
-/**
  * Convert string to uppercase.
  */
 #ifndef _WIN32

@@ -171,9 +171,14 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 		}
 	}
 
-	/* accept the final list */
-	tommy_list_foreach(&config->maintenance_list, run_free);
-	config->maintenance_list = list;
+	if (config) {
+		/* accept the final list */
+		tommy_list_foreach(&config->maintenance_list, run_free);
+		config->maintenance_list = list;
+	} else {
+		/* otherwise free it */
+		tommy_list_foreach(&list, run_free);
+	}
 
 	return 0;
 
@@ -181,6 +186,18 @@ bail:
 	/* cleanup partial list creation */
 	tommy_list_foreach(&list, run_free);
 	return -1;
+}
+
+static const char* config_level(int level)
+{
+	switch (level) {
+	case LVL_CRITICAL : return "critical";
+	case LVL_ERROR : return "error";
+	case LVL_WARNING : return "warning";
+	case LVL_INFO : return "info";
+	}
+
+	return "-";
 }
 
 int config_parse_level(const char* input, int* out)
@@ -195,6 +212,17 @@ int config_parse_level(const char* input, int* out)
 	}
 
 	return -1;
+}
+
+static void config_refresh_locked(struct snapraid_state* state)
+{
+	struct snapraid_config* config = &state->config;
+
+	/* apply to the runtime */
+	log_lock();
+	state->log.syslog = config->notify_syslog;
+	state->log.syslog_level = config->notify_syslog_level;
+	log_unlock();
 }
 
 int config_load_locked(struct snapraid_state* state)
@@ -234,14 +262,14 @@ int config_load_locked(struct snapraid_state* state)
 
 	buffer[buffer_len] = 0;
 
+	/* free the existing lists */
+	tommy_list_foreach(&config->line_list, config_line_free);
+	tommy_list_init(&config->line_list);
+
 	/* restore the configuration to the default state */
 	config_default_locked(state);
 
 	pulse(state, PULSE_CONFIG);
-
-	/* free the existing line list */
-	tommy_list_foreach(&config->line_list, config_line_free);
-	tommy_list_init(&config->line_list);
 
 	char* next = buffer;
 	while (*next) {
@@ -389,20 +417,12 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "hook_script") == 0) {
 				sncpy(config->hook_script, sizeof(config->hook_script), val);
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
-				int syslog;
-				if (parse_int(val, 0, 1, &syslog) == 0) {
-					log_lock();
-					state->log.syslog = syslog;
-					log_unlock();
+				if (parse_int(val, 0, 1, &config->notify_syslog) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_level") == 0) {
-				int level;
-				if (config_parse_level(val, &level) == 0) {
-					log_lock();
-					state->log.syslog_level = level;
-					log_unlock();
+				if (config_parse_level(val, &config->notify_syslog_level) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -429,6 +449,8 @@ int config_load_locked(struct snapraid_state* state)
 			log_msg(LVL_ERROR, "unrecognized config line '%s'", begin);
 		}
 	}
+
+	config_refresh_locked(state);
 
 	free(buffer);
 
@@ -554,13 +576,21 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	tommy_list_insert_tail(&config->line_list, &line->node, line);
 }
 
-void config_set_string(struct snapraid_config* config, const char* key, char* value)
+static void config_set_string(struct snapraid_config* config, const char* key, char* value)
 {
-	strtrim(value);
-	config_set(config, key, value);
+	/* trim inplace */
+	char* begin = value;
+	while (*begin && isspace((unsigned char)*begin))
+		++begin;
+	char* end = begin + strlen(begin);
+	while (begin < end && isspace((unsigned char)end[-1]))
+		--end;
+	*end = 0;
+
+	config_set(config, key, begin);
 }
 
-void config_set_int(struct snapraid_config* config, const char* key, int value)
+static void config_set_int(struct snapraid_config* config, const char* key, int value)
 {
 	if (value == 0) {
 		config_set(config, key, "");
@@ -571,7 +601,7 @@ void config_set_int(struct snapraid_config* config, const char* key, int value)
 	}
 }
 
-void config_set_double(struct snapraid_config* config, const char* key, double value)
+static void config_set_double(struct snapraid_config* config, const char* key, double value)
 {
 	if (value == 0) {
 		config_set(config, key, "");
@@ -582,8 +612,9 @@ void config_set_double(struct snapraid_config* config, const char* key, double v
 	}
 }
 
-int config_save_locked(struct snapraid_config* config)
+int config_save_locked(struct snapraid_state* state)
 {
+	struct snapraid_config* config = &state->config;
 	char conf_tmp[PATH_MAX + 4];
 	ss_t ss;
 
@@ -651,9 +682,6 @@ void config_default_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 
-	/* free any previous content */
-	tommy_list_foreach(&state->config.maintenance_list, run_free);
-
 	/* set default */
 	config->sys_engine[0] = 0;
 	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
@@ -665,7 +693,10 @@ void config_default_locked(struct snapraid_state* state)
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;
 	config->net_web_root[0] = 0;
+
+	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_init(&config->maintenance_list);
+
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
@@ -677,33 +708,149 @@ void config_default_locked(struct snapraid_state* state)
 	config->spindown_idle_minutes = 0;
 	config->hook_run_as_user[0] = 0;
 	config->hook_script[0] = 0;
-	log_lock();
-	state->log.syslog = 0;
-	state->log.syslog_level = LVL_ERROR;
-	log_unlock();
+	config->notify_syslog = 0;
+	config->notify_syslog_level = LVL_ERROR;
 	config->notify_run_as_user[0] = 0;
 	config->notify_heartbeat[0] = 0;
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_ERROR;
 	config->notify_differences = 0;
+}
 
-	/* intentionally don't set the config->conf as it should never change */
+void config_dup_locked(struct snapraid_state* state, struct snapraid_config* transient)
+{
+	struct snapraid_config* config = &state->config;
+
+	sncpy(transient->sys_engine, sizeof(transient->sys_engine), config->sys_engine);
+	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
+	transient->sys_log_retention_days = config->sys_log_retention_days;
+	transient->net_enabled = config->net_enabled;
+	sncpy(transient->net_port, sizeof(transient->net_port), config->net_port);
+	sncpy(transient->net_acl, sizeof(transient->net_acl), config->net_acl);
+	transient->net_security_headers = config->net_security_headers;
+	sncpy(transient->net_allowed_origin, sizeof(transient->net_allowed_origin), config->net_allowed_origin);
+	transient->net_config_full_access = config->net_config_full_access;
+	sncpy(transient->net_web_root, sizeof(transient->net_web_root), config->net_web_root);
+
+	tommy_list_init(&transient->maintenance_list);
+	for (tommy_node* i = tommy_list_head(&config->maintenance_list); i != 0; i = i->next) {
+		struct snapraid_run* run = run_dup(i->data);
+		tommy_list_insert_tail(&transient->maintenance_list, &run->node, run);
+	}
+
+	transient->sync_threshold_deletes = config->sync_threshold_deletes;
+	transient->sync_threshold_updates = config->sync_threshold_updates;
+	transient->sync_prehash = config->sync_prehash;
+	transient->sync_prevent_truncations = config->sync_prevent_truncations;
+	transient->scrub_percentage = config->scrub_percentage;
+	transient->scrub_older_than = config->scrub_older_than;
+	transient->touch_zero_subseconds = config->touch_zero_subseconds;
+	transient->probe_interval_minutes = config->probe_interval_minutes;
+	transient->spindown_idle_minutes = config->spindown_idle_minutes;
+	sncpy(transient->hook_run_as_user, sizeof(transient->hook_run_as_user), config->hook_run_as_user);
+	sncpy(transient->hook_script, sizeof(transient->hook_script), config->hook_script);
+	transient->notify_syslog = config->notify_syslog;
+	transient->notify_syslog_level = config->notify_syslog_level;
+	sncpy(transient->notify_run_as_user, sizeof(transient->notify_run_as_user), config->notify_run_as_user);
+	sncpy(transient->notify_heartbeat, sizeof(transient->notify_heartbeat), config->notify_heartbeat);
+	sncpy(transient->notify_result, sizeof(transient->notify_result), config->notify_result);
+	transient->notify_result_level = config->notify_result_level;
+	transient->notify_differences = config->notify_differences;
+}
+
+void config_free(struct snapraid_config* config)
+{
+	tommy_list_foreach(&config->maintenance_list, run_free);
+}
+
+int config_apply_locked(struct snapraid_state* state, struct snapraid_config* transient)
+{
+	struct snapraid_config* config = &state->config;
+
+	/* copy fields */
+	sncpy(config->sys_engine, sizeof(config->sys_engine), transient->sys_engine);
+	sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), transient->sys_log_directory);
+	config->sys_log_retention_days = transient->sys_log_retention_days;
+	config->net_enabled = transient->net_enabled;
+	sncpy(config->net_port, sizeof(config->net_port), transient->net_port);
+	sncpy(config->net_acl, sizeof(config->net_acl), transient->net_acl);
+	config->net_security_headers = transient->net_security_headers;
+	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), transient->net_allowed_origin);
+	config->net_config_full_access = transient->net_config_full_access;
+	sncpy(config->net_web_root, sizeof(config->net_web_root), transient->net_web_root);
+
+	tommy_list_foreach(&config->maintenance_list, run_free);
+	config->maintenance_list = transient->maintenance_list;
+	tommy_list_init(&transient->maintenance_list);
+
+	config->sync_threshold_deletes = transient->sync_threshold_deletes;
+	config->sync_threshold_updates = transient->sync_threshold_updates;
+	config->sync_prehash = transient->sync_prehash;
+	config->sync_prevent_truncations = transient->sync_prevent_truncations;
+	config->scrub_percentage = transient->scrub_percentage;
+	config->scrub_older_than = transient->scrub_older_than;
+	config->touch_zero_subseconds = transient->touch_zero_subseconds;
+	config->probe_interval_minutes = transient->probe_interval_minutes;
+	config->spindown_idle_minutes = transient->spindown_idle_minutes;
+	sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), transient->hook_run_as_user);
+	sncpy(config->hook_script, sizeof(config->hook_script), transient->hook_script);
+	config->notify_syslog = transient->notify_syslog;
+	config->notify_syslog_level = transient->notify_syslog_level;
+	sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), transient->notify_run_as_user);
+	sncpy(config->notify_heartbeat, sizeof(config->notify_heartbeat), transient->notify_heartbeat);
+	sncpy(config->notify_result, sizeof(config->notify_result), transient->notify_result);
+	config->notify_result_level = transient->notify_result_level;
+	config->notify_differences = transient->notify_differences;
+
+	/* apply to the text copy */
+	char maintenance_schedule[CONFIG_MAX];
+	config_schedule_str(config, maintenance_schedule, sizeof(maintenance_schedule));
+	config_set_string(config, "maintenance_schedule", maintenance_schedule);
+
+	config_set_int(config, "sync_threshold_deletes", config->sync_threshold_deletes);
+	config_set_int(config, "sync_threshold_updates", config->sync_threshold_updates);
+	config_set_int(config, "sync_prehash", config->sync_prehash);
+	config_set_int(config, "sync_prevent_truncations", config->sync_prevent_truncations);
+	config_set_double(config, "scrub_percentage", config->scrub_percentage);
+	config_set_int(config, "scrub_older_than", config->scrub_older_than);
+	config_set_int(config, "touch_zero_subseconds", config->touch_zero_subseconds);
+	config_set_int(config, "probe_interval_minutes", config->probe_interval_minutes);
+	config_set_int(config, "spindown_idle_minutes", config->spindown_idle_minutes);
+	config_set_string(config, "hook_run_as_user", config->hook_run_as_user);
+	config_set_string(config, "hook_script", config->hook_script);
+	config_set_int(config, "notify_syslog_enabled", config->notify_syslog);
+	config_set(config, "notify_syslog_level", config_level(config->notify_syslog_level));
+	config_set_string(config, "notify_run_as_user", config->notify_run_as_user);
+	config_set_string(config, "notify_heartbeat", config->notify_heartbeat);
+	config_set_string(config, "notify_result", config->notify_result);
+	config_set(config, "notify_result_level", config_level(config->notify_result_level));
+	config_set_int(config, "notify_differences", config->notify_differences);
+
+	config_refresh_locked(state);
+
+	return 0;
 }
 
 void config_init(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 
-	memset(config, 0, sizeof(*config));
-
-	/* set the default configuration file */
+	/* set private configuration */
 	os_default_conf(config->conf, sizeof(config->conf));
+	config->pidfile_arg = 0;
+	tommy_list_init(&config->line_list);
 
+	/* set the public configuration */
+	tommy_list_init(&config->maintenance_list);
 	config_default_locked(state);
+
+	/* refresh it */
+	config_refresh_locked(state);
 }
 
 void config_done(struct snapraid_state* state)
 {
+	tommy_list_foreach(&state->config.line_list, config_line_free);
 	tommy_list_foreach(&state->config.maintenance_list, run_free);
 }
 

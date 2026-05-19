@@ -66,10 +66,24 @@ void config_init(struct snapraid_state* state);
 void config_done(struct snapraid_state* state);
 
 /**
- * Set the configuration to default values
- * @param state Current snapraid state
+ * Set a configuration to default values
  */
 void config_default_locked(struct snapraid_state* state);
+
+/**
+ * Export the current configuration
+ */
+void config_dup_locked(struct snapraid_state* state, struct snapraid_config* config);
+
+/**
+ * Import a configuration to the state
+ */
+int config_apply_locked(struct snapraid_state* state, struct snapraid_config* config);
+
+/**
+ * Destroy a not imported configuration
+ */
+void config_free(struct snapraid_config* config);
 
 /**
  * Load configuration from file.
@@ -90,32 +104,7 @@ int config_reload_locked(struct snapraid_state* state);
  * @param config Configuration to save
  * @return 0 on success, -1 on error
  */
-int config_save_locked(struct snapraid_config* config);
-
-/**
- * Set string configuration value.
- * @param config Configuration to modify
- * @param key Configuration key name
- * @param new_value New value to set
- */
-void config_set_string(struct snapraid_config* config, const char* key, char* new_value);
-
-/**
- * Set integer configuration value.
- * @param config Configuration to modify
- * @param key Configuration key name
- * @param new_value New value to set
- */
-void config_set_int(struct snapraid_config* config, const char* key, int new_value);
-
-/**
- * Set double configuration value.
- * @param config Configuration to modify
- * @param key Configuration key name
- * @param new_value New value to set
- */
-void config_set_double(struct snapraid_config* config, const char* key, double new_value);
-
+int config_save_locked(struct snapraid_state* state);
 
 #endif
 

@@ -462,9 +462,12 @@ struct snapraid_config_line {
 };
 
 struct snapraid_config {
+	/* private part of the configuration */
 	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
 	const char* pidfile_arg; /**< PID file specified as argument, or 0 */
 	tommy_list line_list; /**< List of snapraid_config_line */
+
+	/* public part of the configuration */
 	/* empty string or 0 value means value not set and/or disabled */
 	char sys_engine[CONFIG_MAX]; /**< Engine path. */
 	char sys_log_directory[CONFIG_MAX]; /**< Directory for log files */
@@ -488,6 +491,8 @@ struct snapraid_config {
 	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
 	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
 	char hook_script[CONFIG_MAX]; /**< Hook script path */
+	int notify_syslog;
+	int notify_syslog_level;
 	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */
 	char notify_heartbeat[CONFIG_MAX]; /**< Heartbeat notification URL */
 	char notify_result[CONFIG_MAX]; /**< Result notification URL/script */

@@ -90,6 +90,11 @@ void message_insert(tommy_list* list, int level, int type, const char* msg);
 struct snapraid_run* run_alloc(int day_of_week, int hour, int minute);
 
 /**
+ * Duplicate a run
+ */
+struct snapraid_run* run_dup(struct snapraid_run* run);
+
+/**
  * Free a run.
  * @param void_run Pointer to the run entry
  */

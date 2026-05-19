@@ -150,6 +150,11 @@ struct snapraid_run* run_alloc(int day_of_week, int hour, int minute)
 	return run;
 }
 
+struct snapraid_run* run_dup(struct snapraid_run* run)
+{
+	return run_alloc(run->day_of_week, run->hour, run->minute);
+}
+
 void run_free(void* void_run)
 {
 	free(void_run);
@@ -495,7 +500,7 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 	/* recompute counters */
 	fix_dest->fix_recovered = 0;
 	fix_dest->fix_unrecoverable = 0;
-	
+
 	i = tommy_list_head(&fix_dest->file_list);
 	while (i) {
 		struct snapraid_file* dst = i->data;

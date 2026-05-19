@@ -488,12 +488,15 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	ssize_t jl;
 	char* js;
 	int jc;
+	struct snapraid_config transient;
 
 	status = json_read(conn, &js, &jl, msg, sizeof(msg));
 	if (status != 200)
 		return send_json_error(conn, status, msg);
 
 	state_lock();
+
+	config_dup_locked(state, &transient);
 
 	pulse(state, PULSE_CONFIG);
 
@@ -514,8 +517,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 			if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
-					&& config_parse_maintenance_schedule(keyword, &state->config) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), keyword);
+					&& config_parse_maintenance_schedule(keyword, &transient) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -523,8 +525,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("probe_interval_minutes")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 1440, &state->config.probe_interval_minutes) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.probe_interval_minutes);
+				if (json_int(js, &jv[j], 0, 1440, &transient.probe_interval_minutes) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -532,8 +533,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("spindown_idle_minutes")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 1440, &state->config.spindown_idle_minutes) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.spindown_idle_minutes);
+				if (json_int(js, &jv[j], 0, 1440, &transient.spindown_idle_minutes) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -541,8 +541,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_deletes")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_deletes) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_deletes);
+				if (json_int(js, &jv[j], 0, 10000, &transient.sync_threshold_deletes) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -550,8 +549,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_updates")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 10000, &state->config.sync_threshold_updates) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_threshold_updates);
+				if (json_int(js, &jv[j], 0, 10000, &transient.sync_threshold_updates) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -559,8 +557,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_prehash")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.sync_prehash) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_prehash);
+				if (json_boolean(js, &jv[j], &transient.sync_prehash) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -568,8 +565,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_prevent_truncations")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.sync_prevent_truncations) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.sync_prevent_truncations);
+				if (json_boolean(js, &jv[j], &transient.sync_prevent_truncations) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -577,8 +573,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
-				if (json_double(js, &jv[j], 0, 100, &state->config.scrub_percentage) == 0) {
-					config_set_double(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_percentage);
+				if (json_double(js, &jv[j], 0, 100, &transient.scrub_percentage) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -586,8 +581,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("touch_zero_subseconds")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.touch_zero_subseconds) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.touch_zero_subseconds);
+				if (json_boolean(js, &jv[j], &transient.touch_zero_subseconds) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -595,8 +589,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_older_than")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 1000, &state->config.scrub_older_than) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.scrub_older_than);
+				if (json_int(js, &jv[j], 0, 1000, &transient.scrub_older_than) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -608,8 +601,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.hook_run_as_user, sizeof(state->config.hook_run_as_user)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), state->config.hook_run_as_user);
+				if (json_string(js, &jv[j], transient.hook_run_as_user, sizeof(transient.hook_run_as_user)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -621,8 +613,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.hook_script, sizeof(state->config.hook_script)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), state->config.hook_script);
+				if (json_string(js, &jv[j], transient.hook_script, sizeof(transient.hook_script)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -630,13 +621,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_enabled")) == 0) {
 				++j;
-				int syslog;
-				if (json_boolean(js, &jv[j], &syslog) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), syslog);
-
-					log_lock();
-					state->log.syslog = syslog;
-					log_unlock();
+				if (json_boolean(js, &jv[j], &transient.notify_syslog) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -644,14 +629,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_level")) == 0) {
 				++j;
-				int level;
 				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
-					&& config_parse_level(keyword, &level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), keyword);
-
-					log_lock();
-					state->log.syslog_level = level;
-					log_unlock();
+					&& config_parse_level(keyword, &transient.notify_syslog_level) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -663,8 +642,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.notify_run_as_user, sizeof(state->config.notify_run_as_user)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), state->config.notify_run_as_user);
+				if (json_string(js, &jv[j], transient.notify_run_as_user, sizeof(transient.notify_run_as_user)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -676,8 +654,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.notify_heartbeat, sizeof(state->config.notify_heartbeat)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), state->config.notify_heartbeat);
+				if (json_string(js, &jv[j], transient.notify_heartbeat, sizeof(transient.notify_heartbeat)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -689,8 +666,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], state->config.notify_result, sizeof(state->config.notify_result)) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), state->config.notify_result);
+				if (json_string(js, &jv[j], transient.notify_result, sizeof(transient.notify_result)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -703,8 +679,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				}
 				++j;
 				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
-					&& config_parse_level(keyword, &state->config.notify_result_level) == 0) {
-					config_set_string(&state->config, json_token(js, &jv[j - 1]), keyword);
+					&& config_parse_level(keyword, &transient.notify_result_level) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -712,8 +687,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_differences")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &state->config.notify_differences) == 0) {
-					config_set_int(&state->config, json_token(js, &jv[j - 1]), state->config.notify_differences);
+				if (json_boolean(js, &jv[j], &transient.notify_differences) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -726,7 +700,14 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	(void)config_save_locked(&state->config); /* error logged inside */
+	if (config_apply_locked(state, &transient) != 0) {
+		snprintf(msg, sizeof(msg), "Failed to apply the configuration");
+		goto bad;
+	}
+
+	config_free(&transient);
+
+	(void)config_save_locked(state); /* error logged inside */
 
 	state_unlock();
 
@@ -734,7 +715,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	return send_json_success(conn, 200);
 
 bad:
-	(void)config_save_locked(&state->config); /* error logged inside */
+	config_free(&transient);
 
 	state_unlock();
 
@@ -742,7 +723,7 @@ bad:
 	return send_json_error(conn, 400, msg);
 
 forbidden:
-	(void)config_save_locked(&state->config); /* error logged inside */
+	config_free(&transient);
 
 	state_unlock();
 
