@@ -694,24 +694,28 @@ int web_reload(struct snapraid_state* state, const char* root)
 		log_msg(LVL_INFO, "crawling zip %s", zip);
 		crawl_zip(&state->web.page_list, zip);
 	} else {
-		if (root[0] != '/') {
-			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
+		char dir[PATH_MAX];
+		sncpy(dir, sizeof(dir), root);
+
+		if (dir[0] != '/') {
+			log_msg(LVL_ERROR, "web server cannot serve relative %s", dir);
 			goto bail;
 		}
 
 		/* trim ending slash of net_web_root */
-		size_t len = strlen(root);
-		while (len > 0 && root[len - 1] == '/')
+		size_t len = strlen(dir);
+		while (len > 0 && dir[len - 1] == '/')
 			--len;
+		dir[len] = 0;
 
-		if (root[0] == 0) {
+		if (dir[0] == 0) {
 			log_msg(LVL_ERROR, "web server cannot serve root directory /");
 			goto bail;
 		}
 
 		state->web.page_time = time(0);
-		log_msg(LVL_INFO, "crawling directory %s", root);
-		crawl_directory(&state->web.page_list, len, root);
+		log_msg(LVL_INFO, "crawling directory %s", dir);
+		crawl_directory(&state->web.page_list, len, dir);
 	}
 
 	web_unlock();
