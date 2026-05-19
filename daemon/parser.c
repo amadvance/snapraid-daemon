@@ -1898,7 +1898,7 @@ int parse_past_log(struct snapraid_state* state)
 
 		int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
 		if (f == -1) {
-			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
+			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", path, strerror(errno), errno);
 			continue;
 		}
 
