@@ -308,8 +308,12 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 		if (dd->d_name[0] == '.')
 			continue;
 
-		char path[PATH_MAX + PATH_MAX];
-		snprintf(path, sizeof(path), "%s/%s", current_path, dd->d_name);
+		char path[PATH_MAX + 1 + PATH_MAX];
+		int ret = snprintf(path, sizeof(path), "%s/%s", current_path, dd->d_name);
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
+			log_msg(LVL_ERROR, "crawler invalid path: %s/%s", current_path, dd->d_name);
+			continue;
+		}
 
 		struct stat st;
 #ifndef _WIN32
