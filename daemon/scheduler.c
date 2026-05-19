@@ -12,12 +12,10 @@
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, char* msg, size_t msg_size, int* status)
 {
-	sl_t diff_arg_list;
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
 
-	sl_init(&diff_arg_list);
 	sl_init(&scrub_arg_list);
 	sl_init(&sync_arg_list);
 	if (state->config.sync_prehash) {
@@ -73,7 +71,6 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	(void)runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
 
-	sl_free(&diff_arg_list);
 	sl_free(&sync_arg_list);
 	sl_free(&scrub_arg_list);
 }
