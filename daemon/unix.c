@@ -12,6 +12,20 @@
 #include "conf.h"
 
 /****************************************************************************/
+/* access */
+
+#if !HAVE_EACCESS
+/**
+ * Check effective user's permissions for a file.
+ * Conceptually identical to access(), but uses the effective UID/GID.
+ */
+int eaccess(const char* pathname, int mode)
+{
+	return faccessat(AT_FDCWD, pathname, mode, AT_EACCESS);
+}
+#endif
+
+/****************************************************************************/
 /* signal */
 
 static void signal_handler_term(int sig)
@@ -111,11 +125,11 @@ const char* os_find_engine(const char* sys_engine)
 {
 	/* check for existence every time in case it's installed at later time */
 	if (sys_engine != 0 && sys_engine[0] != 0) {
-		if (access(sys_engine, X_OK) == 0)
+		if (eaccess(sys_engine, X_OK) == 0)
 			return sys_engine;
 	} else {
 		for (int i = 0; snapraid_paths[i]; ++i) {
-			if (access(snapraid_paths[i], X_OK) == 0)
+			if (eaccess(snapraid_paths[i], X_OK) == 0)
 				return snapraid_paths[i];
 		}
 	}
@@ -133,7 +147,7 @@ void os_default_conf(char* dst, size_t dst_size)
 #ifdef SYSCONFDIR
 	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc (note that PACKAGE is snapraid-daemon) */
 	sncpy(dst, dst_size, SYSCONFDIR "/" DAEMON ".conf");
-	if (access(dst, F_OK) == 0)
+	if (eaccess(dst, F_OK) == 0)
 		return;
 #endif
 	sncpy(dst, dst_size, "/etc/" DAEMON ".conf");
@@ -143,7 +157,7 @@ void os_default_data(char* dst, size_t dst_size, const char* root)
 {
 #ifdef DATADIR
 	snprintf(dst, dst_size, DATADIR "/%s", root);
-	if (access(dst, F_OK) == 0)
+	if (eaccess(dst, F_OK) == 0)
 		return;
 #endif
 	/* otherwise use  /usr/share/snapraidd */
@@ -1026,7 +1040,7 @@ void os_system(struct snapraid_system* system)
 			sncpy(system->motherboard, sizeof(system->motherboard), board_name);
 	}
 
-	if (access("/sys/devices/system/edac/mc/mc0/size_mb", F_OK) == 0)
+	if (eaccess("/sys/devices/system/edac/mc/mc0/size_mb", F_OK) == 0)
 		system->is_ecc = 1;
 	else
 		system->is_ecc = 0;
@@ -1077,9 +1091,9 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 		}
 	}
 
-	/* 
+	/*
 	 * Open the file, create if missing, open for reading/writing
-	 * 
+	 *
 	 * O_NOFOLLOW Prevents attacks about making a dangling link pointing
 	 * to another file that will be created with the daemon ownership.
 	 */

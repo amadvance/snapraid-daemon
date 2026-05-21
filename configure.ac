@@ -141,6 +141,7 @@ AC_CHECK_CC_OPT([-pthread], CFLAGS="$CFLAGS -pthread", CFLAGS="$CFLAGS -D_REENTR
 AC_CHECK_FUNCS([pthread_create])
 AC_CHECK_FUNCS([fexecve pipe2])
 AC_SEARCH_LIBS([exp], [m])
+AC_CHECK_FUNCS([eaccess faccessat])
 AC_SEARCH_LIBS([gethostbyname], [ws2_32])
 
 dnl Checks for architecture
