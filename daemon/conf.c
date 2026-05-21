@@ -721,6 +721,9 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 {
 	struct snapraid_config* config = &state->config;
 
+	/* preset to zero to clear also private part */
+	memset(transient, 0, sizeof(*transient));
+
 	sncpy(transient->sys_engine, sizeof(transient->sys_engine), config->sys_engine);
 	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
 	transient->sys_log_retention_days = config->sys_log_retention_days;
