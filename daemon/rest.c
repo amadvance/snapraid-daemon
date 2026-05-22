@@ -186,7 +186,7 @@ static void json_error_arg(char* str, size_t str_size, char* js, jsmntok_t* je, 
 {
 	const char* entry = json_token(js, je);
 	const char* arg = json_token(js, ja);
-	snprintf(str, str_size, "Invalid JSON argument %s for %s", arg, entry);
+	snprintf(str, str_size, "Invalid value %s for %s", arg, entry);
 }
 
 static void json_error_entry(char* str, size_t str_size, char* js, jsmntok_t* jv)

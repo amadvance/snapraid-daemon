@@ -976,16 +976,16 @@ export const renderSettings = (config) => {
             <div class="card">
                 <h3>Automation</h3>
                 ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the maintenance sequence (e.g., 02:00 or Mon 03:00, Wed 02:00). Leave empty to disable.')}
-                ${inputField('scrub_percentage', 'Scrub Percentage', 'number', 'The percentage of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%). Set to 0 to disable scrub.', false, 'step="0.1"')}
-                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'number', 'Only scrubs data blocks that haven\'t been verified within this many days.')}
+                ${inputField('scrub_percentage', 'Scrub Percentage', 'text', 'The percentage of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%). Set to 0 to disable scrub.', false, 'inputmode="decimal"')}
+                ${inputField('scrub_older_than', 'Scrub Older Than (Days)', 'text', 'Only scrubs data blocks that haven\'t been verified within this many days.', false, 'inputmode="numeric"')}
                 ${boolField('touch_zero_subseconds', 'Touch Zero Subseconds', 'Update timestamps lacking sub-second precision to accurately identify moved or renamed files.')}
             </div>
 
             <!-- Data Integrity -->
             <div class="card">
                 <h3>Data Integrity</h3>
-                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'number', 'If the number of deletions reaches or exceeds this value, the sync will not start to prevent accidental mass data loss. Set to 0 to disable.')}
-                ${inputField('sync_threshold_updates', 'Updates Threshold', 'number', 'If the number of updates reaches or exceeds this value, the sync will not start to prevent unintended mass changes. Set to 0 to disable.')}
+                ${inputField('sync_threshold_deletes', 'Deletes Threshold', 'text', 'If the number of deletions reaches or exceeds this value, the sync will not start to prevent accidental mass data loss. Set to 0 to disable.', false, 'inputmode="numeric"')}
+                ${inputField('sync_threshold_updates', 'Updates Threshold', 'text', 'If the number of updates reaches or exceeds this value, the sync will not start to prevent unintended mass changes. Set to 0 to disable.', false, 'inputmode="numeric"')}
                 ${boolField('sync_prehash', 'Safety Pre-hash', 'Pre-calculates hashes before syncing to verify them during the process. This provides a second read pass to catch silent data errors and faulty memory corruption.')}
                 ${boolField('sync_prevent_truncations', 'Prevent File Truncations', 'Stops the synchronization if files that previously contained data are now empty. Prevent parity updates when data may have been accidentally cleared.')}
             </div>
@@ -993,8 +993,8 @@ export const renderSettings = (config) => {
             <!-- Monitor -->
             <div class="card">
                 <h3>Monitor</h3>
-                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'number', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.')}
-                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'number', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.')}
+                ${inputField('probe_interval_minutes', 'Probe Interval (min)', 'text', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.', false, 'inputmode="numeric"')}
+                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (min)', 'text', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.', false, 'inputmode="numeric"')}
             </div>
             </div>
 

@@ -713,9 +713,21 @@ const app = {
                 // Check if it should be a number
                 if (['sync_threshold_deletes', 'sync_threshold_updates',
                     'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes'].includes(key)) {
-                    updates[key] = parseInt(value, 10);
+                    const parsed = parseInt(value, 10);
+                    if (isNaN(parsed) || isNaN(Number(value)) || value.includes('.')) {
+                        const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
+                        showToast(`Failed to save: Invalid value ${displayVal} for ${key}`, 'error');
+                        return;
+                    }
+                    updates[key] = parsed;
                 } else if (key === 'scrub_percentage') {
-                    updates[key] = parseFloat(value);
+                    const parsed = parseFloat(value);
+                    if (isNaN(parsed) || isNaN(Number(value))) {
+                        const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
+                        showToast(`Failed to save: Invalid value ${displayVal} for ${key}`, 'error');
+                        return;
+                    }
+                    updates[key] = parsed;
                 } else {
                     updates[key] = value;
                 }
