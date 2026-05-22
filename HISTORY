@@ -13,6 +13,9 @@ SnapRAID-Daemon HISTORY
  * Implemented permissive CORS and caching headers for static assets to
    ensure icons display correctly in browser dashboards and smart links.
  * Various security improvements and memory leak fixes.
+ * Changed the "touch_zero_subseconds" REST API field type from integer
+   to boolean in the OpenAPI spec, while retaining permissive integer
+   parsing in the daemon patch handler for backward compatibility.
 
 1.9 2026/04
 ===========

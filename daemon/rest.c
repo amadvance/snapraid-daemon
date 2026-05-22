@@ -146,6 +146,17 @@ static int json_boolean(const char* js, jsmntok_t* jv, int* out)
 	return -1;
 }
 
+static int json_bool_or_int(const char* js, jsmntok_t* jv, int* out)
+{
+	if (json_boolean(js, jv, out) == 0)
+		return 0;
+
+	if (json_int(js, jv, 0, 1, out) == 0)
+		return 0;
+
+	return -1;
+}
+
 static int json_string(const char* js, jsmntok_t* jv, char* out, size_t out_size)
 {
 	size_t len = jv[0].end - jv[0].start;
@@ -581,7 +592,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("touch_zero_subseconds")) == 0) {
 				++j;
-				if (json_boolean(js, &jv[j], &transient.touch_zero_subseconds) == 0) {
+				if (json_bool_or_int(js, &jv[j], &transient.touch_zero_subseconds) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;

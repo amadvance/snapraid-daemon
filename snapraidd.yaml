@@ -1698,9 +1698,9 @@ components:
             This setting is enforced during scheduled maintenance and calls
             to 'maintenance'. It is BYPASSED for direct calls to 'scrub'.
         touch_zero_subseconds:
-          type: integer
-          enum: [0, 1]
-          default: 0
+          type: boolean
+          default: false
+          example: false
           description: >
             Enables a specific timestamp alignment pass as part of the
             automated maintenance sequence.
