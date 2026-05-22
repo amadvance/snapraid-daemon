@@ -509,8 +509,6 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 
 	config_dup_locked(state, &transient);
 
-	pulse(state, PULSE_CONFIG);
-
 	jsmn_init(&jp);
 	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
 	if (jc <= 0) {
@@ -719,6 +717,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	config_free(&transient);
 
 	(void)config_save_locked(state); /* error logged inside */
+
+	pulse(state, PULSE_CONFIG);
 
 	state_unlock();
 
