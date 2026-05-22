@@ -16,6 +16,9 @@ SnapRAID-Daemon HISTORY
  * Changed the "touch_zero_subseconds" REST API field type from integer
    to boolean in the OpenAPI spec, while retaining permissive integer
    parsing in the daemon patch handler for backward compatibility.
+ * Fixed a naming inconsistency in the disk health telemetry where the
+   daemon reported "selferror_logged", aligning it with the OpenAPI
+   specification and web dashboard which expect "selftest_error_logged".
 
 1.9 2026/04
 ===========

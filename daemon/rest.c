@@ -1431,7 +1431,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_bool(s, level, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);
 			ss_json_bool(s, level, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED);
 			ss_json_bool(s, level, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED);
-			ss_json_bool(s, level, "selferror_logged", dev->flags & SMARTCTL_FLAG_SELFERROR_LOGGED);
+			ss_json_bool(s, level, "selftest_error_logged", dev->flags & SMARTCTL_FLAG_SELFTEST_ERROR_LOGGED);
 		}
 		ss_json_close(s, &level);
 		ss_json_close(s, &level);

@@ -50,7 +50,7 @@ static const char* smart_report_wide(int flag)
 		return "Prefail condition in the past but not now";
 	else if (flag & SMARTCTL_FLAG_ERROR_LOGGED)
 		return "Error Logged";
-	else if (flag & SMARTCTL_FLAG_SELFERROR_LOGGED)
+	else if (flag & SMARTCTL_FLAG_SELFTEST_ERROR_LOGGED)
 		return "Selt Test Error Logged";
 
 	return 0;
@@ -66,7 +66,7 @@ static const char* smart_report_narrow(int flag)
 		return "Prefail in the past";
 	else if (flag & SMARTCTL_FLAG_ERROR_LOGGED)
 		return "Error Logged";
-	else if (flag & SMARTCTL_FLAG_SELFERROR_LOGGED)
+	else if (flag & SMARTCTL_FLAG_SELFTEST_ERROR_LOGGED)
 		return "Selt Test Error Logged";
 
 	return 0;
