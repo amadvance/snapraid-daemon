@@ -522,7 +522,8 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
 	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), dir);
-	pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
+		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_extra(struct snapraid_state* state, char** map, size_t mac)
@@ -540,7 +541,8 @@ static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* extra disks never have the split index */
 
 	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), dir);
-	pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
+		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
@@ -562,7 +564,8 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
 	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
-	pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
+		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
 }
 
 static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
