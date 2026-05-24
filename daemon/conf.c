@@ -576,18 +576,28 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	tommy_list_insert_tail(&config->line_list, &line->node, line);
 }
 
-static void config_set_string(struct snapraid_config* config, const char* key, char* value)
+static void config_set_string(struct snapraid_config* config, const char* key, const char* value)
 {
-	/* trim inplace */
-	char* begin = value;
-	while (*begin && isspace((unsigned char)*begin))
-		++begin;
-	char* end = begin + strlen(begin);
-	while (begin < end && isspace((unsigned char)end[-1]))
-		--end;
-	*end = 0;
+	char buf[CONFIG_MAX];
+	size_t len = 0;
+	size_t trailing_whitespace_pos = 0;
 
-	config_set(config, key, begin);
+	/* skip leading whitespace */
+	while (*value && isspace((unsigned char)*value))
+		++value;
+
+	/* copy, tracking where trailing whitespace begins */
+	while (*value && len + 1 < sizeof(buf)) {
+		buf[len] = *value;
+		++len;
+		if (!isspace((unsigned char)*value))
+			trailing_whitespace_pos = len;
+		++value;
+	}
+
+	buf[trailing_whitespace_pos] = 0;
+
+	config_set(config, key, buf);
 }
 
 static void config_set_int(struct snapraid_config* config, const char* key, int value)
