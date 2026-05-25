@@ -175,11 +175,8 @@ Health
 	CORRUPT - Silent errors (hash or parity mismatches) were detected, though
 		no physical hardware issues were identified.
 		In this state, scheduled maintenance remains active.
-	PREFAIL - The SMART telemetry reports a pre-failing condition (e.g.,
-		reallocated sectors), or a task encountered input/output errors
-		while accessing files.
-		File input/output errors are temporary and they are cleared
-		automatically after a successful sync.
+	PREFAIL - The SMART telemetry reports a pre-failing condition, or a
+		task encountered input/output errors while accessing files.
 		Automated maintenance is suspended in this state, and manual
 		intervention is required.
 	FAILING - The SMART telemetry reports a critical failing condition, or a
@@ -197,6 +194,25 @@ Health
 	UI is replaced with a `Refresh` button. This allows you to force the
 	daemon to re-scan the state of the array (by re-reading the content
 	file) after any manual fixes have been performed via the command line.
+
+	If the array entered the PREFAIL state due to input/output errors,
+	and the content file loaded after clicking `Refresh` contains no
+	marked bad sectors, the input/output error counters for each disk
+	are automatically cleared, allowing the array to re-enter the
+	PASSED state.
+
+	Note that clicking the `Refresh` button does not cause the daemon
+	to verify that the underlying input/output errors are resolved.
+	Instead, the daemon assumes that you have:
+
+	* Checked the log files manually to understand the cause of the failure.
+	* Resolved the root cause of the input/output errors.
+	* Re-run the command that failed to ensure that the errors are gone.
+	* Used the `fix` and `scrub` commands to restore any files that needed
+		to be recovered to clear any marked bad sectors.
+
+	If the underlying cause of the input/output errors is not resolved,
+	the errors will eventually reappear.
 
 Configuration
 	The SnapRAID Daemon is configured via a plain-text `.conf` file,
