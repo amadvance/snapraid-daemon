@@ -1204,12 +1204,14 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
+		++task->error_recovered;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
+		++task->error_unrecoverable;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
@@ -1224,16 +1226,16 @@ static void process_error(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
 
-	/* the task error_io and error_data will be gathered by the final summary tag */
-
 	if (strstr(map[0], "error_io") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
 		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
-		pulse(state, PULSE_DISKS);
+		pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 		++disk->error_io;
+		++task->error_io;
 	} else if (strcmp(map[0], "error_data") == 0) {
 		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
-		pulse(state, PULSE_DISKS);
+		pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 		++disk->error_data;
+		++task->error_data;
 	}
 }
 
@@ -1244,16 +1246,16 @@ static void process_parity_error(struct snapraid_state* state, char** map, size_
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	/* the task error_io and error_data will be gathered by the final summary tag */
-
 	if (strcmp(map[0], "parity_error_io") == 0) {
 		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
-		pulse(state, PULSE_DISKS);
+		pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 		++disk->error_io;
+		++task->error_io;
 	} else if (strcmp(map[0], "parity_error_data") == 0) {
 		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
-		pulse(state, PULSE_DISKS);
+		pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 		++disk->error_data;
+		++task->error_data;
 	}
 }
 
@@ -1437,12 +1439,16 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	if (strcmp(tag, "error_soft") == 0) {
 		pulse_stru64(state, PULSE_ACTIVITY, &task->error_soft, val);
 	} else if (strcmp(tag, "error_io") == 0) {
+		/* note that the summary is not printed on fatal errors, but we also increment it for each single logged error */
 		pulse_stru64(state, PULSE_ACTIVITY, &task->error_io, val);
 	} else if (strcmp(tag, "error_data") == 0) {
+		/* note that the summary is not printed on fatal errors, but we also increment it for each single logged error */
 		pulse_stru64(state, PULSE_ACTIVITY, &task->error_data, val);
 	} else if (strcmp(tag, "error_recovered") == 0) {
+		/* note that the summary is not printed on fatal errors, but we also increment it for each single recovered file */
 		pulse_stru64(state, PULSE_ACTIVITY, &task->error_recovered, val);
 	} else if (strcmp(tag, "error_unrecoverable") == 0) {
+		/* note that the summary is not printed on fatal errors, but we also increment it for each single unrecoverable file */
 		pulse_stru64(state, PULSE_ACTIVITY, &task->error_unrecoverable, val);
 	} else if (strcmp(tag, "exit") == 0) {
 		/* set the time, only if we complete the command */
