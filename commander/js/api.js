@@ -65,7 +65,15 @@ export const API = {
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
     spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
-    undelete: (filters, options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters, ...options }) }),
+    undelete: (filters, options = {}) => {
+        const sanitizeFilter = (f) => {
+            if (typeof f !== 'string') throw new Error('Invalid filter type');
+            if (/[;&|`$<>\\(){}\n!]/.test(f)) throw new Error(`Invalid characters in filter: ${f}`);
+            return f;
+        };
+        const safeFilters = Array.isArray(filters) ? filters.map(sanitizeFilter) : sanitizeFilter(filters);
+        return request('/undelete', { method: 'POST', body: JSON.stringify({ filters: safeFilters, ...options }) });
+    },
     stopTask: () => request('/stop', { method: 'POST' }),
     refreshArray: () => request('/refresh', { method: 'POST' }),
     setHoldOff: (enabled) => request('/hold_off', { method: 'POST', body: JSON.stringify({ enabled }) })
