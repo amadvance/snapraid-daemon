@@ -1650,14 +1650,14 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 	switch (task->cmd) {
 	case CMD_SYNC :
 	case CMD_SCRUB :
-		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
+		ss_json_i64(s, level, "error_soft", task->error_soft);
 		ss_json_i64(s, level, "error_io", task->error_io);
 		ss_json_i64(s, level, "error_data", task->error_data);
 		break;
 	case CMD_FIX :
 	case CMD_CHECK :
 		ss_json_i64(s, level, "error_unrecoverable", task->error_unrecoverable);
-		ss_json_i64(s, level, "error_soft", task->error_soft + task->hash_error_soft);
+		ss_json_i64(s, level, "error_soft", task->error_soft);
 		ss_json_i64(s, level, "error_io", task->error_io);
 		ss_json_i64(s, level, "error_data", task->error_data);
 		break;

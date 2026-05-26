@@ -1204,12 +1204,14 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
+		++task->error_recovered;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
+		++task->error_unrecoverable;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
@@ -1217,44 +1219,82 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 	}
 }
 
-static void process_error(struct snapraid_state* state, char** map, size_t mac)
+static void process_error_soft(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
 
-	/* the task error_io and error_data will be gathered by the final summary tag */
+	(void)map;
 
-	if (strstr(map[0], "error_io") != 0) { /* match all [hardlink/symlink/dir/empty]_error_io */
-		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
-		pulse(state, PULSE_DISKS);
-		++disk->error_io;
-	} else if (strcmp(map[0], "error_data") == 0) {
-		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
-		pulse(state, PULSE_DISKS);
-		++disk->error_data;
-	}
+	pulse(state, PULSE_ACTIVITY);
+	++task->error_soft;
 }
 
-static void process_parity_error(struct snapraid_state* state, char** map, size_t mac)
+static void process_error_io(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
+		return;
+
+	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
+	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
+	++disk->error_io;
+	++task->error_io;
+}
+
+static void process_error_data(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
+		return;
+
+	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_DATA);
+	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
+	++disk->error_data;
+	++task->error_data;
+}
+
+static void process_parity_error_soft(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	/* the task error_io and error_data will be gathered by the final summary tag */
+	(void)map;
 
-	if (strcmp(map[0], "parity_error_io") == 0) {
-		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
-		pulse(state, PULSE_DISKS);
-		++disk->error_io;
-	} else if (strcmp(map[0], "parity_error_data") == 0) {
-		struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
-		pulse(state, PULSE_DISKS);
-		++disk->error_data;
-	}
+	pulse(state, PULSE_ACTIVITY);
+	++task->error_soft;
+}
+
+static void process_parity_error_io(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
+		return;
+
+	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
+	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
+	++disk->error_io;
+	++task->error_io;
+}
+
+static void process_parity_error_data(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
+		return;
+
+	struct snapraid_disk* disk = find_disk(&state->disk_list, task->number, map[2], DISK_PARITY);
+	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
+	++disk->error_data;
+	++task->error_data;
 }
 
 static void process_conf(struct snapraid_state* state, char** map, size_t mac)
@@ -1391,18 +1431,6 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 	}
 }
 
-static void process_hash_summary(struct snapraid_state* state, char** map, size_t mac)
-{
-	struct snapraid_task* task = state->runner.latest;
-
-	if (mac < 3)
-		return;
-
-	if (strcmp(map[1], "error_soft") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->hash_error_soft, map[2]);
-	}
-}
-
 static void process_summary(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -1434,17 +1462,12 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			stri64(&state->global.diff_parse.diff_restored, val);
 	}
 
-	if (strcmp(tag, "error_soft") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->error_soft, val);
-	} else if (strcmp(tag, "error_io") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->error_io, val);
-	} else if (strcmp(tag, "error_data") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->error_data, val);
-	} else if (strcmp(tag, "error_recovered") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->error_recovered, val);
-	} else if (strcmp(tag, "error_unrecoverable") == 0) {
-		pulse_stru64(state, PULSE_ACTIVITY, &task->error_unrecoverable, val);
-	} else if (strcmp(tag, "exit") == 0) {
+	/*
+	 * Note that the summary is not printed on fatal errors, so the
+	 * other counters are gathered counting the single logged events
+	 */
+
+	if (strcmp(tag, "exit") == 0) {
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
@@ -1626,27 +1649,47 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_fsinfo_parity_split(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "hash_summary") == 0) {
-		state_lock();
-		process_hash_summary(state, map, mac);
-		state_unlock();
 	} else if (strcmp(cmd, "summary") == 0) {
 		state_lock();
 		process_summary(state, map, mac);
 		state_unlock();
 	} else if (
-		strcmp(cmd, "error") == 0 || strcmp(cmd, "error_io") == 0 || strcmp(cmd, "error_data") == 0
-		|| strcmp(cmd, "hardlink_error") == 0 || strcmp(cmd, "hardlink_error_io") == 0
-		|| strcmp(cmd, "symlink_error") == 0 || strcmp(cmd, "symlink_error_io") == 0
-		|| strcmp(cmd, "dir_error") == 0 || strcmp(cmd, "dir_error_io") == 0
-		|| strcmp(cmd, "empty_error") == 0 || strcmp(cmd, "empty_error_io") == 0
+		strcmp(cmd, "error") == 0
+		|| strcmp(cmd, "hardlink_error") == 0
+		|| strcmp(cmd, "symlink_error") == 0
+		|| strcmp(cmd, "dir_error") == 0
+		|| strcmp(cmd, "empty_error") == 0
 	) {
 		state_lock();
-		process_error(state, map, mac);
+		process_error_soft(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "parity_error") == 0 || strcmp(cmd, "parity_error_io") == 0 || strcmp(cmd, "parity_error_data") == 0) {
+	} else if (
+		strcmp(cmd, "error_io") == 0
+		|| strcmp(cmd, "hardlink_error_io") == 0
+		|| strcmp(cmd, "symlink_error_io") == 0
+		|| strcmp(cmd, "dir_error_io") == 0
+		|| strcmp(cmd, "empty_error_io") == 0
+	) {
 		state_lock();
-		process_parity_error(state, map, mac);
+		process_error_io(state, map, mac);
+		state_unlock();
+	} else if (
+		strcmp(cmd, "error_data") == 0
+	) {
+		state_lock();
+		process_error_data(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "parity_error") == 0) {
+		state_lock();
+		process_parity_error_soft(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "parity_error_io") == 0) {
+		state_lock();
+		process_parity_error_io(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "parity_error_data") == 0) {
+		state_lock();
+		process_parity_error_data(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "daemon") == 0) {
 		state_lock();

@@ -376,11 +376,6 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 		ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
 		ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
-
-		/* error statistics for sync */
-		if (task->cmd == CMD_SYNC) {
-			ss_printf(ss, "  Hash Errors:    %" PRIu64 "\n", task->hash_error_soft);
-		}
 	}
 
 	/* canceled tasks don't have real messages, just the exit_msg already shown */
@@ -457,11 +452,6 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 		ss_printf(ss, "I/O Errs: %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "Data Errs: %" PRIu64 "\n", task->error_data);
 		ss_printf(ss, "Soft Errors: %" PRIu64 "\n", task->error_soft);
-
-		/* error statistics for sync */
-		if (task->cmd == CMD_SYNC) {
-			ss_printf(ss, "Hash Errors: %" PRIu64 "\n", task->hash_error_soft);
-		}
 	}
 
 	/* canceled tasks don't have real messages, just the exit_msg already shown */
