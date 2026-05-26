@@ -16,7 +16,7 @@ AM_CONDITIONAL(HAVE_ADVD2, [test x"$ADVD2" != x])
 AC_CHECK_PROG([ZIP], [zip], [zip])
 
 if test "x$ZIP" = "x"; then
-    AC_MSG_ERROR([zip not found. This package is required for the build.])
+    AC_MSG_ERROR([The zip utility is required during the build process. Please ensure it is installed on your system.])
 fi
 
 # Check if we are targeting Windows
