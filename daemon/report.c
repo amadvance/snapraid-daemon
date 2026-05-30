@@ -282,25 +282,29 @@ static void print_fix_narrow(ss_t* ss, tommy_list* fix_list)
 }
 
 /**
- * If there is a single error message, return it
+ * If there is an error message, return it
  */
 static struct snapraid_message* has_reason(tommy_list* list)
 {
-	struct snapraid_message* ret = 0;
-
+	/* first for fatal errors */
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_message* message = i->data;
 		switch (message->level) {
 		case MESSAGE_LEVEL_FATAL :
-		case MESSAGE_LEVEL_ERROR :
-			if (ret)
-				return 0; /* more than one */
-			ret = message;
-			break;
+			return message;
 		}
 	}
 
-	return ret;
+	/* then for errors */
+	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
+		struct snapraid_message* message = i->data;
+		switch (message->level) {
+		case MESSAGE_LEVEL_ERROR :
+			return message;
+		}
+	}
+
+	return 0;
 }
 
 /**
@@ -349,7 +353,13 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 	struct snapraid_message* reason = has_reason(&task->message_list);
 	if (task->state == PROCESS_STATE_TERM) {
 		if (task->exit_code == 0) {
-			ss_prints(ss, "Completed successfully\n");
+			if (reason) {
+				if (reason->type == MESSAGE_TYPE_HARDWARE)
+					ss_printf(ss, "Completed with errors: [HARDWARE FAILURE] %s\n", reason->msg);
+				else
+					ss_printf(ss, "Completed with errors: %s\n", reason->msg);
+			} else
+				ss_prints(ss, "Completed successfully\n");
 		} else {
 			if (reason) {
 				if (reason->type == MESSAGE_TYPE_HARDWARE)
@@ -379,7 +389,7 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 	}
 
 	/* canceled tasks don't have real messages, just the exit_msg already shown */
-	if (task->state != PROCESS_STATE_CANCEL && reason == 0) {
+	if (task->state != PROCESS_STATE_CANCEL) {
 		/* print error messages if any */
 		int first = 1;
 		for (i = tommy_list_head(&task->message_list); i; i = i->next) {
@@ -388,7 +398,7 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 			case MESSAGE_LEVEL_FATAL :
 			case MESSAGE_LEVEL_ERROR :
 				if (first) {
-					ss_prints(ss, "\nERROR MESSAGES:\n");
+					ss_prints(ss, "\nERRORS:\n");
 					first = 0;
 				}
 				if (message->type == MESSAGE_TYPE_HARDWARE)
@@ -418,7 +428,10 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 	struct snapraid_message* reason = has_reason(&task->message_list);
 	if (task->state == PROCESS_STATE_TERM) {
 		if (task->exit_code == 0) {
-			ss_prints(ss, "COMPLETED\n");
+			if (reason)
+				ss_prints(ss, "Completed with ERRORS\n");
+			else
+				ss_prints(ss, "Completed SUCCESSFULLY\n");
 		} else {
 			ss_printf(ss, "FAILED (%d)\n", task->exit_code);
 			if (reason) {
@@ -455,7 +468,7 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 	}
 
 	/* canceled tasks don't have real messages, just the exit_msg already shown */
-	if (task->state != PROCESS_STATE_CANCEL && reason == 0) {
+	if (task->state != PROCESS_STATE_CANCEL) {
 		/* print error messages if any */
 		int first = 1;
 		for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
