@@ -1,6 +1,13 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.11 2026/06
+============
+ * Do not block heartbeat notifications for warning messages. 
+   Note: This requires SnapRAID 14.6 or later to function correctly.
+ * Elevate all hardware-related errors to "critical" level, even if they
+   do not cause execution to terminate.
+
 1.10 2026/05
 ============
  * Enhanced JSON sanitization to properly escape control characters.

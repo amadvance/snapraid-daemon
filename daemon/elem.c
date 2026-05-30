@@ -275,7 +275,7 @@ int task_level(struct snapraid_task* task)
 			break;
 		case MESSAGE_LEVEL_ERROR :
 			if (message->type == MESSAGE_TYPE_HARDWARE)
-				level = level_mix(level, LVL_ERROR);
+				level = level_mix(level, LVL_CRITICAL);
 			else
 				level = level_mix(level, LVL_WARNING);
 			break;
