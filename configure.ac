@@ -374,6 +374,15 @@ AC_ARG_ENABLE([symlink-tools],
 		])
 	])
 
+# Enable support for hardlinked tool paths
+AC_ARG_ENABLE([hardlink-tools],
+	[AS_HELP_STRING([--enable-hardlink-tools], [allow paths specified with --with-* options to be hard links])],
+	[
+		AS_IF([test "x$enableval" = "xyes"], [
+			AC_DEFINE([HAVE_HARDLINK_TOOLS], [1], [Define to 1 if paths specified with --with-* options are allowed to be hardlinks.])
+		])
+	])
+
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
 AM_CONDITIONAL([INSTALL_BSD_INIT], [test "x$init_type" = "xbsd"])

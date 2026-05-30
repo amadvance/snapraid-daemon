@@ -487,10 +487,10 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 	 */
 	int fd = openat(dir_fd, exec_name, O_RDONLY
 #if !HAVE_SYMLINK_TOOLS
-		| O_NOFOLLOW
+			| O_NOFOLLOW
 #endif
 #if !HAVE_FEXECVE
-		| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
+			| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
 #endif
 	);
 	if (fd < 0) {
@@ -550,12 +550,14 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 		return -1;
 	}
 
+#if !HAVE_HARDLINK_TOOLS
 	/* verify the file has not been hardlinked multiple times */
 	if (st.st_nlink > 1) {
 		log_task(LVL_ERROR, "file %s has multiple hard links", resolved_path);
 		close(fd);
 		return -1;
 	}
+#endif
 
 	return fd;
 }
