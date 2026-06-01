@@ -7,8 +7,10 @@ SnapRAID-Daemon HISTORY
    Note: This requires SnapRAID 14.6 or later to function correctly.
  * Elevate all hardware-related errors to "critical" level, even if they
    do not cause execution to terminate.
- * Never omit fatal error messages from the details view, regardless of
-   the specified limit.
+ * Never omit fatal error messages from the task details view,
+   regardless of the specified limit.
+ * Display details about the health problems affecting a task when its
+   status is degraded.
 
 1.10 2026/05
 ============

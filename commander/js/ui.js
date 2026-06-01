@@ -823,6 +823,15 @@ export const renderTasks = (data, hidePeriodic) => {
             exitStatus = `<div class="text-red mb-1">Exit Signal: ${formatSignal(t.exit_sig)}</div>`;
         }
 
+        let healthColor = 'text-muted';
+        if (t.health === 'failing') {
+            healthColor = 'text-red';
+        } else if (t.health === 'prefail') {
+            healthColor = 'text-yellow';
+        } else if (t.health === 'corrupt') {
+            healthColor = 'text-purple';
+        }
+
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
@@ -842,6 +851,7 @@ export const renderTasks = (data, hidePeriodic) => {
             <td colspan="7">
                 <div class="task-history-log text-xs font-mono p-4">
                      ${exitStatus}
+                     ${t.health_reason ? `<div class="${healthColor} mb-1">${healthBadge(t.health)}: ${t.health_reason}</div>` : ''}
                       ${t.log_file && t.log_file !== 'N/A' ? `
                       <div class="text-muted mb-2">
                          <span class="font-bold">Log File: ${t.log_file}</span>
