@@ -398,7 +398,7 @@ struct snapraid_global {
 	int64_t last_time; /**< Time of the latest command */
 	char last_cmd[64]; /**< Last command started */
 	int health; /**< Health of the array. Updated after any task. */
-	char health_reason[HEALTH_REASON_MAX]; /**< Health reason for failing or prefail. */
+	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
 
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */

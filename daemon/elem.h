@@ -293,9 +293,11 @@ const char* health_name(int health);
 /**
  * Determine health status for a task result.
  * @param task Completed task
+ * @param reason Buffer to store health reason
+ * @param reason_size Size of reason buffer
  * @return Health status ID
  */
-int health_task(struct snapraid_task* task);
+int health_task(struct snapraid_task* task, char* reason, size_t reason_size);
 
 /**
  * Analyze disk health and return health status.

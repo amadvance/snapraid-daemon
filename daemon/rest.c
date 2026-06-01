@@ -435,7 +435,7 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (state->global.health != HEALTH_PASSED)
+	if (state->global.health == HEALTH_CORRUPT || state->global.health == HEALTH_PREFAIL || state->global.health == HEALTH_FAILING)
 		ss_json_str(&s, level, "health_reason", state->global.health_reason);
 	ss_json_close(&s, &level);
 
@@ -1558,7 +1558,12 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 	ss_json_str(s, level, "command", command_name(task->cmd));
 	if (task->high_cmd)
 		ss_json_str(s, level, "high_command", command_name(task->high_cmd));
-	ss_json_str(s, level, "health", health_name(health_task(task)));
+	char health_reason[HEALTH_REASON_MAX];
+	health_reason[0] = 0;
+	int health = health_task(task, health_reason, sizeof(health_reason));
+	ss_json_str(s, level, "health", health_name(health));
+	if (health == HEALTH_CORRUPT || health == HEALTH_PREFAIL || health == HEALTH_FAILING)
+		ss_json_str(s, level, "health_reason", health_reason);
 	if (task->running) {
 		switch (task->state) {
 		case PROCESS_STATE_START : ss_json_str(s, level, "status", "starting"); break;
