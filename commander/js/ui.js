@@ -832,6 +832,10 @@ export const renderTasks = (data, hidePeriodic) => {
             healthColor = 'text-purple';
         }
 
+        const messages = t.messages || [];
+        const fatalMessages = messages.filter(m => m.level === 'fatal');
+        const otherMessages = messages.filter(m => m.level !== 'fatal');
+
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
@@ -851,6 +855,10 @@ export const renderTasks = (data, hidePeriodic) => {
             <td colspan="7">
                 <div class="task-history-log text-xs font-mono p-4">
                      ${exitStatus}
+                     ${fatalMessages.map(m => {
+                         const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
+                         return `<div class="text-red break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
+                     }).join('')}
                      ${t.health_reason ? `<div class="${healthColor} mb-1">${healthBadge(t.health)}: ${t.health_reason}</div>` : ''}
                       ${t.log_file && t.log_file !== 'N/A' ? `
                       <div class="text-muted mb-2">
@@ -858,9 +866,9 @@ export const renderTasks = (data, hidePeriodic) => {
                       </div>
                       ` : ''}
                      <div class="overflow-x-auto">
-                        ${(t.messages || []).length > 0
-                ? (t.messages || []).map(m => {
-                    const isError = m.level === 'error' || m.level === 'fatal';
+                        ${otherMessages.length > 0
+                ? otherMessages.map(m => {
+                    const isError = m.level === 'error';
                     const colorClass = isError ? 'text-red' : m.level === 'verbose' ? 'text-muted' : 'text-sky';
                     const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
                     return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
