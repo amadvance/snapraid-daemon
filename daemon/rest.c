@@ -1617,32 +1617,62 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 	if (task->text_report)
 		ss_json_str(s, level, "report_output", task->text_report);
 
+	int omit_error = 0;
+	int omit_info = 0;
+	int omit_verbose = 0;
 	ss_json_array_open(s, &level, "messages");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		struct snapraid_message* message = i->data;
-		if (--limit_messages < 0)
-			break;
-		ss_json_open(s, &level);
 		switch (message->level) {
 		case MESSAGE_LEVEL_FATAL :
+			ss_json_open(s, &level);
 			ss_json_str(s, level, "level", "fatal");
 			ss_json_str(s, level, "type", message->type == MESSAGE_TYPE_HARDWARE ? "hardware" : "soft");
 			ss_json_str(s, level, "text", message->msg);
+			ss_json_close(s, &level);
 			break;
 		case MESSAGE_LEVEL_ERROR :
-			ss_json_str(s, level, "level", "error");
-			ss_json_str(s, level, "type", message->type == MESSAGE_TYPE_HARDWARE ? "hardware" : "soft");
-			ss_json_str(s, level, "text", message->msg);
+			if (limit_messages > 0) {
+				--limit_messages;
+				ss_json_open(s, &level);
+				ss_json_str(s, level, "level", "error");
+				ss_json_str(s, level, "type", message->type == MESSAGE_TYPE_HARDWARE ? "hardware" : "soft");
+				ss_json_str(s, level, "text", message->msg);
+				ss_json_close(s, &level);
+			} else {
+				++omit_error;
+			}
 			break;
 		case MESSAGE_LEVEL_INFO :
-			ss_json_str(s, level, "level", "info");
-			ss_json_str(s, level, "text", message->msg);
+			if (limit_messages > 0) {
+				--limit_messages;
+				ss_json_open(s, &level);
+				ss_json_str(s, level, "level", "info");
+				ss_json_str(s, level, "text", message->msg);
+				ss_json_close(s, &level);
+			} else {
+				++omit_info;
+			}
 			break;
 		case MESSAGE_LEVEL_VERBOSE :
-			ss_json_str(s, level, "level", "verbose");
-			ss_json_str(s, level, "text", message->msg);
+			if (limit_messages > 0) {
+				--limit_messages;
+				ss_json_open(s, &level);
+				ss_json_str(s, level, "level", "verbose");
+				ss_json_str(s, level, "text", message->msg);
+				ss_json_close(s, &level);
+			} else {
+				++omit_verbose;
+			}
 			break;
 		}
+	}
+	if (omit_error || omit_info || omit_verbose) {
+		char buf[128];
+		snprintf(buf, sizeof(buf), "Omitted %d errors, %d informational messages, and %d verbose messages", omit_error, omit_info, omit_verbose);
+		ss_json_open(s, &level);
+		ss_json_str(s, level, "level", "info");
+		ss_json_str(s, level, "text", buf);
 		ss_json_close(s, &level);
 	}
 	ss_json_array_close(s, &level);
