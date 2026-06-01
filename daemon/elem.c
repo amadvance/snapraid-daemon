@@ -581,6 +581,7 @@ static int health_worse(int current, int value, char* reason, size_t reason_size
 
 	if (reason)
 		sncpy(reason, reason_size, msg);
+
 	return value;
 }
 
@@ -642,22 +643,30 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 	return health;
 }
 
-int health_task(struct snapraid_task* task)
+int health_task(struct snapraid_task* task, char* reason, size_t reason_size)
 {
+	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
 
-	if (task->error_data != 0)
-		health = health_worse(health, HEALTH_CORRUPT, 0, 0, 0);
+	if (task->error_data != 0) {
+		snprintf(msg, sizeof(msg), "Task found %" PRIu64 " silent data errors", task->error_data);
+		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
+	}
 
-	if (task->error_io != 0)
-		health = health_worse(health, HEALTH_PREFAIL, 0, 0, 0);
+	if (task->error_io != 0) {
+		snprintf(msg, sizeof(msg), "Task found %" PRIu64 " input/output errors", task->error_io);
+		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
+	}
 
-	if (task->error_unrecoverable != 0)
-		health = health_worse(health, HEALTH_CORRUPT, 0, 0, 0);
+	if (task->error_unrecoverable != 0) {
+		snprintf(msg, sizeof(msg), "Task found %" PRIu64 " unrecoverable errors", task->error_unrecoverable);
+		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
+	}
 
 	switch (task->state) {
 	case PROCESS_STATE_QUEUE :
-		health = health_worse(health, HEALTH_PENDING, 0, 0, 0);
+		snprintf(msg, sizeof(msg), "Task is waiting to be executed");
+		health = health_worse(health, HEALTH_PENDING, reason, reason_size, msg);
 		break;
 	}
 

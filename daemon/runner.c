@@ -25,6 +25,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 	state->global.health_reason[0] = 0;
 	int new_health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
+	/* a change from PENDING should not generate a report */
 	if (state->global.health == HEALTH_PENDING)
 		state->global.health = new_health;
 
@@ -496,7 +497,7 @@ bail:
 	task->unix_end_time = unix_end_time;
 
 	/* compute the task health */
-	task->health = health_task(task);
+	task->health = health_task(task, 0, 0);
 
 	/* check the array health, but DO NOT propagate it to the task */
 	runner_health_check_locked(state);
@@ -858,7 +859,7 @@ static int delete_old_files(const char* dir_path, int days)
 	/* nothing to do if disabled */
 	if (days == 0)
 		return 0;
-	
+
 	DIR* dir = opendir(dir_path);
 	if (dir == NULL) {
 		log_msg(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);

@@ -352,8 +352,8 @@ paths:
                     description: >
                       A human-readable string explaining the current health state.
                       This provides the specific cause when health is 'corrupt',
-                      'prefail' or 'failing' (e.g., "Disk 'd1' reporting SMART errors").
-                      This field is omitted if the array is healthy.
+                      'prefail', 'failing' or 'pending' (e.g., "Disk 'd1' reporting SMART errors").
+                      This field is omitted if the health is 'passed'.
                   active_command:
                     type: string
                     enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
@@ -983,6 +983,13 @@ components:
             * failing: The task encountered failing errors like disks missing.
             * pending: The task is currently queued or running and
               has not yet produced a final health result.
+        health_reason:
+          type: string
+          description: >
+            A human-readable string explaining the current health state.
+            This provides the specific cause when health is 'corrupt',
+            'prefail', 'failing' or 'pending'.
+            This field is omitted if the health is 'passed'.
         status:
           type: string
           enum: [queued, starting, processing, finalizing, stopping, terminated, signaled, canceled]
