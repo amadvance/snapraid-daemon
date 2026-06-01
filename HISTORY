@@ -8,7 +8,8 @@ SnapRAID-Daemon HISTORY
  * Elevate all hardware-related errors to "critical" level, even if they
    do not cause execution to terminate.
  * Never omit fatal error messages from the task details view,
-   regardless of the specified limit.
+   regardless of the specified limit, and always display them
+   at the top of the view.
  * Display details about the health problems affecting a task when its
    status is degraded.
 
