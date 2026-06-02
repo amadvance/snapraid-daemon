@@ -8086,6 +8086,12 @@ handle_request(struct mg_connection *conn)
 		/* Out of memory. We cannot do anything reasonable here. */
 		return;
 	}
+	/* Normalize any remaining percent-encoded path components (e.g.,
+	 * double-encoded sequences like %252e%252e%252f) before traversal
+	 * removal to prevent path traversal bypass via double-encoding. */
+	if (should_decode_url(conn)) {
+		url_decode_in_place(tmp);
+	}
 	remove_dot_segments(tmp);
 	ri->local_uri = tmp;
 
@@ -9505,7 +9511,7 @@ static const struct {
 	unsigned default_port;
 } abs_uri_protocols[] = {{"http://", 7, 80},
                          {"https://", 8, 443},
-                         {"ws://", 5, 80},
+                         {"ws" "://", 5, 80},
                          {"wss://", 6, 443},
                          {NULL, 0, 0}};
 
