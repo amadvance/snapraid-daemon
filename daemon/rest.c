@@ -210,6 +210,21 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	ssize_t content_length = ri->content_length;
 
+	/*
+	 * To prevent Cross-Site Request Forgery (CSRF) attacks, we strictly enforce
+	 * that any request carrying a JSON payload has the Content-Type header set to
+	 * application/json. Because application/json is not a simple Content-Type
+	 * under the CORS spec, the browser will force a pre-flight OPTIONS check
+	 * and prevent cross-origin requests unless explicitly permitted by CORS.
+	 */
+	const char* content_type = mg_get_header(conn, "Content-Type");
+	if (!content_type
+		|| strncasecmp(content_type, "application/json", 16) != 0
+		|| (content_type[16] != 0 && content_type[16] != ';' && content_type[16] != ' ')) {
+		sncpy(msg, msg_size, "Unsupported Media Type (expected application/json)");
+		return 415;
+	}
+
 	/* If Content-Length is missing, assume no Payload */
 	if (content_length < 0) {
 		*js = 0;
