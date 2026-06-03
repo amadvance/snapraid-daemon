@@ -190,13 +190,13 @@ net_web_root = commander.zip
 # You can specify multiple schedules by separating them with commas.
 # Automated maintenance is disabled if this is unset.
 #
-# Format: "HH:MM" or "Day HH:MM".
+# Format: HH:MM or DAY HH:MM
 # Hours (HH) use 24-hour format (00-23).
-# Day is the short name (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
+# DAY is the short name (Mon, Tue, Wed, Thu, Fri, Sat, Sun).
 #
 # Examples:
-#   "02:00"                - Run every night at 2 AM.
-#   "Mon 03:00, Thu 04:00" - Run every Monday at 3 AM and Thursday at 4 AM.
+#   02:00                - Run every night at 2 AM.
+#   Mon 03:00, Thu 04:00 - Run every Monday at 3 AM and Thursday at 4 AM.
 #
 maintenance_schedule = 02:00
 
