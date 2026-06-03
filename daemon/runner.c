@@ -756,6 +756,12 @@ void runner_done(struct snapraid_state* state)
 
 	state_lock(); /* locking makes helgrind happy in the signal */
 
+	struct snapraid_task* task = state->runner.latest;
+	if (task && task->running && task->pid > 0) {
+		log_msg(LVL_INFO, "terminating helper process pid %" PRIu64 " due to daemon shutdown", (uint64_t)task->pid);
+		os_term(task->pid);
+	}
+
 	/* signal the condition to allow the thread to stop */
 	thread_cond_signal(&state->runner.cond);
 
