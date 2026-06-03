@@ -25,33 +25,34 @@ static int runner_health_check_locked(struct snapraid_state* state)
 	state->global.health_reason[0] = 0;
 	int new_health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
 
-	/* a change from PENDING should not generate a report */
-	if (state->global.health == HEALTH_PENDING)
-		state->global.health = new_health;
+	int old_health = state->global.health;
 
-	/* if health change, run a report */
-	if (state->global.health != new_health) {
+	/* if health change */
+	if (old_health != new_health) {
+		/* set the new health and pulse */
 		pulse(state, PULSE_ARRAY);
-
 		state->global.health = new_health;
 
-		/* check if the current task is a report or if there is a scheduled one */
-		int has_report = state->runner.latest->cmd == CMD_REPORT;
-		if (!has_report) {
-			for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
-				struct snapraid_task* task = i->data;
-				if (task->cmd == CMD_REPORT) {
-					has_report = 1;
-					break;
+		/* send a report, but not if it's a change from PENDING */
+		if (old_health != HEALTH_PENDING) {
+			/* check if the current task is a report or if there is a scheduled one */
+			int has_report = state->runner.latest != 0 && state->runner.latest->cmd == CMD_REPORT;
+			if (!has_report) {
+				for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
+					struct snapraid_task* task = i->data;
+					if (task->cmd == CMD_REPORT) {
+						has_report = 1;
+						break;
+					}
 				}
 			}
-		}
 
-		/* if no report, schedule a new one */
-		if (!has_report) {
-			char msg[MSG_MAX];
-			int status;
-			runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+			/* if no report, schedule a new one */
+			if (!has_report) {
+				char msg[MSG_MAX];
+				int status;
+				runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+			}
 		}
 	}
 
