@@ -1785,8 +1785,10 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 							/* don't log error in syslog if it's a past log */
 							if (log_f != 0)
 								log_task(LVL_ERROR, "requires SnapRAID 14.0 or newer");
+							state_lock();
 							if (state->runner.latest)
 								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
+							state_unlock();
 							disable = 1;
 						}
 					}
