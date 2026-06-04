@@ -26,6 +26,22 @@ if test "x$ZIP" = "x"; then
     AC_MSG_ERROR([The zip utility is required during the build process. Please ensure it is installed on your system.])
 fi
 
+# Compile a quick test program using a syntax unique to C99 and newer
+AC_MSG_CHECKING([if compiler supports C99 or newer features])
+AC_COMPILE_IFELSE([
+    AC_LANG_PROGRAM([[]], [[
+        int x = 0;
+        x++;
+        int y = x;
+        int array[y];
+    ]])
+], [
+    AC_MSG_RESULT([yes])
+], [
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([A C99-compliant compiler or newer is required to build this package.])
+])
+
 # Check if we are targeting Windows
 is_windows=no
 AS_CASE([$host_os], [mingw*|msys*|cygwin*], [is_windows=yes])
