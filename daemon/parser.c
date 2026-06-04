@@ -1132,12 +1132,12 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	struint(&task->block_idx, map[1]);
 }
 
-static void process_msg(struct snapraid_state* state, char** map, size_t mac)
+static int process_msg(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 3)
-		return;
+		return 0;
 
 	pulse(state, PULSE_ACTIVITY);
 
@@ -1148,36 +1148,54 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		++msg;
 
 	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
-		/* don't limit the number of these messages */
+		/*
+		 * Don't limit the number of these messages.
+		 *
+		 * These progress and status messages are upper limited by SnapRAID,
+		 * ensuring they will never exhaust the quota entirely and bury
+		 * important error messages.
+		 */
 		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
 	} else if (strcmp(map[1], "verbose") == 0) {
+		/*
+		 * Reject any "Excluding ..." message.
+		 * They are potential too many
+		 */
+		if (strncmp(msg, "Excluding", 9) == 0)
+			return 1; /* also omit it from the log */
+
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_VERBOSE, MESSAGE_TYPE_NONE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+			++task->message_list_count;
 		} else {
 			++task->message_omit_verbose;
 		}
-		++task->message_list_count;
 	} else if (strcmp(map[1], "error") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+			++task->message_list_count;
 		} else {
 			++task->message_omit_error;
 		}
-		++task->message_list_count;
 	} else if (strcmp(map[1], "expected") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_SOFTWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+			++task->message_list_count;
 		} else {
 			++task->message_omit_info;
 		}
-		++task->message_list_count;
 	} else if (strcmp(map[1], "fatal") == 0) {
-		/* don't limit the number of these messages */
+		/*
+		 * Don't limit the number of these messages
+		 *
+		 * They are the reason of the early stopping of the program,
+		 * and are always limited in number.
+		 */
 		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
@@ -1185,16 +1203,23 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_HARDWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+			++task->message_list_count;
 		} else {
 			++task->message_omit_error;
 		}
-		++task->message_list_count;
 	} else if (strcmp(map[1], "fatal_hardware") == 0) {
-		/* don't limit the number of these messages */
+		/*
+		 * Don't limit the number of these messages
+		 *
+		 * They are the reason of the early stopping of the program,
+		 * and are always limited in number.
+		 */
 		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
 	}
+
+	return 0;
 }
 
 static void process_status(struct snapraid_state* state, char** map, size_t mac)
@@ -1573,7 +1598,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_unlock();
 	} else if (strcmp(cmd, "msg") == 0) {
 		state_lock();
-		process_msg(state, map, mac);
+		ignore_this_line = process_msg(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "status") == 0) {
 		state_lock();
