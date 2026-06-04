@@ -300,6 +300,9 @@ struct snapraid_task {
 	int arg_custom; /**< If it's a custom argument list. It's the position of the first custom argument. 0 if none */
 	tommy_list message_list; /**< List of snapraid_message */
 	int message_list_count; /**< Count of messages, just to limit the number. */
+	int message_omit_error; /**< Number of messages over the limit. */
+	int message_omit_info; /**< Number of messages over the limit. */
+	int message_omit_verbose; /**< Number of messages over the limit. */
 
 	uint64_t fix_counter; /**< Number of elements inserted in fix_list */
 	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file. Limit of FILES_MAX applied. */

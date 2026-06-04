@@ -1637,9 +1637,9 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 	if (task->text_report)
 		ss_json_str(s, level, "report_output", task->text_report);
 
-	int omit_error = 0;
-	int omit_info = 0;
-	int omit_verbose = 0;
+	int omit_error = task->message_omit_error;
+	int omit_info = task->message_omit_info;
+	int omit_verbose = task->message_omit_verbose;
 	ss_json_array_open(s, &level, "messages");
 	for (tommy_node* i = tommy_list_head(&task->message_list); i; i = i->next) {
 		struct snapraid_message* message = i->data;

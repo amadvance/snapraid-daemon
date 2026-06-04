@@ -1156,37 +1156,43 @@ static void process_msg(struct snapraid_state* state, char** map, size_t mac)
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_VERBOSE, MESSAGE_TYPE_NONE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		} else {
+			++task->message_omit_verbose;
 		}
 		++task->message_list_count;
 	} else if (strcmp(map[1], "error") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		} else {
+			++task->message_omit_error;
 		}
 		++task->message_list_count;
 	} else if (strcmp(map[1], "expected") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_SOFTWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		} else {
+			++task->message_omit_info;
 		}
 		++task->message_list_count;
 	} else if (strcmp(map[1], "fatal") == 0) {
-		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
-			tommy_list_insert_tail(&task->message_list, &message->node, message);
-		}
+		/* don't limit the number of these messages */
+		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
 	} else if (strcmp(map[1], "error_hardware") == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
 			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_HARDWARE, msg);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
+		} else {
+			++task->message_omit_error;
 		}
 		++task->message_list_count;
 	} else if (strcmp(map[1], "fatal_hardware") == 0) {
-		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
-			tommy_list_insert_tail(&task->message_list, &message->node, message);
-		}
+		/* don't limit the number of these messages */
+		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
+		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
 	}
 }
