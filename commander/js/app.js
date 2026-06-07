@@ -765,7 +765,7 @@ const app = {
             }
 
             // Handle unchecked booleans (FormData doesn't include them)
-            ['sync_prehash', 'sync_prevent_truncations', 'touch_zero_subseconds', 'notify_syslog_enabled', 'notify_differences'].forEach(key => {
+            ['sync_prehash', 'sync_prevent_truncations', 'touch_zero_subseconds', 'notify_syslog_enabled', 'notify_differences', 'check_updates'].forEach(key => {
                 if (!fullAccess && protectedFields.includes(key)) return;
                 const el = form.querySelector(`[name="${key}"]`);
                 if (el) updates[key] = el.checked;

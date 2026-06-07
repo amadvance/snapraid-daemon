@@ -47,8 +47,6 @@ SnapRAID Daemon TODO
 - In manual maintenance allow to enable/disable sync and select how much to scrub.
   Use as default the settings.
 
-- UI checks for new version. Implement in the UI or Daemon ?
-
 - Support for Basic HTTP Authentication to allow simple password protection
   for the UI.
 

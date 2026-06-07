@@ -8,6 +8,11 @@ SnapRAID-Daemon HISTORY
    utility path at build time. The default runtime discovery behavior
    remains unchanged if this option is omitted.
    Primarily intended for NixOS and other non-FHS systems.
+ * Added a "check_updates" option to periodically check for new daemon
+   releases on GitHub. The WebUI now displays the update status under
+   the Configuration card on the Dashboard and shows a dedicated
+   "UPDATE AVAILABLE" badge in the System Idle header when a new
+   version is available.
 
 1.15 2026/08
 ============
