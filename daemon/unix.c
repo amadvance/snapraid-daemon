@@ -136,6 +136,29 @@ const char* os_find_engine(void)
 	return 0;
 }
 
+static const char* curl_paths[] = {
+#ifdef CURL_PATH
+	/* Path configured at build time (e.g. on NixOS). */
+	CURL_PATH,
+#else
+	/* Linux & BSD */
+	"/usr/bin/curl",
+	"/bin/curl",
+	"/usr/local/bin/curl",
+#endif
+	0
+};
+
+const char* os_find_curl(void)
+{
+	for (int i = 0; curl_paths[i]; ++i) {
+		if (eaccess(curl_paths[i], X_OK) == 0)
+			return curl_paths[i];
+	}
+
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, "/var/log/snapraid");
@@ -890,33 +913,26 @@ bail:
 #endif
 }
 
-/*
- * os_spawn_stderr() - Fork and execute a verified executable, capturing stderr.
+/**
+ * os_spawn() - Fork and execute a verified executable, capturing stdout and/or stderr.
  *
- * Spawns @argv[0] in a new process with stderr connected to a pipe whose
- * read end is returned in @stderr_fd. stdin and stdout are redirected to
- * /dev/null. Use this when the child's error output needs to be read and
- * processed by the daemon.
-
- * The child is placed in its own process group (setpgid) to isolate it
- * from signals sent to the daemon's process group. The daemon can terminate
- * the child and all its descendants with kill(-pid, SIGTERM).
+ * Spawns @argv[0] in a new process. If @stdout_read_fd is not NULL, stdout is connected
+ * to a pipe whose read end is returned in @stdout_read_fd. If @stderr_read_fd is not NULL,
+ * stderr is connected to a pipe whose read end is returned in @stderr_read_fd.
+ * Otherwise, they are redirected to /dev/null. stdin is always redirected to /dev/null.
  *
- * The pipe is created with O_CLOEXEC on both ends. The write end is closed
- * in the parent after fork. The read end's buffer is reduced to 4096 bytes
- * to improve read responsiveness on low-volume output.
- *
- * @argv       NULL-terminated argument vector. argv[0] must be the absolute
- *             path to the executable.
- * @stderr_fd  On success, set to the read end of the stderr pipe. The caller
- *             is responsible for closing it when done.
+ * The child is placed in its own process group (setpgid) to isolate it from signals
+ * sent to the daemon's process group.
  *
  * Returns the child PID on success, or -1 on failure.
  */
-pid_t os_spawn_stderr(char** argv, int* stderr_fd)
+pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd)
 {
 	char resolved_path[PATH_MAX];
+	int out_pipe[2];
 	int err_pipe[2];
+	int has_out = (stdout_read_fd != NULL);
+	int has_err = (stderr_read_fd != NULL);
 	pid_t pid;
 
 	int fd = verify_executable(argv[0], resolved_path);
@@ -924,15 +940,34 @@ pid_t os_spawn_stderr(char** argv, int* stderr_fd)
 		return -1;
 	}
 
-	if (pipe_cloexec(err_pipe) < 0) {
-		close(fd);
-		return -1;
+	if (has_out) {
+		if (pipe_cloexec(out_pipe) < 0) {
+			close(fd);
+			return -1;
+		}
+	}
+
+	if (has_err) {
+		if (pipe_cloexec(err_pipe) < 0) {
+			if (has_out) {
+				close(out_pipe[0]);
+				close(out_pipe[1]);
+			}
+			close(fd);
+			return -1;
+		}
 	}
 
 	pid = fork();
 	if (pid < 0) {
-		close(err_pipe[0]);
-		close(err_pipe[1]);
+		if (has_out) {
+			close(out_pipe[0]);
+			close(out_pipe[1]);
+		}
+		if (has_err) {
+			close(err_pipe[0]);
+			close(err_pipe[1]);
+		}
 		close(fd);
 		return -1;
 	}
@@ -940,12 +975,6 @@ pid_t os_spawn_stderr(char** argv, int* stderr_fd)
 	if (pid == 0) {
 		/* child process */
 
-		/*
-		 * Create a new process group for the child.
-		 * This isolates the child from signals sent to the daemon's process group
-		 * and allows the daemon to kill this process and all its future children
-		 * (the entire group) using kill(-pid, SIGTERM).
-		 */
 		setpgid(0, 0);
 
 		/* io sandboxing */
@@ -954,45 +983,51 @@ pid_t os_spawn_stderr(char** argv, int* stderr_fd)
 			_exit(126);
 
 		/* stdin -> /dev/null */
-		/* stdout -> /dev/null */
-		/* stderr -> pipe */
-		if (dup2(null_fd, STDIN_FILENO) < 0
-			|| dup2(null_fd, STDOUT_FILENO) < 0
-			|| dup2(err_pipe[1], STDERR_FILENO) < 0)
+		if (dup2(null_fd, STDIN_FILENO) < 0)
 			_exit(126);
 
-		close(err_pipe[0]);
-		close(err_pipe[1]);
+		/* stdout */
+		if (has_out) {
+			if (dup2(out_pipe[1], STDOUT_FILENO) < 0)
+				_exit(126);
+		} else {
+			if (dup2(null_fd, STDOUT_FILENO) < 0)
+				_exit(126);
+		}
 
-		/* if the fd we opened is not one of the standard ones, close it */
+		/* stderr */
+		if (has_err) {
+			if (dup2(err_pipe[1], STDERR_FILENO) < 0)
+				_exit(126);
+		} else {
+			if (dup2(null_fd, STDERR_FILENO) < 0)
+				_exit(126);
+		}
+
+		if (has_out) {
+			close(out_pipe[0]);
+			close(out_pipe[1]);
+		}
+		if (has_err) {
+			close(err_pipe[0]);
+			close(err_pipe[1]);
+		}
+
 		if (null_fd > STDERR_FILENO)
 			close(null_fd);
 
 #if defined(CLOSE_RANGE_CLOEXEC) && defined(HAVE_CLOSE_RANGE)
-		/*
-		 * Set all fd to be closed on exec as extra safety measure
-		 *
-		 * fallback: if it fails, we assume to be still safe, as all fds and
-		 * sockets should be already created with CLOEXEC.
-		 */
 		close_range(3, fd - 1, CLOSE_RANGE_CLOEXEC);
 		close_range(fd + 1, ~0U, CLOSE_RANGE_CLOEXEC);
 #endif
 
-		/* restore and unblock signals */
 		os_signal_restore_after_fork();
 
-		/* use the resolved path for execution */
 		argv[0] = resolved_path;
 
-		/*
-		 * Direct Execution via File Descriptor
-		 * The kernel uses the shebang in the FD to find the interpreter.
-		 */
 #if HAVE_FEXECVE
 		fexecve(fd, argv, envp_scrubbed);
 #else
-		/* fallback: unfortunately must use the path */
 		execve(resolved_path, argv, envp_scrubbed);
 #endif
 		_exit(127);
@@ -1001,15 +1036,22 @@ pid_t os_spawn_stderr(char** argv, int* stderr_fd)
 	/* parent */
 	close(fd);
 
-	/* set the pipe buffer to the minimum to improve responsiveness */
-	if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
-		log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
-		/* log non-fatal error or ignore */
+	if (has_out) {
+		if (fcntl(out_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
+			log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+		}
+		close(out_pipe[1]);
+		*stdout_read_fd = out_pipe[0];
 	}
 
-	close(err_pipe[1]);
+	if (has_err) {
+		if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
+			log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+		}
+		close(err_pipe[1]);
+		*stderr_read_fd = err_pipe[0];
+	}
 
-	*stderr_fd = err_pipe[0];
 	return pid;
 }
 

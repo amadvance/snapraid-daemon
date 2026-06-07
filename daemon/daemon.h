@@ -14,6 +14,12 @@
 const char* os_find_engine(void);
 
 /**
+ * Find the curl binary in the system.
+ * @return Path to curl binary, or NULL if not found
+ */
+const char* os_find_curl(void);
+
+/**
  * Default paths.
  */
 void os_default_log(char* dst, size_t dst_size);
@@ -41,12 +47,13 @@ int os_wait(pid_t pid, int* status);
 int os_term(pid_t pid);
 
 /**
- * Spawn a new process with the specified argument vector.
+ * Spawn a new process with the specified argument vector, optionally capturing stdout and/or stderr.
  * @param argv Array of command line arguments
- * @param stderr_fd Pointer to store file descriptor for stderr
- * @return Process ID of spawned process
+ * @param stdout_read_fd Pointer to store file descriptor for stdout, or NULL to redirect to /dev/null
+ * @param stderr_read_fd Pointer to store file descriptor for stderr, or NULL to redirect to /dev/null
+ * @return Process ID of spawned process, or -1 on failure
  */
-pid_t os_spawn_stderr(char** argv, int* stderr_fd);
+pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd);
 
 /**
  * Execute a system command with optional user context and input.

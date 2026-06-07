@@ -362,6 +362,11 @@ int config_load_locked(struct snapraid_state* state)
 				}
 			} else if (strcmp(key, "net_web_root") == 0) {
 				sncpy(config->net_web_root, sizeof(config->net_web_root), val);
+			} else if (strcmp(key, "check_updates") == 0) {
+				if (parse_int(val, 0, 1, &config->check_updates) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "maintenance_schedule") == 0) {
 				if (config_parse_maintenance_schedule(val, config) == 0) {
 				} else {
@@ -703,9 +708,9 @@ void config_default_locked(struct snapraid_state* state)
 	config->net_config_full_access = 0;
 	config->net_web_root[0] = 0;
 
+	config->check_updates = 0;
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_init(&config->maintenance_list);
-
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
@@ -743,12 +748,12 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	transient->net_config_full_access = config->net_config_full_access;
 	sncpy(transient->net_web_root, sizeof(transient->net_web_root), config->net_web_root);
 
+	transient->check_updates = config->check_updates;
 	tommy_list_init(&transient->maintenance_list);
 	for (tommy_node* i = tommy_list_head(&config->maintenance_list); i != 0; i = i->next) {
 		struct snapraid_run* run = run_dup(i->data);
 		tommy_list_insert_tail(&transient->maintenance_list, &run->node, run);
 	}
-
 	transient->sync_threshold_deletes = config->sync_threshold_deletes;
 	transient->sync_threshold_updates = config->sync_threshold_updates;
 	transient->sync_prehash = config->sync_prehash;
@@ -789,10 +794,10 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config->net_config_full_access = transient->net_config_full_access;
 	sncpy(config->net_web_root, sizeof(config->net_web_root), transient->net_web_root);
 
+	config->check_updates = transient->check_updates;
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	config->maintenance_list = transient->maintenance_list;
 	tommy_list_init(&transient->maintenance_list);
-
 	config->sync_threshold_deletes = transient->sync_threshold_deletes;
 	config->sync_threshold_updates = transient->sync_threshold_updates;
 	config->sync_prehash = transient->sync_prehash;
@@ -811,6 +816,8 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	sncpy(config->notify_result, sizeof(config->notify_result), transient->notify_result);
 	config->notify_result_level = transient->notify_result_level;
 	config->notify_differences = transient->notify_differences;
+
+	config_set_int(config, "check_updates", config->check_updates);
 
 	/* apply to the text copy */
 	char maintenance_schedule[CONFIG_MAX];

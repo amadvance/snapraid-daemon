@@ -70,6 +70,7 @@ snapraidd_SOURCES = \
 	daemon/runner.c \
 	daemon/parser.c \
 	daemon/scheduler.c \
+	daemon/version.c \
 	daemon/support.c \
 	daemon/rest.c \
 	daemon/web.c \
@@ -118,7 +119,8 @@ noinst_HEADERS = \
 	daemon/elem.h \
 	daemon/report.h \
 	daemon/notify.h \
-	daemon/smart.h
+	daemon/smart.h \
+	daemon/version.h
 
 # Add the .version file in the distribution
 dist-hook:
@@ -329,6 +331,7 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/state.h \
 	$(srcdir)/daemon/support.h \
 	$(srcdir)/daemon/unix.h \
+	$(srcdir)/daemon/version.h \
 	$(srcdir)/daemon/web.h \
 	$(srcdir)/daemon/zip.h
 $(DAEMON_PREFIX)conf.$(OBJEXT): $(DAEMON_INCLUDES)
@@ -342,6 +345,7 @@ $(DAEMON_PREFIX)report.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)rest.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)runner.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)scheduler.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)version.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)smart.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)state.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)support.$(OBJEXT): $(DAEMON_INCLUDES)

@@ -175,6 +175,15 @@ net_config_full_access = 0
 net_web_root = commander.zip
 
 ### Automation & Maintenance
+# The check_updates flag controls whether the daemon periodically
+# queries the GitHub API (via curl) to check if a new version of SnapRAID
+# Daemon is available.
+# The check is performed every 12 hours.
+#
+# This option is accessible and modifiable via the REST API.
+# 0 = disabled (default), 1 = enabled.
+check_updates = 0
+
 # Use maintenance_schedule to define when the automated maintenance
 # sequence—consisting of a sync, a scrub, and a report—should occur.
 # You can specify multiple schedules by separating them with commas.

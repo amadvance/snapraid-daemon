@@ -1279,6 +1279,23 @@ const char* os_find_engine(void)
 	return path_snapraid;
 }
 
+const char* os_find_curl(void)
+{
+	static char path_curl_resolved[PATH_MAX];
+	wchar_t path_buf[PATH_MAX];
+
+	if (is_wine) {
+		return "/usr/bin/curl";
+	}
+
+	if (SearchPathW(NULL, L"curl.exe", NULL, PATH_MAX, path_buf, NULL) != 0) {
+		u16tou8(path_curl_resolved, path_buf);
+		return path_curl_resolved;
+	}
+
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, path_log);
@@ -1375,44 +1392,91 @@ static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 	return pos;
 }
 
-pid_t os_spawn_stderr(char** argv, int* stderr_read_int)
+pid_t os_spawn(char** argv, int* stdout_read_int, int* stderr_read_int)
 {
 	wchar_t conv[CONV_MAX];
-	HANDLE stderr_write_handle;
-	HANDLE stderr_read_handle;
+	HANDLE stdout_write_handle = INVALID_HANDLE_VALUE;
+	HANDLE stdout_read_handle = INVALID_HANDLE_VALUE;
+	HANDLE stderr_write_handle = INVALID_HANDLE_VALUE;
+	HANDLE stderr_read_handle = INVALID_HANDLE_VALUE;
 	SECURITY_ATTRIBUTES sa;
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;
 	BOOL ret;
+	int has_out = (stdout_read_int != NULL);
+	int has_err = (stderr_read_int != NULL);
+	int out_f = -1;
+	int err_f = -1;
 
 	/* set the bInheritHandle flag so pipe handles are inherited */
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = TRUE;
 	sa.lpSecurityDescriptor = NULL;
 
-	/* create a pipe for the child process's STDERR */
-	if (!CreatePipe(&stderr_read_handle, &stderr_write_handle, &sa, 0)) {
-		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
-		return -1;
+	if (has_out) {
+		/* create a pipe for the child process's STDOUT */
+		if (!CreatePipe(&stdout_read_handle, &stdout_write_handle, &sa, 0)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
+			return -1;
+		}
+
+		/* ensure the reading handle to the pipe is not inherited */
+		if (!SetHandleInformation(stdout_read_handle, HANDLE_FLAG_INHERIT, 0)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
+			CloseHandle(stdout_write_handle);
+			CloseHandle(stdout_read_handle);
+			return -1;
+		}
+
+		out_f = _open_osfhandle((intptr_t)stdout_read_handle, O_RDONLY | O_BINARY);
+		if (out_f == -1) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
+			CloseHandle(stdout_write_handle);
+			CloseHandle(stdout_read_handle);
+			return -1;
+		}
 	}
 
-	/* ensure the reading handle to the pipe is not inherited */
-	if (!SetHandleInformation(stderr_read_handle, HANDLE_FLAG_INHERIT, 0)) {
-		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
-		CloseHandle(stderr_write_handle);
-		CloseHandle(stderr_read_handle);
-		return -1;
-	}
+	if (has_err) {
+		/* create a pipe for the child process's STDERR */
+		if (!CreatePipe(&stderr_read_handle, &stderr_write_handle, &sa, 0)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to create pipe for spawn, errno=%s(%d)", strerror(errno), errno);
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			return -1;
+		}
 
-	int f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
-	if (f == -1) {
-		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
-		CloseHandle(stderr_write_handle);
-		CloseHandle(stderr_read_handle);
-		return -1;
+		/* ensure the reading handle to the pipe is not inherited */
+		if (!SetHandleInformation(stderr_read_handle, HANDLE_FLAG_INHERIT, 0)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to handle information for spawn, errno=%s(%d)", strerror(errno), errno);
+			CloseHandle(stderr_write_handle);
+			CloseHandle(stderr_read_handle);
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			return -1;
+		}
+
+		err_f = _open_osfhandle((intptr_t)stderr_read_handle, O_RDONLY | O_BINARY);
+		if (err_f == -1) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to open osfhandle for spawn, errno=%s(%d)", strerror(errno), errno);
+			CloseHandle(stderr_write_handle);
+			CloseHandle(stderr_read_handle);
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			return -1;
+		}
 	}
 
 	/* prepare command line string (Windows uses a single string, not an array) */
@@ -1423,8 +1487,14 @@ pid_t os_spawn_stderr(char** argv, int* stderr_read_int)
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
 		if (pos < 0) {
 			log_task(LVL_ERROR, "command to long for spawn");
-			CloseHandle(stderr_write_handle);
-			close(f); /* close also stderr_read_handle */
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			if (has_err) {
+				CloseHandle(stderr_write_handle);
+				close(err_f);
+			}
 			return -1;
 		}
 	}
@@ -1434,9 +1504,9 @@ pid_t os_spawn_stderr(char** argv, int* stderr_read_int)
 	ZeroMemory(&pi, sizeof(pi));
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
-	si.hStdError = stderr_write_handle;
-	si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+	si.hStdOutput = has_out ? stdout_write_handle : GetStdHandle(STD_OUTPUT_HANDLE);
+	si.hStdError = has_err ? stderr_write_handle : GetStdHandle(STD_ERROR_HANDLE);
 	si.dwFlags |= STARTF_USESTDHANDLES;
 
 	/*
@@ -1458,18 +1528,35 @@ pid_t os_spawn_stderr(char** argv, int* stderr_read_int)
 	if (!ret) {
 		windows_errno(GetLastError());
 		log_task(LVL_ERROR, "failed to create process '%s' for spawn, errno=%s(%d)", u16to8size(cmd_buffer_conv, sizeof(cmd_buffer_conv), cmd_buffer), strerror(errno), errno);
-		CloseHandle(stderr_write_handle);
-		close(f); /* close also stderr_read_handle */
+		if (has_out) {
+			CloseHandle(stdout_write_handle);
+			close(out_f);
+		}
+		if (has_err) {
+			CloseHandle(stderr_write_handle);
+			close(err_f);
+		}
 		return -1;
 	}
 
-	/* close the write end of the pipe in the parent */
-	CloseHandle(stderr_write_handle);
+	/* close the write end of the pipes in the parent */
+	if (has_out) {
+		CloseHandle(stdout_write_handle);
+	}
+	if (has_err) {
+		CloseHandle(stderr_write_handle);
+	}
 
 	/* close the handle to the primary thread, we don't need it */
 	CloseHandle(pi.hThread);
 
-	*stderr_read_int = f;
+	if (has_out) {
+		*stdout_read_int = out_f;
+	}
+	if (has_err) {
+		*stderr_read_int = err_f;
+	}
+
 	return (intptr_t)pi.hProcess;
 }
 

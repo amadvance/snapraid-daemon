@@ -380,6 +380,7 @@ AC_DEFUN([WITH_TOOL], [
 ])
 
 WITH_TOOL([snapraid], [snapraid],  [SnapRAID CLI engine])
+WITH_TOOL([curl], [curl], [curl CLI tool])
 
 # Set Automake conditionals for the Makefile
 AM_CONDITIONAL([INSTALL_SYSTEMD], [test "x$init_type" = "xsystemd"])
