@@ -340,10 +340,23 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
     } else {
         // Show Last Activity
         const last = activity;
+        let updateHtml = '';
+        if (arrayInfo.latest_daemon_version) {
+            const getMajorMinor = (v) => {
+                const m = (v || '').match(/^(\d+)\.(\d+)/);
+                return m ? `${m[1]}.${m[2]}` : v;
+            };
+            if (getMajorMinor(arrayInfo.daemon_version) !== getMajorMinor(arrayInfo.latest_daemon_version)) {
+                updateHtml = `<span class="badge badge-yellow">UPDATE AVAILABLE</span>`;
+            }
+        }
         heroHtml = `
             <div class="grid-1">
             <div class="card">
-                <h3>System Idle</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 style="margin-bottom: 0;">System Idle</h3>
+                    ${updateHtml}
+                </div>
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
                     <div class="flex flex-wrap items-center gap-4 text-sm">
@@ -441,6 +454,26 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         </div>
     `;
 
+    let latestVersionHtml = '';
+    if (arrayInfo.latest_daemon_version) {
+        const getMajorMinor = (v) => {
+            const m = (v || '').match(/^(\d+)\.(\d+)/);
+            return m ? `${m[1]}.${m[2]}` : v;
+        };
+        let val = arrayInfo.latest_daemon_version;
+        if (getMajorMinor(arrayInfo.daemon_version) !== getMajorMinor(arrayInfo.latest_daemon_version)) {
+            val += ` <span class="badge badge-yellow ml-2 whitespace-nowrap">NEW!</span>`;
+        } else {
+            val += ` <span class="text-emerald text-xs ml-2 whitespace-nowrap">(up to date)</span>`;
+        }
+        latestVersionHtml = `
+                 <div class="property-row">
+                    <div class="property-label">Latest</div>
+                    <div class="property-value">${val}</div>
+                 </div>
+        `;
+    }
+
     const configHtml = `
         <div class="card">
             <h3>Configuration</h3>
@@ -449,6 +482,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                     <div class="property-label">Daemon</div>
                     <div class="property-value">${arrayInfo.daemon_version}</div>
                  </div>
+                 ${latestVersionHtml}
                  <div class="property-row">
                     <div class="property-label">Config</div>
                     <div class="property-value font-mono text-xs">${arrayInfo.daemon_conf}</div>
@@ -1011,6 +1045,7 @@ export const renderSettings = (config) => {
             <!-- Monitor -->
             <div class="card">
                 <h3>Monitor</h3>
+                ${boolField('check_updates', 'Check for Updates', 'Periodically checks for a new version of the daemon via GitHub releases.')}
                 ${inputField('probe_interval_minutes', 'Probe Interval (mins)', 'text', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.', false, 'inputmode="numeric"')}
                 ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (mins)', 'text', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.', false, 'inputmode="numeric"')}
             </div>

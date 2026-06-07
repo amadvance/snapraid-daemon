@@ -448,7 +448,15 @@ the SnapRAID Daemon.
 For security reasons, some of them can be set via the REST API only if the
 net_config_full_access option is enabled.
 
----- 6.3.1 maintenance_schedule ----
+---- 6.3.1 check_updates ----
+Enables (1) or disables (0) periodic check for daemon updates on GitHub
+via the curl CLI tool.
+If enabled, the daemon queries the GitHub API every 12 hours in the
+background. The WebUI displays the update status and alerts you when
+a new version is available.
+If missing or set to 0, update checking is disabled.
+
+---- 6.3.2 maintenance_schedule ----
 Defines the timing for the automated maintenance sequence, which
 consists of a sync, followed by a scrub, and concluding with a report.
 Multiple schedules can be specified by separating them with commas.
@@ -462,7 +470,7 @@ Examples:
 "02:00" - Run every night at 2 AM.
 "Mon 03:00, Thu 04:00" - Run every Monday at 3 AM and Thursday at 4 AM.
 
----- 6.3.2 sync_threshold_deletes ----
+---- 6.3.3 sync_threshold_deletes ----
 Sets the number of deleted or missing files that will trigger an automatic
 abort of a sync operation. The abort occurs when the number of deletions
 is equal to or greater than this value. This serves as a safety mechanism
@@ -471,7 +479,7 @@ abort the operation if any single file is deleted. This check is
 enforced during automated maintenance schedules and tasks initiated
 through the Web UI.
 
----- 6.3.3 sync_threshold_updates ----
+---- 6.3.4 sync_threshold_updates ----
 Sets the number of modified or updated files that will trigger an
 automatic abort of a sync operation. The abort occurs when the number
 of updates is equal to or greater than this value. This prevents the
@@ -481,7 +489,7 @@ the operation if any single file is modified. This check is enforced
 during automated maintenance schedules and tasks initiated through
 the Web UI.
 
----- 6.3.4 sync_prehash ----
+---- 6.3.5 sync_prehash ----
 If set to 1, the sync command is executed with the --prehash option.
 This calculates the hash of all files before the synchronization process
 begins. By hashing data before the system is subjected to the high
@@ -490,7 +498,7 @@ silent data corruption caused by faulty memory that may only trigger
 under critical system stress.
 If missing or set to 0, no pre-hashing is performed.
 
----- 6.3.5 sync_prevent_truncations ----
+---- 6.3.6 sync_prevent_truncations ----
 If set to 1, the sync is halted to prevent overwriting
 parity with empty file data. This provides a safety
 barrier against truncated data, which may occur during system
@@ -498,19 +506,19 @@ crashes or filesystem errors.
 If this is missing or set to 0, the sync is allowed
 to proceed even if files have shrunk to zero size.
 
----- 6.3.6 scrub_percentage ----
+---- 6.3.7 scrub_percentage ----
 Determines the portion of the array verified after a successful sync.
 You may use decimal points to specify fractions of a percent
 (e.g., 0.7 to verify 0.7% of the array).
 If missing or set to 0, the scrub phase is skipped entirely.
 
----- 6.3.7 scrub_older_than ----
+---- 6.3.8 scrub_older_than ----
 Specifies that only blocks older than the defined number of days
 should be scrubbed. This allows the daemon to focus verification on
 older data while skipping recently synced blocks.
 If missing or set to 0, no age-based filtering is applied.
 
----- 6.3.8 touch_zero_subseconds ----
+---- 6.3.9 touch_zero_subseconds ----
 If set to 1, a specific timestamp alignment pass is performed
 immediately before the sync during the maintenance window.
 If this is missing or set to 0, this pass is skipped.
