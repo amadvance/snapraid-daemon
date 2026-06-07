@@ -678,6 +678,9 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	print_separator(ss);
 	ss_prints(ss, "\n");
 
+	if (state->system.hostname[0] != 0)
+		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
+
 	/* array health */
 	array_health = state->global.health;
 	ss_printf(ss, "ARRAY HEALTH: %s\n", health_report_wide(array_health));
@@ -787,6 +790,9 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 {
 	(void)latest_fix;
 	(void)diff_stat;
+
+	if (state->system.hostname[0] != 0)
+		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
 
 	int array_health = state->global.health;
 	ss_printf(ss, "HEALTH: %s\n", health_report_wide(array_health));
