@@ -53,7 +53,7 @@ int os_term(pid_t pid);
  * @param stderr_read_fd Pointer to store file descriptor for stderr, or NULL to redirect to /dev/null
  * @return Process ID of spawned process, or -1 on failure
  */
-pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd);
+pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char* run_as_user);
 
 /**
  * Execute a system command with optional user context and input.

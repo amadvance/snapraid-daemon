@@ -360,7 +360,7 @@ static void runner_go(struct snapraid_state* state)
 	}
 
 	int success = 0;
-	pid = os_spawn(argv, NULL, &f);
+	pid = os_spawn(argv, NULL, &f, NULL);
 	if (pid < 0) {
 		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);

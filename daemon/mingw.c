@@ -1392,7 +1392,7 @@ static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 	return pos;
 }
 
-pid_t os_spawn(char** argv, int* stdout_read_int, int* stderr_read_int)
+pid_t os_spawn(char** argv, int* stdout_read_int, int* stderr_read_int, const char* run_as_user)
 {
 	wchar_t conv[CONV_MAX];
 	HANDLE stdout_write_handle = INVALID_HANDLE_VALUE;
@@ -1516,15 +1516,80 @@ pid_t os_spawn(char** argv, int* stdout_read_int, int* stderr_read_int)
 	const wchar_t* cwd = L"C:\\";
 
 	/* create the child process */
-	ret = CreateProcessW(
-		NULL,
-		cmd_buffer,
-		NULL, NULL,
-		TRUE, /* inherit pipe handles */
-		CREATE_NEW_PROCESS_GROUP,
-		NULL, cwd,
-		&si, &pi
-	);
+	if (run_as_user == 0 || run_as_user[0] == 0) {
+		ret = CreateProcessW(
+			NULL,
+			cmd_buffer,
+			NULL, NULL,
+			TRUE, /* inherit pipe handles */
+			CREATE_NEW_PROCESS_GROUP,
+			NULL, cwd,
+			&si, &pi
+		);
+	} else {
+		/* Drop to restricted service account */
+		HANDLE h_token = NULL;
+
+		/* Validate that the requested user is actually a supported Service Account before attempting logon */
+		if (_stricmp(run_as_user, "LocalService") != 0 && _stricmp(run_as_user, "NetworkService") != 0) {
+			log_task(LVL_ERROR, "only supported users are LocalService and NetworkService");
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			if (has_err) {
+				CloseHandle(stderr_write_handle);
+				close(err_f);
+			}
+			return -1;
+		}
+
+		if (!LogonUserW(u8tou16(conv, run_as_user), L"NT AUTHORITY", NULL, LOGON32_LOGON_SERVICE, LOGON32_PROVIDER_DEFAULT, &h_token)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to logon user %s, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			if (has_err) {
+				CloseHandle(stderr_write_handle);
+				close(err_f);
+			}
+			return -1;
+		}
+
+		/* Create an environment block to ensure PATH is loaded */
+		LPVOID env = NULL;
+		if (!CreateEnvironmentBlock(&env, h_token, FALSE)) {
+			windows_errno(GetLastError());
+			log_task(LVL_ERROR, "failed to get user %s environment, errno=%s(%d)", run_as_user, strerror(errno), errno);
+			CloseHandle(h_token);
+			if (has_out) {
+				CloseHandle(stdout_write_handle);
+				close(out_f);
+			}
+			if (has_err) {
+				CloseHandle(stderr_write_handle);
+				close(err_f);
+			}
+			return -1;
+		}
+
+		ret = CreateProcessAsUserW(
+			h_token,
+			NULL,
+			cmd_buffer,
+			NULL, NULL,
+			TRUE, /* inherit pipe handles */
+			CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT,
+			env, cwd,
+			&si, &pi
+		);
+
+		if (env)
+			DestroyEnvironmentBlock(env);
+		CloseHandle(h_token);
+	}
 	if (!ret) {
 		windows_errno(GetLastError());
 		log_task(LVL_ERROR, "failed to create process '%s' for spawn, errno=%s(%d)", u16to8size(cmd_buffer_conv, sizeof(cmd_buffer_conv), cmd_buffer), strerror(errno), errno);
