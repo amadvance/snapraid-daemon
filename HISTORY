@@ -13,6 +13,10 @@ SnapRAID-Daemon HISTORY
    the Configuration card on the Dashboard and shows a dedicated
    "UPDATE AVAILABLE" badge in the System Idle header when a new
    version is available.
+ * Added a "./configure --with-curl=PATH" option to allow hardcoding
+   the curl utility path at build time.
+ * Include the system hostname at the beginning of the status report
+   before the health status.
 
 1.15 2026/08
 ============
