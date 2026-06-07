@@ -9,6 +9,7 @@
 #include "log.h"
 #include "scheduler.h"
 #include "daemon.h"
+#include "version.h"
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, char* msg, size_t msg_size, int* status)
 {
@@ -314,12 +315,14 @@ void* scheduler_thread(void* arg)
 	int64_t last_probe_and_spindown_ts;
 	int64_t last_delete_ts;
 	int64_t last_history_ts;
+	int64_t last_version_check_ts;
 
 	last = time(0);
 	localtime_r(&last, &last_tm);
 	last_probe_and_spindown_ts = os_tick_sec();
 	last_delete_ts = last_probe_and_spindown_ts;
 	last_history_ts = last_probe_and_spindown_ts;
+	last_version_check_ts = 0;
 
 	state_lock();
 
@@ -392,6 +395,18 @@ void* scheduler_thread(void* arg)
 			}
 
 			int64_t mono_now_secs = os_tick_sec();
+
+			/* check for new version every 12 hours */
+			if (state->config.check_updates
+				&& (last_version_check_ts == 0 || mono_now_secs - last_version_check_ts >= 12 * 3600)) {
+				state_unlock();
+
+				last_version_check_ts = mono_now_secs;
+				version_check(state);
+
+				state_lock();
+				/* continue with other tasks */
+			}
 
 			/* delete old log every hour */
 			if (state->config.sys_log_retention_days > 0

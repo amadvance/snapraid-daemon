@@ -1675,6 +1675,12 @@ components:
 
             Note that this flag itself is immutable via the API and can only be changed by
             manually editing the 'snapraidd.conf' file and reloading the daemon.
+        check_updates:
+          type: boolean
+          example: false
+          description: >
+            Enables periodic update checking. If enabled, the daemon will check every 12 hours
+            if a new version of the snapraid-daemon is available.
         maintenance_schedule:
           type: string
           example: '02:00'
@@ -2068,9 +2074,14 @@ components:
       properties:
         daemon_version:
           type: string
-          example: '13.1'
+          example: '1.10'
           description: >
             The version of the SnapRAID Daemon currently running.
+        latest_daemon_version:
+          type: string
+          example: '1.11'
+          description: >
+            The latest SnapRAID engine version available upstream from GitHub, if retrieved.
         daemon_conf:
           type: string
           example: '/etc/snapraid.conf'

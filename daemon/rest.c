@@ -605,7 +605,15 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		int c0 = jv[j++].size;
 		while (c0-- > 0) {
 			char keyword[KEYWORD_MAX];
-			if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
+			if (json_entry(js, &jv[j], json_const("check_updates")) == 0) {
+				++j;
+				if (json_boolean(js, &jv[j], &transient.check_updates) == 0) {
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
+			} else if (json_entry(js, &jv[j], json_const("maintenance_schedule")) == 0) {
 				++j;
 				if (json_string(js, &jv[j], keyword, sizeof(keyword)) == 0
 					&& config_parse_maintenance_schedule(keyword, &transient) == 0) {
@@ -844,6 +852,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_bool(&s, level, "config_full_access", config->net_config_full_access);
+	ss_json_bool(&s, level, "check_updates", config->check_updates);
 	ss_json_str(&s, level, "maintenance_schedule", schedule_buf);
 	ss_json_int(&s, level, "sync_threshold_deletes", config->sync_threshold_deletes);
 	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
@@ -1945,6 +1954,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
+	if (state->global.latest_daemon_version[0] != 0) {
+		ss_json_str(&s, level, "latest_daemon_version", state->global.latest_daemon_version);
+	}
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(state->global.health));
 	if (*global->version) { /* engine was run */

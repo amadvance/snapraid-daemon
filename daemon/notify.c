@@ -14,10 +14,6 @@
 /****************************************************************************/
 /* notify */
 
-#include <string.h>
-#include <ctype.h>
-#include <stddef.h>
-
 /*
  * Looks for option (with spaces around) in cmdline.
  * If found, extracts the following argument into dest.

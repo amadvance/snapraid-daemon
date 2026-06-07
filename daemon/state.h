@@ -393,6 +393,7 @@ struct snapraid_bucket {
 
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
+	char latest_daemon_version[64]; /**< Latest daemon version fetched from GitHub. */
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	int64_t content_probe_unixtime; /**< Modification time of the content file. 0 if unknown. */
@@ -480,6 +481,7 @@ struct snapraid_config {
 	char net_allowed_origin[CONFIG_MAX]; /**< Allowed origin for CORS */
 	int net_config_full_access; /**< 1 if full configuration access is allowed from network, 0 otherwise */
 	char net_web_root[PATH_MAX]; /**< Web pages directory */
+	int check_updates; /**< 1 to enable periodic update check, 0 otherwise */
 	tommy_list maintenance_list; /**< List of snapraid_run */
 	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
 	int sync_threshold_updates; /**< Threshold for updates before sync fails */
