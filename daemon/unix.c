@@ -926,7 +926,7 @@ bail:
  *
  * Returns the child PID on success, or -1 on failure.
  */
-pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd)
+pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char* run_as_user)
 {
 	char resolved_path[PATH_MAX];
 	int out_pipe[2];
@@ -976,6 +976,24 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd)
 		/* child process */
 
 		setpgid(0, 0);
+
+		/* drop privileges first (if configured) */
+		if (run_as_user && run_as_user[0] != 0) {
+			errno = 0;
+			struct passwd* pw = getpwnam(run_as_user);
+			if (!pw) {
+				if (errno == 0)
+					_exit(127);
+				else
+					_exit(126);
+			}
+			if (initgroups(pw->pw_name, pw->pw_gid) != 0)
+				_exit(126);
+			if (setgid(pw->pw_gid) != 0)
+				_exit(126);
+			if (setuid(pw->pw_uid) != 0)
+				_exit(126);
+		}
 
 		/* io sandboxing */
 		int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);

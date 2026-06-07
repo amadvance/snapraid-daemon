@@ -63,7 +63,7 @@ void version_check(struct snapraid_state* state)
 	};
 
 	int stdout_fd = -1;
-	pid_t pid = os_spawn(argv, &stdout_fd, NULL);
+	pid_t pid = os_spawn(argv, &stdout_fd, NULL, NULL);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to check updates: spawn failed, errno=%s(%d)", strerror(errno), errno);
 		return;
