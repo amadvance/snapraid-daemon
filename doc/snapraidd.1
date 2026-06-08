@@ -667,7 +667,101 @@ itself finished without crashing.
 Future versions of the daemon will introduce new event types that may
 not relate to array access or follow the \`task\-\` naming convention.
 It is strongly recommended to implement a default handler to ignore
-unrecognized events
+unrecognized events.
+.PP
+The script is executed with several environment variables providing details
+about the execution context:
+.RS 0
+.PD 0
+.HP 4
+.I SNAPRAID_EVENT
+The event type (\`task\-begin\`, \`task\-end\` or \`task\-error\`).
+.HP 4
+.I SNAPRAID_NUMBER
+The unique sequential ID of the task.
+.HP 4
+.I SNAPRAID_COMMAND
+The specific command name (e.g. \`sync\`, \`scrub\`, \`diff\`).
+.HP 4
+.I SNAPRAID_HIGH_COMMAND
+The high\-level command if part of a group (e.g.
+\`maintenance\`, \`heal\` or \`undelete\`).
+.HP 4
+.I SNAPRAID_LOG_FILE
+Path to the task execution log file.
+.HP 4
+.I SNAPRAID_RUN_AS_USER
+The user account configured for running the hooks.
+.HP 4
+.I SNAPRAID_DAEMON_CONFIG
+Path to the daemon configuration file.
+.HP 4
+.I SNAPRAID_ENGINE_CONFIG
+Path to the SnapRAID engine configuration file.
+.PD
+.RE
+.PP
+During \`task\-end\` and \`task\-error\` events, the following additional
+variables are also available:
+.RS 0
+.PD 0
+.HP 4
+.I SNAPRAID_ARRAY_HEALTH
+The health classification of the array after the
+task (\`passed\`, \`prefail\`, \`failing\`, \`corrupt\` or \`pending\`).
+.HP 4
+.I SNAPRAID_HEALTH
+The health classification of the task.
+.HP 4
+.I SNAPRAID_STATUS
+The exit status of the task (\`terminated\`, \`signaled\`, \`canceled\`).
+.HP 4
+.I SNAPRAID_EXIT_CODE
+The exit code of the task if \`terminated\`.
+.HP 4
+.I SNAPRAID_EXIT_SIGNAL
+The termination signal of task if \`signaled\`.
+.HP 4
+.I SNAPRAID_ELAPSED_SECONDS
+The total task execution time in seconds.
+.HP 4
+.I SNAPRAID_ERROR_IO
+Count of input/output errors during the task.
+.HP 4
+.I SNAPRAID_ERROR_DATA
+Count of data errors during the task.
+.HP 4
+.I SNAPRAID_ERROR_SOFT
+Count of soft errors during the task.
+.HP 4
+.I SNAPRAID_ERROR_RECOVERED
+Count of recovered blocks/errors during the task.
+.HP 4
+.I SNAPRAID_ERROR_UNRECOVERABLE
+Count of unrecoverable blocks/errors during the task.
+.PD
+.RE
+.PP
+For \`diff\` and \`sync\` commands, modification metrics are also exposed:
+.RS 0
+.PD 0
+.HP 4
+.I SNAPRAID_DIFF_ADDED
+Count of added files.
+.HP 4
+.I SNAPRAID_DIFF_REMOVED
+Count of removed files.
+.HP 4
+.I SNAPRAID_DIFF_UPDATED
+Count of updated/modified files.
+.HP 4
+.I SNAPRAID_DIFF_MOVED
+Count of moved files.
+.HP 4
+.I SNAPRAID_DIFF_COPIED
+Count of copied files.
+.PD
+.RE
 .PP
 SECURITY REQUIREMENTS:
 * The script path MUST be absolute (must start with /).

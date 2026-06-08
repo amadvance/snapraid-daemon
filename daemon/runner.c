@@ -280,8 +280,48 @@ static struct snapraid_task* omit_task(struct snapraid_state* state, struct snap
 #define HOOK_FLAG_DOCKER 1
 #define HOOK_FLAG_SCRIPT 2
 
-static int runner_hook_begin(int number, int cmd, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, const char* hook_script, const char* hook_docker_pause, const char* hook_run_as_user, int* out_hook_flags)
+#define ENVV_MAX 48
+
+static void add_env(char** envv, int* envv_count, const char* name, const char* format, ...)
 {
+	if (*envv_count >= ENVV_MAX - 1)
+		return;
+
+	char value[PATH_MAX + 256];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(value, sizeof(value), format, args);
+	va_end(args);
+
+	char* entry = malloc(strlen(name) + 1 + strlen(value) + 1);
+	if (entry) {
+		sprintf(entry, "%s=%s", name, value);
+		envv[*envv_count] = entry;
+		(*envv_count)++;
+	}
+}
+
+static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task* task, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int* out_hook_flags)
+{
+	char hook_script[CONFIG_MAX];
+	char hook_docker_pause[CONFIG_MAX];
+	char hook_run_as_user[CONFIG_MAX];
+	char conf[PATH_MAX];
+	char conf_engine[PATH_MAX];
+	char log_file[PATH_MAX];
+
+	state_lock();
+	int cmd = task->cmd;
+	int high_cmd = task->high_cmd;
+	int number = task->number;
+	sncpy(log_file, sizeof(log_file), task->log_file);
+	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
+	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
+	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
+	sncpy(conf, sizeof(conf), state->config.conf);
+	sncpy(conf_engine, sizeof(conf_engine), state->global.conf_engine);
+	state_unlock();
+
 	if (hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
 		const char* docker_path = os_find_docker();
 		if (!docker_path) {
@@ -321,7 +361,37 @@ static int runner_hook_begin(int number, int cmd, FILE* log_f, char* exit_neg_ms
 		hook_argv[0] = (char*)hook_script;
 		hook_argv[1] = hook_event;
 		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, NULL, hook_run_as_user);
+
+		char* envv[ENVV_MAX];
+		int envv_count = 0;
+		memset(envv, 0, sizeof(envv));
+
+		add_env(envv, &envv_count, "SNAPRAID_EVENT", "%s", "task-begin");
+		add_env(envv, &envv_count, "SNAPRAID_TASK_NUMBER", "%d", number);
+		add_env(envv, &envv_count, "SNAPRAID_CMD", "%s", command_name(cmd));
+		if (high_cmd != 0 && high_cmd != cmd) {
+			add_env(envv, &envv_count, "SNAPRAID_HIGH_CMD", "%s", command_name(high_cmd));
+		}
+		if (log_file[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_LOG_FILE", "%s", log_file);
+		}
+		if (hook_run_as_user[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_RUN_AS_USER", "%s", hook_run_as_user);
+		}
+		if (conf[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_DAEMON_CONFIG", "%s", conf);
+		}
+		if (conf_engine[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", conf_engine);
+		}
+		envv[envv_count] = NULL;
+
+		script_ret = os_script(hook_argv, envv, hook_run_as_user);
+
+		for (int i = 0; i < envv_count; ++i) {
+			free(envv[i]);
+		}
+
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
@@ -362,8 +432,74 @@ static int runner_hook_begin(int number, int cmd, FILE* log_f, char* exit_neg_ms
 	return 0;
 }
 
-static void runner_hook_end(int number, int cmd, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, const char* hook_script, const char* hook_docker_pause, const char* hook_run_as_user, int hook_flags)
+static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* task, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
 {
+	char hook_script[CONFIG_MAX];
+	char hook_docker_pause[CONFIG_MAX];
+	char hook_run_as_user[CONFIG_MAX];
+	char conf[PATH_MAX];
+	char conf_engine[PATH_MAX];
+
+	/* diff stats */
+	int64_t diff_added = 0;
+	int64_t diff_removed = 0;
+	int64_t diff_updated = 0;
+	int64_t diff_moved = 0;
+	int64_t diff_copied = 0;
+
+	/* copy of only the fields used from task */
+	int has_task = 0;
+	int number = 0;
+	int cmd = CMD_SYNC;
+	int high_cmd = 0;
+	char log_file[PATH_MAX];
+	log_file[0] = 0;
+	int task_state = 0;
+	int exit_sig = 0;
+	int exit_code = 0;
+	time_t unix_start_time = 0;
+	time_t unix_end_time = 0;
+	int task_health = HEALTH_PENDING;
+	uint64_t error_io = 0;
+	uint64_t error_data = 0;
+	uint64_t error_soft = 0;
+	uint64_t error_recovered = 0;
+	uint64_t error_unrecoverable = 0;
+
+	state_lock();
+	if (task) { /* if called at daemon shutdown there is no task */
+		has_task = 1;
+		number = task->number;
+		cmd = task->cmd;
+		high_cmd = task->high_cmd;
+		sncpy(log_file, sizeof(log_file), task->log_file);
+		task_state = task->state;
+		exit_sig = task->exit_sig;
+		exit_code = task->exit_code;
+		unix_start_time = task->unix_start_time;
+		unix_end_time = task->unix_end_time;
+		task_health = task->health;
+		error_io = task->error_io;
+		error_data = task->error_data;
+		error_soft = task->error_soft;
+		error_recovered = task->error_recovered;
+		error_unrecoverable = task->error_unrecoverable;
+	}
+	int array_health = array_health = state->global.health;
+	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
+	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
+	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
+	sncpy(conf, sizeof(conf), state->config.conf);
+	sncpy(conf_engine, sizeof(conf_engine), state->global.conf_engine);
+	if (cmd == CMD_DIFF || cmd == CMD_SYNC) {
+		diff_added = state->global.diff_current.diff_added;
+		diff_removed = state->global.diff_current.diff_removed;
+		diff_updated = state->global.diff_current.diff_updated;
+		diff_moved = state->global.diff_current.diff_moved;
+		diff_copied = state->global.diff_current.diff_copied;
+	}
+	state_unlock();
+
 	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook_script[0] != 0 && runner_need_hook(cmd)) {
 		char* hook_argv[3];
 		char hook_event[KEYWORD_MAX];
@@ -378,7 +514,79 @@ static void runner_hook_end(int number, int cmd, FILE* log_f, char* exit_neg_msg
 		hook_argv[0] = (char*)hook_script;
 		hook_argv[1] = hook_event;
 		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, NULL, hook_run_as_user);
+
+		char* envv[ENVV_MAX];
+		int envv_count = 0;
+		memset(envv, 0, sizeof(envv));
+
+		add_env(envv, &envv_count, "SNAPRAID_EVENT", "%s", success ? "task-end" : "task-error");
+		if (has_task) {
+			add_env(envv, &envv_count, "SNAPRAID_NUMBER", "%d", number);
+			add_env(envv, &envv_count, "SNAPRAID_COMMAND", "%s", command_name(cmd));
+			if (high_cmd != 0 && high_cmd != cmd) {
+				add_env(envv, &envv_count, "SNAPRAID_HIGH_COMMAND", "%s", command_name(high_cmd));
+			}
+			if (log_file[0] != 0) {
+				add_env(envv, &envv_count, "SNAPRAID_LOG_FILE", "%s", log_file);
+			}
+
+			switch (task_state) {
+			case PROCESS_STATE_TERM :
+				add_env(envv, &envv_count, "SNAPRAID_STATUS", "terminated");
+				add_env(envv, &envv_count, "SNAPRAID_EXIT_CODE", "%d", exit_code);
+				break;
+			case PROCESS_STATE_SIGNAL :
+				add_env(envv, &envv_count, "SNAPRAID_STATUS", "signaled");
+				add_env(envv, &envv_count, "SNAPRAID_EXIT_SIGNAL", "%d", exit_sig);
+				break;
+			case PROCESS_STATE_CANCEL :
+				add_env(envv, &envv_count, "SNAPRAID_STATUS", "canceled");
+				break;
+			}
+
+			int64_t elapsed = unix_end_time - unix_start_time;
+			if (elapsed < 0)
+				elapsed = 0;
+			add_env(envv, &envv_count, "SNAPRAID_ELAPSED_SECONDS", "%" PRIi64, elapsed);
+			add_env(envv, &envv_count, "SNAPRAID_ARRAY_HEALTH", "%s", health_name(array_health));
+			add_env(envv, &envv_count, "SNAPRAID_HEALTH", "%s", health_name(task_health));
+
+			add_env(envv, &envv_count, "SNAPRAID_ERROR_IO", "%" PRIu64, error_io);
+			add_env(envv, &envv_count, "SNAPRAID_ERROR_DATA", "%" PRIu64, error_data);
+			add_env(envv, &envv_count, "SNAPRAID_ERROR_SOFT", "%" PRIu64, error_soft);
+
+			if (cmd == CMD_FIX) {
+				add_env(envv, &envv_count, "SNAPRAID_ERROR_RECOVERED", "%" PRIu64, error_recovered);
+				add_env(envv, &envv_count, "SNAPRAID_ERROR_UNRECOVERABLE", "%" PRIu64, error_unrecoverable);
+			}
+
+			if (cmd == CMD_DIFF || cmd == CMD_SYNC) {
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_ADDED", "%" PRIi64, diff_added);
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_REMOVED", "%" PRIi64, diff_removed);
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_UPDATED", "%" PRIi64, diff_updated);
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_MOVED", "%" PRIi64, diff_moved);
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_COPIED", "%" PRIi64, diff_copied);
+			}
+		} else {
+			add_env(envv, &envv_count, "SNAPRAID_CMD", "%s", command_name(cmd));
+		}
+		if (hook_run_as_user[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_RUN_AS_USER", "%s", hook_run_as_user);
+		}
+		if (conf[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_DAEMON_CONFIG", "%s", conf);
+		}
+		if (conf_engine[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", conf_engine);
+		}
+		envv[envv_count] = NULL;
+
+		script_ret = os_script(hook_argv, envv, hook_run_as_user);
+
+		for (int i = 0; i < envv_count; ++i) {
+			free(envv[i]);
+		}
+
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
@@ -534,7 +742,7 @@ static void runner_go(struct snapraid_state* state)
 
 	int hook_flags = 0;
 	if (pre_hook_flags == 0) {
-		if (runner_hook_begin(number, cmd, log_f, exit_neg_msg, sizeof(exit_neg_msg), hook_script, hook_docker_pause, hook_run_as_user, &hook_flags) < 0) {
+		if (runner_hook_begin(state, task, log_f, exit_neg_msg, sizeof(exit_neg_msg), &hook_flags) < 0) {
 			pid_ret = -1;
 			goto bail;
 		}
@@ -597,16 +805,25 @@ static void runner_go(struct snapraid_state* state)
 	}
 
 bail:
+	unix_end_time = time(0);
+	if (unix_end_time < unix_start_time)
+		unix_end_time = unix_start_time;
+
+	state_lock();
+	task->unix_end_time = unix_end_time;
+
+	task->health = health_task(task, 0, 0);
+
+	/* check the array health, but DO NOT propagate it to the task */
+	runner_health_check_locked(state);
+	state_unlock();
+
 	if (post_skip == 0) {
-		runner_hook_end(number, cmd, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_script, hook_docker_pause, hook_run_as_user, hook_flags);
+		runner_hook_end(state, task, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags);
 		if (exit_neg_msg[0] != 0) {
 			pid_ret = -1;
 		}
 	}
-
-	unix_end_time = time(0);
-	if (unix_end_time < unix_start_time)
-		unix_end_time = unix_start_time; /* time start time may be in the future of few seconds to guarantee uniqueness */
 
 	/* store if the hook was skipped */
 	if (post_skip)
@@ -632,13 +849,6 @@ bail:
 
 	/* the task is not running anymore */
 	task->running = 0;
-	task->unix_end_time = unix_end_time;
-
-	/* compute the task health */
-	task->health = health_task(task, 0, 0);
-
-	/* check the array health, but DO NOT propagate it to the task */
-	runner_health_check_locked(state);
 
 	/* compare the pulse (after evaluating the array health) */
 	task->pulse = pulse_rev(state, &pulse_before);
@@ -868,17 +1078,10 @@ static void* runner_thread(void* arg)
 
 				/* if this canceled task was supposed to handle the hook, we must close the hook now */
 				if (state->runner.hook_flags && runner_need_hook(task->cmd)) {
-					char hook_script[CONFIG_MAX];
-					char hook_docker_pause[CONFIG_MAX];
-					char hook_run_as_user[CONFIG_MAX];
 					int postponed_flags = state->runner.hook_flags;
 
-					sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
-					sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
-					sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
-
 					state_unlock();
-					runner_hook_end(task->number, task->cmd, NULL, NULL, 0, 0, hook_script, hook_docker_pause, hook_run_as_user, postponed_flags);
+					runner_hook_end(state, task, NULL, NULL, 0, 0, postponed_flags);
 					state_lock();
 
 					state->runner.hook_flags = 0;
@@ -894,17 +1097,10 @@ static void* runner_thread(void* arg)
 
 	/* if the daemon is shutting down and a hook was skipped, we must close it now */
 	if (state->runner.hook_flags) {
-		char hook_script[CONFIG_MAX];
-		char hook_docker_pause[CONFIG_MAX];
-		char hook_run_as_user[CONFIG_MAX];
 		int postponed_flags = state->runner.hook_flags;
 
-		sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
-		sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
-		sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
-
 		state_unlock();
-		runner_hook_end(0, CMD_SYNC, NULL, NULL, 0, 0, hook_script, hook_docker_pause, hook_run_as_user, postponed_flags);
+		runner_hook_end(state, NULL, NULL, NULL, 0, 0, postponed_flags);
 		state_lock();
 
 		state->runner.hook_flags = 0;

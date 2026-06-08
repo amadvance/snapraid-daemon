@@ -6,11 +6,6 @@ SnapRAID Daemon TODO
 
 - Compress .log with .gz
 
-- Extend hook script with environment variables.
-  - Which high command is going to be run -> SNAPRAID_HIGH_CMD=maintenance/undelete/heal
-  - The specific low command, useful for the task-error case, SNAPRAID_CMD=scrub
-  - The exit code or signal for the task-error case SNAPRAID_EXIT_CODE, SNAPRAID_EXIT_SIGNAL
-
 - Add a new "notify_start" that can be used to notify the start of a high level task like maintenance.
   - Add a macro for the subject %s like notify_result.
   - Add a macro in notify_result and notify_start for the task name. Like %t/maintenance/heal/undelete...

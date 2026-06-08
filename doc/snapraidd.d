@@ -561,7 +561,44 @@ Configuration
 	Future versions of the daemon will introduce new event types that may
 	not relate to array access or follow the `task-` naming convention.
 	It is strongly recommended to implement a default handler to ignore
-	unrecognized events
+	unrecognized events.
+
+	The script is executed with several environment variables providing details
+	about the execution context:
+
+	SNAPRAID_EVENT - The event type (`task-begin`, `task-end` or `task-error`).
+	SNAPRAID_NUMBER - The unique sequential ID of the task.
+	SNAPRAID_COMMAND - The specific command name (e.g. `sync`, `scrub`, `diff`).
+	SNAPRAID_HIGH_COMMAND - The high-level command if part of a group (e.g.
+		`maintenance`, `heal` or `undelete`).
+	SNAPRAID_LOG_FILE - Path to the task execution log file.
+	SNAPRAID_RUN_AS_USER - The user account configured for running the hooks.
+	SNAPRAID_DAEMON_CONFIG - Path to the daemon configuration file.
+	SNAPRAID_ENGINE_CONFIG - Path to the SnapRAID engine configuration file.
+
+	During `task-end` and `task-error` events, the following additional
+	variables are also available:
+
+	SNAPRAID_ARRAY_HEALTH - The health classification of the array after the
+		task (`passed`, `prefail`, `failing`, `corrupt` or `pending`).
+	SNAPRAID_HEALTH - The health classification of the task.
+	SNAPRAID_STATUS - The exit status of the task (`terminated`, `signaled`, `canceled`).
+	SNAPRAID_EXIT_CODE - The exit code of the task if `terminated`.
+	SNAPRAID_EXIT_SIGNAL - The termination signal of task if `signaled`.
+	SNAPRAID_ELAPSED_SECONDS - The total task execution time in seconds.
+	SNAPRAID_ERROR_IO - Count of input/output errors during the task.
+	SNAPRAID_ERROR_DATA - Count of data errors during the task.
+	SNAPRAID_ERROR_SOFT - Count of soft errors during the task.
+	SNAPRAID_ERROR_RECOVERED - Count of recovered blocks/errors during the task.
+	SNAPRAID_ERROR_UNRECOVERABLE - Count of unrecoverable blocks/errors during the task.
+
+	For `diff` and `sync` commands, modification metrics are also exposed:
+
+	SNAPRAID_DIFF_ADDED - Count of added files.
+	SNAPRAID_DIFF_REMOVED - Count of removed files.
+	SNAPRAID_DIFF_UPDATED - Count of updated/modified files.
+	SNAPRAID_DIFF_MOVED - Count of moved files.
+	SNAPRAID_DIFF_COPIED - Count of copied files.
 
 	SECURITY REQUIREMENTS:
 	* The script path MUST be absolute (must start with /).
