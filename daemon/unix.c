@@ -159,6 +159,29 @@ const char* os_find_curl(void)
 	return 0;
 }
 
+static const char* docker_paths[] = {
+#ifdef DOCKER_PATH
+	/* Path configured at build time. */
+	DOCKER_PATH,
+#else
+	/* Linux & BSD */
+	"/usr/bin/docker",
+	"/bin/docker",
+	"/usr/local/bin/docker",
+#endif
+	0
+};
+
+const char* os_find_docker(void)
+{
+	for (int i = 0; docker_paths[i]; ++i) {
+		if (eaccess(docker_paths[i], X_OK) == 0)
+			return docker_paths[i];
+	}
+
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, "/var/log/snapraid");

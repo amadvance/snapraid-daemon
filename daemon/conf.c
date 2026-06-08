@@ -421,6 +421,8 @@ int config_load_locked(struct snapraid_state* state)
 				sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), val);
 			} else if (strcmp(key, "hook_script") == 0) {
 				sncpy(config->hook_script, sizeof(config->hook_script), val);
+			} else if (strcmp(key, "hook_docker_pause") == 0) {
+				sncpy(config->hook_docker_pause, sizeof(config->hook_docker_pause), val);
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->notify_syslog) == 0) {
 				} else {
@@ -722,6 +724,7 @@ void config_default_locked(struct snapraid_state* state)
 	config->spindown_idle_minutes = 0;
 	config->hook_run_as_user[0] = 0;
 	config->hook_script[0] = 0;
+	config->hook_docker_pause[0] = 0;
 	config->notify_syslog = 0;
 	config->notify_syslog_level = LVL_ERROR;
 	config->notify_run_as_user[0] = 0;
@@ -765,6 +768,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	transient->spindown_idle_minutes = config->spindown_idle_minutes;
 	sncpy(transient->hook_run_as_user, sizeof(transient->hook_run_as_user), config->hook_run_as_user);
 	sncpy(transient->hook_script, sizeof(transient->hook_script), config->hook_script);
+	sncpy(transient->hook_docker_pause, sizeof(transient->hook_docker_pause), config->hook_docker_pause);
 	transient->notify_syslog = config->notify_syslog;
 	transient->notify_syslog_level = config->notify_syslog_level;
 	sncpy(transient->notify_run_as_user, sizeof(transient->notify_run_as_user), config->notify_run_as_user);
@@ -809,6 +813,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config->spindown_idle_minutes = transient->spindown_idle_minutes;
 	sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), transient->hook_run_as_user);
 	sncpy(config->hook_script, sizeof(config->hook_script), transient->hook_script);
+	sncpy(config->hook_docker_pause, sizeof(config->hook_docker_pause), transient->hook_docker_pause);
 	config->notify_syslog = transient->notify_syslog;
 	config->notify_syslog_level = transient->notify_syslog_level;
 	sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), transient->notify_run_as_user);
@@ -835,6 +840,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config_set_int(config, "spindown_idle_minutes", config->spindown_idle_minutes);
 	config_set_string(config, "hook_run_as_user", config->hook_run_as_user);
 	config_set_string(config, "hook_script", config->hook_script);
+	config_set_string(config, "hook_docker_pause", config->hook_docker_pause);
 	config_set_int(config, "notify_syslog_enabled", config->notify_syslog);
 	config_set(config, "notify_syslog_level", config_level(config->notify_syslog_level));
 	config_set_string(config, "notify_run_as_user", config->notify_run_as_user);

@@ -1088,6 +1088,7 @@ export const renderSettings = (config) => {
             <div class="card">
                 <h3>Hook</h3>
                 ${inputField('hook_script', 'Hook Script', 'text', 'The absolute path to a custom script to trigger custom logic for various daemon events.', !fullAccess)}
+                ${inputField('hook_docker_pause', 'Docker Containers to Pause', 'text', 'Names or IDs of Docker containers to pause during task execution (e.g., plex, transmission).', !fullAccess)}
                 ${inputField('hook_run_as_user', 'Run Hook Script As User', 'text', 'The specific system user account used to execute your custom hook script.', !fullAccess)}
             </div>
             </div>

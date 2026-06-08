@@ -1669,6 +1669,7 @@ components:
             read-only state for all API requests:
             - hook_run_as_user
             - hook_script
+            - hook_docker_pause
             - notify_run_as_user
             - notify_heartbeat
             - notify_result
@@ -1802,6 +1803,16 @@ components:
           description: >
             Absolute path to a custom script to trigger custom logic for
             various daemon events.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
+        hook_docker_pause:
+          type: string
+          example: 'plex,transmission'
+          description: >
+            Names or IDs of Docker containers to pause during the task
+            execution (e.g., plex, transmission).
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly

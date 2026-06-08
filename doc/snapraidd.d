@@ -379,6 +379,7 @@ Configuration
 
 	hook_run_as_user - The account used for executing hook_script.
 	hook_script - The absolute path to the hook script.
+	hook_docker_pause - The docker containers to pause.
 	notify_run_as_user - The account used for notification commands.
 	notify_heartbeat - The command used for health monitoring pings.
 	notify_result - The command used for sending task reports.
@@ -579,6 +580,13 @@ Configuration
 	the exact reason.
 
 	This remains inactive if no path is defined.
+
+    hook_docker_pause
+	Specifies a comma-separated list of Docker containers to pause during
+	tasks that access the array (e.g., plex, transmission).
+
+	The containers are paused immediately before running the task (or the
+	pre hook script) and unpaused immediately afterward.
 
     hook_run_as_user
 	Specifies the user account used to execute the hook_script.

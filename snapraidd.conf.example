@@ -115,6 +115,7 @@ net_allowed_origin = self
 # When set to 1, the following options can be updated via PATCH requests:
 #   - hook_run_as_user
 #   - hook_script
+#   - hook_docker_pause
 #   - notify_run_as_user
 #   - notify_heartbeat
 #   - notify_result
@@ -314,6 +315,16 @@ spindown_idle_minutes = 15
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
 #hook_script = /usr/local/bin/snapraid-hook.sh
+
+# Specify a comma-separated list of Docker container names to pause during the
+# task execution.
+#
+# The containers are paused just before the hook_script 'task-begin' execution,
+# and unpaused after the hook_script finishes (or if the task or hook fails).
+#
+# This option can only be modified via the REST API if 'net_config_full_access'
+# is set to 1. Otherwise, it remains read-only for security reasons.
+#hook_docker_pause = plex,transmission
 
 # The user account used for executing hook_script.
 # If missing or left blank, the scripts run with the daemon's current privileges.

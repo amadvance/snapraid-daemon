@@ -733,7 +733,7 @@ const app = {
 
             const fullAccess = app.state.config?.config_full_access !== false;
             const protectedFields = [
-                'hook_run_as_user', 'hook_script',
+                'hook_run_as_user', 'hook_script', 'hook_docker_pause',
                 'notify_run_as_user', 'notify_heartbeat', 'notify_result', 'notify_result_level',
             ];
 

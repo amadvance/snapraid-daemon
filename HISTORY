@@ -13,10 +13,20 @@ SnapRAID-Daemon HISTORY
    the Configuration card on the Dashboard and shows a dedicated
    "NEW VERSION AVAILABLE" badge in the System Idle header when a new
    version is available.
- * Added a "./configure --with-curl=PATH" option to allow hardcoding
-   the curl utility path at build time.
+ * Added a "hook_docker_pause" option to specify a comma-separated list
+   of Docker containers to pause during tasks that access the array.
+   Containers are paused immediately before running the task (or the
+   pre hook script) and unpaused immediately afterward.
  * Include the system hostname at the beginning of the status report
    before the health status.
+ * Removed the "sys_engine" option and replaced it with a new
+   "./configure --with-snapraid=PATH" option to allow hardcoding the
+   utility path at build time.
+   Similarly added new "--with-docker=PATH" and "--with-curl=PATH"
+   options to allow hardcoding the curl and docker utility paths at
+   build time. The default runtime discovery behavior remains unchanged
+   if these options are omitted.
+   Primarily intended for NixOS and other non-FHS systems.
 
 1.15 2026/08
 ============

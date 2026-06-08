@@ -1296,6 +1296,23 @@ const char* os_find_curl(void)
 	return 0;
 }
 
+const char* os_find_docker(void)
+{
+	static char path_docker[PATH_MAX];
+	wchar_t path_buf[PATH_MAX];
+
+	if (is_wine) {
+		return "/usr/bin/docker";
+	}
+
+	if (SearchPathW(NULL, L"docker.exe", NULL, PATH_MAX, path_buf, NULL) != 0) {
+		u16tou8(path_docker, path_buf);
+		return path_docker;
+	}
+
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, path_log);

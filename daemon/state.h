@@ -332,7 +332,7 @@ struct snapraid_runner {
 	int number_allocator; /**< Allocator of number of tasks */
 	int64_t last_start_time; /**< Latest start time used */
 	struct snapraid_task* latest; /**< Task running, or latest one finished */
-	int script_skip; /**< If the post_run script was skipped because a following task is coming */
+	int hook_flags; /**< Active hook flags postponed to the next task */
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
 	tommy_list history_list; /**< List of snapraid_task already executed */
 	int hold_off; /**< Hold off the next maintenance */
@@ -495,6 +495,7 @@ struct snapraid_config {
 	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
 	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
 	char hook_script[CONFIG_MAX]; /**< Hook script path */
+	char hook_docker_pause[CONFIG_MAX]; /**< Docker containers to pause, comma-separated */
 	int notify_syslog;
 	int notify_syslog_level;
 	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */
