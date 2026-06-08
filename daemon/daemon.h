@@ -73,10 +73,11 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 /**
  * Execute a script file with specified user context.
  * @param argv Array of command line arguments
+ * @param envp Environment variables (NULL-terminated list of strings)
  * @param run_as_user User to run script as (NULL for current user)
  * @return Exit status of script
  */
-int os_script(char** argv, const char* run_as_user);
+int os_script(char** argv, char** envp, const char* run_as_user);
 
 /**
  * Gather static system information.

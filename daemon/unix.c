@@ -606,7 +606,7 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 /**
  * Executes a script directly via its file descriptor.
  */
-int os_script(char** argv, const char* run_as_user)
+int os_script(char** argv, char** envp, const char* run_as_user)
 {
 	char resolved_path[PATH_MAX];
 	pid_t pid;
@@ -702,12 +702,35 @@ int os_script(char** argv, const char* run_as_user)
 		 * Direct Execution via File Descriptor
 		 * The kernel uses the shebang in the FD to find the interpreter.
 		 */
+		if (envp != NULL) {
+			int envv_count = 0;
+			while (envp[envv_count] != NULL) {
+				envv_count++;
+			}
+			int scrubbed_count = sizeof(envp_scrubbed) / sizeof(envp_scrubbed[0]) - 1;
+			char* envp_dynamic[scrubbed_count + envv_count + 1];
+			for (int i = 0; i < scrubbed_count; ++i) {
+				envp_dynamic[i] = envp_scrubbed[i];
+			}
+			for (int i = 0; i < envv_count; ++i) {
+				envp_dynamic[scrubbed_count + i] = envp[i];
+			}
+			envp_dynamic[scrubbed_count + envv_count] = NULL;
+
 #if HAVE_FEXECVE
-		fexecve(fd, argv, envp_scrubbed);
+			fexecve(fd, argv, envp_dynamic);
 #else
-		/* fallback: unfortunately must use the path */
-		execve(resolved_path, argv, envp_scrubbed);
+			/* fallback: unfortunately must use the path */
+			execve(resolved_path, argv, envp_dynamic);
 #endif
+		} else {
+#if HAVE_FEXECVE
+			fexecve(fd, argv, envp_scrubbed);
+#else
+			/* fallback: unfortunately must use the path */
+			execve(resolved_path, argv, envp_scrubbed);
+#endif
+		}
 		_exit(127);
 	}
 
