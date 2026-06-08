@@ -677,6 +677,16 @@ body {
     line-height: 1.2;
 }
 
+a.badge {
+    text-decoration: none;
+    transition: filter 0.2s ease;
+}
+
+a.badge:hover {
+    filter: brightness(1.25);
+    text-decoration: none;
+}
+
 .badge-green {
     background: color-mix(in srgb, var(--c-emerald-500) 20%, transparent);
     color: var(--c-emerald-500);

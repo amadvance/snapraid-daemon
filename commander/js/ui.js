@@ -358,7 +358,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             }
         }
         if (daemonUpdate || engineUpdate) {
-            updateHtml = `<span class="badge badge-yellow">NEW VERSION AVAILABLE</span>`;
+            updateHtml = `<a href="https://www.snapraid.it/download" target="_blank" rel="noopener noreferrer" class="badge badge-yellow">NEW VERSION AVAILABLE</a>`;
         }
         heroHtml = `
             <div class="grid-1">
@@ -473,7 +473,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         if (!current) return healthBadge('pending');
         if (!latest) return current;
         if (getMajorMinor(current) !== getMajorMinor(latest)) {
-            return `${current} <span class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${latest}</span>`;
+            return `${current} <a href="https://www.snapraid.it/download" target="_blank" rel="noopener noreferrer" class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${latest}</a>`;
         }
         return `${current} <span class="text-emerald text-xs ml-2 whitespace-nowrap">up to date</span>`;
     };
@@ -1048,7 +1048,7 @@ export const renderSettings = (config) => {
             <!-- Monitor -->
             <div class="card">
                 <h3>Monitor</h3>
-                ${boolField('check_updates', 'Check for Updates', 'Periodically checks for a new version of the daemon via GitHub releases.')}
+                ${boolField('check_updates', 'Check for Updates', 'Periodically checks for a new version of the daemon and engine.')}
                 ${inputField('probe_interval_minutes', 'Probe Interval (mins)', 'text', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.', false, 'inputmode="numeric"')}
                 ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (mins)', 'text', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.', false, 'inputmode="numeric"')}
             </div>
