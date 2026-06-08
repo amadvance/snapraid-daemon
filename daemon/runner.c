@@ -321,7 +321,7 @@ static int runner_hook_begin(int number, int cmd, FILE* log_f, char* exit_neg_ms
 		hook_argv[0] = (char*)hook_script;
 		hook_argv[1] = hook_event;
 		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, hook_run_as_user);
+		script_ret = os_script(hook_argv, NULL, hook_run_as_user);
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
@@ -378,7 +378,7 @@ static void runner_hook_end(int number, int cmd, FILE* log_f, char* exit_neg_msg
 		hook_argv[0] = (char*)hook_script;
 		hook_argv[1] = hook_event;
 		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, hook_run_as_user);
+		script_ret = os_script(hook_argv, NULL, hook_run_as_user);
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)

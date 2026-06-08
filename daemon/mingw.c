@@ -757,8 +757,8 @@ windows_dir* windows_opendir(const char* dir)
 
 	dirstream = malloc(sizeof(windows_dir));
 	if (!dirstream) {
-		log_msg(LVL_CRITICAL, "low memory");
-		exit(EXIT_FAILURE);
+		errno = ENOMEM;
+		return 0;
 	}
 
 	wdir = convert(conv_buf, dir);
@@ -1129,8 +1129,10 @@ int windows_key_create(windows_key_t* key, void (*destructor)(void*))
 	struct windows_key_context* context;
 
 	context = malloc(sizeof(struct windows_key_context));
-	if (!context)
+	if (!context) {
+		errno = ENOMEM;
 		return -1;
+	}
 
 	context->func = destructor;
 	context->key = TlsAlloc();
@@ -1221,8 +1223,10 @@ int windows_create(thread_id_t* thread, void* attr, void* (*func)(void*), void* 
 	(void)attr;
 
 	context = malloc(sizeof(struct windows_thread_context));
-	if (!context)
+	if (!context) {
+		errno = ENOMEM;
 		return -1;
+	}
 
 	context->func = func;
 	context->arg = arg;
@@ -1879,7 +1883,82 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	}
 }
 
-int os_script(char** argv, const char* run_as_user)
+static WCHAR* env_combine(const WCHAR* base_env, char** envp)
+{
+	size_t base_len = 0;
+	if (base_env) {
+		const WCHAR* p = base_env;
+		while (*p != 0) {
+			p += wcslen(p) + 1;
+		}
+		base_len = p - base_env + 1;
+	} else {
+		base_len = 1;
+	}
+
+	size_t envv_w_total_len = 0;
+	int envv_count = 0;
+	if (envp) {
+		while (envp[envv_count] != NULL) {
+			envv_count++;
+		}
+	}
+
+	WCHAR** envv_w = NULL;
+	WCHAR* new_env = NULL;
+
+	if (envv_count > 0) {
+		envv_w = calloc(envv_count, sizeof(WCHAR*));
+		if (!envv_w) {
+			goto bail;
+		}
+		for (int i = 0; i < envv_count; ++i) {
+			wchar_t conv[CONV_MAX];
+			u8tou16(conv, envp[i]);
+			size_t len = wcslen(conv);
+			envv_w[i] = malloc((len + 1) * sizeof(WCHAR));
+			if (!envv_w[i]) {
+				errno = ENOMEM;
+				goto bail;
+			}
+			memcpy(envv_w[i], conv, (len + 1) * sizeof(WCHAR));
+			envv_w_total_len += len + 1;
+		}
+	}
+
+	size_t total_len = base_len + envv_w_total_len + 1;
+	new_env = malloc(total_len * sizeof(WCHAR));
+	if (!new_env) {
+		errno = ENOMEM;
+		goto bail;
+	}
+
+	WCHAR* dst = new_env;
+	if (base_len > 1 && base_env) {
+		memcpy(dst, base_env, (base_len - 1) * sizeof(WCHAR));
+		dst += base_len - 1;
+	}
+	for (int i = 0; i < envv_count; ++i) {
+		if (envv_w && envv_w[i]) {
+			size_t len = wcslen(envv_w[i]);
+			memcpy(dst, envv_w[i], (len + 1) * sizeof(WCHAR));
+			dst += len + 1;
+		}
+	}
+	*dst = 0;
+
+bail:
+	if (envv_w) {
+		for (int i = 0; i < envv_count; ++i) {
+			free(envv_w[i]);
+		}
+		free(envv_w);
+	}
+
+	return new_env;
+}
+
+int os_script(char** argv, char** envp, const char* run_as_user)
 {
 	wchar_t conv[CONV_MAX];
 	PROCESS_INFORMATION pi;
@@ -1941,16 +2020,40 @@ int os_script(char** argv, const char* run_as_user)
 	 * Run exactly as the parent daemon
 	 */
 	if (run_as_user == 0 || run_as_user[0] == 0) {
+		WCHAR* base_env = NULL;
+		WCHAR* combined_env = NULL;
+		DWORD creation_flags = CREATE_NO_WINDOW;
+
+		if (envp != NULL) {
+			base_env = GetEnvironmentStringsW();
+			if (!base_env) {
+				windows_errno(GetLastError());
+				log_task(LVL_ERROR, "failed to get environment strings, errno=%s(%d)", strerror(errno), errno);
+				return -1;
+			}
+			combined_env = env_combine(base_env, envp);
+			FreeEnvironmentStringsW(base_env);
+			if (!combined_env) {
+				errno = ENOMEM;
+				log_task(LVL_ERROR, "failed to combine environment strings (out of memory)");
+				return -1;
+			}
+			creation_flags |= CREATE_UNICODE_ENVIRONMENT;
+		}
+
 		/* create the child process */
 		ret = CreateProcessW(
 			NULL,
 			cmd_buffer,
 			NULL, NULL,
 			FALSE, /* no need to inherit handles */
-			CREATE_NO_WINDOW,
-			NULL, cwd,
+			creation_flags,
+			combined_env, cwd,
 			&si, &pi
 		);
+
+		if (combined_env)
+			free(combined_env);
 	} else {
 		/*
 		 * Drop to restricted service account.
@@ -1983,6 +2086,18 @@ int os_script(char** argv, const char* run_as_user)
 			return -1;
 		}
 
+		WCHAR* combined_env = NULL;
+		if (envp != NULL) {
+			combined_env = env_combine((const WCHAR*)env, envp);
+			if (!combined_env) {
+				errno = ENOMEM;
+				log_task(LVL_ERROR, "failed to combine environment strings (out of memory)");
+				DestroyEnvironmentBlock(env);
+				CloseHandle(h_token);
+				return -1;
+			}
+		}
+
 		ret = CreateProcessAsUserW(
 			h_token,
 			NULL,
@@ -1990,10 +2105,12 @@ int os_script(char** argv, const char* run_as_user)
 			NULL, NULL,
 			FALSE, /* no need to inherit handles */
 			CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
-			env, cwd,
+			combined_env ? combined_env : env, cwd,
 			&si, &pi
 		);
 
+		if (combined_env)
+			free(combined_env);
 		if (env)
 			DestroyEnvironmentBlock(env);
 		CloseHandle(h_token);
