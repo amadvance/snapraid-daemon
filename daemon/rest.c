@@ -1957,6 +1957,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	if (state->global.latest_daemon_version[0] != 0) {
 		ss_json_str(&s, level, "latest_daemon_version", state->global.latest_daemon_version);
 	}
+	if (state->global.latest_engine_version[0] != 0) {
+		ss_json_str(&s, level, "latest_engine_version", state->global.latest_engine_version);
+	}
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
 	ss_json_str(&s, level, "health", health_name(state->global.health));
 	if (*global->version) { /* engine was run */

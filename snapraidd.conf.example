@@ -176,8 +176,8 @@ net_web_root = commander.zip
 
 ### Automation & Maintenance
 # The check_updates flag controls whether the daemon periodically
-# queries the GitHub API (via curl) to check if a new version of SnapRAID
-# Daemon is available.
+# queries the GitHub API (via curl) to check if new versions of SnapRAID
+# Daemon and SnapRAID engine are available.
 # The check is performed every 12 hours.
 #
 # This option is accessible and modifiable via the REST API.

@@ -2081,7 +2081,7 @@ components:
           type: string
           example: '1.11'
           description: >
-            The latest SnapRAID engine version available upstream from GitHub, if retrieved.
+            The latest daemon version available upstream, if retrieved.
         daemon_conf:
           type: string
           example: '/etc/snapraid.conf'
@@ -2111,6 +2111,11 @@ components:
           example: '13.1'
           description: >
             The version of the underlying SnapRAID CLI binary.
+        latest_engine_version:
+          type: string
+          example: '13.2'
+          description: >
+            The latest SnapRAID engine version available upstream, if retrieved.
         engine_conf:
           type: string
           example: '/etc/snapraid.conf'
