@@ -12,6 +12,50 @@ const escAttr = (str) => {
     return String(str).replace(/"/g, '&quot;');
 };
 
+/**
+ * Calculates a numerical score for a version string to allow easy comparisons.
+ * * Formula: 
+ * Score = (major * 10000) + (minor * 100) + Modifier
+ * * Modifiers:
+ * - Stable: +99
+ * - RC (Release Candidate): +50 + N (where N is the RC version number)
+ * - Beta: +N (where N is the Beta version number)
+ * * Examples:
+ * - "14.4"       -> (14 * 10000) + (4 * 100) + 99        = 140499 (Stable)
+ * - "14.4rc1"    -> (14 * 10000) + (4 * 100) + (50 + 1)  = 140451 (RC 1)
+ * - "14.4rc2"    -> (14 * 10000) + (4 * 100) + (50 + 2)  = 140452 (RC 2)
+ * - "14.4beta1"  -> (14 * 10000) + (4 * 100) + 1         = 140401 (Beta 1)
+ * - "14.4beta2"  -> (14 * 10000) + (4 * 100) + 2         = 140402 (Beta 2)
+ */
+const getVersionScore = (v) => {
+    if (!v) return 0;
+
+    // Extract major and minor numbers
+    const match = v.match(/^(\d+)\.(\d+)/);
+    if (!match) return 0;
+
+    const major = parseInt(match[1], 10);
+    const minor = parseInt(match[2], 10);
+
+    let score = (major * 10000) + (minor * 100);
+
+    // Extract the release modifier number N if it exists (e.g., rc1 -> 1, beta2 -> 2)
+    const rcMatch = v.match(/rc(\d+)/i);
+    const betaMatch = v.match(/beta(\d+)/i);
+
+    // Apply positive modifiers based on release tier
+    if (rcMatch) {
+        const n = parseInt(rcMatch[1], 10);
+        score += (50 + n);
+    } else if (betaMatch) {
+        const n = parseInt(betaMatch[1], 10);
+        score += n;
+    } else {
+        score += 99;
+    }
+
+    return score;
+};
 
 const healthBadge = (health) => {
     const map = { passed: 'green', prefail: 'yellow', failing: 'red', corrupt: 'purple', pending: 'grey' };
@@ -348,12 +392,12 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         let daemonUpdate = false;
         let engineUpdate = false;
         if (arrayInfo.latest_daemon_version && arrayInfo.daemon_version) {
-            if (getMajorMinor(arrayInfo.daemon_version) !== getMajorMinor(arrayInfo.latest_daemon_version)) {
+            if (getVersionScore(arrayInfo.daemon_version) < getVersionScore(arrayInfo.latest_daemon_version)) {
                 daemonUpdate = true;
             }
         }
         if (arrayInfo.latest_engine_version && arrayInfo.engine_version) {
-            if (getMajorMinor(arrayInfo.engine_version) !== getMajorMinor(arrayInfo.latest_engine_version)) {
+            if (getVersionScore(arrayInfo.engine_version) < getVersionScore(arrayInfo.latest_engine_version)) {
                 engineUpdate = true;
             }
         }
@@ -464,17 +508,17 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         </div>
     `;
 
-    const getMajorMinor = (v) => {
-        const m = (v || '').match(/^(\d+)\.(\d+)/);
-        return m ? `${m[1]}.${m[2]}` : v;
-    };
-
     const formatVersionWithUpdate = (current, latest) => {
         if (!current) return healthBadge('pending');
         if (!latest) return current;
-        if (getMajorMinor(current) !== getMajorMinor(latest)) {
+
+        const currentScore = getVersionScore(current);
+        const latestScore = getVersionScore(latest);
+
+        if (currentScore < latestScore) {
             return `${current} <a href="https://www.snapraid.it/download" target="_blank" rel="noopener noreferrer" class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${latest}</a>`;
         }
+
         return `${current} <span class="text-emerald text-xs ml-2 whitespace-nowrap">up to date</span>`;
     };
 
