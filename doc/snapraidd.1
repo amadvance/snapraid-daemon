@@ -470,6 +470,9 @@ The account used for executing hook_script.
 .I hook_script
 The absolute path to the hook script.
 .HP 4
+.I hook_docker_pause
+The docker containers to pause.
+.HP 4
 .I notify_run_as_user
 The account used for notification commands.
 .HP 4
@@ -693,6 +696,12 @@ If the execution fails, check your syslog (EventLog in Windows) to get
 the exact reason.
 .PP
 This remains inactive if no path is defined.
+.SS hook_docker_pause 
+Specifies a comma\-separated list of Docker containers to pause during
+tasks that access the array (e.g., plex, transmission).
+.PP
+The containers are paused immediately before running the task (or the
+pre hook script) and unpaused immediately afterward.
 .SS hook_run_as_user 
 Specifies the user account used to execute the hook_script.
 If this is missing or blank, the script is executed with the

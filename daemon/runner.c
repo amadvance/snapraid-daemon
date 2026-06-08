@@ -59,7 +59,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 	return state->global.health;
 }
 
-static int runner_need_script(int cmd)
+static int runner_need_hook(int cmd)
 {
 	switch (cmd) {
 	case CMD_SYNC : return 1;
@@ -70,6 +70,76 @@ static int runner_need_script(int cmd)
 	}
 
 	return 0;
+}
+
+#define CONTAINERS_MAX 128
+
+static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, const char* run_as_user, FILE* log_f, const char* log_prefix)
+{
+	if (log_f != 0) {
+		fprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
+		fflush(log_f);
+	}
+
+	/* copy containers to a mutable string to tokenize in-place */
+	char* copy = strdup_nofail(containers);
+
+	/* split the string using strsplit up to CONTAINERS_MAX tokens */
+	char* tokens[CONTAINERS_MAX];
+	unsigned n = strsplit(tokens, CONTAINERS_MAX, copy, ", ");
+
+	if (n == 0) {
+		free(copy);
+		return 0;
+	}
+
+	/* argv will have: docker_path, action, and then the containers, and then NULL */
+	char** argv = calloc_nofail(n + 3, sizeof(char*));
+
+	argv[0] = (char*)docker_path;
+	argv[1] = (char*)action;
+
+	for (unsigned i = 0; i < n; ++i) {
+		argv[2 + i] = tokens[i];
+	}
+	argv[2 + n] = NULL;
+
+	int ret = -1;
+	pid_t pid = os_spawn(argv, NULL, NULL, run_as_user);
+	if (pid < 0) {
+		log_task(LVL_ERROR, "failed to spawn docker %s, errno=%s(%d)", action, strerror(errno), errno);
+		if (log_f != 0)
+			fprintf(log_f, "daemon:%s_fail\n", log_prefix);
+	} else {
+		int status;
+		pid_t wait_pid = os_wait(pid, &status);
+		if (wait_pid == -1) {
+			log_task(LVL_ERROR, "failed to wait for docker %s, errno=%s(%d)", action, strerror(errno), errno);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:%s_fail\n", log_prefix);
+		} else {
+			if (WIFEXITED(status)) {
+				int exit_code = WEXITSTATUS(status);
+				if (exit_code == 0) {
+					log_task(LVL_INFO, "docker %s succeeded", action);
+					ret = 0;
+				} else {
+					log_task(LVL_ERROR, "docker %s failed with exit code %d", action, exit_code);
+				}
+				if (log_f != 0)
+					fprintf(log_f, "daemon:%s_term:%d\n", log_prefix, exit_code);
+			} else if (WIFSIGNALED(status)) {
+				log_task(LVL_ERROR, "docker %s terminated with signal %d", action, WTERMSIG(status));
+				if (log_f != 0)
+					fprintf(log_f, "daemon:%s_signal:%d\n", log_prefix, WTERMSIG(status));
+			}
+		}
+	}
+
+	free(argv);
+	free(copy);
+
+	return ret;
 }
 
 static int runner_report_locked(struct snapraid_state* state)
@@ -207,9 +277,153 @@ static struct snapraid_task* omit_task(struct snapraid_state* state, struct snap
 	return tail;
 }
 
+#define HOOK_FLAG_DOCKER 1
+#define HOOK_FLAG_SCRIPT 2
+
+static int runner_hook_begin(int number, int cmd, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, const char* hook_script, const char* hook_docker_pause, const char* hook_run_as_user, int* out_hook_flags)
+{
+	if (hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
+		const char* docker_path = os_find_docker();
+		if (!docker_path) {
+			log_task(LVL_ERROR, "docker executable not found");
+			if (log_f != 0)
+				fprintf(log_f, "daemon:pre_docker_fail\n");
+			if (exit_neg_msg)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The docker executable was not found");
+			return -1;
+		}
+		/*
+		 * We set this flag BEFORE running the pause command.
+		 * If the pause command fails halfway through a list of containers,
+		 * we want runner_hook_end() to run the unpause command to cleanly
+		 * unpause the partially paused list.
+		 */
+		*out_hook_flags |= HOOK_FLAG_DOCKER;
+
+		log_task(LVL_INFO, "task %d pausing docker containers: %s", number, hook_docker_pause);
+		if (run_docker_cmd(docker_path, "pause", hook_docker_pause, hook_run_as_user, log_f, "pre_docker") != 0) {
+			if (exit_neg_msg)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to pause docker containers");
+			return -1;
+		}
+		if (log_f)
+			fflush(log_f);
+	}
+
+	if (hook_script[0] != 0 && runner_need_hook(cmd)) {
+		char* hook_argv[3];
+		char hook_event[KEYWORD_MAX];
+		int script_ret;
+		log_task(LVL_INFO, "task %d run %s", number, hook_script);
+		if (log_f != 0)
+			fprintf(log_f, "daemon:pre:%s\n", hook_script);
+		sncpy(hook_event, sizeof(hook_event), "task-begin");
+		hook_argv[0] = (char*)hook_script;
+		hook_argv[1] = hook_event;
+		hook_argv[2] = 0;
+		script_ret = os_script(hook_argv, hook_run_as_user);
+		if (script_ret < 0) {
+			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:pre_fail\n");
+			if (exit_neg_msg)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script failed to start (check " SYSLOG " for details), errno=%s(%d)", strerror(errno), errno);
+			return -1;
+		} else if (script_ret == 0) {
+			/*
+			 * We set this flag ONLY on success. If the pre_run_script fails,
+			 * it is the responsibility of the script itself to undo any partial
+			 * changes it made before exiting with an error. We do not invoke
+			 * the post_run_script (task-error) fallback.
+			 */
+			*out_hook_flags |= HOOK_FLAG_SCRIPT;
+			log_task(LVL_INFO, "task %d end %s", number, hook_script);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:pre_term:0\n");
+		} else if (script_ret < 128) {
+			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:pre_term:%d\n", script_ret);
+			if (exit_neg_msg)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with exit code %d", script_ret);
+			return -1;
+		} else {
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
+			if (exit_neg_msg)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
+			return -1;
+		}
+		if (log_f)
+			fflush(log_f);
+	}
+
+	return 0;
+}
+
+static void runner_hook_end(int number, int cmd, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, const char* hook_script, const char* hook_docker_pause, const char* hook_run_as_user, int hook_flags)
+{
+	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook_script[0] != 0 && runner_need_hook(cmd)) {
+		char* hook_argv[3];
+		char hook_event[KEYWORD_MAX];
+		int script_ret;
+		log_task(LVL_INFO, "task %d run %s", number, hook_script);
+		if (log_f != 0)
+			fprintf(log_f, "daemon:post:%s\n", hook_script);
+		if (success)
+			sncpy(hook_event, sizeof(hook_event), "task-end");
+		else
+			sncpy(hook_event, sizeof(hook_event), "task-error");
+		hook_argv[0] = (char*)hook_script;
+		hook_argv[1] = hook_event;
+		hook_argv[2] = 0;
+		script_ret = os_script(hook_argv, hook_run_as_user);
+		if (script_ret < 0) {
+			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:post_fail\n");
+			if (exit_neg_msg && exit_neg_msg[0] == 0)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script failed to start, errno=%s(%d)", strerror(errno), errno);
+		} else if (script_ret == 0) {
+			log_task(LVL_INFO, "task %d end %s", number, hook_script);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:post_term:0\n");
+		} else if (script_ret < 128) {
+			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:post_term:%d\n", script_ret);
+			if (exit_neg_msg && exit_neg_msg[0] == 0)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with exit code %d", script_ret);
+		} else {
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			if (log_f != 0)
+				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
+			if (exit_neg_msg && exit_neg_msg[0] == 0)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
+		}
+		if (log_f)
+			fflush(log_f);
+	}
+
+	if ((hook_flags & HOOK_FLAG_DOCKER) && hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
+		const char* docker_path = os_find_docker();
+		if (docker_path) {
+			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook_docker_pause);
+			(void)run_docker_cmd(docker_path, "unpause", hook_docker_pause, hook_run_as_user, log_f, "post_docker");
+		} else {
+			if (log_f != 0)
+				fprintf(log_f, "daemon:post_docker_fail\n");
+		}
+		if (log_f)
+			fflush(log_f);
+	}
+}
+
 static void runner_go(struct snapraid_state* state)
 {
 	char hook_script[CONFIG_MAX];
+	char hook_docker_pause[CONFIG_MAX];
 	char hook_run_as_user[CONFIG_MAX];
 	char msg[MSG_MAX];
 	char exit_neg_msg[MSG_MAX];
@@ -222,6 +436,7 @@ static void runner_go(struct snapraid_state* state)
 	int high_cmd;
 	int status;
 	pid_t pid_ret;
+	int success = 0;
 	char** argv;
 	int argc;
 	tommy_node* j;
@@ -231,6 +446,7 @@ static void runner_go(struct snapraid_state* state)
 	struct snapraid_pulse pulse_before = state->pulse;
 
 	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
+	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(sys_log_directory, sizeof(sys_log_directory), state->config.sys_log_directory);
 	unix_queue_time = task->unix_queue_time;
@@ -275,11 +491,10 @@ static void runner_go(struct snapraid_state* state)
 		}
 	}
 
-	/* check if the have to skip the script */
-	int pre_script_skip = state->runner.script_skip;
-	int post_script = 0;
-	int post_script_skip = 0;
-	state->runner.script_skip = 0;
+	/* check if we have postponed hooks from the previous task */
+	int pre_hook_flags = state->runner.hook_flags;
+	int post_skip = 0;
+	state->runner.hook_flags = 0;
 
 	parse_begin(state);
 
@@ -288,7 +503,7 @@ static void runner_go(struct snapraid_state* state)
 	j = tommy_list_head(&state->runner.waiting_list);
 	if (j) {
 		struct snapraid_task* waiting = j->data;
-		next_need_script = runner_need_script(waiting->cmd);
+		next_need_script = runner_need_hook(waiting->cmd);
 	}
 
 	log_task_reset();
@@ -317,49 +532,17 @@ static void runner_go(struct snapraid_state* state)
 		fflush(log_f);
 	}
 
-	if (pre_script_skip == 0 && hook_script[0] != 0 && runner_need_script(cmd)) {
-		char* hook_argv[3];
-		char hook_event[KEYWORD_MAX];
-		int script_ret;
-		log_task(LVL_INFO, "task %d run %s", number, hook_script);
-		if (log_f != 0)
-			fprintf(log_f, "daemon:pre:%s\n", hook_script);
-		sncpy(hook_event, sizeof(hook_event), "task-begin");
-		hook_argv[0] = hook_script;
-		hook_argv[1] = hook_event;
-		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, hook_run_as_user);
-		if (script_ret < 0) {
-			log_task(LVL_INFO, "task %d end %s failed start, errno=%s(%d)", number, hook_script, strerror(errno), errno);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_fail\n");
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script failed to start (check " SYSLOG " for details), errno=%s(%d)", strerror(errno), errno);
-			pid_ret = -1;
-			goto bail;
-		} else if (script_ret == 0) {
-			log_task(LVL_INFO, "task %d end %s", number, hook_script);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_term:0\n");
-		} else if (script_ret < 128) {
-			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_term:%d\n", script_ret);
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script terminated with exit code %d", script_ret);
-			pid_ret = -1;
-			goto bail;
-		} else {
-			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The pre_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
+	int hook_flags = 0;
+	if (pre_hook_flags == 0) {
+		if (runner_hook_begin(number, cmd, log_f, exit_neg_msg, sizeof(exit_neg_msg), hook_script, hook_docker_pause, hook_run_as_user, &hook_flags) < 0) {
 			pid_ret = -1;
 			goto bail;
 		}
-		if (log_f)
-			fflush(log_f);
+	} else {
+		/* use the postponed flags from the previous task */
+		hook_flags = pre_hook_flags;
 	}
 
-	int success = 0;
 	pid = os_spawn(argv, NULL, &f, NULL);
 	if (pid < 0) {
 		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
@@ -407,73 +590,27 @@ static void runner_go(struct snapraid_state* state)
 			fflush(log_f);
 	}
 
-	/* if the next task uses the script, skip the post */
-	if (hook_script[0] != 0 && runner_need_script(cmd)) {
-		post_script = 1;
-
-		if (pid_ret != -1
-			&& WIFEXITED(status)
-			&& WEXITSTATUS(status) == 0
-			&& next_need_script) {
-			/* postpone */
-			post_script = 0;
-			post_script_skip = 1;
-		}
-	}
-
-	if (post_script) {
-		char* hook_argv[3];
-		char hook_event[KEYWORD_MAX];
-		int script_ret;
-		log_task(LVL_INFO, "task %d run %s", number, hook_script);
-		if (log_f != 0)
-			fprintf(log_f, "daemon:post:%s\n", hook_script);
-		if (success)
-			sncpy(hook_event, sizeof(hook_event), "task-end");
-		else
-			sncpy(hook_event, sizeof(hook_event), "task-error");
-		hook_argv[0] = hook_script;
-		hook_argv[1] = hook_event;
-		hook_argv[2] = 0;
-		script_ret = os_script(hook_argv, hook_run_as_user);
-		if (script_ret < 0) {
-			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:post_fail\n");
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script failed to start, errno=%s(%d)", strerror(errno), errno);
-			pid_ret = -1;
-			goto bail;
-		} else if (script_ret == 0) {
-			log_task(LVL_INFO, "task %d end %s", number, hook_script);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:post_term:0\n");
-		} else if (script_ret < 128) {
-			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:post_term:%d\n", script_ret);
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script terminated with exit code %d", script_ret);
-			pid_ret = -1;
-			goto bail;
-		} else {
-			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
-			if (log_f != 0)
-				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
-			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The post_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
-			pid_ret = -1;
-			goto bail;
-		}
-		if (log_f)
-			fflush(log_f);
+	/* if the next task uses the hook, skip the post */
+	if (success && next_need_script && runner_need_hook(cmd)) {
+		/* postpone */
+		post_skip = 1;
 	}
 
 bail:
+	if (post_skip == 0) {
+		runner_hook_end(number, cmd, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_script, hook_docker_pause, hook_run_as_user, hook_flags);
+		if (exit_neg_msg[0] != 0) {
+			pid_ret = -1;
+		}
+	}
+
 	unix_end_time = time(0);
 	if (unix_end_time < unix_start_time)
 		unix_end_time = unix_start_time; /* time start time may be in the future of few seconds to guarantee uniqueness */
 
-	/* store if the script was skipped */
-	if (post_script_skip)
-		state->runner.script_skip = 1;
+	/* store if the hook was skipped */
+	if (post_skip)
+		state->runner.hook_flags = hook_flags;
 
 	if (log_f != 0) {
 		fprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
@@ -728,6 +865,24 @@ static void* runner_thread(void* arg)
 
 				/* insert in the history */
 				tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
+
+				/* if this canceled task was supposed to handle the hook, we must close the hook now */
+				if (state->runner.hook_flags && runner_need_hook(task->cmd)) {
+					char hook_script[CONFIG_MAX];
+					char hook_docker_pause[CONFIG_MAX];
+					char hook_run_as_user[CONFIG_MAX];
+					int postponed_flags = state->runner.hook_flags;
+
+					sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
+					sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
+					sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
+
+					state_unlock();
+					runner_hook_end(task->number, task->cmd, NULL, NULL, 0, 0, hook_script, hook_docker_pause, hook_run_as_user, postponed_flags);
+					state_lock();
+
+					state->runner.hook_flags = 0;
+				}
 			}
 		}
 
@@ -735,6 +890,24 @@ static void* runner_thread(void* arg)
 			break;
 
 		thread_cond_wait(&state->runner.cond, &state->state_lock);
+	}
+
+	/* if the daemon is shutting down and a hook was skipped, we must close it now */
+	if (state->runner.hook_flags) {
+		char hook_script[CONFIG_MAX];
+		char hook_docker_pause[CONFIG_MAX];
+		char hook_run_as_user[CONFIG_MAX];
+		int postponed_flags = state->runner.hook_flags;
+
+		sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
+		sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
+		sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
+
+		state_unlock();
+		runner_hook_end(0, CMD_SYNC, NULL, NULL, 0, 0, hook_script, hook_docker_pause, hook_run_as_user, postponed_flags);
+		state_lock();
+
+		state->runner.hook_flags = 0;
 	}
 
 	state_unlock();

@@ -718,6 +718,18 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("hook_docker_pause")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
+				++j;
+				if (json_string(js, &jv[j], transient.hook_docker_pause, sizeof(transient.hook_docker_pause)) == 0) {
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_syslog_enabled")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &transient.notify_syslog) == 0) {
@@ -867,6 +879,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	ss_json_str(&s, level, "hook_run_as_user", config->hook_run_as_user);
 	ss_json_str(&s, level, "hook_script", config->hook_script);
+	ss_json_str(&s, level, "hook_docker_pause", config->hook_docker_pause);
 
 	log_lock();
 	ss_json_bool(&s, level, "notify_syslog_enabled", state->log.syslog);

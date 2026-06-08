@@ -20,6 +20,12 @@ const char* os_find_engine(void);
 const char* os_find_curl(void);
 
 /**
+ * Find the docker binary in the system.
+ * @return Path to docker binary, or NULL if not found
+ */
+const char* os_find_docker(void);
+
+/**
  * Default paths.
  */
 void os_default_log(char* dst, size_t dst_size);
