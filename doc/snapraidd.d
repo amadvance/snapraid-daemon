@@ -424,11 +424,11 @@ Configuration
 	net_config_full_access option is enabled.
 
     check_updates
-	Enables (1) or disables (0) periodic check for daemon updates on GitHub
-	via the curl CLI tool.
+	Enables (1) or disables (0) periodic check for daemon and engine updates
+	on GitHub via the curl CLI tool.
 	If enabled, the daemon queries the GitHub API every 12 hours in the
 	background. The WebUI displays the update status and alerts you when
-	a new version is available.
+	new versions are available.
 	If missing or set to 0, update checking is disabled.
 
     maintenance_schedule

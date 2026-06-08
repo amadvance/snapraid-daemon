@@ -394,6 +394,7 @@ struct snapraid_bucket {
 struct snapraid_global {
 	char version[64]; /**< SnapRAID engine full version. */
 	char latest_daemon_version[64]; /**< Latest daemon version fetched from GitHub. */
+	char latest_engine_version[64]; /**< Latest engine version fetched from GitHub. */
 	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	int64_t content_probe_unixtime; /**< Modification time of the content file. 0 if unknown. */

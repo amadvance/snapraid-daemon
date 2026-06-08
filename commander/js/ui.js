@@ -341,14 +341,24 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         // Show Last Activity
         const last = activity;
         let updateHtml = '';
-        if (arrayInfo.latest_daemon_version) {
-            const getMajorMinor = (v) => {
-                const m = (v || '').match(/^(\d+)\.(\d+)/);
-                return m ? `${m[1]}.${m[2]}` : v;
-            };
+        const getMajorMinor = (v) => {
+            const m = (v || '').match(/^(\d+)\.(\d+)/);
+            return m ? `${m[1]}.${m[2]}` : v;
+        };
+        let daemonUpdate = false;
+        let engineUpdate = false;
+        if (arrayInfo.latest_daemon_version && arrayInfo.daemon_version) {
             if (getMajorMinor(arrayInfo.daemon_version) !== getMajorMinor(arrayInfo.latest_daemon_version)) {
-                updateHtml = `<span class="badge badge-yellow">UPDATE AVAILABLE</span>`;
+                daemonUpdate = true;
             }
+        }
+        if (arrayInfo.latest_engine_version && arrayInfo.engine_version) {
+            if (getMajorMinor(arrayInfo.engine_version) !== getMajorMinor(arrayInfo.latest_engine_version)) {
+                engineUpdate = true;
+            }
+        }
+        if (daemonUpdate || engineUpdate) {
+            updateHtml = `<span class="badge badge-yellow">NEW VERSION AVAILABLE</span>`;
         }
         heroHtml = `
             <div class="grid-1">
@@ -454,25 +464,19 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
         </div>
     `;
 
-    let latestVersionHtml = '';
-    if (arrayInfo.latest_daemon_version) {
-        const getMajorMinor = (v) => {
-            const m = (v || '').match(/^(\d+)\.(\d+)/);
-            return m ? `${m[1]}.${m[2]}` : v;
-        };
-        let val = arrayInfo.latest_daemon_version;
-        if (getMajorMinor(arrayInfo.daemon_version) !== getMajorMinor(arrayInfo.latest_daemon_version)) {
-            val += ` <span class="badge badge-yellow ml-2 whitespace-nowrap">NEW!</span>`;
-        } else {
-            val += ` <span class="text-emerald text-xs ml-2 whitespace-nowrap">(up to date)</span>`;
+    const getMajorMinor = (v) => {
+        const m = (v || '').match(/^(\d+)\.(\d+)/);
+        return m ? `${m[1]}.${m[2]}` : v;
+    };
+
+    const formatVersionWithUpdate = (current, latest) => {
+        if (!current) return healthBadge('pending');
+        if (!latest) return current;
+        if (getMajorMinor(current) !== getMajorMinor(latest)) {
+            return `${current} <span class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${latest}</span>`;
         }
-        latestVersionHtml = `
-                 <div class="property-row">
-                    <div class="property-label">Latest</div>
-                    <div class="property-value">${val}</div>
-                 </div>
-        `;
-    }
+        return `${current} <span class="text-emerald text-xs ml-2 whitespace-nowrap">up to date</span>`;
+    };
 
     const configHtml = `
         <div class="card">
@@ -480,16 +484,15 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="property-list">
                  <div class="property-row">
                     <div class="property-label">Daemon</div>
-                    <div class="property-value">${arrayInfo.daemon_version}</div>
+                    <div class="property-value">${formatVersionWithUpdate(arrayInfo.daemon_version, arrayInfo.latest_daemon_version)}</div>
                  </div>
-                 ${latestVersionHtml}
                  <div class="property-row">
                     <div class="property-label">Config</div>
                     <div class="property-value font-mono text-xs">${arrayInfo.daemon_conf}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Engine</div>
-                    <div class="property-value">${arrayInfo.engine_version ? arrayInfo.engine_version : healthBadge('pending')}</div>
+                    <div class="property-value">${formatVersionWithUpdate(arrayInfo.engine_version, arrayInfo.latest_engine_version)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Config</div>
