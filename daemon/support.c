@@ -812,6 +812,32 @@ void strupr(char* str)
 }
 #endif
 
+unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters)
+{
+	unsigned mac = 0;
+
+	/* skip initial delimiters */
+	str += strspn(str, delimiters);
+
+	while (*str != 0 && mac < split_max) {
+		/* start of the token */
+		split_map[mac] = str;
+		++mac;
+
+		/* find the first delimiter or the end of the string */
+		str += strcspn(str, delimiters);
+
+		/* put the final terminator if missing */
+		if (*str != 0)
+			*str++ = 0;
+
+		/* skip trailing delimiters */
+		str += strspn(str, delimiters);
+	}
+
+	return mac;
+}
+
 /****************************************************************************/
 /* pulse */
 

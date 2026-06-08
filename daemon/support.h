@@ -440,6 +440,33 @@ int strdouble(double* out, const char* src);
 void strupr(char* str);
 #endif
 
+/**
+ * Split a string into tokens in-place.
+ *
+ * Scans @str for tokens separated by any character in @delimiters,
+ * null-terminates each token by overwriting its trailing delimiter,
+ * and stores a pointer to each token's start in @split_map.
+ *
+ * Leading and consecutive delimiters are silently skipped, so the
+ * output never contains empty tokens.
+ *
+ * The input string is modified in-place; @split_map entries point
+ * directly into @str and are only valid for its lifetime.
+ *
+ * \param split_map Output array receiving pointers to each token.
+ * \param split_max Capacity of @split_map; at most this many tokens are stored.
+ * \param str Input string to tokenise (modified in-place).
+ * \param delimiters Null-terminated set of delimiter characters.
+ * \return Number of tokens stored in @split_map.
+ *
+ * Example:
+ *   char  buf[] = "  one,two,,three  ";
+ *   char* map[8];
+ *   unsigned n = strsplit(map, 8, buf, " ,");
+ *   // n == 3, map[] == { "one", "two", "three" }
+ */
+unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters);
+
 /****************************************************************************/
 /* pulse */
 
