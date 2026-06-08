@@ -225,6 +225,15 @@ body {
     gap: var(--gap-md);
     margin-bottom: 2rem;
     padding: 0.5rem;
+    text-decoration: none;
+}
+
+.brand:hover {
+    opacity: 0.9;
+}
+
+.brand:hover .logo-icon {
+    transform: scale(1.1);
 }
 
 .logo-icon {
@@ -236,6 +245,7 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: bold;
+    transition: transform 0.2s ease;
 }
 
 .brand-text h1 {
