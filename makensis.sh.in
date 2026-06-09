@@ -69,7 +69,7 @@ osslsigncode sign \
     -in "snapraid.exe" \
     -out "../${NSIS_PKG_ROOT}/snapraid.exe"
 cp doc/*.txt "../${NSIS_PKG_ROOT}"
-todos < snapraid.conf.example > "../${NSIS_PKG_ROOT}/snapraid.conf.example"
+todos < snapraid.conf.example.windows > "../${NSIS_PKG_ROOT}/snapraid.conf.example"
 todos < AUTHORS > "../${NSIS_PKG_ROOT}/authors.txt"
 todos < HISTORY > "../${NSIS_PKG_ROOT}/history.txt"
 todos < README > "../${NSIS_PKG_ROOT}/readme.txt"
