@@ -783,7 +783,7 @@ export const renderDisks = (data) => {
 };
 
 /* --- Tasks --- */
-export const renderTasks = (data, hidePeriodic) => {
+export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
     const { active, pending, history } = data;
     const pulseAt = data.pulse?.current_at;
 
@@ -846,12 +846,12 @@ export const renderTasks = (data, hidePeriodic) => {
             <td class="text-muted text-xs">${formatDuration(t.started_at, t.finished_at)}</td>
             <td>
                 <button class="btn btn-secondary btn-xs" data-tooltip="View execution logs and exit status"
-                    data-action="toggle-log" data-target="log-${t.number}">
+                    data-action="toggle-log" data-target="task-details-${t.number}">
                     Details
                 </button>
             </td>
         </tr>
-        <tr id="log-${t.number}" class="hidden">
+        <tr id="task-details-${t.number}" class="${openTaskNumbers.includes(t.number) ? '' : 'hidden'}">
             <td colspan="7">
                 <div class="task-history-log text-xs font-mono p-4">
                      ${exitStatus}

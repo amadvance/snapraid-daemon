@@ -8,6 +8,8 @@ SnapRAID-Daemon HISTORY
  * Omit "Excluding file" and "Excluding directory" verbose messages 
    from the log. This prevents large log files from filling up the disk 
    and cluttering the web interface, improving overall usability.
+ * Preserve the open/expanded state of task detail logs in the WebUI
+   across automatic redraws and background refreshes.
 
 1.11 2026/06
 ============

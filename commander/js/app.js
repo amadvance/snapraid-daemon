@@ -503,11 +503,14 @@ const app = {
 
     loadTasks: async () => {
         try {
+            const openTaskNumbers = Array.from(document.querySelectorAll('[id^="task-details-"]:not(.hidden)'))
+                .map(el => parseInt(el.id.replace('task-details-', ''), 10));
+
             const data = await API.getTasks({ limit_history: 2000, limit_messages: 500 });
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
             const view = document.getElementById('view-container');
-            view.innerHTML = renderTasks(data, app.state.hidePeriodic);
+            view.innerHTML = renderTasks(data, app.state.hidePeriodic, openTaskNumbers);
             app.applyDynamicStyles(view);
         } catch (e) {
             app.setConnection(false);
