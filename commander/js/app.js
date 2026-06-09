@@ -5,9 +5,15 @@ import { API } from './api.js';
 import { Icons, showToast, showConfirm, showConfirmDown, showConfirmDownThreshold, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';
 import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
 
+// Periodic refresh for pages that need to be updated even without a pulse.
+// Used by the Dashboard to update "memory usage" in the System card.
+// Used by the Disks page to slide temperature graphs as time passes.
+const REFRESH_INTERVAL_MS = 60000;
+
 const app = {
     state: {
         currentRoute: '',
+        lastDisksRefresh: 0,
         pulse: {},
         pollingInterval: null,
         isConnected: true,
@@ -210,10 +216,15 @@ const app = {
 
             let needsRefresh = false;
             let needsSystemRefresh = false;
+            let needsDiskRefresh = false;
 
             const now = Date.now();
-            if (app.state.currentRoute === '#/' && (now - app.state.lastSystemRefresh) > 60000) {
+            const hash = app.state.currentRoute;            
+            if (hash === '#/' && (now - app.state.lastSystemRefresh) > REFRESH_INTERVAL_MS) {
                 needsSystemRefresh = true;
+            }
+            if (hash === '#/disks' && (now - app.state.lastDisksRefresh) > REFRESH_INTERVAL_MS) {
+                needsDiskRefresh = true;
             }
 
             switch (app.state.currentRoute) {
@@ -240,8 +251,7 @@ const app = {
             // Also refresh if we reconnected and are currently showing an error
             const isShowingError = !!document.querySelector('#view-container .border-red-500');
 
-            if (needsRefresh || needsSystemRefresh || (wasDisconnected && isShowingError)) {
-                const hash = app.state.currentRoute;
+            if (needsRefresh || needsSystemRefresh || needsDiskRefresh || (wasDisconnected && isShowingError)) {
                 if (hash === '#/') {
                     await app.loadDashboard({
                         array: (pulse.array !== oldPulse.array) || wasDisconnected,
@@ -489,6 +499,7 @@ const app = {
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
             app.state.disks = data;
+            app.state.lastDisksRefresh = Date.now();
             const view = document.getElementById('view-container');
             view.innerHTML = renderDisks(data);
             app.applyDynamicStyles(view);
