@@ -326,14 +326,9 @@ $(DAEMON_PREFIX)smart.$(OBJEXT): $(srcdir)/daemon/smart.h $(srcdir)/daemon/state
 
 # Rules for scripts
 snapraidd.service: snapraidd.service.in
-	$(AM_V_GEN)rw_paths="-$(sysconfdir)/snapraidd.conf"; \
-	if [ "$(sysconfdir)" != "/etc" ]; then \
-		rw_paths="$$rw_paths -/etc/snapraidd.conf"; \
-	fi; \
 	sed \
 		-e 's|@bindir[@]|$(bindir)|g' \
 		-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
-		-e "s|@readwritepaths[@]|$$rw_paths|g" \
 		< $< > $@-t && mv $@-t $@
 
 rc.snapraidd: rc.snapraidd.in

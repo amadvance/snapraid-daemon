@@ -57,12 +57,18 @@ NoNewPrivileges=no
 #       ReadWritePaths=/home/user/storage /home/user/snapraid.content
 ProtectHome=no
 
-# ProtectSystem=full makes /usr, /boot, and /etc read-only for this service.
-# This prevents the daemon from modifying the core OS configuration.
-# To allow the daemon to update its own configuration while keeping the 
-# rest of /etc protected, we explicitly grant write access to the config file.
-ProtectSystem=full
-ReadWritePaths=@readwritepaths@
+# ProtectSystem=yes makes /usr and /boot read-only, protecting core OS binaries.
+# Unlike the 'full' setting, it leaves /etc completely writable by default.
+# This allows the daemon to safely perform atomic updates (write-and-rename)
+# to its configuration files. An operation that inherently requires leaving 
+# the /etc directory unprotected regardless of granular sandboxing.
+#
+# HARDENING OPTION:
+# 1. If you manage the configuration files manually:
+#    Set 'ProtectSystem=full' to make /etc read-only as well. Note that
+#    enabling this will prevent the daemon from saving any configuration 
+#    changes at runtime.
+ProtectSystem=yes
 
 [Install]
 # Start automatically when the system reaches the standard multi-user state

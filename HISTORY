@@ -3,6 +3,8 @@ SnapRAID-Daemon HISTORY
 
 1.12 2026/06
 ============
+ * Fix configuration saving under SystemD due to read-only restriction.
+   This was a regression introduced in SnapRAID Daemon 1.10.
  * Omit "Excluding file" and "Excluding directory" verbose messages 
    from the log. This prevents large log files from filling up the disk 
    and cluttering the web interface, improving overall usability.
