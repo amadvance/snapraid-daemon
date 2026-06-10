@@ -292,6 +292,25 @@ paths:
           description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
+  /snapraid/v1/report:
+    post:
+      summary: Trigger report generation task
+      description: >
+        Initiates the generation of a status report.
+
+        This is an asynchronous operation. Monitor progress via the
+        /activity endpoint.
+      responses:
+        '202':
+          description: Report task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '405':
+          description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
+        '500':
+          description: Engine not found.
+          $ref: '#/components/responses/CommandResult'
+
   /snapraid/v1/state:
     get:
       summary: Lightweight state change detection
@@ -682,7 +701,7 @@ components:
   responses:
     CommandResult:
       description: >
-        The request was successfully validated and added to the execution queue or failed.
+        The request was successfully validated and executed, or added to the execution queue.
       content:
         application/json:
           schema:
@@ -694,8 +713,7 @@ components:
                 type: boolean
                 example: true
                 description: >
-                  Indicates if the operation was successfully added to the daemon's
-                  internal worker queue
+                  Indicates if the operation was successful.
               message:
                 type: string
                 example: 'Operation completed successfully.'
@@ -1816,6 +1834,10 @@ components:
           description: >
             Minimum severity threshold required to trigger the 'notify_result'
             command. Defaults to 'error' if unset.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
         notify_differences:
           type: boolean
           example: true
