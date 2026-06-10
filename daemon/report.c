@@ -355,9 +355,9 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 		if (task->exit_code == 0) {
 			if (reason) {
 				if (reason->type == MESSAGE_TYPE_HARDWARE)
-					ss_printf(ss, "Completed with errors: [HARDWARE FAILURE] %s\n", reason->msg);
+					ss_printf(ss, "Completed with non-fatal HARDWARE ERRORS\n");
 				else
-					ss_printf(ss, "Completed with errors: %s\n", reason->msg);
+					ss_printf(ss, "Completed with non-fatal ERRORS\n");
 			} else
 				ss_prints(ss, "Completed successfully\n");
 		} else {
@@ -429,9 +429,9 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 	if (task->state == PROCESS_STATE_TERM) {
 		if (task->exit_code == 0) {
 			if (reason)
-				ss_prints(ss, "Completed with ERRORS\n");
+				ss_prints(ss, "Completed with non-fatal ERRORS\n");
 			else
-				ss_prints(ss, "Completed SUCCESSFULLY\n");
+				ss_prints(ss, "Completed successfully\n");
 		} else {
 			ss_printf(ss, "FAILED (%d)\n", task->exit_code);
 			if (reason) {
