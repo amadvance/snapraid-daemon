@@ -1195,7 +1195,6 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 
 	free(js);
 
-	status = 200;
 	state_lock();
 	state->runner.hold_off = hold_off;
 	pulse(state, PULSE_ARRAY);
@@ -1211,11 +1210,11 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 		ss_json_str(&s, level, "message", "Hold off disabled");
 	ss_json_close(&s, &level);
 
-	send_json_answer(conn, status, &s);
+	send_json_answer(conn, 200, &s);
 
 	ss_done(&s);
 
-	return send_json_success(conn, status);
+	return 200;
 bad:
 	free(js);
 	return send_json_error(conn, 400, "Unrecognized json");
