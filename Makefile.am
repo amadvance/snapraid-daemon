@@ -200,7 +200,8 @@ clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip
 	rm -f makeslackware.sh makeslackdist.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
-	rm -f snapraid-daemon-*.rpm snapraid-daemon_*.deb snapraid-daemon-*.txz
+	rm -f snapraid-daemon-*.rpm snapraid-daemon_*.deb snapraid-daemon-*.txz snapraid-daemon-*.exe snapraid-daemon-*.tar.gz snapraid-daemon-*.tar.zst
+	rm -f snapraid-daemon.src.tar.gz snapraid-daemon.tar.gz
 
 maintainer-clean-local:
 	rm -f $(LIST_MAN)
