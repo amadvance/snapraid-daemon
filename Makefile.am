@@ -308,21 +308,44 @@ endif
 	@echo ""
 
 # Basic dependencies
-DAEMON_PREFIX=daemon/snapraidd-
-$(DAEMON_PREFIX)state.$(OBJEXT): $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)conf.$(OBJEXT): $(srcdir)/daemon/conf.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)daemon.$(OBJEXT): $(srcdir)/daemon/daemon.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)elem.$(OBJEXT): $(srcdir)/daemon/elem.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)log.$(OBJEXT): $(srcdir)/daemon/log.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)parser.$(OBJEXT): $(srcdir)/daemon/parser.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)report.$(OBJEXT): $(srcdir)/daemon/report.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)rest.$(OBJEXT): $(srcdir)/daemon/rest.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)web.$(OBJEXT): $(srcdir)/daemon/rest.h $(srcdir)/daemon/web.h
-$(DAEMON_PREFIX)runner.$(OBJEXT): $(srcdir)/daemon/runner.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)scheduler.$(OBJEXT):$(srcdir)/daemon/scheduler.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)support.$(OBJEXT): $(srcdir)/daemon/support.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)notify.$(OBJEXT): $(srcdir)/daemon/notify.h $(srcdir)/daemon/state.h
-$(DAEMON_PREFIX)smart.$(OBJEXT): $(srcdir)/daemon/smart.h $(srcdir)/daemon/state.h
+DAEMON_PREFIX = daemon/snapraidd-
+DAEMON_INCLUDES = \
+	config.h \
+	$(srcdir)/daemon/conf.h \
+	$(srcdir)/daemon/daemon.h \
+	$(srcdir)/daemon/elem.h \
+	$(srcdir)/daemon/log.h \
+	$(srcdir)/daemon/mingw.h \
+	$(srcdir)/daemon/notify.h \
+	$(srcdir)/daemon/parser.h \
+	$(srcdir)/daemon/portable.h \
+	$(srcdir)/daemon/report.h \
+	$(srcdir)/daemon/rest.h \
+	$(srcdir)/daemon/runner.h \
+	$(srcdir)/daemon/scheduler.h \
+	$(srcdir)/daemon/smart.h \
+	$(srcdir)/daemon/state.h \
+	$(srcdir)/daemon/support.h \
+	$(srcdir)/daemon/unix.h \
+	$(srcdir)/daemon/web.h \
+	$(srcdir)/daemon/zip.h
+$(DAEMON_PREFIX)conf.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)daemon.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)elem.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)log.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)mingw.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)notify.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)parser.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)report.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)rest.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)runner.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)scheduler.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)smart.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)state.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)support.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)unix.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)web.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)zip.$(OBJEXT): $(DAEMON_INCLUDES)
 
 # Rules for scripts
 snapraidd.service: snapraidd.service.in
