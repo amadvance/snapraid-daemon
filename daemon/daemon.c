@@ -48,7 +48,7 @@ static void usage(const char* conf)
 struct option long_options[] = {
 	{ "foreground", 0, 0, 'f' },
 	{ "conf", 1, 0, 'c' },
-	{ "no-cache", 1, 0, 'N' },
+	{ "no-cache", 0, 0, 'N' },
 	{ "pidfile", 1, 0, 'p' },
 	{ "verbose", 0, 0, 'v' },
 	{ "help", 0, 0, 'H' },
