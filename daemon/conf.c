@@ -362,6 +362,11 @@ int config_load_locked(struct snapraid_state* state)
 				}
 			} else if (strcmp(key, "net_web_root") == 0) {
 				sncpy(config->net_web_root, sizeof(config->net_web_root), val);
+			} else if (strcmp(key, "net_auth_credential") == 0) {
+				sncpy(config->net_auth_credential, sizeof(config->net_auth_credential), val);
+
+				/* clear the credential cache */
+				state->rest_auth_cache[0] = 0;
 			} else if (strcmp(key, "check_updates") == 0) {
 				if (parse_int(val, 0, 1, &config->check_updates) == 0) {
 				} else {
@@ -709,6 +714,10 @@ void config_default_locked(struct snapraid_state* state)
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), "self");
 	config->net_config_full_access = 0;
 	config->net_web_root[0] = 0;
+	config->net_auth_credential[0] = 0;
+
+	/* clear the credential cache */
+	state->rest_auth_cache[0] = 0;
 
 	config->check_updates = 0;
 	tommy_list_foreach(&config->maintenance_list, run_free);
@@ -750,6 +759,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	sncpy(transient->net_allowed_origin, sizeof(transient->net_allowed_origin), config->net_allowed_origin);
 	transient->net_config_full_access = config->net_config_full_access;
 	sncpy(transient->net_web_root, sizeof(transient->net_web_root), config->net_web_root);
+	sncpy(transient->net_auth_credential, sizeof(transient->net_auth_credential), config->net_auth_credential);
 
 	transient->check_updates = config->check_updates;
 	tommy_list_init(&transient->maintenance_list);
@@ -797,6 +807,10 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), transient->net_allowed_origin);
 	config->net_config_full_access = transient->net_config_full_access;
 	sncpy(config->net_web_root, sizeof(config->net_web_root), transient->net_web_root);
+	sncpy(config->net_auth_credential, sizeof(config->net_auth_credential), transient->net_auth_credential);
+
+	/* clear the credential cache */
+	state->rest_auth_cache[0] = 0;
 
 	config->check_updates = transient->check_updates;
 	tommy_list_foreach(&config->maintenance_list, run_free);

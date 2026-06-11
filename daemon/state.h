@@ -6,6 +6,7 @@
 
 #include "../tommyds/tommylist.h"
 #include "../civetweb/civetweb.h"
+#include "../monocypher/monocypher.h"
 
 /* string list typedef for string lists */
 typedef tommy_list sl_t;
@@ -430,6 +431,11 @@ struct snapraid_global {
 
 #define CONFIG_MAX 512 /**< Max length of a configuration option */
 
+#define AUTH_NB_BLOCKS 65536 /**< Argon2id memory size parameter (64 MiB in 1 KiB blocks) */
+#define AUTH_NB_PASSES 3 /**< Argon2id iterations parameter */
+#define AUTH_NB_LANES 1 /**< Argon2id lanes (parallelism) parameter */
+#define AUTH_DELAY_SECONDS 1 /**< Rate-limiting delay threshold between authentication attempts */
+
 struct snapraid_run {
 	int hour; /**< Hour for scheduled maintenance */
 	int minute; /**< Minute for scheduled maintenance */
@@ -482,6 +488,7 @@ struct snapraid_config {
 	char net_allowed_origin[CONFIG_MAX]; /**< Allowed origin for CORS */
 	int net_config_full_access; /**< 1 if full configuration access is allowed from network, 0 otherwise */
 	char net_web_root[PATH_MAX]; /**< Web pages directory */
+	char net_auth_credential[CONFIG_MAX]; /**< Argon2id hashed credentials for Basic Auth */
 	int check_updates; /**< 1 to enable periodic update check, 0 otherwise */
 	tommy_list maintenance_list; /**< List of snapraid_run */
 	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
@@ -568,6 +575,8 @@ struct snapraid_state {
 	struct snapraid_pulse pulse; /**< Pulse counters. */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks; /**< CivetWeb callbacks */
+	char rest_auth_cache[CONFIG_MAX]; /**< Cached Authorization header payload */
+	uint64_t rest_latest_auth; /**< Monotonic time in seconds of the latest authentication */
 	struct snapraid_runner runner; /**< Task runner system */
 	struct snapraid_scheduler scheduler; /**< Maintenance scheduler */
 	struct snapraid_global global; /**< Global array metadata */

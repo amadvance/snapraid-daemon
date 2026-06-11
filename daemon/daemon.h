@@ -91,6 +91,11 @@ void os_system(struct snapraid_system* system);
  */
 void os_system_refresh(struct snapraid_system* system);
 
+/**
+ * Fill memory with pseudo-random values
+ */
+int os_randomize(void* ptr, size_t size);
+
 /****************************************************************************/
 /* daemon */
 

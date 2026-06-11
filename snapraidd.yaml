@@ -9,6 +9,10 @@ info:
 servers:
   - url: /
 
+security:
+  - basicAuth: []
+  - {}
+
 paths:
   /snapraid/v1/maintenance:
     post:
@@ -700,6 +704,7 @@ paths:
   /metrics:
     get:
       summary: Prometheus metrics
+      security: []
       description: >
         Returns daemon metrics in Prometheus exposition format.
 
@@ -721,6 +726,13 @@ paths:
                   snapraid_array_health 1
 
 components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: >
+        Optional HTTP Basic Authentication. Active only when configured
+        via `net_auth_credential` in `snapraidd.conf`.
   responses:
     CommandResult:
       description: >
