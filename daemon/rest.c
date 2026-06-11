@@ -386,7 +386,7 @@ static int send_no_content(struct mg_connection* conn)
 
 	ss_prints(&s, "HTTP/1.1 204 No Content\r\n");
 	send_headers(conn, &s);
-	ss_prints(&s, "Connection: close\r\n\r\n");
+	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
 	mg_write(conn, ss_ptr(&s), ss_len(&s));

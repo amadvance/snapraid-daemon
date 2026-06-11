@@ -424,7 +424,7 @@ static int send_no_content(struct mg_connection* conn)
 
 	ss_prints(&s, "HTTP/1.1 204 No Content\r\n");
 	send_headers(conn, &s, 0, 0);
-	ss_prints(&s, "Connection: close\r\n\r\n");
+	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
 	mg_write(conn, ss_ptr(&s), ss_len(&s));
@@ -440,6 +440,16 @@ static int send_error(struct mg_connection* conn, int status)
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
 	send_headers(conn, &s, 0, 0);
+
+	/*
+	 * A 304 Not Modified response must not send Content-Type or Content-Length: 0,
+	 * as the browser would incorrectly assume the cached file size is 0 bytes.
+	 */
+	if (status != 304) {
+		ss_prints(&s, "Content-Type: text/plain; charset=utf-8\r\n");
+		ss_prints(&s, "Content-Length: 0\r\n");
+	}
+
 	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
