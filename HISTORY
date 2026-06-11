@@ -3,6 +3,9 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Added a "sys_shutdown_on" option to automatically trigger a system
+   shutdown based on a comma-separated list of events ("maintenance",
+   "prefail", or "failing").
  * Added a "net_auth_credential" option to protect the REST API and
    web dashboard via HTTP Basic Authentication. The credentials are
    securely verified using Argon2id ($m=65536, t=3, p=1$).

@@ -26,6 +26,12 @@ const char* os_find_curl(void);
 const char* os_find_docker(void);
 
 /**
+ * Find the poweroff binary in the system.
+ * @return Path to poweroff binary, or 0 if not found
+ */
+const char* os_find_poweroff(void);
+
+/**
  * Default paths.
  */
 void os_default_log(char* dst, size_t dst_size);
@@ -90,6 +96,12 @@ void os_system(struct snapraid_system* system);
  * @param system Pointer to system structure to update
  */
 void os_system_refresh(struct snapraid_system* system);
+
+/**
+ * Shutdown the system.
+ * @return 0 on success, -1 on failure
+ */
+int os_shutdown(void);
 
 /**
  * Fill memory with pseudo-random values

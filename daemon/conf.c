@@ -50,6 +50,27 @@ static int parse_double(const char* input, int low, int high, double* out)
 	return 0;
 }
 
+static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
+{
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), val);
+
+	char* tokens[16];
+	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n");
+
+	for (unsigned i = 0; i < n; ++i) {
+		if (strcmp(tokens[i], "maintenance") != 0
+			&& strcmp(tokens[i], "prefail") != 0
+			&& strcmp(tokens[i], "failing") != 0) {
+			return -1;
+		}
+	}
+
+	sncpy(dst, dst_size, val);
+	return 0;
+}
+
+
 const char* config_level_str(int level)
 {
 	switch (level) {
@@ -336,6 +357,11 @@ int config_load_locked(struct snapraid_state* state)
 				sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), val);
 			} else if (strcmp(key, "sys_log_retention_days") == 0) {
 				if (parse_int(val, 0, 10000, &config->sys_log_retention_days) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "sys_shutdown_on") == 0) {
+				if (parse_shutdown_on(val, config->sys_shutdown_on, sizeof(config->sys_shutdown_on)) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -707,6 +733,7 @@ void config_default_locked(struct snapraid_state* state)
 	/* set default */
 	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
 	config->sys_log_retention_days = 0;
+	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), "");
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "");
 	sncpy(config->net_acl, sizeof(config->net_acl), "");
@@ -752,6 +779,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 
 	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
 	transient->sys_log_retention_days = config->sys_log_retention_days;
+	sncpy(transient->sys_shutdown_on, sizeof(transient->sys_shutdown_on), config->sys_shutdown_on);
 	transient->net_enabled = config->net_enabled;
 	sncpy(transient->net_port, sizeof(transient->net_port), config->net_port);
 	sncpy(transient->net_acl, sizeof(transient->net_acl), config->net_acl);
@@ -800,6 +828,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	/* copy fields */
 	sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), transient->sys_log_directory);
 	config->sys_log_retention_days = transient->sys_log_retention_days;
+	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), transient->sys_shutdown_on);
 	config->net_enabled = transient->net_enabled;
 	sncpy(config->net_port, sizeof(config->net_port), transient->net_port);
 	sncpy(config->net_acl, sizeof(config->net_acl), transient->net_acl);

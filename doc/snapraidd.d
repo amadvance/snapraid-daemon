@@ -297,6 +297,24 @@ Configuration
 	age at which old command logs are deleted. Logs are kept indefinitely
 	if this is set to 0 or left unset.
 
+    sys_shutdown_on
+	A comma-separated list of events that trigger an automatic system shutdown.
+
+	Supported events are:
+
+	maintenance - Shuts down the host after an automated, scheduled
+		maintenance finishes.
+	prefail - Shuts down the host immediately after sending reports if
+		array health transitions to prefail.
+	failing - Shuts down the host immediately after sending reports if
+		array health transitions to failing.
+
+	Spaces around commas are ignored.
+
+	This option cannot be modified via the REST API to prevent potential
+	remote shutdown exploits, and requires a manual configuration edit
+	and daemon reload (SIGHUP) to change.
+
   Network & REST API
 	These settings control the network interface. These options are not
 	visible from the REST API. They require a manual edit of the

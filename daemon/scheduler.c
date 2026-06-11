@@ -11,7 +11,7 @@
 #include "daemon.h"
 #include "version.h"
 
-static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, char* msg, size_t msg_size, int* status)
+static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, int automated, char* msg, size_t msg_size, int* status)
 {
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
@@ -72,6 +72,10 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	(void)runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
 
+	if (automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance")) {
+		(void)runner_locked(state, CMD_MAINTENANCE, CMD_SHUTDOWN, now, 0, msg, msg_size, status);
+	}
+
 	sl_free(&sync_arg_list);
 	sl_free(&scrub_arg_list);
 }
@@ -80,7 +84,7 @@ void schedule_maintenance(struct snapraid_state* state, int spindown, int thresh
 {
 	time_t now = time(0);
 	state_lock();
-	schedule_maintenance_locked(state, now, spindown, threshold, msg, msg_size, status);
+	schedule_maintenance_locked(state, now, spindown, threshold, 0 /* manual */, msg, msg_size, status);
 	state_unlock();
 }
 
@@ -388,7 +392,7 @@ void* scheduler_thread(void* arg)
 					state->runner.hold_off = 0;
 					pulse(state, PULSE_ARRAY);
 				} else {
-					schedule_maintenance_locked(state, now, -1 /* autodetect spindown */, 1 /* apply_thresolds */, msg, sizeof(msg), &status);
+					schedule_maintenance_locked(state, now, -1 /* autodetect spindown */, 1 /* apply_thresolds */, 1 /* automated */, msg, sizeof(msg), &status);
 				}
 				/* do not schedule other tasks */
 				break;

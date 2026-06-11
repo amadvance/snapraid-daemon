@@ -236,6 +236,8 @@ paths:
         - Exception: The 'report' and 'down' commands are treated as finalizers.
           If they are present in the sequence, they will be executed regardless
           of the success or failure of preceding commands.
+        - Note: The 'shutdown' command is rejected for security reasons to prevent
+          remote shutdown exploits.
 
         Clients should monitor /state endpoint to track the progress of the
         currently active command and the overall queue status via pulse counters.
@@ -379,13 +381,13 @@ paths:
                       This field is omitted if the health is 'passed'.
                   active_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
                   next_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
                     description: >
                       The next command scheduled in the current execution sequence.
                       This field is present when the daemon is running an automated
@@ -1011,7 +1013,7 @@ components:
             when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
           description: >
             The command executed.
         high_command:
@@ -2176,7 +2178,7 @@ components:
             Local timestamp of the most recently concluded task.
         last_command:
           type: string
-          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
           description: >
             Identifier of the last successfully completed command.
         annual_failure_rate:

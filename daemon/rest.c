@@ -1155,7 +1155,12 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 							char cmd[KEYWORD_MAX];
 							if (json_string(js, &jv[j], cmd, sizeof(cmd)) == 0) {
 								sched->cmd = command_parse(cmd);
-								if (!sched->cmd) {
+
+								/*
+								 * Reject unrecognized commands and explicitly reject CMD_SHUTDOWN
+								 * to prevent remote shutdown exploits via scheduled API tasks.
+								 */
+								if (!sched->cmd || sched->cmd == CMD_SHUTDOWN) {
 									json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 									schedule_free(sched);
 									goto bad;

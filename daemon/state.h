@@ -231,6 +231,7 @@ struct snapraid_disk {
 #define CMD_READ 13
 #define CMD_REPORT 101 /**< Additional command that generates a report */
 #define CMD_DOWN_IDLE 102 /**< Additional command that spin down inactive disks */
+#define CMD_SHUTDOWN 103 /**< Additional command that shuts down the system */
 #define CMD_MAINTENANCE 201 /**< High level command. Never enter the queue. */
 #define CMD_HEAL 202 /**< High level command. Never enter the queue. */
 #define CMD_UNDELETE 203 /**< High level command. Never enter the queue. */
@@ -481,6 +482,7 @@ struct snapraid_config {
 	/* empty string or 0 value means value not set and/or disabled */
 	char sys_log_directory[CONFIG_MAX]; /**< Directory for log files */
 	int sys_log_retention_days; /**< Number of days to keep logs */
+	char sys_shutdown_on[CONFIG_MAX]; /**< List of events to trigger shutdown */
 	int net_enabled; /**< 1 if network interface is enabled, 0 otherwise */
 	char net_port[CONFIG_MAX]; /**< Network port to bind to */
 	char net_acl[CONFIG_MAX]; /**< IP access control list */
