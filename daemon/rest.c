@@ -410,6 +410,42 @@ static int send_no_content(struct mg_connection* conn)
 	return 204;
 }
 
+static void send_unauthorized(struct mg_connection* conn)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	ss_prints(&s, "HTTP/1.1 401 Unauthorized\r\n");
+	send_headers(conn, &s);
+	ss_prints(&s, "WWW-Authenticate: Basic realm=\"SnapRAID Daemon REST API\"\r\n");
+	ss_prints(&s, "Content-Type: text/plain; charset=utf-8\r\n");
+	ss_prints(&s, "Content-Length: 0\r\n");
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+}
+
+static void send_too_many_requests(struct mg_connection* conn)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	ss_prints(&s, "HTTP/1.1 429 Too Many Requests\r\n");
+	send_headers(conn, &s);
+	ss_printf(&s, "Retry-After: %d\r\n", AUTH_DELAY_SECONDS);
+	ss_prints(&s, "Content-Type: text/plain; charset=utf-8\r\n");
+	ss_prints(&s, "Content-Length: 0\r\n");
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+}
+
 static int send_text_answer(struct mg_connection* conn, int status, ss_t* body)
 {
 	ss_t s;
@@ -2590,6 +2626,222 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	return 200;
 }
 
+static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
+{
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	unsigned char* decoded = 0;
+	size_t decoded_len = 0;
+
+	/* exclude /metrics from authentication */
+	if (strcmp(ri->local_uri, "/metrics") == 0) {
+		return 1;
+	}
+
+	/* exclude OPTIONS preflight requests from authentication to support CORS */
+	if (strcmp(ri->request_method, "OPTIONS") == 0) {
+		return 1;
+	}
+
+	char net_auth_credential[CONFIG_MAX];
+	char rest_auth_cache[CONFIG_MAX];
+	state_lock();
+	sncpy(net_auth_credential, sizeof(net_auth_credential), state->config.net_auth_credential);
+	sncpy(rest_auth_cache, sizeof(rest_auth_cache), state->rest_auth_cache);
+	state_unlock();
+
+	/* if credential is not configured, bypass authentication */
+	if (net_auth_credential[0] == 0) {
+		return 1;
+	}
+
+	const char* remote_addr = ri->remote_addr[0] ? ri->remote_addr : "unknown";
+
+	const char* auth_hdr = mg_get_header(conn, "Authorization");
+	if (auth_hdr == 0) {
+		log_msg(LVL_DEBUG, "authentication info: missing Authorization header from IP %s", remote_addr);
+		goto bail;
+	}
+	if (strncmp(auth_hdr, "Basic ", 6) != 0) {
+		log_msg(LVL_WARNING, "authentication failed (invalid authorization scheme) from IP %s", remote_addr);
+		goto bail;
+	}
+
+	const char* b64_payload = auth_hdr + 6;
+
+	/* check if the token is already in the cache */
+	if (rest_auth_cache[0] != 0 && strcmp(rest_auth_cache, b64_payload) == 0) {
+		return 1;
+	}
+
+	uint64_t now = os_tick_sec();
+	int too_fast = 0;
+
+	state_lock();
+	if (state->rest_latest_auth != 0 && now - state->rest_latest_auth < AUTH_DELAY_SECONDS) {
+		too_fast = 1;
+	} else {
+		state->rest_latest_auth = now;
+	}
+	state_unlock();
+
+	if (too_fast) {
+		log_msg(LVL_WARNING, "authentication failed (rate limit exceeded) from IP %s", remote_addr);
+		send_too_many_requests(conn);
+		return 0;
+	}
+
+	size_t b64_len = strlen(b64_payload);
+	size_t decoded_max = b64_len + 1;
+	decoded = malloc(decoded_max);
+	if (decoded == 0) {
+		log_msg(LVL_ERROR, "authentication failed (memory allocation error)");
+		goto bail;
+	}
+
+	decoded_len = decoded_max;
+	if (mg_base64_decode(b64_payload, b64_len, decoded, &decoded_len) != -1) {
+		log_msg(LVL_WARNING, "authentication failed (base64 decode error) from IP %s", remote_addr);
+		goto bail;
+	}
+	if (decoded_len <= 1) {
+		log_msg(LVL_WARNING, "authentication failed (empty credential payload) from IP %s", remote_addr);
+		goto bail;
+	}
+
+	char* colon = strchr((char*)decoded, ':');
+	if (colon == 0) {
+		log_msg(LVL_WARNING, "authentication failed (malformed credentials, missing colon) from IP %s", remote_addr);
+		goto bail;
+	}
+
+	*colon = 0;
+	char* inbound_user = (char*)decoded;
+	char* inbound_password = colon + 1;
+
+	if (inbound_user[0] == 0 || inbound_password[0] == 0) {
+		log_msg(LVL_WARNING, "authentication failed (empty username or password) from IP %s", remote_addr);
+		goto bail;
+	}
+
+	/* parse config credential: username:$argon2id$v=19$m=65536,t=3,p=1$salt_base64$hash_base64 */
+	char* config_colon = strchr(net_auth_credential, ':');
+	if (config_colon == 0) {
+		log_msg(LVL_ERROR, "authentication config error: 'net_auth_credential' is not in USER:HASH format");
+		goto bail;
+	}
+
+	*config_colon = 0;
+	char* config_user = net_auth_credential;
+	char* hash_str = config_colon + 1;
+
+	if (strcmp(inbound_user, config_user) != 0) {
+		log_msg(LVL_WARNING, "authentication failed (user mismatch: '%s') from IP %s", inbound_user, remote_addr);
+		goto bail;
+	}
+
+	const char* expected_prefix = "$argon2id$v=19$m=65536,t=3,p=1$";
+	size_t prefix_len = strlen(expected_prefix);
+	if (strncmp(hash_str, expected_prefix, prefix_len) != 0) {
+		log_msg(LVL_ERROR, "authentication config error: invalid Argon2id hash parameters or prefix in 'net_auth_credential'");
+		goto bail;
+	}
+
+	char* salt_b64 = hash_str + prefix_len;
+	char* hash_b64 = strchr(salt_b64, '$');
+	if (hash_b64 == 0) {
+		log_msg(LVL_ERROR, "authentication config error: missing hash section in 'net_auth_credential'");
+		goto bail;
+	}
+
+	*hash_b64 = 0;
+	++hash_b64;
+
+	/* strip trailing whitespace from hash_b64 */
+	size_t h_len = strlen(hash_b64);
+	while (h_len > 0 && (hash_b64[h_len - 1] == '\r' || hash_b64[h_len - 1] == '\n' || isspace((unsigned char)hash_b64[h_len - 1]))) {
+		hash_b64[h_len - 1] = 0;
+		h_len--;
+	}
+
+	uint8_t config_salt[64];
+	size_t config_salt_len = sizeof(config_salt);
+	if (mg_base64_decode(salt_b64, strlen(salt_b64), config_salt, &config_salt_len) != -1) {
+		log_msg(LVL_ERROR, "authentication config error: failed to base64 decode salt in 'net_auth_credential'");
+		goto bail;
+	}
+
+	/* mg_base64_decode returns decoded size including the terminating NUL byte (16 + 1) */
+	if (config_salt_len != 16 + 1) {
+		log_msg(LVL_ERROR, "authentication config error: invalid decoded salt length (expected 16 bytes)");
+		goto bail;
+	}
+
+	uint8_t config_hash[64];
+	size_t config_hash_len = sizeof(config_hash);
+	if (mg_base64_decode(hash_b64, strlen(hash_b64), config_hash, &config_hash_len) != -1) {
+		log_msg(LVL_ERROR, "authentication config error: failed to base64 decode hash in 'net_auth_credential'");
+		goto bail;
+	}
+
+	/* mg_base64_decode returns decoded size including the terminating NUL byte (32 + 1) */
+	if (config_hash_len != 32 + 1) {
+		log_msg(LVL_ERROR, "authentication config error: invalid decoded hash length (expected 32 bytes)");
+		goto bail;
+	}
+
+	void* work_area = malloc(AUTH_NB_BLOCKS * 1024);
+	if (work_area == 0) {
+		log_msg(LVL_ERROR, "authentication failed (work area memory allocation error)");
+		goto bail;
+	}
+
+	uint8_t computed_hash[32];
+	crypto_argon2_config config;
+	config.algorithm = CRYPTO_ARGON2_ID;
+	config.nb_blocks = AUTH_NB_BLOCKS;
+	config.nb_passes = AUTH_NB_PASSES;
+	config.nb_lanes = AUTH_NB_LANES;
+
+	crypto_argon2_inputs inputs;
+	inputs.pass = (const uint8_t*)inbound_password;
+	inputs.pass_size = strlen(inbound_password);
+	inputs.salt = config_salt;
+	inputs.salt_size = config_salt_len - 1;
+
+	crypto_argon2(computed_hash, sizeof(computed_hash), work_area, config, inputs, crypto_argon2_no_extras);
+	free(work_area);
+
+	int match = crypto_verify32(computed_hash, config_hash) == 0;
+	crypto_wipe(computed_hash, sizeof(computed_hash));
+	if (!match) {
+		log_msg(LVL_WARNING, "authentication failed (password mismatch for user '%s') from IP %s", inbound_user, remote_addr);
+		goto bail;
+	}
+
+	/* clean up sensitive buffers */
+	crypto_wipe(decoded, decoded_len);
+	free(decoded);
+
+	/* store the successfully verified token in the cache */
+	if (strlen(b64_payload) < CONFIG_MAX) {
+		state_lock();
+		sncpy(state->rest_auth_cache, sizeof(state->rest_auth_cache), b64_payload);
+		state_unlock();
+	}
+
+	return 1;
+
+bail:
+	if (decoded != 0) {
+		crypto_wipe(decoded, decoded_len);
+		free(decoded);
+	}
+
+	send_unauthorized(conn);
+	return 0;
+}
+
 int rest_init(struct snapraid_state* state)
 {
 	const char* options[20];
@@ -2641,6 +2893,8 @@ int rest_init(struct snapraid_state* state)
 		log_msg(LVL_ERROR, "failed to start web server, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
+
+	mg_set_auth_handler(state->rest_context, "**", auth_handler_callback, state);
 
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal", handler_action, state);

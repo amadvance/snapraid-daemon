@@ -84,9 +84,11 @@ snapraidd_SOURCES = \
 	daemon/unix.c \
 	daemon/mingw.c \
 	civetweb/civetweb.c \
-	tommyds/tommy.c
+	tommyds/tommy.c \
+	monocypher/monocypher.c
 
 noinst_HEADERS = \
+	monocypher/monocypher.h \
 	tommyds/tommychain.h \
 	tommyds/tommyhash.h \
 	tommyds/tommylist.h \

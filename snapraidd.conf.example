@@ -175,6 +175,32 @@ net_config_full_access = 0
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
 net_web_root = commander.zip
 
+# The net_auth_credential specifies the credentials required to access the
+# REST API and dashboard via HTTP Basic Authentication.
+#
+# If empty or omitted, authentication is disabled.
+#
+# The credentials must be formatted as:
+# username:$argon2id$v=19$m=65536,t=3,p=1$salt_base64$hash_base64
+#
+# You can generate a valid, secure credential line by running the daemon
+# with the -g, --gen-auth command-line flag:
+#
+#   snapraidd -g username:password
+#
+# Note: The /metrics endpoint is exempt from authentication to allow
+# unauthenticated scraping by monitoring tools (e.g. Prometheus).
+#
+# WARNING: Basic Authentication transmits credentials in plaintext (Base64)
+# over the network. Using this over unencrypted HTTP is NOT secure.
+# You should deploy an HTTPS encryption layer (such as a reverse proxy
+# like Caddy, Nginx, or Traefik) or restrict network access to a trusted,
+# secure network (e.g., using a VPN or Tailscale).
+#
+# This option is not accessible from the REST API.
+# It requires a manual edit and a configuration reload (SIGHUP) to apply.
+#net_auth_credential =
+
 ### Automation & Maintenance
 # The check_updates flag controls whether the daemon periodically
 # queries the GitHub API (via curl) to check if new versions of SnapRAID

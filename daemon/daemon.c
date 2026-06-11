@@ -16,6 +16,76 @@
 
 /****************************************************************************/
 
+static void gen_auth(const char* arg)
+{
+	char* colon = strchr(arg, ':');
+	if (colon == 0) {
+		fprintf(stderr, "Error: Invalid argument format. Expected USERNAME:PASSWORD\n");
+		exit(EXIT_FAILURE);
+	}
+
+	size_t user_len = colon - arg;
+	char* username = malloc_nofail(user_len + 1);
+	memcpy(username, arg, user_len);
+	username[user_len] = 0;
+
+	const char* password = colon + 1;
+	if (username[0] == 0 || password[0] == 0) {
+		fprintf(stderr, "Error: Username and password must not be empty\n");
+		free(username);
+		exit(EXIT_FAILURE);
+	}
+
+	uint8_t salt[16];
+	if (os_randomize(salt, sizeof(salt)) != 0) {
+		fprintf(stderr, "Error: Failed to generate random salt\n");
+		free(username);
+		exit(EXIT_FAILURE);
+	}
+
+	void* work_area = malloc_nofail(AUTH_NB_BLOCKS * 1024);
+
+	uint8_t hash[32];
+	crypto_argon2_config config;
+	config.algorithm = CRYPTO_ARGON2_ID;
+	config.nb_blocks = AUTH_NB_BLOCKS;
+	config.nb_passes = AUTH_NB_PASSES;
+	config.nb_lanes = AUTH_NB_LANES;
+
+	crypto_argon2_inputs inputs;
+	inputs.pass = (const uint8_t*)password;
+	inputs.pass_size = strlen(password);
+	inputs.salt = salt;
+	inputs.salt_size = sizeof(salt);
+
+	crypto_argon2(hash, sizeof(hash), work_area, config, inputs, crypto_argon2_no_extras);
+
+	free(work_area);
+
+	char salt_b64[64];
+	size_t salt_b64_len = sizeof(salt_b64);
+	if (mg_base64_encode(salt, sizeof(salt), salt_b64, &salt_b64_len) != -1) {
+		fprintf(stderr, "Error: Failed to base64 encode salt\n");
+		free(username);
+		exit(EXIT_FAILURE);
+	}
+
+	char hash_b64[128];
+	size_t hash_b64_len = sizeof(hash_b64);
+	if (mg_base64_encode(hash, sizeof(hash), hash_b64, &hash_b64_len) != -1) {
+		fprintf(stderr, "Error: Failed to base64 encode hash\n");
+		free(username);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Generated credential line for snapraidd.conf:\n\n");
+	printf("net_auth_credential = %s:$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s\n\n", username, AUTH_NB_BLOCKS, AUTH_NB_PASSES, AUTH_NB_LANES, salt_b64, hash_b64);
+	printf("Copy the 'net_auth_credential' line above and paste it into your snapraidd.conf file.\n");
+
+	free(username);
+	exit(EXIT_SUCCESS);
+}
+
 static void version(void)
 {
 	printf(PACKAGE_NAME " v" VERSION " by Andrea Mazzoleni, " PACKAGE_URL "\n");
@@ -33,6 +103,7 @@ static void usage(const char* conf)
 	printf("  " SWITCH_GETOPT_LONG("-N, --no-cache        ", "-N") "  Load web pages at runtime without caching them\n");
 	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
 	printf("  " SWITCH_GETOPT_LONG("-v, --verbose         ", "-v") "  Verbose output\n");
+	printf("  " SWITCH_GETOPT_LONG("-g, --gen-auth U:P    ", "-g") "  Generate Argon2id credential line\n");
 	printf("  " SWITCH_GETOPT_LONG("-H, --help            ", "-H") "  Show this help message\n");
 	printf("  " SWITCH_GETOPT_LONG("-V, --version         ", "-V") "  Show version and exit\n");
 
@@ -51,6 +122,7 @@ struct option long_options[] = {
 	{ "no-cache", 0, 0, 'N' },
 	{ "pidfile", 1, 0, 'p' },
 	{ "verbose", 0, 0, 'v' },
+	{ "gen-auth", 1, 0, 'g' },
 	{ "help", 0, 0, 'H' },
 	{ "version", 0, 0, 'V' },
 
@@ -58,7 +130,7 @@ struct option long_options[] = {
 };
 #endif
 
-#define OPTIONS "fc:Np:vHV"
+#define OPTIONS "fc:Np:vg:HV"
 
 void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 {
@@ -88,6 +160,9 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 			break;
 		case 'v' :
 			state->log.verbose = 1;
+			break;
+		case 'g' :
+			gen_auth(optarg);
 			break;
 		case 'H' :
 			usage(state->config.conf);

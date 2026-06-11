@@ -3,6 +3,15 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Added a "net_auth_credential" option to protect the REST API and
+   web dashboard via HTTP Basic Authentication. The credentials are
+   securely verified using Argon2id ($m=65536, t=3, p=1$).
+   Also added a `-g, --gen-auth` command-line utility flag to generate
+   a valid configuration line from a username and password.
+   Note: Since Basic Authentication transmits credentials in plaintext
+   (Base64), it is not secure over unencrypted HTTP. Users must deploy
+   an HTTPS encryption layer or restrict access to a trusted, secure
+   network.
  * Added environment variables to the hook script executions, exposing
    execution details (such as command name, task number, log file,
    config paths) for the `task-begin` event, and adding exit codes,

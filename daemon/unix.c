@@ -1306,6 +1306,35 @@ uint64_t os_tick_sec(void)
 	return ts.tv_sec;
 }
 
+int os_randomize(void* ptr, size_t size)
+{
+	int f;
+	ssize_t ret;
+
+	f = open("/dev/urandom", O_RDONLY);
+	if (f == -1) {
+		/* LCOV_EXCL_START */
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	ret = read(f, ptr, size);
+	if (ret < 0 || (size_t)ret != size) {
+		/* LCOV_EXCL_START */
+		close(f);
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	if (close(f) != 0) {
+		/* LCOV_EXCL_START */
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	return 0;
+}
+
 /****************************************************************************/
 /* daemon */
 

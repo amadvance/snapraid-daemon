@@ -13,6 +13,12 @@
 #include <userenv.h> /* CreateEnvironmentBlock */
 
 /**
+ * Direct access to RtlGenRandom().
+ * This function is accessible only with LoadLibrary() and it's available from Windows XP.
+ */
+static BOOLEAN(WINAPI * ptr_RtlGenRandom)(PVOID, ULONG);
+
+/**
  * Description of the last error.
  * It's stored in the thread local storage.
  */
@@ -22,6 +28,12 @@ static windows_key_t last_error;
  * If we are running in Wine.
  */
 static int is_wine;
+
+/**
+ * Loaded ADVAPI32.DLL.
+ */
+static HMODULE dll_advapi32;
+
 
 /**
  * Executable dir.
@@ -136,8 +148,16 @@ void os_init(void)
 		exit(EXIT_FAILURE);
 	}
 
+	dll_advapi32 = LoadLibrary("ADVAPI32.DLL");
+	if (!dll_advapi32) {
+		exit(EXIT_FAILURE);
+	}
+
 	/* check for Wine presence */
 	is_wine = GetProcAddress(ntdll, "wine_get_version") != 0;
+
+	/* get pointer to RtlGenRandom, note that it was reported missing in some cases */
+	ptr_RtlGenRandom = (void*)GetProcAddress(dll_advapi32, "SystemFunction036");
 
 	exedir_init();
 
@@ -165,6 +185,8 @@ void os_done(void)
 {
 	/* delete the thread local storage for strerror() */
 	windows_key_delete(last_error);
+
+	FreeLibrary(dll_advapi32);
 }
 
 /**
@@ -998,6 +1020,17 @@ char* windows_realpath(const char* path, char* resolved_path)
 	}
 
 	return resolved_path;
+}
+
+int os_randomize(void* void_ptr, size_t size)
+{
+	unsigned char* ptr = void_ptr;
+
+	/* try RtlGenRandom */
+	if (ptr_RtlGenRandom != 0 && ptr_RtlGenRandom(ptr, size) != 0)
+		return 0;
+
+	return -1;
 }
 
 /****************************************************************************/
