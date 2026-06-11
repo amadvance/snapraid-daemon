@@ -457,15 +457,16 @@ void strupr(char* str);
  * \param split_max Capacity of @split_map; at most this many tokens are stored.
  * \param str Input string to tokenise (modified in-place).
  * \param delimiters Null-terminated set of delimiter characters.
+ * \param trim Null-terminated set of characters to trim from the start and end of each token.
  * \return Number of tokens stored in @split_map.
  *
  * Example:
- *   char  buf[] = "  one,two,,three  ";
+ *   char  buf[] = "  one, two,, , three  ";
  *   char* map[8];
- *   unsigned n = strsplit(map, 8, buf, " ,");
+ *   unsigned n = strsplit(map, 8, buf, ",", " ");
  *   // n == 3, map[] == { "one", "two", "three" }
  */
-unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters);
+unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim);
 
 /****************************************************************************/
 /* pulse */

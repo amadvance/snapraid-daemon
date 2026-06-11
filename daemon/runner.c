@@ -86,7 +86,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 
 	/* split the string using strsplit up to CONTAINERS_MAX tokens */
 	char* tokens[CONTAINERS_MAX];
-	unsigned n = strsplit(tokens, CONTAINERS_MAX, copy, ", ");
+	unsigned n = strsplit(tokens, CONTAINERS_MAX, copy, ",", " \t");
 
 	if (n == 0) {
 		free(copy);
