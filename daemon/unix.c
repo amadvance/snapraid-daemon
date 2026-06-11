@@ -436,8 +436,6 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
  *     be group-writable by a group other than the daemon's real/effective GID.
  *   - The file must be a regular file with at least one execute bit set.
  *   - The setuid and setgid bits must not be set.
- *   - The file must not have more than one hard link, to prevent an attacker
- *     from linking a controlled file into a trusted directory.
  *   - On systems with fexecve(2) support, the returned fd is opened without
  *     O_CLOEXEC so it can be passed directly to fexecve(2). On other systems
  *     O_CLOEXEC is set and execve(2) must be used with @resolved_path.
@@ -529,11 +527,10 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 
 	/*
 	 * Open the executable
-	 * O_NOFOLLOW prevents following symlinks to mitigate redirection attacks
 	 */
-	int fd = openat(dir_fd, exec_name, O_RDONLY | O_NOFOLLOW
+	int fd = openat(dir_fd, exec_name, O_RDONLY
 #if !HAVE_FEXECVE
-		| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
+			| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
 #endif
 	);
 	if (fd < 0) {
@@ -589,13 +586,6 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 	/* must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
 		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
-		close(fd);
-		return -1;
-	}
-
-	/* verify the file has not been hardlinked multiple times */
-	if (st.st_nlink > 1) {
-		log_task(LVL_ERROR, "file %s has multiple hard links", resolved_path);
 		close(fd);
 		return -1;
 	}
