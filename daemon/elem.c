@@ -34,6 +34,7 @@ struct {
 	{ CMD_READ, "read" },
 	{ CMD_REPORT, "report" },
 	{ CMD_DOWN_IDLE, "down_idle" },
+	{ CMD_SHUTDOWN, "shutdown" },
 	{ CMD_MAINTENANCE, "maintenance" },
 	{ CMD_HEAL, "heal" },
 	{ CMD_UNDELETE, "undelete" },
@@ -222,8 +223,8 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 		tommy_node* i_next = i->next;
 		struct snapraid_task* task = i->data;
 
-		/* stop at the first report or down command */
-		if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN)
+		/* stop at the first report, down, or shutdown command */
+		if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN || task->cmd == CMD_SHUTDOWN)
 			break;
 
 		/* remove from the waiting list */

@@ -182,6 +182,24 @@ const char* os_find_docker(void)
 	return 0;
 }
 
+static const char* poweroff_paths[] = {
+	"/sbin/poweroff",
+	"/usr/sbin/poweroff",
+	"/bin/poweroff",
+	"/usr/bin/poweroff",
+	0
+};
+
+const char* os_find_poweroff(void)
+{
+	for (int i = 0; poweroff_paths[i]; ++i) {
+		if (eaccess(poweroff_paths[i], X_OK) == 0)
+			return poweroff_paths[i];
+	}
+
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, "/var/log/snapraid");
@@ -1128,6 +1146,45 @@ int os_term(pid_t pid)
 	 * terminated together, preventing orphaned worker processes.
 	 */
 	return kill(-pid, SIGTERM);
+}
+
+int os_shutdown(void)
+{
+	const char* poweroff_path = os_find_poweroff();
+	if (!poweroff_path) {
+		log_task(LVL_ERROR, "poweroff binary not found");
+		return -1;
+	}
+
+	char* argv[2];
+	argv[0] = (char*)poweroff_path;
+	argv[1] = 0;
+
+	log_task(LVL_INFO, "spawning poweroff to shut down system");
+	pid_t pid = os_spawn(argv, 0, 0, 0);
+	if (pid < 0) {
+		log_task(LVL_ERROR, "failed to spawn poweroff, errno=%s(%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	int status;
+	if (os_wait(pid, &status) < 0) {
+		log_task(LVL_ERROR, "failed to wait for poweroff, errno=%s(%d)", strerror(errno), errno);
+		return -1;
+	}
+
+	if (WIFEXITED(status)) {
+		int exit_code = WEXITSTATUS(status);
+		if (exit_code == 0)
+			return 0;
+		log_task(LVL_ERROR, "poweroff terminated with exit code %d", exit_code);
+	} else if (WIFSIGNALED(status)) {
+		log_task(LVL_ERROR, "poweroff terminated with signal %d", WTERMSIG(status));
+	} else {
+		log_task(LVL_ERROR, "poweroff terminated for unknown reason");
+	}
+
+	return -1;
 }
 
 /****************************************************************************/

@@ -1350,6 +1350,11 @@ const char* os_find_docker(void)
 	return 0;
 }
 
+const char* os_find_poweroff(void)
+{
+	return 0;
+}
+
 void os_default_log(char* dst, size_t dst_size)
 {
 	sncpy(dst, dst_size, path_log);
@@ -2184,6 +2189,36 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 		log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=0x%08x", resolved_path, execution_time, (unsigned)status);
 		return -1;
 	}
+}
+
+int os_shutdown(void)
+{
+	HANDLE h_token;
+	TOKEN_PRIVILEGES tkp;
+
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &h_token)) {
+		LookupPrivilegeValueW(0, L"SeShutdownPrivilege", &tkp.Privileges[0].Luid);
+		tkp.PrivilegeCount = 1;
+		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		AdjustTokenPrivileges(h_token, 0, &tkp, 0, (PTOKEN_PRIVILEGES)0, 0);
+		CloseHandle(h_token);
+	}
+
+	if (!InitiateSystemShutdownExW(
+			0,
+			0,
+			0,
+			1,
+			0,
+			0
+		)) {
+		DWORD err = GetLastError();
+		windows_errno(err);
+		log_task(LVL_ERROR, "failed to initiate system shutdown, error=%lu", (unsigned long)err);
+		return -1;
+	}
+
+	return 0;
 }
 
 /****************************************************************************/

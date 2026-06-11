@@ -15,6 +15,22 @@
 
 /****************************************************************************/
 /* runner */
+/**
+ * Check if the specified command is currently running or scheduled in the queue.
+ */
+static int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
+{
+	if (state->runner.latest != 0 && state->runner.latest->cmd == cmd)
+		return 1;
+
+	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
+		struct snapraid_task* task = i->data;
+		if (task->cmd == cmd)
+			return 1;
+	}
+
+	return 0;
+}
 
 /**
  * Update the health state of the array
@@ -36,22 +52,25 @@ static int runner_health_check_locked(struct snapraid_state* state)
 		/* send a report, but not if it's a change from PENDING */
 		if (old_health != HEALTH_PENDING) {
 			/* check if the current task is a report or if there is a scheduled one */
-			int has_report = state->runner.latest != 0 && state->runner.latest->cmd == CMD_REPORT;
-			if (!has_report) {
-				for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
-					struct snapraid_task* task = i->data;
-					if (task->cmd == CMD_REPORT) {
-						has_report = 1;
-						break;
-					}
-				}
-			}
-
-			/* if no report, schedule a new one */
-			if (!has_report) {
+			if (!runner_has_cmd_locked(state, CMD_REPORT)) {
 				char msg[MSG_MAX];
 				int status;
 				runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+			}
+
+			/* check if we should trigger a shutdown based on the new health status */
+			int trigger_shutdown = 0;
+			if (new_health == HEALTH_PREFAIL && config_shutdown_on(state->config.sys_shutdown_on, "prefail"))
+				trigger_shutdown = 1;
+			else if (new_health == HEALTH_FAILING && config_shutdown_on(state->config.sys_shutdown_on, "failing"))
+				trigger_shutdown = 1;
+
+			if (trigger_shutdown) {
+				if (!runner_has_cmd_locked(state, CMD_SHUTDOWN)) {
+					char msg[MSG_MAX];
+					int status;
+					runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, msg, sizeof(msg), &status);
+				}
 			}
 		}
 	}
@@ -237,6 +256,46 @@ static int runner_report_locked(struct snapraid_state* state)
 	}
 
 	ss_done(&ss);
+
+	return 0;
+}
+
+static int runner_shutdown_locked(struct snapraid_state* state)
+{
+	log_task_reset();
+
+	if (state->global.health == HEALTH_PREFAIL) {
+		log_task(LVL_INFO, "executing system shutdown on prefail health status");
+	} else if (state->global.health == HEALTH_FAILING) {
+		log_task(LVL_INFO, "executing system shutdown on failing health status");
+	} else {
+		log_task(LVL_INFO, "executing system shutdown after maintenance");
+	}
+
+	state_unlock();
+
+	int ret = os_shutdown();
+
+	state_lock();
+
+	struct snapraid_task* shutdown_task = state->runner.latest;
+
+	shutdown_task->running = 0;
+	shutdown_task->state = PROCESS_STATE_TERM;
+	shutdown_task->exit_code = 0;
+	shutdown_task->unix_end_time = time(0);
+
+	if (ret != 0) {
+		log_task(LVL_CRITICAL, "system shutdown failed");
+		shutdown_task->exit_code = -1;
+	}
+
+	log_task_push(&shutdown_task->message_list);
+
+	/* insert the task in the done list */
+	tommy_list_insert_tail(&state->runner.history_list, &shutdown_task->node, shutdown_task);
+
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	return 0;
 }
@@ -1058,6 +1117,10 @@ static void* runner_thread(void* arg)
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
 				runner_report_locked(state);
+			} else if (task->cmd == CMD_SHUTDOWN) {
+				task->running = 1;
+				task->state = PROCESS_STATE_START;
+				runner_shutdown_locked(state);
 			} else if (runner_precondition(state) == 0) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;

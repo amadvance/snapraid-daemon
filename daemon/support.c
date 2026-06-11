@@ -1361,3 +1361,23 @@ int mg_write_zstd(struct mg_connection* conn, const char* src, size_t src_size)
 }
 #endif
 
+
+int config_shutdown_on(const char* sys_shutdown_on, const char* event)
+{
+	if (!sys_shutdown_on || !sys_shutdown_on[0])
+		return 0;
+
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), sys_shutdown_on);
+
+	char* tokens[16];
+	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n");
+
+	for (unsigned i = 0; i < n; ++i) {
+		if (strcmp(tokens[i], event) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+

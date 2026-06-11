@@ -468,6 +468,11 @@ void strupr(char* str);
  */
 unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim);
 
+/**
+ * Check if the specified event is present in the comma-separated shutdown list.
+ */
+int config_shutdown_on(const char* sys_shutdown_on, const char* event);
+
 /****************************************************************************/
 /* pulse */
 
