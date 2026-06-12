@@ -6,11 +6,13 @@
 #ifdef __MINGW32__ /* Only for MingW */
 
 #include "state.h"
-#include "daemon.h"
 #include "support.h"
 #include "log.h"
 
 #include <userenv.h> /* CreateEnvironmentBlock */
+
+/****************************************************************************/
+/* global */
 
 /**
  * Direct access to RtlGenRandom().
@@ -34,7 +36,6 @@ static int is_wine;
  */
 static HMODULE dll_advapi32;
 
-
 /**
  * Executable dir.
  *
@@ -42,41 +43,10 @@ static HMODULE dll_advapi32;
  */
 static WCHAR exedir[MAX_PATH];
 
-/**
- * Set the executable dir.
- */
-static void exedir_init(void)
-{
-	DWORD size;
-	WCHAR* slash;
+/****************************************************************************/
+/* convert */
 
-	size = GetModuleFileNameW(0, exedir, MAX_PATH);
-	if (size == 0 || size == MAX_PATH) {
-		/* use empty dir */
-		exedir[0] = 0;
-		return;
-	}
-
-	slash = wcsrchr(exedir, L'\\');
-	if (!slash) {
-		/* use empty dir */
-		exedir[0] = 0;
-		return;
-	}
-
-	/* cut exe name */
-	slash[1] = 0;
-}
-
-/**
- * Size in chars of conversion buffers for u8to16() and u16to8().
- */
-#define CONV_MAX PATH_MAX
-
-/**
- * Convert a generic string from UTF8 to UTF16.
- */
-static wchar_t* u8tou16(wchar_t* conv_buf, const char* src)
+wchar_t* u8tou16(wchar_t* conv_buf, const char* src)
 {
 	/* flags at 0 forces the API to never fail on malformed UTF-8 sequences */
 	int ret = MultiByteToWideChar(CP_UTF8, 0, src, -1, conv_buf, CONV_MAX);
@@ -112,7 +82,7 @@ static char* u16tou8ex(char* conv_buf, size_t conv_size, const wchar_t* src, siz
 	return conv_buf;
 }
 
-static char* u16tou8(char* conv_buf, const wchar_t* src)
+char* u16tou8(char* conv_buf, const wchar_t* src)
 {
 	size_t len;
 
@@ -128,67 +98,6 @@ static char* u16to8size(char* conv_buf, size_t conv_size, const wchar_t* src)
 	return u16tou8ex(conv_buf, conv_size, src, wcslen(src) + 1, &len);
 }
 
-static char path_snapraid[PATH_MAX];
-static char path_conf[PATH_MAX];
-static char path_log[PATH_MAX];
-static char path_data[PATH_MAX];
-
-void os_init(void)
-{
-	HMODULE ntdll;
-	WCHAR conv[CONV_MAX];
-
-	/* initialize the thread local storage for strerror(), using free() as destructor */
-	if (windows_key_create(&last_error, free) != 0) {
-		exit(EXIT_FAILURE);
-	}
-
-	ntdll = GetModuleHandle("NTDLL.DLL");
-	if (!ntdll) {
-		exit(EXIT_FAILURE);
-	}
-
-	dll_advapi32 = LoadLibrary("ADVAPI32.DLL");
-	if (!dll_advapi32) {
-		exit(EXIT_FAILURE);
-	}
-
-	/* check for Wine presence */
-	is_wine = GetProcAddress(ntdll, "wine_get_version") != 0;
-
-	/* get pointer to RtlGenRandom, note that it was reported missing in some cases */
-	ptr_RtlGenRandom = (void*)GetProcAddress(dll_advapi32, "SystemFunction036");
-
-	exedir_init();
-
-	if (is_wine) {
-		strcpy(path_log, "log");
-		strcpy(path_conf, "/etc/snapraidd.conf");
-		strcpy(path_data, "/usr/share/snapraidd/");
-		strcpy(path_snapraid, "/usr/bin/snapraid");
-	} else {
-		snwprintf(conv, PATH_MAX, L"%lslog", exedir);
-		u16tou8(path_log, conv);
-
-		snwprintf(conv, PATH_MAX, L"%lssnapraidd.conf", exedir);
-		u16tou8(path_conf, conv);
-
-		snwprintf(conv, PATH_MAX, L"%ls", exedir);
-		u16tou8(path_data, conv);
-
-		snwprintf(conv, PATH_MAX, L"%lssnapraid.exe", exedir);
-		u16tou8(path_snapraid, conv);
-	}
-}
-
-void os_done(void)
-{
-	/* delete the thread local storage for strerror() */
-	windows_key_delete(last_error);
-
-	FreeLibrary(dll_advapi32);
-}
-
 /**
  * Check if the char is a forward or back slash.
  */
@@ -197,22 +106,7 @@ static int is_slash(char c)
 	return c == '/' || c == '\\';
 }
 
-/**
- * Convert a path to the Windows format.
- *
- * If only_is_required is 1, the extended-length format is used only if required.
- *
- * The exact operation done is:
- * - If it's a '\\?\' or '\\.\' path, convert any '/' to '\'.
- * - If it's a disk designator path, like 'D:\' or 'D:/', it prepends '\\?\' to the path and convert any '/' to '\'.
- * - If it's a UNC path, like ''\\server'', it prepends '\\?\UNC\' to the path and convert any '/' to '\'.
- * - Otherwise, only the UTF conversion is done. In this case Windows imposes a limit of 260 chars, and automatically convert any '/' to '\'.
- *
- * For more details see:
- * Naming Files, Paths, and Namespaces
- * http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx#maxpath
- */
-static wchar_t* convert_arg(wchar_t* conv_buf, const char* src, int only_if_required)
+wchar_t* convert_arg(wchar_t* conv_buf, const char* src, int only_if_required)
 {
 	int ret;
 	wchar_t* dst;
@@ -285,8 +179,18 @@ static wchar_t* convert_arg(wchar_t* conv_buf, const char* src, int only_if_requ
 	return conv_buf;
 }
 
-#define convert(buf, a) convert_arg(buf, a, 0)
-#define convert_if_required(buf, a) convert_arg(buf, a, 1)
+/****************************************************************************/
+/* windows */
+
+const wchar_t* windows_exedir(void)
+{
+	return exedir;
+}
+
+int windows_is_wine(void)
+{
+	return is_wine;
+}
 
 static BOOL GetReparseTagInfoByHandle(HANDLE hFile, FILE_ATTRIBUTE_TAG_INFO* lpFileAttributeTagInfo, DWORD dwFileAttributes)
 {
@@ -304,7 +208,7 @@ static BOOL GetReparseTagInfoByHandle(HANDLE hFile, FILE_ATTRIBUTE_TAG_INFO* lpF
 /**
  * Convert Windows error to errno.
  */
-static void windows_errno(DWORD error)
+void windows_errno(DWORD error)
 {
 	switch (error) {
 	case ERROR_INVALID_HANDLE :
@@ -1303,73 +1207,6 @@ int windows_join(thread_id_t thread, void** retval)
 /****************************************************************************/
 /* exec */
 
-const char* os_find_engine(void)
-{
-	wchar_t conv[CONV_MAX];
-
-	DWORD attrib = GetFileAttributesW(u8tou16(conv, path_snapraid));
-
-	/* check for existence every time in case it's installed at later time */
-	if (attrib == INVALID_FILE_ATTRIBUTES)
-		return 0;
-
-	return path_snapraid;
-}
-
-const char* os_find_curl(void)
-{
-	static char path_curl_resolved[PATH_MAX];
-	wchar_t path_buf[PATH_MAX];
-
-	if (is_wine) {
-		return "/usr/bin/curl";
-	}
-
-	if (SearchPathW(NULL, L"curl.exe", NULL, PATH_MAX, path_buf, NULL) != 0) {
-		u16tou8(path_curl_resolved, path_buf);
-		return path_curl_resolved;
-	}
-
-	return 0;
-}
-
-const char* os_find_docker(void)
-{
-	static char path_docker[PATH_MAX];
-	wchar_t path_buf[PATH_MAX];
-
-	if (is_wine) {
-		return "/usr/bin/docker";
-	}
-
-	if (SearchPathW(NULL, L"docker.exe", NULL, PATH_MAX, path_buf, NULL) != 0) {
-		u16tou8(path_docker, path_buf);
-		return path_docker;
-	}
-
-	return 0;
-}
-
-const char* os_find_poweroff(void)
-{
-	return 0;
-}
-
-void os_default_log(char* dst, size_t dst_size)
-{
-	sncpy(dst, dst_size, path_log);
-}
-
-void os_default_conf(char* dst, size_t dst_size)
-{
-	sncpy(dst, dst_size, path_conf);
-}
-
-void os_default_data(char* dst, size_t dst_size, const char* root)
-{
-	snprintf(dst, dst_size, "%s%s", path_data, root);
-}
-
 #define COMMAND_LINE_MAX 32767
 
 static int needs_quote(const WCHAR* arg)
@@ -2191,361 +2028,70 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 	}
 }
 
-int os_shutdown(void)
-{
-	HANDLE h_token;
-	TOKEN_PRIVILEGES tkp;
-
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &h_token)) {
-		LookupPrivilegeValueW(0, L"SeShutdownPrivilege", &tkp.Privileges[0].Luid);
-		tkp.PrivilegeCount = 1;
-		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-		AdjustTokenPrivileges(h_token, 0, &tkp, 0, (PTOKEN_PRIVILEGES)0, 0);
-		CloseHandle(h_token);
-	}
-
-	if (!InitiateSystemShutdownExW(
-			0,
-			0,
-			0,
-			1,
-			0,
-			0
-		)) {
-		DWORD err = GetLastError();
-		windows_errno(err);
-		log_task(LVL_ERROR, "failed to initiate system shutdown, error=%lu", (unsigned long)err);
-		return -1;
-	}
-
-	return 0;
-}
-
 /****************************************************************************/
-/* system */
+/* os */
 
-void get_windows_version(struct snapraid_system* system)
-{
-	/* fallback */
-	snprintf(system->os_distribution, MSG_MAX, "Windows (Unknown)");
-	snprintf(system->kernel_version, KEYWORD_MAX, "(Unknown)");
-
-	HMODULE h = GetModuleHandleW(L"ntdll.dll");
-	if (!h)
-		return;
-
-	NTSTATUS(WINAPI * ptr_RtlGetVersion)(RTL_OSVERSIONINFOW*);
-	ptr_RtlGetVersion = (void*)GetProcAddress(h, "RtlGetVersion");
-	if (!ptr_RtlGetVersion)
-		return;
-
-	RTL_OSVERSIONINFOW rovi = { 0 };
-	rovi.dwOSVersionInfoSize = sizeof(rovi);
-	if (ptr_RtlGetVersion(&rovi) != 0)
-		return;
-
-	const char* name = "Windows";
-	if (rovi.dwMajorVersion == 10) {
-		/* Windows 11 is technically Major 10, but Build >= 22000 */
-		name = (rovi.dwBuildNumber >= 22000) ? "Windows 11" : "Windows 10";
-	} else if (rovi.dwMajorVersion == 6) {
-		if (rovi.dwMinorVersion == 3)
-			name = "Windows 8.1";
-		else if (rovi.dwMinorVersion == 2)
-			name = "Windows 8";
-		else if (rovi.dwMinorVersion == 1)
-			name = "Windows 7";
-	}
-
-	snprintf(system->os_distribution, MSG_MAX, "%s", name);
-	snprintf(system->kernel_version, KEYWORD_MAX, "Build %lu", rovi.dwBuildNumber);
-}
-
-void os_system(struct snapraid_system* system)
-{
-	DWORD size = KEYWORD_MAX;
-	if (!GetComputerNameA(system->hostname, &size)) {
-		strncpy(system->hostname, "Unknown", KEYWORD_MAX);
-	}
-
-	get_windows_version(system);
-
-	HKEY hKey;
-	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-		DWORD cpu_model_size = sizeof(system->cpu_model) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
-		if (RegQueryValueExA(hKey, "ProcessorNameString", NULL, NULL, (LPBYTE)system->cpu_model, &cpu_model_size) != ERROR_SUCCESS)
-			cpu_model_size = 0;
-		system->cpu_model[cpu_model_size] = 0;
-		RegCloseKey(hKey);
-	}
-
-	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-		char vendor[128];
-		char product[128];
-		DWORD vendor_size = sizeof(vendor) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
-		DWORD product_size = sizeof(product) - 1; /* space for terminator not necessarely added by RegQueryValueExA */
-		if (RegQueryValueExA(hKey, "BaseBoardManufacturer", NULL, NULL, (LPBYTE)vendor, &vendor_size) != ERROR_SUCCESS)
-			vendor_size = 0;
-		if (RegQueryValueExA(hKey, "BaseBoardProduct", NULL, NULL, (LPBYTE)product, &product_size) != ERROR_SUCCESS)
-			product_size = 0;
-		vendor[vendor_size] = 0;
-		product[product_size] = 0;
-		snprintf(system->motherboard, sizeof(system->motherboard), "%s %s", vendor, product);
-		RegCloseKey(hKey);
-	}
-
-	MEMORYSTATUSEX memInfo;
-	memInfo.dwLength = sizeof(MEMORYSTATUSEX);
-	if (GlobalMemoryStatusEx(&memInfo)) {
-		system->memory_total_bytes = memInfo.ullTotalPhys;
-	}
-
-	/* ECC detection in plain C without WMI is complex. Defaulting to 0 for standard API. */
-	system->is_ecc = 0;
-}
-
-void os_system_refresh(struct snapraid_system* system)
-{
-	/* GetTickCount64 returns milliseconds since boot */
-	system->uptime_seconds = GetTickCount64() / 1000;
-
-	MEMORYSTATUSEX memInfo;
-	memInfo.dwLength = sizeof(MEMORYSTATUSEX);
-	if (GlobalMemoryStatusEx(&memInfo)) {
-		system->memory_free_bytes = memInfo.ullAvailPhys;
-	}
-}
-
-/****************************************************************************/
-/* daemon */
-
-#include "messages.h"
-
-#define SERVICE_NAME "snapraidd"
-
-SERVICE_STATUS g_ServiceStatus = { 0 };
-SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
-static DWORD dwCheckPoint = 1;
 /**
- * log_event - A printf-like wrapper for the Windows Event Log
- * @type:   The Windows event type (EVENTLOG_INFORMATION_TYPE, etc.)
- * @format: The format string (standard printf style)
+ * Set the executable dir.
  */
-void windows_eventlog(int level, const char* msg)
+static void exedir_init(void)
 {
-	HANDLE h;
-	const char* strings[1];
-	DWORD id;
-	DWORD type;
+	DWORD size;
+	WCHAR* slash;
 
-	if (!g_StatusHandle) {
-		fprintf(stderr, "%s\n", msg);
+	size = GetModuleFileNameW(0, exedir, MAX_PATH);
+	if (size == 0 || size == MAX_PATH) {
+		/* use empty dir */
+		exedir[0] = 0;
 		return;
 	}
 
-	/* determine the MessageId from messages.mc based on the log level */
-	switch (level) {
-	case LVL_CRITICAL :
-	case LVL_ERROR :
-		id = MSG_ERROR;
-		type = EVENTLOG_ERROR_TYPE;
-		break;
-	case LVL_WARNING :
-		id = MSG_WARN;
-		type = EVENTLOG_WARNING_TYPE;
-		break;
-	default :
-	case LVL_INFO :
-	case LVL_DEBUG :
-		id = MSG_INFO;
-		type = EVENTLOG_INFORMATION_TYPE;
-		break;
-	}
-
-	h = RegisterEventSource(NULL, SERVICE_NAME);
-	if (!h)
-		return;
-
-	strings[0] = msg;
-
-	ReportEvent(h,
-		type,
-		0,
-		id,
-		NULL,
-		1, /* one string */
-		0,
-		strings,
-		NULL);
-
-	DeregisterEventSource(h);
-}
-
-/* Console control handler - forwards Ctrl+C, Ctrl+Break to child */
-static BOOL WINAPI console_handler(DWORD ctrl_type)
-{
-	switch (ctrl_type) {
-	case CTRL_C_EVENT :
-	case CTRL_BREAK_EVENT :
-		/*
-		 * Return TRUE to prevent parent termination. The child process
-		 * will receive these events automatically because it's attached
-		 * to the same console, so we don't need to forward them.
-		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
-		state_ptr()->daemon_sig = SIGINT;
-		return TRUE; /* signal handled, don't terminate parent */
-	case CTRL_CLOSE_EVENT :
-	case CTRL_LOGOFF_EVENT :
-	case CTRL_SHUTDOWN_EVENT :
-		/*
-		 * Return TRUE to prevent our termination while child handles shutdown.
-		 * The child receives these events automatically (same console).
-		 * Note: Windows will forcibly kill us after a timeout regardless
-		 * of returning TRUE: ~5 seconds for CLOSE_EVENT and LOGOFF_EVENT,
-		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
-		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
-		state_ptr()->daemon_sig = SIGTERM;
-		return TRUE; /* signal handled, but Windows will kill us after timeout */
-	default :
-		return FALSE;
-	}
-}
-
-void report_progress(DWORD currentState, DWORD exitCode, DWORD waitHint)
-{
-	g_ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-	g_ServiceStatus.dwCurrentState = currentState;
-
-	if (currentState == SERVICE_START_PENDING) {
-		g_ServiceStatus.dwControlsAccepted = 0;
-	} else {
-		g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-	}
-
-	g_ServiceStatus.dwWin32ExitCode = exitCode;
-	if (exitCode == ERROR_SERVICE_SPECIFIC_ERROR) {
-		g_ServiceStatus.dwServiceSpecificExitCode = 1;
-	} else {
-		g_ServiceStatus.dwServiceSpecificExitCode = 0;
-	}
-
-	if (currentState == SERVICE_RUNNING || currentState == SERVICE_STOPPED) {
-		g_ServiceStatus.dwCheckPoint = 0;
-		g_ServiceStatus.dwWaitHint = 0;
-		dwCheckPoint = 1; /* reset value for the next pending case */
-	} else {
-		/* increment checkpoint to prove we aren't "frozen" during PENDING states */
-		g_ServiceStatus.dwCheckPoint = dwCheckPoint++;
-		g_ServiceStatus.dwWaitHint = waitHint;
-	}
-
-	SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
-}
-
-VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
-{
-	switch (CtrlCode) {
-	case SERVICE_CONTROL_STOP :
-	case SERVICE_CONTROL_SHUTDOWN :
-		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
-			/* signal the runner to stop */
-			state_ptr()->daemon_running = DAEMON_QUIT;
-			state_ptr()->daemon_sig = SIGTERM;
-
-			/* tell the OS we are trying to stop */
-			report_progress(SERVICE_STOP_PENDING, NO_ERROR, 5000);
-		}
-		break;
-	default :
-		break;
-	}
-}
-
-VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
-{
-	(void)argc;
-	(void)argv;
-
-	struct snapraid_state* state = state_ptr();
-
-	g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
-	if (g_StatusHandle == NULL)
-		return;
-
-	windows_eventlog(LVL_INFO, "Service starting");
-	report_progress(SERVICE_START_PENDING, NO_ERROR, 5000);
-
-	if (daemon_init(state) != 0) {
-		windows_eventlog(LVL_ERROR, "Service startup failed");
-		report_progress(SERVICE_STOPPED, ERROR_SERVICE_SPECIFIC_ERROR, 0);
+	slash = wcsrchr(exedir, L'\\');
+	if (!slash) {
+		/* use empty dir */
+		exedir[0] = 0;
 		return;
 	}
 
-	windows_eventlog(LVL_INFO, "Service started");
-	report_progress(SERVICE_RUNNING, NO_ERROR, 0);
-
-	daemon_run(state);
-
-	windows_eventlog(LVL_INFO, "Service stopping");
-	daemon_done(state);
-
-	state_done(state);
-
-	windows_eventlog(LVL_INFO, "Service stopped");
-	report_progress(SERVICE_STOPPED, NO_ERROR, 0);
-
-	os_done();
+	/* cut exe name */
+	slash[1] = 0;
 }
 
-void windows_starting(void)
+void os_init(void)
 {
-	if (!g_StatusHandle)
-		return;
+	HMODULE ntdll;
 
-	report_progress(SERVICE_START_PENDING, NO_ERROR, 3000);
-}
-
-int main(int argc, char* argv[])
-{
-	struct snapraid_state* state = state_init();
-
-	os_init();
-
-	daemon_options(state, argc, argv);
-
-	if (state->log.foreground) {
-		if (!SetConsoleCtrlHandler(console_handler, TRUE)) {
-			exit(EXIT_FAILURE);
-		}
-
-		if (daemon_init(state) != 0)
-			exit(EXIT_FAILURE);
-
-		daemon_run(state);
-
-		daemon_done(state);
-
-		state_done(state);
-
-		os_done();
-	} else {
-		SERVICE_TABLE_ENTRY ServiceTable[] = {
-			{ (char*)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain },
-			{ NULL, NULL }
-		};
-
-		if (StartServiceCtrlDispatcher(ServiceTable) == FALSE) {
-			DWORD err = GetLastError();
-			if (err == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
-				fprintf(stderr, "This program must be run as a service. Use -f, --foreground to run as an application.\n");
-			}
-			return err;
-		}
+	/* initialize the thread local storage for strerror(), using free() as destructor */
+	if (windows_key_create(&last_error, free) != 0) {
+		exit(EXIT_FAILURE);
 	}
 
-	return 0;
+	ntdll = GetModuleHandle("NTDLL.DLL");
+	if (!ntdll) {
+		exit(EXIT_FAILURE);
+	}
+
+	dll_advapi32 = LoadLibrary("ADVAPI32.DLL");
+	if (!dll_advapi32) {
+		exit(EXIT_FAILURE);
+	}
+
+	/* check for Wine presence */
+	is_wine = GetProcAddress(ntdll, "wine_get_version") != 0;
+
+	/* get pointer to RtlGenRandom, note that it was reported missing in some cases */
+	ptr_RtlGenRandom = (void*)GetProcAddress(dll_advapi32, "SystemFunction036");
+
+	exedir_init();
 }
+
+void os_done(void)
+{
+	/* delete the thread local storage for strerror() */
+	windows_key_delete(last_error);
+
+	FreeLibrary(dll_advapi32);
+}
+
 #endif
 

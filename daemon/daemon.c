@@ -3,6 +3,8 @@
 
 #include "portable.h"
 
+#include "app.h"
+#include "os.h"
 #include "state.h"
 #include "support.h"
 #include "rest.h"
@@ -12,9 +14,9 @@
 #include "log.h"
 #include "parser.h"
 #include "web.h"
-#include "daemon.h"
 
 /****************************************************************************/
+/* helpers */
 
 static void gen_auth(const char* arg)
 {
@@ -197,7 +199,7 @@ int daemon_init(struct snapraid_state* state)
 	/**
 	 * Load system information
 	 */
-	os_system(&state->system);
+	app_system_info(&state->system);
 
 	/**
 	 * Create runner worker threads while signals are still BLOCKED

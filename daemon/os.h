@@ -1,42 +1,41 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2025 Andrea Mazzoleni
+// Copyright (C) 2026 Andrea Mazzoleni
 
-#ifndef __DAEMON_H
-#define __DAEMON_H
+#ifndef __OS_H
+#define __OS_H
+
+/****************************************************************************/
+/* signal */
+
+/**
+ * Enable or disable signal handling.
+ * @param enable 1 to enable signals, 0 to disable
+ */
+void os_signal_set(int enable);
+
+/**
+ * Initialize signal handling.
+ */
+void os_signal_init(void (*handler_term)(int sig), void (*handler_hup)(int sig));
+
+/**
+ * Restore signal handlers after fork in child process.
+ * This resets signals to default handling.
+ */
+void os_signal_restore_after_fork(void);
 
 /****************************************************************************/
 /* os */
 
 /**
- * Find the SnapRAID binary in the system.
- * @return Path to SnapRAID binary, or NULL if not found
+ * Initializes the system.
  */
-const char* os_find_engine(void);
+void os_init(void);
 
 /**
- * Find the curl binary in the system.
- * @return Path to curl binary, or NULL if not found
+ * Deinitializes the system.
  */
-const char* os_find_curl(void);
-
-/**
- * Find the docker binary in the system.
- * @return Path to docker binary, or NULL if not found
- */
-const char* os_find_docker(void);
-
-/**
- * Find the poweroff binary in the system.
- * @return Path to poweroff binary, or 0 if not found
- */
-const char* os_find_poweroff(void);
-
-/**
- * Default paths.
- */
-void os_default_log(char* dst, size_t dst_size);
-void os_default_conf(char* dst, size_t dst_size);
-void os_default_data(char* dst, size_t dst_size, const char* root);
+void os_done(void);
 
 /**
  * Get the os_tick counter value in seconds.
@@ -86,18 +85,6 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 int os_script(char** argv, char** envp, const char* run_as_user);
 
 /**
- * Gather static system information.
- * @param system Pointer to system structure to populate
- */
-void os_system(struct snapraid_system* system);
-
-/**
- * Refresh dynamic system information (uptime, memory).
- * @param system Pointer to system structure to update
- */
-void os_system_refresh(struct snapraid_system* system);
-
-/**
  * Shutdown the system.
  * @return 0 on success, -1 on failure
  */
@@ -107,29 +94,6 @@ int os_shutdown(void);
  * Fill memory with pseudo-random values
  */
 int os_randomize(void* ptr, size_t size);
-
-/****************************************************************************/
-/* daemon */
-
-/**
- * Process the arguments
- */
-void daemon_options(struct snapraid_state* state, int argc, char* argv[]);
-
-/**
- * Initialize the daemon
- */
-int daemon_init(struct snapraid_state* state);
-
-/**
- * Run the daemon
- */
-void daemon_run(struct snapraid_state* state);
-
-/**
- * Deinitialize the daemon
- */
-void daemon_done(struct snapraid_state* state);
 
 #endif
 

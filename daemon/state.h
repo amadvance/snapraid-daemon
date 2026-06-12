@@ -514,9 +514,6 @@ struct snapraid_config {
 	int notify_differences; /**< 1 to include differences in notification, 0 otherwise */
 };
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
  * @brief Structure containing host system metadata for the SnapRAID dashboard.
  *

@@ -3,6 +3,8 @@
 
 #include "portable.h"
 
+#include "os.h"
+#include "app.h"
 #include "state.h"
 #include "support.h"
 #include "runner.h"
@@ -10,7 +12,6 @@
 #include "log.h"
 #include "elem.h"
 #include "scheduler.h"
-#include "daemon.h"
 #include "smart.h"
 #include "web.h"
 #include "rest.h"
@@ -580,7 +581,7 @@ static int handler_system(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	os_system_refresh(&state->system);
+	app_system_refresh(&state->system);
 
 	ss_json_open(&s, &level);
 	ss_json_str(&s, level, "hostname", system->hostname);

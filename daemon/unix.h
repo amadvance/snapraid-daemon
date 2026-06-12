@@ -19,6 +19,14 @@
 
 #define SYSLOG "syslog"
 
+#if !HAVE_EACCESS
+/**
+ * Check effective user's permissions for a file.
+ * Conceptually identical to access(), but uses the effective UID/GID.
+ */
+int eaccess(const char* pathname, int mode);
+#endif
+
 /****************************************************************************/
 /* thread */
 

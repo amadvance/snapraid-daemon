@@ -3,11 +3,11 @@
 
 #include "portable.h"
 
+#include "app.h"
 #include "state.h"
 #include "log.h"
 #include "elem.h"
 #include "support.h"
-#include "daemon.h"
 #include "zip.h"
 #include "web.h"
 
@@ -695,7 +695,7 @@ int web_reload(struct snapraid_state* state, const char* root)
 		char zip[PATH_MAX];
 		if (strchr(root, '/') == 0) {
 			/* if it's just the file name, use the default data dir */
-			os_default_data(zip, sizeof(zip), root);
+			app_default_data(zip, sizeof(zip), root);
 		} else {
 			sncpy(zip, sizeof(zip), root);
 		}

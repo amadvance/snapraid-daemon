@@ -231,10 +231,5 @@ static inline int close_range_impl(unsigned int first, unsigned int last, unsign
 #include "unix.h"
 #endif
 
-/****************************************************************************/
-/* app */
-
-#define DAEMON "snapraidd"
-
 #endif
 

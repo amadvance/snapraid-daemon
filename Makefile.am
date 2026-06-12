@@ -59,7 +59,7 @@ messages_res.o: messages.rc
 resource_res.o: daemon/resource.rc daemon/resource.manifest
 	$(WINDRES) --include-dir=. --include-dir=$(srcdir) $< -o $@
 
-daemon/snapraidd-daemon.$(OBJEXT): messages.h
+daemon/snapraidd-mingwapp.$(OBJEXT): messages.h
 
 CLEANFILES += resource_res.o messages.h messages.rc messages_res.o MSG00401.bin
 endif
@@ -82,7 +82,9 @@ snapraidd_SOURCES = \
 	daemon/notify.c \
 	daemon/smart.c \
 	daemon/unix.c \
+	daemon/unixapp.c \
 	daemon/mingw.c \
+	daemon/mingwapp.c \
 	civetweb/civetweb.c \
 	tommyds/tommy.c \
 	monocypher/monocypher.c
@@ -107,7 +109,8 @@ noinst_HEADERS = \
 	daemon/portable.h \
 	daemon/unix.h \
 	daemon/mingw.h \
-	daemon/daemon.h \
+	daemon/os.h \
+	daemon/app.h \
 	daemon/state.h \
 	daemon/runner.h \
 	daemon/parser.h \
@@ -318,11 +321,12 @@ DAEMON_PREFIX = daemon/snapraidd-
 DAEMON_INCLUDES = \
 	config.h \
 	$(srcdir)/daemon/conf.h \
-	$(srcdir)/daemon/daemon.h \
+	$(srcdir)/daemon/app.h \
 	$(srcdir)/daemon/elem.h \
 	$(srcdir)/daemon/log.h \
 	$(srcdir)/daemon/mingw.h \
 	$(srcdir)/daemon/notify.h \
+	$(srcdir)/daemon/os.h \
 	$(srcdir)/daemon/parser.h \
 	$(srcdir)/daemon/portable.h \
 	$(srcdir)/daemon/report.h \
