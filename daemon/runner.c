@@ -3,11 +3,12 @@
 
 #include "portable.h"
 
+#include "os.h"
+#include "app.h"
 #include "state.h"
 #include "support.h"
 #include "log.h"
 #include "parser.h"
-#include "daemon.h"
 #include "elem.h"
 #include "report.h"
 #include "notify.h"
@@ -382,7 +383,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 	state_unlock();
 
 	if (hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
-		const char* docker_path = os_find_docker();
+		const char* docker_path = app_find_docker();
 		if (!docker_path) {
 			log_task(LVL_ERROR, "docker executable not found");
 			if (log_f != 0)
@@ -674,7 +675,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 	}
 
 	if ((hook_flags & HOOK_FLAG_DOCKER) && hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
-		const char* docker_path = os_find_docker();
+		const char* docker_path = app_find_docker();
 		if (docker_path) {
 			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook_docker_pause);
 			(void)run_docker_cmd(docker_path, "unpause", hook_docker_pause, hook_run_as_user, log_f, "post_docker");
@@ -1210,7 +1211,7 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 	if (lock)
 		state_lock();
 
-	const char* snapraid = os_find_engine();
+	const char* snapraid = app_find_engine();
 	if (!snapraid) {
 		if (lock)
 			state_unlock();

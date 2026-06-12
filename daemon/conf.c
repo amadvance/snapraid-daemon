@@ -3,9 +3,9 @@
 
 #include "portable.h"
 
+#include "app.h"
 #include "state.h"
 #include "support.h"
-#include "daemon.h"
 #include "log.h"
 #include "rest.h"
 #include "elem.h"
@@ -731,7 +731,7 @@ void config_default_locked(struct snapraid_state* state)
 	struct snapraid_config* config = &state->config;
 
 	/* set default */
-	os_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
+	app_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
 	config->sys_log_retention_days = 0;
 	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), "");
 	config->net_enabled = 0;
@@ -902,7 +902,7 @@ void config_init(struct snapraid_state* state)
 	struct snapraid_config* config = &state->config;
 
 	/* set private configuration */
-	os_default_conf(config->conf, sizeof(config->conf));
+	app_default_conf(config->conf, sizeof(config->conf));
 	config->pidfile_arg = 0;
 	tommy_list_init(&config->line_list);
 

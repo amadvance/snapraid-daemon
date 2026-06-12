@@ -3,12 +3,13 @@
 
 #include "portable.h"
 
+#include "os.h"
+#include "app.h"
 #include "state.h"
 #include "support.h"
 #include "runner.h"
 #include "log.h"
 #include "scheduler.h"
-#include "daemon.h"
 #include "version.h"
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, int automated, char* msg, size_t msg_size, int* status)

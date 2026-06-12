@@ -3,10 +3,10 @@
 
 #include "portable.h"
 
+#include "os.h"
 #include "state.h"
 #include "support.h"
 #include "conf.h"
-#include "daemon.h"
 #include "elem.h"
 #include "log.h"
 #include "notify.h"

@@ -6,7 +6,6 @@
 #include "state.h"
 #include "support.h"
 #include "log.h"
-#include "daemon.h"
 #include "elem.h"
 #include "smart.h"
 #include "parser.h"

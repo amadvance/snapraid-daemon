@@ -3,10 +3,11 @@
 
 #include "portable.h"
 
+#include "os.h"
+#include "app.h"
 #include "state.h"
 #include "support.h"
 #include "log.h"
-#include "daemon.h"
 #include "version.h"
 
 #define JSMN_HEADER
@@ -131,7 +132,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 
 void version_check(struct snapraid_state* state)
 {
-	const char* curl_path = os_find_curl();
+	const char* curl_path = app_find_curl();
 	if (!curl_path) {
 		log_msg(LVL_ERROR, "failed to check updates: curl executable not found");
 		return;
