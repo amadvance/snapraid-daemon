@@ -687,8 +687,13 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 			snprintf(reason, reason_size, "The snapraid binary was not found in the expected location. Please install SnapRAID and restart the daemon.");
 	} else if (tommy_list_empty(&state->disk_list)) {
 		health = HEALTH_PENDING;
-		if (reason)
+		if (reason) {
+#ifdef _WIN32
+			snprintf(reason, reason_size, "The array is not configured. Copy snapraid.conf.example to snapraid.conf in the installation directory (where snapraid.exe and snapraidd.exe reside) and define your disks to begin.");
+#else
 			snprintf(reason, reason_size, "The array is not configured. The /etc/snapraid.conf is missing or empty. Copy the snapraid.conf.example to /etc/snapraid.conf and define your disks to begin.");
+#endif
+		}
 	}
 
 	if (state->global.block_bad != 0) {
