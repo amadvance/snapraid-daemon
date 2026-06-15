@@ -95,5 +95,33 @@ int os_shutdown(void);
  */
 int os_randomize(void* ptr, size_t size);
 
+/**
+ * Bracketed Privileges System:
+ * These functions allow the daemon to run with dropped effective privileges
+ * by default (euid/egid set to an unprivileged user like "nobody"), while
+ * temporarily escalating to root privileges for specific operations that require
+ * administrative permissions (e.g., config changes, executing SnapRAID commands,
+ * managing log files).
+ */
+
+/**
+ * Temporarily acquire root privileges.
+ * Restores the effective user and group ID of the calling thread to root (0).
+ */
+void os_privileges_acquire(void);
+
+/**
+ * Release root privileges.
+ * Reverts the effective user and group ID of the calling thread to the unprivileged credentials.
+ */
+void os_privileges_release(void);
+
+/**
+ * Drop effective privileges permanently to an unprivileged user (e.g., "nobody").
+ * Called after startup/initialization is complete to transition the daemon into
+ * the Bracketed Privileges execution mode.
+ */
+void os_privileges_drop(void);
+
 #endif
 

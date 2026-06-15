@@ -314,7 +314,9 @@ int os_shutdown(void)
 	argv[1] = 0;
 
 	log_task(LVL_INFO, "spawning poweroff to shut down system");
+	os_privileges_acquire();
 	pid_t pid = os_spawn(argv, 0, 0, 0);
+	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn poweroff, errno=%s(%d)", strerror(errno), errno);
 		return -1;
@@ -520,7 +522,9 @@ int main(int argc, char* argv[])
 
 	if (pidfd != -1) {
 		/* first delete then close */
+		os_privileges_acquire();
 		unlink(pidfile);
+		os_privileges_release();
 		close(pidfd);
 	}
 

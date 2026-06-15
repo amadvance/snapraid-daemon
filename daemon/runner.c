@@ -125,7 +125,9 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	argv[2 + n] = NULL;
 
 	int ret = -1;
+	os_privileges_acquire();
 	pid_t pid = os_spawn(argv, NULL, NULL, run_as_user);
+	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn docker %s, errno=%s(%d)", action, strerror(errno), errno);
 		if (log_f != 0)
@@ -446,7 +448,9 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		}
 		envv[envv_count] = NULL;
 
+		os_privileges_acquire();
 		script_ret = os_script(hook_argv, envv, hook_run_as_user);
+		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
 			free(envv[i]);
@@ -641,7 +645,9 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		}
 		envv[envv_count] = NULL;
 
+		os_privileges_acquire();
 		script_ret = os_script(hook_argv, envv, hook_run_as_user);
+		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
 			free(envv[i]);
@@ -734,7 +740,9 @@ static void runner_go(struct snapraid_state* state)
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
 	if (sys_log_directory[0] != 0) {
+		os_privileges_acquire();
 		int mkdir_ret = mkdir(sys_log_directory, 0755);
+		os_privileges_release();
 		if (mkdir_ret != 0 && errno != EEXIST) {
 			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
 		} else {
@@ -782,7 +790,9 @@ static void runner_go(struct snapraid_state* state)
 	FILE* log_f = 0;
 
 	if (log_path[0] != 0) {
+		os_privileges_acquire();
 		log_f = fopen(log_path, "w" FOPEN_TEXT FOPEN_CLOEXEC);
+		os_privileges_release();
 		if (log_f == 0) {
 			log_task(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
@@ -811,7 +821,9 @@ static void runner_go(struct snapraid_state* state)
 		hook_flags = pre_hook_flags;
 	}
 
+	os_privileges_acquire();
 	pid = os_spawn(argv, NULL, &f, NULL);
+	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);
@@ -923,7 +935,10 @@ bail:
 			log_msg(LVL_INFO, "task %d removed probe for no activity", omit->number);
 			/* delete its log file */
 			if (omit->log_file[0]) {
-				if (remove(omit->log_file) != 0) {
+				os_privileges_acquire();
+				int ret = remove(omit->log_file);
+				os_privileges_release();
+				if (ret != 0) {
 					log_msg(LVL_WARNING, "failed to remove log file %s, errno=%s(%d)", omit->log_file, strerror(errno), errno);
 				}
 			}
@@ -1300,9 +1315,11 @@ static int delete_old_files(const char* dir_path, int days)
 	if (days == 0)
 		return 0;
 
+	os_privileges_acquire();
 	DIR* dir = opendir(dir_path);
 	if (dir == NULL) {
 		log_msg(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		os_privileges_release();
 		return -1;
 	}
 
@@ -1336,8 +1353,11 @@ static int delete_old_files(const char* dir_path, int days)
 
 	if (closedir(dir) == -1) {
 		log_msg(LVL_ERROR, "failed to close directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		os_privileges_release();
 		return -1;
 	}
+
+	os_privileges_release();
 
 	return 0;
 }

@@ -4,6 +4,7 @@
 #include "portable.h"
 
 #include "app.h"
+#include "os.h"
 #include "state.h"
 #include "support.h"
 #include "log.h"
@@ -251,7 +252,9 @@ int config_load_locked(struct snapraid_state* state)
 	struct snapraid_config* config = &state->config;
 	int f;
 
+	os_privileges_acquire();
 	f = open(config->conf, O_RDONLY | O_BINARY | O_CLOEXEC);
+	os_privileges_release();
 	if (f == -1) {
 		log_msg(LVL_ERROR, "failed to load config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		return -1;
@@ -682,8 +685,10 @@ int config_save_locked(struct snapraid_state* state)
 
 	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
 
+	os_privileges_acquire();
 	int f = open(conf_tmp, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_CLOEXEC, 0644);
 	if (f == -1) {
+		os_privileges_release();
 		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		ss_done(&ss);
 		return -1;
@@ -695,6 +700,7 @@ int config_save_locked(struct snapraid_state* state)
 		close(f);
 		ss_done(&ss);
 		remove(conf_tmp);
+		os_privileges_release();
 		return -1;
 	}
 
@@ -705,6 +711,7 @@ int config_save_locked(struct snapraid_state* state)
 		log_msg(LVL_ERROR, "failed to save config in fsync, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		close(f);
 		remove(conf_tmp);
+		os_privileges_release();
 		return -1;
 	}
 #endif
@@ -712,14 +719,18 @@ int config_save_locked(struct snapraid_state* state)
 	if (close(f) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		remove(conf_tmp);
+		os_privileges_release();
 		return -1;
 	}
 
 	if (rename(conf_tmp, config->conf) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in rename, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
 		remove(conf_tmp);
+		os_privileges_release();
 		return -1;
 	}
+
+	os_privileges_release();
 
 	log_msg(LVL_INFO, "config saved successfully");
 

@@ -50,22 +50,24 @@ SnapRAID Daemon TODO
   Required to use a different snapraid.conf for selecting the array.
 
 - Unprivileged execution mode
-   - Implement a configurable option to run the daemon as a non-root user.
-     When enabled, the daemon executes the SnapRAID engine via sudo.
-   - The implementation must remain compatible with both systemd and
-     BSD-style init systems. This requires a two-pronged approach for
-     permission management. For systemd, the service unit should use the
-     LogsDirectory directive to automate /var/log/snapraid folder creation.
-     For BSD and other traditional init systems, the daemon must either assume
-     the log directory was pre-provisioned via a ports/package script or
-     include a check to verify write access before starting.
-   - The internal command builder must be updated to conditionally prefix the
-     SnapRAID binary path with sudo based on the configuration state.
-     Additionally, the project documentation must include a standardized
-     sudoers policy to grant the daemon user NOPASSWD access specifically
-     for the SnapRAID binary:
-     snapraidd ALL=(ALL) NOPASSWD: /usr/bin/snapraid
-
+  - Starts as 'root' (Unix) or 'SYSTEM' (Windows) to parse config and open raw
+    disk descriptors.
+  - Forks immediately: Parent stays 'root' (Monitor), Child drops permanently to 
+    unprivileged user like 'nobody' (Worker) via setuid().
+  - Worker runs the web server, handles network IO, and processes data.
+  - Processes communicate over a private socketpair() using strict binary opcodes.
+  - To perform privileged actions, Worker sends an integer opcode. Monitor
+    validates it against a whitelist and executes it natively.
+  - Worker cannot pass arbitrary paths, strings, or shell commands to Monitor.
+  - Monitor opens logs/state files as root and passes the file descriptors to the
+    Worker via SCM_RIGHTS.
+  - Worker writes directly to descriptors, avoiding IPC logging overhead and
+    eliminating write permissions to /var/log/.
+  - Systemd & BSD Init: Starts simple as root; application handles its own
+    sandboxing without needing sudo or complex user provisioning scripts.
+  - Windows: Maps natively by spawning a restricted worker token via 
+    CreateProcessAsUser().
+   
 Future Releases
 ===============
 

@@ -1042,5 +1042,55 @@ int os_randomize(void* ptr, size_t size)
 
 	return 0;
 }
+
+static uid_t unpriv_uid = -1;
+static gid_t unpriv_gid = -1;
+static int can_switch = 0;
+
+void os_privileges_drop(void)
+{
+	/*
+	 * Detect if running as root
+	 *
+	 * Note that all calls to os_privileges_release() and os_privileges_acquire()
+	 * are no-ops before this detection.
+	 */
+	if (getuid() == 0 || geteuid() == 0) {
+		/* find the unprivileged user "nobody" */
+		struct passwd* pw = getpwnam("nobody");
+		if (pw) {
+			unpriv_uid = pw->pw_uid;
+			unpriv_gid = pw->pw_gid;
+			can_switch = 1;
+		}
+	}
+
+	os_privileges_release();
+}
+
+void os_privileges_acquire(void)
+{
+	if (can_switch) {
+		if (seteuid(0) != 0) {
+			log_task(LVL_ERROR, "failed to acquire privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+		if (setegid(0) != 0) {
+			log_task(LVL_ERROR, "failed to acquire group privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+	}
+}
+
+void os_privileges_release(void)
+{
+	if (can_switch) {
+		if (setegid(unpriv_gid) != 0) {
+			log_task(LVL_ERROR, "failed to release group privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+		if (seteuid(unpriv_uid) != 0) {
+			log_task(LVL_ERROR, "failed to release privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+	}
+}
+
 #endif
 
