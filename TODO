@@ -4,8 +4,6 @@ SnapRAID Daemon TODO
 2.x Releases
 ============
 
-- Compress .log with .gz
-
 - Add a new "notify_start" that can be used to notify the start of a high level task like maintenance.
   - Add a macro for the subject %s like notify_result.
   - Add a macro in notify_result and notify_start for the task name. Like %t/maintenance/heal/undelete...

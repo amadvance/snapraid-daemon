@@ -5,6 +5,7 @@
 #define __PARSER_H
 
 #include "state.h"
+#include "zio.h"
 
 /****************************************************************************/
 /* parser */
@@ -12,11 +13,12 @@
 /**
  * Parse SnapRAID log file and update state accordingly.
  * @param state Current snapraid state
- * @param f File descriptor of log file
- * @param log_f FILE pointer of log file
- * @param log_path Path to log file
+ * @param fd File descriptor of the input log file (if f is 0)
+ * @param f ZFILE stream of the input log file (if not 0)
+ * @param log_f ZFILE pointer of the output log file
+ * @param log_path Path to the output log file
  */
-void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path);
+void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path);
 
 /**
  * Parse a timestamp from a file name in the format YYMMDD-HHMMSS-*
