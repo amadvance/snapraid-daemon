@@ -1858,7 +1858,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	}
 }
 
-int parse_timestamp(const char* name, int64_t* out)
+int parse_timestamp(const char* name, time_t* out)
 {
 	int Y, M, D, h, m, s;
 	char dash;
@@ -1947,7 +1947,7 @@ int parse_past_log(struct snapraid_state* state)
 #endif
 
 		/* only files matching the pattern */
-		int64_t ntime;
+		time_t ntime;
 		if (parse_timestamp(ent->d_name, &ntime) != 0)
 			continue;
 
