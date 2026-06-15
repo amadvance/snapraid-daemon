@@ -740,31 +740,24 @@ static void runner_go(struct snapraid_state* state)
 	char log_path[PATH_MAX + 64]; /* avoid warnings about snprintf() */
 	log_path[0] = 0;
 	if (sys_log_directory[0] != 0) {
-		os_privileges_acquire();
-		int mkdir_ret = mkdir(sys_log_directory, 0755);
-		os_privileges_release();
-		if (mkdir_ret != 0 && errno != EEXIST) {
-			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", sys_log_directory, strerror(errno), errno);
+		time_t now = unix_start_time;
+		struct tm res;
+		struct tm* local = localtime_r(&now, &res);
+		if (local) {
+			snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", sys_log_directory,
+				local->tm_year + 1900,
+				local->tm_mon + 1,
+				local->tm_mday,
+				local->tm_hour,
+				local->tm_min,
+				local->tm_sec,
+				command_name(cmd)
+			);
 		} else {
-			time_t now = unix_start_time;
-			struct tm res;
-			struct tm* local = localtime_r(&now, &res);
-			if (local) {
-				snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", sys_log_directory,
-					local->tm_year + 1900,
-					local->tm_mon + 1,
-					local->tm_mday,
-					local->tm_hour,
-					local->tm_min,
-					local->tm_sec,
-					command_name(cmd)
-				);
-			} else {
-				snprintf(log_path, sizeof(log_path), "%s/%s.log", sys_log_directory, command_name(cmd));
-			}
-
-			sncpy(task->log_file, sizeof(task->log_file), log_path);
+			snprintf(log_path, sizeof(log_path), "%s/%s.log", sys_log_directory, command_name(cmd));
 		}
+
+		sncpy(task->log_file, sizeof(task->log_file), log_path);
 	}
 
 	/* check if we have postponed hooks from the previous task */
@@ -1192,6 +1185,14 @@ static void* runner_thread(void* arg)
 
 void runner_init(struct snapraid_state* state)
 {
+	/* create the log directory at initialization */
+	if (state->config.sys_log_directory[0] != 0) {
+		int mkdir_ret = mkdir(state->config.sys_log_directory, 0755);
+		if (mkdir_ret != 0 && errno != EEXIST) {
+			log_msg(LVL_ERROR, "failed to create log directory %s, errno=%s(%d)", state->config.sys_log_directory, strerror(errno), errno);
+		}
+	}
+
 	thread_cond_init(&state->runner.cond);
 
 	/* start the runner thread */
