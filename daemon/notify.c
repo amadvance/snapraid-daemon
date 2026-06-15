@@ -4,6 +4,7 @@
 #include "portable.h"
 
 #include "os.h"
+#include "app.h"
 #include "state.h"
 #include "support.h"
 #include "conf.h"
@@ -203,7 +204,9 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	/* report text */
 	ss_prints(&ss, report_text);
 
+	os_privileges_acquire();
 	int ret = os_command(cmd, run_as_user, ss_extract(&ss));
+	os_privileges_release();
 	if (ret != 0) {
 		report_level = level_mix(report_level, LVL_ERROR); /* mix the levels, if it's CRITICAL, log as CRITICAL */
 		log_task(report_level, "failed to send %s report", config_level_str(report_level));
@@ -236,7 +239,9 @@ static int heartbeat_locked(struct snapraid_state* state)
 
 	sncpy(cmd, sizeof(cmd), template);
 
+	os_privileges_acquire();
 	int ret = os_command(cmd, run_as_user, 0);
+	os_privileges_release();
 	if (ret != 0) {
 		log_task(LVL_ERROR, "failed to hearbeat");
 		goto bail;

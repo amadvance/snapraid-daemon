@@ -39,6 +39,9 @@ SnapRAID-Daemon HISTORY
    build time. The default runtime discovery behavior remains unchanged
    if these options are omitted.
    Primarily intended for NixOS and other non-FHS systems.
+ * Implemented a bracketed privileges system on Linux to run the daemon
+   as an unprivileged user (e.g., "nobody") by default and temporarily
+   escalate to root only when performing administrative operations.
 
 1.15 2026/08
 ============

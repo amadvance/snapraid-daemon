@@ -2093,5 +2093,17 @@ void os_done(void)
 	FreeLibrary(dll_advapi32);
 }
 
+void os_privileges_acquire(void)
+{
+}
+
+void os_privileges_release(void)
+{
+}
+
+void os_privileges_drop(void)
+{
+}
+
 #endif
 

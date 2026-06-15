@@ -242,6 +242,8 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
+	os_privileges_drop();
+
 	return 0;
 }
 
