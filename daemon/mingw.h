@@ -60,8 +60,8 @@ wchar_t* u8tou16(wchar_t* conv_buf, const char* src);
 /* Remap functions and types */
 #undef fopen
 #define fopen windows_fopen
-#define FOPEN_CLOEXEC ""
 #define FOPEN_TEXT "t"
+#define FOPEN_BINARY "b"
 #undef open
 #define open windows_open
 #define open_noatime windows_open

@@ -363,6 +363,19 @@ int config_load_locked(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
+			} else if (strcmp(key, "sys_log_compression") == 0) {
+				if (*val == 0) {
+					config->sys_log_compression = 0;
+				} else if (parse_int(val, 0, 1, &config->sys_log_compression) == 0) {
+#ifndef HAVE_ZLIB
+					if (config->sys_log_compression == 1) {
+						log_msg(LVL_ERROR, "invalid config option %s=%s, gzip compression is not supported by this build", key, val);
+						config->sys_log_compression = 0;
+					}
+#endif
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "sys_shutdown_on") == 0) {
 				if (parse_shutdown_on(val, config->sys_shutdown_on, sizeof(config->sys_shutdown_on)) == 0) {
 				} else {
@@ -744,6 +757,7 @@ void config_default_locked(struct snapraid_state* state)
 	/* set default */
 	app_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
 	config->sys_log_retention_days = 0;
+	config->sys_log_compression = 0;
 	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), "");
 	config->net_enabled = 0;
 	sncpy(config->net_port, sizeof(config->net_port), "");
@@ -790,6 +804,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 
 	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
 	transient->sys_log_retention_days = config->sys_log_retention_days;
+	transient->sys_log_compression = config->sys_log_compression;
 	sncpy(transient->sys_shutdown_on, sizeof(transient->sys_shutdown_on), config->sys_shutdown_on);
 	transient->net_enabled = config->net_enabled;
 	sncpy(transient->net_port, sizeof(transient->net_port), config->net_port);
@@ -839,6 +854,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	/* copy fields */
 	sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), transient->sys_log_directory);
 	config->sys_log_retention_days = transient->sys_log_retention_days;
+	config->sys_log_compression = transient->sys_log_compression;
 	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), transient->sys_shutdown_on);
 	config->net_enabled = transient->net_enabled;
 	sncpy(config->net_port, sizeof(config->net_port), transient->net_port);

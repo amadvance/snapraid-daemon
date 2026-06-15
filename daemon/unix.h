@@ -11,8 +11,8 @@
 #define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#define FOPEN_CLOEXEC "e"
 #define FOPEN_TEXT ""
+#define FOPEN_BINARY ""
 
 #define O_BINARY 0 /**< Not used in Unix. */
 #define O_SEQUENTIAL 0 /**< In Unix posix_fadvise() shall be used. */

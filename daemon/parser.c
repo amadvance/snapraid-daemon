@@ -1748,7 +1748,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 #define RUN_INPUT_MAX 4096
 #define RUN_FIELD_MAX 64
 
-void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log_path)
+void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path)
 {
 	char buf[RUN_INPUT_MAX];
 	char plain[RUN_INPUT_MAX];
@@ -1768,11 +1768,15 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 	state->parser_version_minor = 0;
 
 	while (1) {
-		ssize_t n = read(f, buf, sizeof(buf));
+		ssize_t n;
+		if (f == 0)
+			n = read(fd, buf, sizeof(buf));
+		else
+			n = zread(buf, 1, sizeof(buf), f);
 		if (n > 0) {
 			ssize_t i;
 
-			for (i = 0; i < n; i++) {
+			for (i = 0; i < n; ++i) {
 				char c = buf[i];
 
 				if (c == '\r')
@@ -1842,7 +1846,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 
 					/* write dup to the log */
 					if (!ignore_this_line && log_f != 0) {
-						if (fwrite(dup, dup_len, 1, log_f) != 1) {
+						if (zwrite(dup, dup_len, 1, log_f) != 1) {
 							log_task(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 						}
 					}
@@ -1989,9 +1993,16 @@ int parse_past_log(struct snapraid_state* state)
 
 		snprintf(path, sizeof(path), "%s/%s", sys_log_directory, sn->str);
 
-		int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
-		if (f == -1) {
+		int fd = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
+		if (fd == -1) {
 			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", path, strerror(errno), errno);
+			continue;
+		}
+
+		ZFILE* f = zdopen(fd, "r" FOPEN_BINARY, is_gz_extension(path));
+		if (f == 0) {
+			log_msg(LVL_WARNING, "failed to open log file %s, errno=%s(%d)", path, strerror(errno), errno);
+			close(fd);
 			continue;
 		}
 
@@ -2010,7 +2021,7 @@ int parse_past_log(struct snapraid_state* state)
 
 		state_unlock();
 
-		parse_log(state, f, 0, 0);
+		parse_log(state, 0, f, 0, 0);
 		++count;
 
 		state_lock();
@@ -2030,7 +2041,7 @@ int parse_past_log(struct snapraid_state* state)
 		state->runner.latest = 0;
 		state_unlock();
 
-		close(f);
+		zclose(f);
 	}
 
 	sl_free(&log_list);

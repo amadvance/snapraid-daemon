@@ -3,6 +3,14 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Added support for saving task log files in gzip (.gz) format, controlled
+   by the "sys_log_compression" configuration option.
+ * Added a "notify_start" configuration option to trigger a notification
+   command at the start of high-level tasks like maintenance.
+ * Added %h (high-level task name) and %c (exit code of the task) placeholder
+   tags to result notifications.
+ * Sort diff and fix lists by change type to prioritize the most relevant
+   entries first.
  * Added a "sys_shutdown_on" option to automatically trigger a system
    shutdown based on a comma-separated list of events ("maintenance",
    "prefail", or "failing").

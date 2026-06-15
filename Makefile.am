@@ -75,6 +75,7 @@ snapraidd_SOURCES = \
 	daemon/rest.c \
 	daemon/web.c \
 	daemon/zip.c \
+	daemon/zio.c \
 	daemon/conf.c \
 	daemon/log.c \
 	daemon/elem.c \
@@ -119,6 +120,7 @@ noinst_HEADERS = \
 	daemon/rest.h \
 	daemon/web.h \
 	daemon/zip.h \
+	daemon/zio.h \
 	daemon/conf.h \
 	daemon/log.h \
 	daemon/elem.h \
@@ -339,7 +341,8 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/unix.h \
 	$(srcdir)/daemon/version.h \
 	$(srcdir)/daemon/web.h \
-	$(srcdir)/daemon/zip.h
+	$(srcdir)/daemon/zip.h \
+	$(srcdir)/daemon/zio.h
 $(DAEMON_PREFIX)conf.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)daemon.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)elem.$(OBJEXT): $(DAEMON_INCLUDES)
@@ -358,6 +361,7 @@ $(DAEMON_PREFIX)support.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)unix.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)web.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)zip.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)zio.$(OBJEXT): $(DAEMON_INCLUDES)
 
 # Rules for scripts
 snapraidd.service: snapraidd.service.in

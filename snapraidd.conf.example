@@ -31,6 +31,13 @@
 # if this is set to 0 or left unset.
 sys_log_retention_days = 120
 
+# The sys_log_compression option enables compression of individual SnapRAID log
+# files in gzip (.gz) format.
+#
+# If set to 1, logs are compressed. If empty or set to 0, no compression is applied.
+# Default is empty (disabled).
+#sys_log_compression =
+
 # Comma-separated list of events that trigger an automatic system shutdown.
 # Supported events:
 #   - maintenance: shuts down the host after an automated, scheduled

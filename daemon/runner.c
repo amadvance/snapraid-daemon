@@ -94,11 +94,11 @@ static int runner_need_hook(int cmd)
 
 #define CONTAINERS_MAX 128
 
-static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, const char* run_as_user, FILE* log_f, const char* log_prefix)
+static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, const char* run_as_user, ZFILE* log_f, const char* log_prefix)
 {
 	if (log_f != 0) {
-		fprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
-		fflush(log_f);
+		zprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
+		zflush(log_f);
 	}
 
 	/* copy containers to a mutable string to tokenize in-place */
@@ -131,14 +131,14 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn docker %s, errno=%s(%d)", action, strerror(errno), errno);
 		if (log_f != 0)
-			fprintf(log_f, "daemon:%s_fail\n", log_prefix);
+			zprintf(log_f, "daemon:%s_fail\n", log_prefix);
 	} else {
 		int status;
 		pid_t wait_pid = os_wait(pid, &status);
 		if (wait_pid == -1) {
 			log_task(LVL_ERROR, "failed to wait for docker %s, errno=%s(%d)", action, strerror(errno), errno);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:%s_fail\n", log_prefix);
+				zprintf(log_f, "daemon:%s_fail\n", log_prefix);
 		} else {
 			if (WIFEXITED(status)) {
 				int exit_code = WEXITSTATUS(status);
@@ -149,11 +149,11 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 					log_task(LVL_ERROR, "docker %s failed with exit code %d", action, exit_code);
 				}
 				if (log_f != 0)
-					fprintf(log_f, "daemon:%s_term:%d\n", log_prefix, exit_code);
+					zprintf(log_f, "daemon:%s_term:%d\n", log_prefix, exit_code);
 			} else if (WIFSIGNALED(status)) {
 				log_task(LVL_ERROR, "docker %s terminated with signal %d", action, WTERMSIG(status));
 				if (log_f != 0)
-					fprintf(log_f, "daemon:%s_signal:%d\n", log_prefix, WTERMSIG(status));
+					zprintf(log_f, "daemon:%s_signal:%d\n", log_prefix, WTERMSIG(status));
 			}
 		}
 	}
@@ -363,7 +363,7 @@ static void add_env(char** envv, int* envv_count, const char* name, const char* 
 	}
 }
 
-static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task* task, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int* out_hook_flags)
+static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task* task, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int* out_hook_flags)
 {
 	char hook_script[CONFIG_MAX];
 	char hook_docker_pause[CONFIG_MAX];
@@ -389,7 +389,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		if (!docker_path) {
 			log_task(LVL_ERROR, "docker executable not found");
 			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_docker_fail\n");
+				zprintf(log_f, "daemon:pre_docker_fail\n");
 			if (exit_neg_msg)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The docker executable was not found");
 			return -1;
@@ -409,7 +409,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 			return -1;
 		}
 		if (log_f)
-			fflush(log_f);
+			zflush(log_f);
 	}
 
 	if (hook_script[0] != 0 && runner_need_hook(cmd)) {
@@ -418,7 +418,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook_script);
 		if (log_f != 0)
-			fprintf(log_f, "daemon:pre:%s\n", hook_script);
+			zprintf(log_f, "daemon:pre:%s\n", hook_script);
 		sncpy(hook_event, sizeof(hook_event), "task-begin");
 		hook_argv[0] = (char*)hook_script;
 		hook_argv[1] = hook_event;
@@ -459,7 +459,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_fail\n");
+				zprintf(log_f, "daemon:pre_fail\n");
 			if (exit_neg_msg)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script failed to start (check " SYSLOG " for details), errno=%s(%d)", strerror(errno), errno);
 			return -1;
@@ -473,30 +473,30 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 			*out_hook_flags |= HOOK_FLAG_SCRIPT;
 			log_task(LVL_INFO, "task %d end %s", number, hook_script);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_term:0\n");
+				zprintf(log_f, "daemon:pre_term:0\n");
 		} else if (script_ret < 128) {
 			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_term:%d\n", script_ret);
+				zprintf(log_f, "daemon:pre_term:%d\n", script_ret);
 			if (exit_neg_msg)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with exit code %d", script_ret);
 			return -1;
 		} else {
 			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
+				zprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
 			if (exit_neg_msg)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
 			return -1;
 		}
 		if (log_f)
-			fflush(log_f);
+			zflush(log_f);
 	}
 
 	return 0;
 }
 
-static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* task, FILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
+static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* task, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
 {
 	char hook_script[CONFIG_MAX];
 	char hook_docker_pause[CONFIG_MAX];
@@ -549,7 +549,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		error_recovered = task->error_recovered;
 		error_unrecoverable = task->error_unrecoverable;
 	}
-	int array_health = array_health = state->global.health;
+	int array_health = state->global.health;
 	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
 	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
@@ -570,7 +570,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook_script);
 		if (log_f != 0)
-			fprintf(log_f, "daemon:post:%s\n", hook_script);
+			zprintf(log_f, "daemon:post:%s\n", hook_script);
 		if (success)
 			sncpy(hook_event, sizeof(hook_event), "task-end");
 		else
@@ -656,28 +656,28 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		if (script_ret < 0) {
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook_script, strerror(errno), errno);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:post_fail\n");
+				zprintf(log_f, "daemon:post_fail\n");
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script failed to start, errno=%s(%d)", strerror(errno), errno);
 		} else if (script_ret == 0) {
 			log_task(LVL_INFO, "task %d end %s", number, hook_script);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:post_term:0\n");
+				zprintf(log_f, "daemon:post_term:0\n");
 		} else if (script_ret < 128) {
 			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook_script, script_ret);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:post_term:%d\n", script_ret);
+				zprintf(log_f, "daemon:post_term:%d\n", script_ret);
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with exit code %d", script_ret);
 		} else {
 			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
+				zprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
 		}
 		if (log_f)
-			fflush(log_f);
+			zflush(log_f);
 	}
 
 	if ((hook_flags & HOOK_FLAG_DOCKER) && hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
@@ -687,10 +687,10 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 			(void)run_docker_cmd(docker_path, "unpause", hook_docker_pause, hook_run_as_user, log_f, "post_docker");
 		} else {
 			if (log_f != 0)
-				fprintf(log_f, "daemon:post_docker_fail\n");
+				zprintf(log_f, "daemon:post_docker_fail\n");
 		}
 		if (log_f)
-			fflush(log_f);
+			zflush(log_f);
 	}
 }
 
@@ -742,19 +742,26 @@ static void runner_go(struct snapraid_state* state)
 	if (sys_log_directory[0] != 0) {
 		time_t now = unix_start_time;
 		struct tm res;
+		const char* ext = ".log";
+#ifdef HAVE_ZLIB
+		if (state->config.sys_log_compression) {
+			ext = ".log.gz";
+		}
+#endif
 		struct tm* local = localtime_r(&now, &res);
 		if (local) {
-			snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s.log", sys_log_directory,
+			snprintf(log_path, sizeof(log_path), "%s/%04d%02d%02d-%02d%02d%02d-%s%s", sys_log_directory,
 				local->tm_year + 1900,
 				local->tm_mon + 1,
 				local->tm_mday,
 				local->tm_hour,
 				local->tm_min,
 				local->tm_sec,
-				command_name(cmd)
+				command_name(cmd),
+				ext
 			);
 		} else {
-			snprintf(log_path, sizeof(log_path), "%s/%s.log", sys_log_directory, command_name(cmd));
+			snprintf(log_path, sizeof(log_path), "%s/%s%s", sys_log_directory, command_name(cmd), ext);
 		}
 
 		sncpy(task->log_file, sizeof(task->log_file), log_path);
@@ -780,27 +787,34 @@ static void runner_go(struct snapraid_state* state)
 	state_unlock();
 
 	int f = -1;
-	FILE* log_f = 0;
+	ZFILE* log_f = 0;
 
 	if (log_path[0] != 0) {
+		int log_fd;
 		os_privileges_acquire();
-		log_f = fopen(log_path, "w" FOPEN_TEXT FOPEN_CLOEXEC);
+		log_fd = open(log_path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0666);
 		os_privileges_release();
-		if (log_f == 0) {
+		if (log_fd == -1) {
 			log_task(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+		} else {
+			log_f = zdopen(log_fd, "w" FOPEN_BINARY, is_gz_extension(log_path));
+			if (log_f == 0) {
+				log_task(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
+				close(log_fd);
+			}
 		}
 	}
 
 	if (log_f != 0) {
-		fprintf(log_f, "daemon:number:%d\n", number);
-		fprintf(log_f, "daemon:command:%s\n", command_name(cmd));
+		zprintf(log_f, "daemon:number:%d\n", number);
+		zprintf(log_f, "daemon:command:%s\n", command_name(cmd));
 		if (high_cmd != 0 && high_cmd != cmd)
-			fprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));
-		fprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
-		fprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
+			zprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));
+		zprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
+		zprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
 		for (i = 0; i < argc; ++i)
-			fprintf(log_f, "daemon:argv:%d:%s\n", i, argv[i]);
-		fflush(log_f);
+			zprintf(log_f, "daemon:argv:%d:%s\n", i, argv[i]);
+		zflush(log_f);
 	}
 
 	int hook_flags = 0;
@@ -833,7 +847,7 @@ static void runner_go(struct snapraid_state* state)
 		task->pid = pid;
 		state_unlock();
 
-		parse_log(state, f, log_f, log_path);
+		parse_log(state, f, 0, log_f, log_path);
 
 		/* wait for the child process to terminate */
 		pid_ret = os_wait(pid, &status);
@@ -842,7 +856,7 @@ static void runner_go(struct snapraid_state* state)
 			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 			if (log_f != 0)
-				fprintf(log_f, "daemon:fail\n");
+				zprintf(log_f, "daemon:fail\n");
 		} else {
 			if (WIFEXITED(status)) {
 				if (WEXITSTATUS(status) == 0) {
@@ -852,15 +866,15 @@ static void runner_go(struct snapraid_state* state)
 					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, WEXITSTATUS(status));
 				}
 				if (log_f != 0)
-					fprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
+					zprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
 			} else if (WIFSIGNALED(status)) {
 				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
-					fprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
+					zprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
 		}
 		if (log_f)
-			fflush(log_f);
+			zflush(log_f);
 	}
 
 	/* if the next task uses the hook, skip the post */
@@ -895,8 +909,8 @@ bail:
 		state->runner.hook_flags = hook_flags;
 
 	if (log_f != 0) {
-		fprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
-		if (fclose(log_f) != 0) {
+		zprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
+		if (zclose(log_f) != 0) {
 			log_task(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
 		}
 	}
