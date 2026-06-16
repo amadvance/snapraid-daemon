@@ -365,12 +365,19 @@ const app = {
                 case '#/':
                     title.innerText = 'Dashboard';
                     const health = app.state.dashboardArray?.health;
-                    const isBad = health === 'failing' || health === 'prefail';
-                    actions.innerHTML = isBad ? `
-                        <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
-                    ` : `
-                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
-                    `;
+                    if (health === 'failing' || health === 'prefail') {
+                        actions.innerHTML = `
+                            <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
+                        `;
+                    } else if (health === 'pending') {
+                        actions.innerHTML = `
+                            <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual configuration" data-action="refresh">Refresh</button>
+                        `;
+                    } else {
+                        actions.innerHTML = `
+                            <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
+                        `;
+                    }
                     await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
@@ -451,14 +458,24 @@ const app = {
             if (app.state.currentRoute === '#/') {
                 const active = activity && activity.status !== 'terminated' && activity.status !== 'signaled' && activity.status !== 'canceled';
                 const actions = document.getElementById('header-actions');
-                const isBad = array && (array.health === 'failing' || array.health === 'prefail');
+                const health = array?.health;
+                let actionBtn = '';
+                if (health === 'failing' || health === 'prefail') {
+                    actionBtn = `
+                        <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
+                    `;
+                } else if (health === 'pending') {
+                    actionBtn = `
+                        <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual configuration" data-action="refresh">Refresh</button>
+                    `;
+                } else {
+                    actionBtn = `
+                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
+                    `;
+                }
                 actions.innerHTML = `
                     ${active ? `<button class="btn btn-danger" data-tooltip="Stop the current running task" data-action="stop-task">Stop</button>` : ''}
-                    ${isBad ? `
-                        <button class="btn btn-primary" data-tooltip="Refresh array state" data-action="refresh">Refresh</button>
-                    ` : `
-                        <button class="btn btn-primary" data-tooltip="Trigger full maintenance sequence and generate a report" data-action="maintenance">Maintenance</button>
-                    `}
+                    ${actionBtn}
                 `;
 
                 // Capture scroll state
