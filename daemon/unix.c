@@ -309,8 +309,13 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
  *   - The file must be a regular file with at least one execute bit set.
  *   - The setuid and setgid bits must not be set.
  *   - On systems with fexecve(2) support, the returned fd is opened without
- *     O_CLOEXEC so it can be passed directly to fexecve(2). On other systems
- *     O_CLOEXEC is set and execve(2) must be used with @resolved_path.
+ *     O_CLOEXEC if the file is a script (@is_script=1). This is necessary because
+ *     fexecve(2) executes scripts by passing a descriptor path (e.g., /dev/fd/N)
+ *     to the script interpreter, which requires the fd to remain open across
+ *     the execve syscall. For compiled binaries, O_CLOEXEC is safely applied
+ *     to prevent leaking the fd to the spawned process. On systems without
+ *     fexecve(2), execve(2) is used with @resolved_path and O_CLOEXEC is
+ *     always applied.
  *
  * @exec_path     Absolute path to the executable to verify.
  * @resolved_path Caller-allocated buffer of at least PATH_MAX bytes. On
@@ -320,7 +325,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
  * responsible for closing it. Returns -1 on any verification failure;
  * the specific reason is emitted via log_task(LVL_ERROR, ...).
  */
-static int verify_executable(const char* exec_path, char* resolved_path)
+static int verify_executable(const char* exec_path, char* resolved_path, int is_script)
 {
 	struct stat st;
 	uid_t process_uid, process_euid;
@@ -400,11 +405,17 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 	/*
 	 * Open the executable
 	 */
-	int fd = openat(dir_fd, exec_name, O_RDONLY
-#if !HAVE_FEXECVE
-			| O_CLOEXEC /* with fexecve cannot use O_CLOEXEC (Close on Exec) */
+	int flags = O_RDONLY | O_NOFOLLOW;
+#if HAVE_FEXECVE
+	if (!is_script) {
+		flags |= O_CLOEXEC; /* with fexecve cannot use O_CLOEXEC (Close on Exec) for scripts */
+	}
+#else
+	(void)is_script;
+	flags |= O_CLOEXEC;
 #endif
-	);
+
+	int fd = openat(dir_fd, exec_name, flags);
 	if (fd < 0) {
 		log_task(LVL_ERROR, "failed to open %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(dir_fd);
@@ -425,6 +436,19 @@ static int verify_executable(const char* exec_path, char* resolved_path)
 		log_task(LVL_ERROR, "file %s is not a regular file", resolved_path);
 		close(fd);
 		return -1;
+	}
+
+	/* explicitly reject scripts if not allowed */
+	if (!is_script) {
+		char magic[2];
+		if (read(fd, magic, 2) == 2 && magic[0] == '#' && magic[1] == '!') {
+			log_task(LVL_ERROR, "file %s is a script, which is not supported", resolved_path);
+			close(fd);
+			return -1;
+		}
+		if (lseek(fd, 0, SEEK_SET) == (off_t)-1) {
+			/* ignore lseek errors on block devices or pipes, though it's a regular file here */
+		}
 	}
 
 	/* ensure it has execute permissions */
@@ -476,7 +500,7 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 	int status;
 	int64_t start, stop;
 
-	int fd = verify_executable(argv[0], resolved_path);
+	int fd = verify_executable(argv[0], resolved_path, 1);
 	if (fd < 0) {
 		return -1;
 	}
@@ -546,6 +570,8 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 		 *
 		 * fallback: if it fails, we assume to be still safe, as all fds and
 		 * sockets should be already created with CLOEXEC.
+		 *
+		 * For scripts we cannot set fd as CLOEXEC.
 		 */
 		close_range(3, fd - 1, CLOSE_RANGE_CLOEXEC);
 		close_range(fd + 1, ~0U, CLOSE_RANGE_CLOEXEC);
@@ -843,7 +869,7 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 	int has_err = (stderr_read_fd != NULL);
 	pid_t pid;
 
-	int fd = verify_executable(argv[0], resolved_path);
+	int fd = verify_executable(argv[0], resolved_path, 0);
 	if (fd < 0) {
 		return -1;
 	}
@@ -943,10 +969,16 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 			close(null_fd);
 
 #if defined(CLOSE_RANGE_CLOEXEC) && defined(HAVE_CLOSE_RANGE)
-		close_range(3, fd - 1, CLOSE_RANGE_CLOEXEC);
-		close_range(fd + 1, ~0U, CLOSE_RANGE_CLOEXEC);
+		/*
+		 * Set all fd to be closed on exec as extra safety measure
+		 *
+		 * fallback: if it fails, we assume to be still safe, as all fds and
+		 * sockets should be already created with CLOEXEC.
+		 */
+		close_range(3, ~0U, CLOSE_RANGE_CLOEXEC);
 #endif
 
+		/* restore and unblock signals */
 		os_signal_restore_after_fork();
 
 		argv[0] = resolved_path;
