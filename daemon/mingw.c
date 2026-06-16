@@ -72,7 +72,7 @@ static wchar_t* u8tou16(wchar_t* conv_buf, const char* src)
 		DWORD error = GetLastError();
 		if (error == ERROR_INSUFFICIENT_BUFFER) {
 			log_msg(LVL_CRITICAL, "path too long converting '%s' from UTF-8 to UTF-16", src);
-		} else {		
+		} else {
 			log_msg(LVL_CRITICAL, "error %u converting '%s' from UTF-8 to UTF-16", (unsigned)error, src);
 		}
 		exit(EXIT_FAILURE);
@@ -89,7 +89,7 @@ static char* u16tou8ex(char* conv_buf, const wchar_t* src, size_t number_of_wcha
 		DWORD error = GetLastError();
 		if (error == ERROR_INSUFFICIENT_BUFFER) {
 			log_msg(LVL_CRITICAL, "path too long converting from UTF-16 to UTF-8 with len %u", (unsigned)number_of_wchar);
-		} else {		
+		} else {
 			log_msg(LVL_CRITICAL, "error %u converting from UTF-16 to UTF-8 with len %u", (unsigned)error, (unsigned)number_of_wchar);
 		}
 		exit(EXIT_FAILURE);
@@ -1376,6 +1376,7 @@ static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 pid_t os_spawn(char** argv, int* stderr_read_int)
 {
 	wchar_t conv[CONV_MAX];
+	char conv8[CONV_MAX];
 	HANDLE stderr_write_handle;
 	HANDLE stderr_read_handle;
 	SECURITY_ATTRIBUTES sa;
@@ -1454,7 +1455,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	);
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create process for spawn, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process '%s' for spawn, errno=%s(%d)", u16tou8(conv8, cmd_buffer), strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
 		close(f); /* close also stderr_read_handle */
 		return -1;
@@ -1652,7 +1653,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	}
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create process for command, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process '%s' for command, errno=%s(%d)", command, strerror(errno), errno);
 		CloseHandle(stdin_read_handle);
 		CloseHandle(stdin_write_handle);
 		CloseHandle(nul);
@@ -1710,6 +1711,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 int os_script(char** argv, const char* run_as_user)
 {
 	wchar_t conv[CONV_MAX];
+	char conv8[CONV_MAX];
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;
 	BOOL ret;
@@ -1827,7 +1829,7 @@ int os_script(char** argv, const char* run_as_user)
 	}
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create process for script, errno=%s(%d)", strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process '%s' for script, errno=%s(%d)", u16tou8(conv8, cmd_buffer), strerror(errno), errno);
 		return -1;
 	}
 
