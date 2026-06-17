@@ -10,6 +10,14 @@
 /* notify */
 
 /**
+ * Handle task start notifications.
+ * @param state Current snapraid state
+ * @param high_cmd High-level command ID
+ * @return 0 on success
+ */
+int notify_start_locked(struct snapraid_state* state, int high_cmd);
+
+/**
  * Handle array notifications (syslog, webhooks, heartbeats).
  * @param state Current snapraid state
  * @param high_cmd High-level command ID
@@ -17,7 +25,7 @@
  * @param report_text Textual content of the report
  * @return 0 on success
  */
-int notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text);
+int notify_result_locked(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text);
 
 #endif
 

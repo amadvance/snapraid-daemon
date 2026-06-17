@@ -110,7 +110,7 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 	return 0;
 }
 
-static int result_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
+static int result_locked(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -122,9 +122,11 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 	const char* ntfy_tag;
 	char from[KEYWORD_MAX];
 	char to[KEYWORD_MAX];
+	char exit_code_str[32];
 	int email_format = 0;
 	ss_t ss;
 
+	snprintf(exit_code_str, sizeof(exit_code_str), "%d", exit_code);
 	sncpy(command, sizeof(command), command_name(high_cmd));
 	command[0] = toupper((unsigned char)command[0]);
 	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
@@ -157,12 +159,14 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 		break;
 	}
 
-#define PLACEHOLDERS 7
+#define PLACEHOLDERS 9
 	const char* placeholders[PLACEHOLDERS] = {
 		"%s",
 		"%l",
 		"%n",
 		"%t",
+		"%h",
+		"%c",
 		"--wide",
 		"--narrow",
 		0
@@ -172,6 +176,8 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 		config_level_str(report_level),
 		ntfy_priority,
 		ntfy_tag,
+		command_name(high_cmd),
+		exit_code_str,
 		"", /* --wide */
 		"", /* --narrow */
 		0
@@ -257,7 +263,105 @@ bail:
 	return -1;
 }
 
-int notify_locked(struct snapraid_state* state, int high_cmd, int report_level, const char* report_text)
+static int start_locked(struct snapraid_state* state, int high_cmd)
+{
+	char cmd[1024];
+	char template[CONFIG_MAX];
+	char run_as_user[CONFIG_MAX];
+	char command[32];
+	char subject[MSG_MAX];
+	char from[KEYWORD_MAX];
+	char to[KEYWORD_MAX];
+	int email_format = 0;
+	ss_t ss;
+
+	sncpy(command, sizeof(command), command_name(high_cmd));
+	command[0] = toupper((unsigned char)command[0]);
+	sncpy(run_as_user, sizeof(run_as_user), state->config.notify_run_as_user);
+	sncpy(template, sizeof(template), state->config.notify_start);
+	snprintf(subject, sizeof(subject), "[START] SnapRAID %s", command);
+
+#define START_PLACEHOLDERS 6
+	const char* placeholders[START_PLACEHOLDERS] = {
+		"%s",
+		"%l",
+		"%n",
+		"%t",
+		"%h",
+		0
+	};
+	const char* values[START_PLACEHOLDERS] = {
+		subject,
+		"info",
+		"low",
+		"play_or_pause_button",
+		command_name(high_cmd),
+		0
+	};
+
+	/* release the lock to call the command */
+	state_unlock();
+
+	ss_init(&ss, 128);
+
+	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
+		log_task(LVL_ERROR, "command string overflow, notification not sent");
+		goto bail;
+	}
+
+	/* prepend a minimal email header if pertinent */
+	if (extract_argument(cmd, "--mail-from", from, sizeof(from)) == 0) {
+		ss_printf(&ss, "From: SnapRAID <%s>\n", from);
+		email_format = 1;
+	}
+	if (extract_argument(cmd, "--mail-rcpt", to, sizeof(to)) == 0) {
+		ss_printf(&ss, "To: %s\n", to);
+		email_format = 1;
+	}
+	if (email_format) {
+		ss_printf(&ss, "Subject: %s\n", subject);
+		ss_prints(&ss, "\n");
+	}
+
+	/* report text */
+	ss_printf(&ss, "SnapRAID %s task started.\n", command);
+
+	os_privileges_acquire();
+	int ret = os_command(cmd, run_as_user, ss_extract(&ss));
+	os_privileges_release();
+	if (ret != 0) {
+		log_task(LVL_ERROR, "failed to send start report");
+		goto bail;
+	}
+
+	log_task(LVL_INFO, "sent start report");
+
+	ss_done(&ss);
+	state_lock();
+	return 0;
+
+bail:
+	ss_done(&ss);
+	state_lock();
+	return -1;
+}
+
+int notify_start_locked(struct snapraid_state* state, int high_cmd)
+{
+	int ret = 0;
+
+	if (!high_cmd)
+		high_cmd = CMD_REPORT;
+
+	if (state->config.notify_start[0] != 0) {
+		if (start_locked(state, high_cmd) != 0)
+			ret = -1;
+	}
+
+	return ret;
+}
+
+int notify_result_locked(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
 {
 	int ret = 0;
 
@@ -267,7 +371,7 @@ int notify_locked(struct snapraid_state* state, int high_cmd, int report_level, 
 	/* result is notified on ALL reports */
 	if (state->config.notify_result[0] != 0
 		&& report_level <= state->config.notify_result_level) {
-		if (result_locked(state, high_cmd, report_level, report_text) != 0)
+		if (result_locked(state, high_cmd, report_level, exit_code, report_text) != 0)
 			ret = -1;
 	}
 

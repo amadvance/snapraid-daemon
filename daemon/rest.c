@@ -808,6 +808,18 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto bad;
 				}
 				++j;
+			} else if (json_entry(js, &jv[j], json_const("notify_start")) == 0) {
+				if (!state->config.net_config_full_access) {
+					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
+					goto forbidden;
+				}
+				++j;
+				if (json_string(js, &jv[j], transient.notify_start, sizeof(transient.notify_start)) == 0) {
+				} else {
+					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+					goto bad;
+				}
+				++j;
 			} else if (json_entry(js, &jv[j], json_const("notify_result")) == 0) {
 				if (!state->config.net_config_full_access) {
 					json_error_forbidden(msg, sizeof(msg), js, &jv[j]);
@@ -925,6 +937,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 	ss_json_str(&s, level, "notify_run_as_user", config->notify_run_as_user);
 	ss_json_str(&s, level, "notify_heartbeat", config->notify_heartbeat);
+	ss_json_str(&s, level, "notify_start", config->notify_start);
 	ss_json_str(&s, level, "notify_result", config->notify_result);
 	ss_json_str(&s, level, "notify_result_level", config_level_str(config->notify_result_level));
 

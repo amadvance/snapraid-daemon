@@ -484,6 +484,8 @@ int config_load_locked(struct snapraid_state* state)
 				sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), val);
 			} else if (strcmp(key, "notify_heartbeat") == 0) {
 				sncpy(config->notify_heartbeat, sizeof(config->notify_heartbeat), val);
+			} else if (strcmp(key, "notify_start") == 0) {
+				sncpy(config->notify_start, sizeof(config->notify_start), val);
 			} else if (strcmp(key, "notify_result") == 0) {
 				sncpy(config->notify_result, sizeof(config->notify_result), val);
 			} else if (strcmp(key, "notify_result_level") == 0) {
@@ -791,6 +793,7 @@ void config_default_locked(struct snapraid_state* state)
 	config->notify_syslog_level = LVL_ERROR;
 	config->notify_run_as_user[0] = 0;
 	config->notify_heartbeat[0] = 0;
+	config->notify_start[0] = 0;
 	config->notify_result[0] = 0;
 	config->notify_result_level = LVL_ERROR;
 	config->notify_differences = 0;
@@ -839,6 +842,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	transient->notify_syslog_level = config->notify_syslog_level;
 	sncpy(transient->notify_run_as_user, sizeof(transient->notify_run_as_user), config->notify_run_as_user);
 	sncpy(transient->notify_heartbeat, sizeof(transient->notify_heartbeat), config->notify_heartbeat);
+	sncpy(transient->notify_start, sizeof(transient->notify_start), config->notify_start);
 	sncpy(transient->notify_result, sizeof(transient->notify_result), config->notify_result);
 	transient->notify_result_level = config->notify_result_level;
 	transient->notify_differences = config->notify_differences;
@@ -891,6 +895,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config->notify_syslog_level = transient->notify_syslog_level;
 	sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), transient->notify_run_as_user);
 	sncpy(config->notify_heartbeat, sizeof(config->notify_heartbeat), transient->notify_heartbeat);
+	sncpy(config->notify_start, sizeof(config->notify_start), transient->notify_start);
 	sncpy(config->notify_result, sizeof(config->notify_result), transient->notify_result);
 	config->notify_result_level = transient->notify_result_level;
 	config->notify_differences = transient->notify_differences;
@@ -918,6 +923,7 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config_set(config, "notify_syslog_level", config_level(config->notify_syslog_level));
 	config_set_string(config, "notify_run_as_user", config->notify_run_as_user);
 	config_set_string(config, "notify_heartbeat", config->notify_heartbeat);
+	config_set_string(config, "notify_start", config->notify_start);
 	config_set_string(config, "notify_result", config->notify_result);
 	config_set(config, "notify_result_level", config_level(config->notify_result_level));
 	config_set_int(config, "notify_differences", config->notify_differences);

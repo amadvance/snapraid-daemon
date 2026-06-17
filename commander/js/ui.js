@@ -1113,6 +1113,10 @@ export const renderSettings = (config) => {
                 <div class="form-row">
                     ${inputField('notify_heartbeat', 'Heartbeat Command On Success', 'text', 'A custom command (like a URL ping) triggered only after successful maintenance to verify the server is alive.', !fullAccess)}
                 </div>
+                <h4 class="font-bold mb-3">Start</h4>
+                <div class="form-row">
+                    ${inputField('notify_start', 'Start Command', 'text', 'The command used to notify the start of a high-level task like maintenance.', !fullAccess)}
+                </div>
                 <h4 class="font-bold mb-3">Result</h4>
                 <div class="form-row">
                     ${boolField('notify_differences', 'Include Differences', 'Includes a detailed list of all detected file changes in the report before the synchronization starts.')}
