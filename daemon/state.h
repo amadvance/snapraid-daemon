@@ -521,6 +521,7 @@ struct snapraid_config {
 	int notify_syslog_level;
 	char notify_run_as_user[CONFIG_MAX]; /**< User to run notifications as */
 	char notify_heartbeat[CONFIG_MAX]; /**< Heartbeat notification URL */
+	char notify_start[CONFIG_MAX]; /**< Start notification URL/script */
 	char notify_result[CONFIG_MAX]; /**< Result notification URL/script */
 	int notify_result_level; /**< Minimum level for result notification */
 	int notify_differences; /**< 1 to include differences in notification, 0 otherwise */

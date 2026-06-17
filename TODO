@@ -4,11 +4,6 @@ SnapRAID Daemon TODO
 2.x Releases
 ============
 
-- Add a new "notify_start" that can be used to notify the start of a high level task like maintenance.
-  - Add a macro for the subject %s like notify_result.
-  - Add a macro in notify_result and notify_start for the task name. Like %t/maintenance/heal/undelete...
-  - Add a macro in notify_result for the exit code %c.
-
 - For every change (pulse) detected while running commands, emit a message
   shown in the task messages. Like:
   Disk d2 changed path from xxx to yyyy

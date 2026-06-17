@@ -247,10 +247,19 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (latest_not_canceled_task != 0)
 		state->runner.latest = latest_not_canceled_task;
 
+	int exit_code = -1;
+	if (latest_not_canceled_task != 0) {
+		if (latest_not_canceled_task->state == PROCESS_STATE_TERM) {
+			exit_code = latest_not_canceled_task->exit_code;
+		} else {
+			exit_code = -1;
+		}
+	}
+
 	log_task_reset();
 
 	/* notify the report */
-	if (notify_locked(state, report_high_cmd, report_level, ss_extract(&ss)) != 0) {
+	if (notify_result_locked(state, report_high_cmd, report_level, exit_code, ss_extract(&ss)) != 0) {
 		char exit_msg[MSG_MAX];
 		report_task->exit_code = -1;
 		log_task_push(&report_task->message_list);

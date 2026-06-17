@@ -1686,6 +1686,7 @@ components:
             - hook_docker_pause
             - notify_run_as_user
             - notify_heartbeat
+            - notify_start
             - notify_result
 
             Note that this flag itself is immutable via the API and can only be changed by
@@ -1852,7 +1853,7 @@ components:
             subprocesses are executed.
 
             This setting governs the execution privileges for heartbeat
-            pings, result shell commands (notify_result).
+            pings, start and result shell commands (notify_start, notify_result).
 
             If left blank or omitted, these subprocesses inherit the
             current privileges of the snapraidd daemon.
@@ -1867,6 +1868,17 @@ components:
             Shell command executed only upon task success (exit code 0).
             Used for external 'dead man's switch' telemetry.
             Disabled if empty.
+
+            For security enforcement, this parameter is immutable via
+            the REST API unless 'net_config_full_access' is explicitly
+            enabled in the static configuration file.
+        notify_start:
+          type: string
+          example: 'mail -s "%s" your_user@localhost'
+          description: >
+            Shell command executed at the start of a high-level task like maintenance.
+            The daemon pipes the start message (plain-text) into the command's stdin.
+            Use the %s placeholder for dynamic injection of the subject string.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly

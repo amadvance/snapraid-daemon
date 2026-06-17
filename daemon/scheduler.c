@@ -11,12 +11,15 @@
 #include "log.h"
 #include "scheduler.h"
 #include "version.h"
+#include "notify.h"
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, int automated, char* msg, size_t msg_size, int* status)
 {
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
+
+	notify_start_locked(state, CMD_MAINTENANCE);
 
 	sl_init(&scrub_arg_list);
 	sl_init(&sync_arg_list);
@@ -95,6 +98,8 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	state_lock();
 
+	notify_start_locked(state, CMD_HEAL);
+
 	sl_t fix_arg_list;
 	sl_t scrub_arg_list;
 	sl_init(&fix_arg_list);
@@ -140,6 +145,8 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	time_t now = time(0);
 
 	state_lock();
+
+	notify_start_locked(state, CMD_UNDELETE);
 
 	sl_t fix_arg_list;
 	sl_init(&fix_arg_list);
