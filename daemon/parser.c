@@ -1075,6 +1075,9 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 
 		/* move the parsing to the current state */
 		diff_move(&state->global.diff_parse, &state->global.diff_current);
+
+		/* sort from the most relevant to the less relevant */
+		diff_sort(&state->global.diff_current);
 	} else if (strcmp(tag, "bucket_begin") == 0) {
 		/* for any command that load content */
 
@@ -1253,14 +1256,14 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 		pulse(state, PULSE_ACTIVITY);
 		++task->error_recovered;
 		if (++task->fix_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_RECOVERED, disk, sub);
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_RECOVERED, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
 		++task->error_unrecoverable;
 		if (++task->fix_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_UNRECOVERABLE, disk, sub);
+			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	}

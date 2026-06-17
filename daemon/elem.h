@@ -226,6 +226,12 @@ void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal);
  */
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
 
+/**
+ * Sort the difference statistics.
+ * @param diff Difference statistics to sort
+ */
+void diff_sort(struct snapraid_diff_stat* diff);
+
 /****************************************************************************/
 /* fix */
 

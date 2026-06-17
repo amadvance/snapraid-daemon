@@ -32,9 +32,6 @@ SnapRAID Daemon TODO
   > past_error_data
   > past_error_io
 
-- In the Difference panel put the deleted files at th start so that if
-  there is a limit in place, they are listed first.
-
 - Allow to disable scheduled sync but keep scrub. A check flag to enable/disable.
 
 - In manual maintenance allow to enable/disable sync and select how much to scrub.

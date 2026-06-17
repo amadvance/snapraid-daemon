@@ -141,7 +141,7 @@ static void print_line_separator(ss_t* ss)
 static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
 {
 	/* group by change type */
-	for (int change = FILE_CHANGE_DIFF_ADD; change <= FILE_CHANGE_DIFF_RESTORE; ++change) {
+	for (int change = FILE_CHANGE_DIFF_FIRST; change <= FILE_CHANGE_DIFF_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
@@ -178,7 +178,7 @@ static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
 static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
 {
 	/* group by change type */
-	for (int change = FILE_CHANGE_DIFF_ADD; change <= FILE_CHANGE_DIFF_RESTORE; ++change) {
+	for (int change = FILE_CHANGE_DIFF_FIRST; change <= FILE_CHANGE_DIFF_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
@@ -218,7 +218,7 @@ static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
 static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
 {
 	/* group by change type */
-	for (int change = FILE_CHANGE_RECOVERED; change <= FILE_CHANGE_UNRECOVERABLE; ++change) {
+	for (int change = FILE_CHANGE_FIX_FIRST; change <= FILE_CHANGE_FIX_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
@@ -251,7 +251,7 @@ static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
 static void print_fix_narrow(ss_t* ss, tommy_list* fix_list)
 {
 	/* group by change type */
-	for (int change = FILE_CHANGE_RECOVERED; change <= FILE_CHANGE_UNRECOVERABLE; ++change) {
+	for (int change = FILE_CHANGE_FIX_FIRST; change <= FILE_CHANGE_FIX_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
