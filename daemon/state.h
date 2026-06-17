@@ -345,19 +345,29 @@ struct snapraid_scheduler {
 	thread_id_t thread_id;
 };
 
-#define FILE_CHANGE_DIFF_ADD 1 /**< A new file or link was found that is not in the content file. */
-#define FILE_CHANGE_DIFF_REMOVE 2 /**< A file or link has been removed from the filesystem since the last sync. */
-#define FILE_CHANGE_DIFF_UPDATE 3 /**< A file or link has been updated (size, timestamp, or link target changed). */
-#define FILE_CHANGE_DIFF_MOVE 4 /**< A file was moved on the same disk. */
-#define FILE_CHANGE_DIFF_COPY 5 /**< A new file was found to be a copy of a file from another disk. */
-#define FILE_CHANGE_DIFF_RELOCATE 6 /**< A new file was found to be a copy of a file from another disk now disappeared. */
-#define FILE_CHANGE_DIFF_RESTORE 7 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
-#define FILE_CHANGE_RECOVERED 8 /**< A recoverable/recovered file */
-#define FILE_CHANGE_UNRECOVERABLE 9 /**< A unrecoverable file */
+/**
+ * File change attribute.
+ *
+ * Ordered from the most relevant to the less relevant.
+ */
+#define FILE_CHANGE_INVALID 0 /**< Unset */
+#define FILE_CHANGE_FIX_FIRST 1 /**< First FILE_CHANGE_FIX_* */
+#define FILE_CHANGE_FIX_UNRECOVERABLE 1 /**< A unrecoverable file */
+#define FILE_CHANGE_FIX_RECOVERED 2 /**< A recoverable/recovered file */
+#define FILE_CHANGE_FIX_LAST 2 /**< Last FILE_CHANGE_FIX_* */
+#define FILE_CHANGE_DIFF_FIRST 3 /**< First FILE_CHANGE_DIFF_* */
+#define FILE_CHANGE_DIFF_REMOVE 3 /**< A file or link has been removed from the filesystem since the last sync. */
+#define FILE_CHANGE_DIFF_UPDATE 4 /**< A file or link has been updated (size, timestamp, or link target changed). */
+#define FILE_CHANGE_DIFF_ADD 5 /**< A new file or link was found that is not in the content file. */
+#define FILE_CHANGE_DIFF_RESTORE 6 /**< A file's inode has changed but not its date-time and size, which suggests the file may be restored from backup. */
+#define FILE_CHANGE_DIFF_MOVE 7 /**< A file was moved on the same disk. */
+#define FILE_CHANGE_DIFF_COPY 8 /**< A new file was found to be a copy of a file from another disk. */
+#define FILE_CHANGE_DIFF_RELOCATE 9 /**< A new file was found to be a copy of a file from another disk now disappeared. */
+#define FILE_CHANGE_DIFF_LAST 9 /**< Last FILE_CHANGE_DIFF_* */
 
 struct snapraid_file {
 	tommy_node node;
-	int change; /**< One of the DIFF_CHANGE_* */
+	int change; /**< One of the FILE_CHANGE_* */
 	char* path; /**< Path of the file */
 	char* source_path; /**< Path of the source/old file, valid only if reason == DIFF_REASON_MOVE or DIFF_REASON_COPY */
 	char* disk; /**< Name of the disk */
