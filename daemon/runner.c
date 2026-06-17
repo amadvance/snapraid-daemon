@@ -1241,7 +1241,7 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 	if (lock)
 		state_lock();
 
-	const char* snapraid = app_find_engine();
+	const char* snapraid = app_find_engine(state->config.sys_engine);
 	if (!snapraid) {
 		if (lock)
 			state_unlock();

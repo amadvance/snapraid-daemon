@@ -39,9 +39,9 @@ SnapRAID-Daemon HISTORY
    pre hook script) and unpaused immediately afterward.
  * Include the system hostname at the beginning of the status report
    before the health status.
- * Removed the "sys_engine" option and replaced it with a new
-   "./configure --with-snapraid=PATH" option to allow hardcoding the
-   utility path at build time.
+ * Deprecated the "sys_engine" configuration option.
+ * Added new "./configure --with-snapraid=PATH" option to allow
+   hardcoding the utility path at build time.
    Similarly added new "--with-docker=PATH" and "--with-curl=PATH"
    options to allow hardcoding the curl and docker utility paths at
    build time. The default runtime discovery behavior remains unchanged
