@@ -15,7 +15,7 @@
  * Find the SnapRAID binary in the system.
  * @return Path to SnapRAID binary, or NULL if not found
  */
-const char* app_find_engine(void);
+const char* app_find_engine(const char* sys_engine);
 
 /**
  * Find the curl binary in the system.

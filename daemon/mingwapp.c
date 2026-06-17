@@ -21,17 +21,23 @@ static char path_data[PATH_MAX];
 /****************************************************************************/
 /* app */
 
-const char* app_find_engine(void)
+const char* app_find_engine(const char* sys_engine)
 {
 	wchar_t conv[CONV_MAX];
+	const char* path;
 
-	DWORD attrib = GetFileAttributesW(u8tou16(conv, path_snapraid));
+	if (sys_engine && sys_engine[0])
+		path = sys_engine;
+	else
+		path = path_snapraid;
+
+	DWORD attrib = GetFileAttributesW(u8tou16(conv, path));
 
 	/* check for existence every time in case it's installed at later time */
 	if (attrib == INVALID_FILE_ATTRIBUTES)
 		return 0;
 
-	return path_snapraid;
+	return path;
 }
 
 const char* app_find_curl(void)
