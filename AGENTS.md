@@ -188,8 +188,12 @@ sudo make install    # Install to /usr/local/bin
 #### Key Build Files
 
 - `configure.ac`: Autoconf script (detects systemd vs BSD init)
-- `Makefile.am`: Source file lists, dependencies, install hooks
+- `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
 - `uncrustify.cfg`: Code formatting rules (C style enforcement)
+
+#### Documentation Generation
+
+The man page `doc/snapraidd.1` and text manual `doc/snapraidd.txt` are generated from the source documentation file `doc/snapraidd.d`. The `Makefile.am` has the required pattern rules (using `advd2`) to build these documentation formats.
 
 #### Installation
 
