@@ -266,6 +266,10 @@ Generated reports include:
 - **Preferences**: Use 0 instead of NULL and '\0'
 - **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
  
+#### Frontend UI Guidelines
+
+- **JS Synchronization**: The JavaScript files in `brutale/js/` must remain completely identical to the ones in `commander/js/`. When updating the web interface logic, apply changes to `commander/js/` first, and then copy the modified files to `brutale/js/`.
+
 #### Adding a New API Endpoint
 
 1. Update `snapraidd.yaml` with OpenAPI schema

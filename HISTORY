@@ -3,6 +3,10 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Introduced "Brutale", an alternative high-contrast Neo-Brutalist WebUI.
+   Proceed with caution: this interface is loud, unapologetic, and might
+   cause spontaneous desires to build raw concrete structures
+   (see https://en.wikipedia.org/wiki/Brutalist_architecture).
  * Allow separate spindown idle timeouts for data and parity disks by
    specifying two comma-separated values in "spindown_idle_minutes"
    (e.g., 15, 30). If only one value is specified, it applies to both.
