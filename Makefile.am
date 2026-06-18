@@ -41,10 +41,23 @@ COMMANDER_DIST = \
 	js/ui.js \
 	js/utils.js
 
-data_DATA = commander.zip
+BRUTALE_DIST = \
+	$(COMMANDER_DIST) \
+	css/fonts/BebasNeue-Regular.woff2 \
+	css/fonts/PlusJakartaSans-Bold.woff2 \
+	css/fonts/DMSans-Regular.woff2 \
+	css/fonts/DMSans-Medium.woff2 \
+	css/fonts/DMSans-Bold.woff2 \
+	css/fonts/JetBrainsMono-Regular.woff2 \
+	css/fonts/JetBrainsMono-Bold.woff2
+
+data_DATA = commander.zip brutale.zip
 
 commander.zip: $(patsubst %, $(srcdir)/commander/%, $(COMMANDER_DIST))
 	cd $(srcdir)/commander && $(ZIP) -0 -r -q $(abs_builddir)/commander.zip $(COMMANDER_DIST)
+
+brutale.zip: $(patsubst %, $(srcdir)/brutale/%, $(BRUTALE_DIST))
+	cd $(srcdir)/brutale && $(ZIP) -0 -r -q $(abs_builddir)/brutale.zip $(BRUTALE_DIST)
 
 # Windows
 if HOST_WINDOWS
@@ -198,7 +211,27 @@ EXTRA_DIST = \
 	commander/js/ui.js \
 	commander/js/api.js \
 	commander/js/app.js \
-	commander/js/utils.js
+	commander/js/utils.js \
+	brutale/index.html \
+	brutale/site.webmanifest \
+	brutale/image/favicon-16x16.png \
+	brutale/image/android-chrome-512x512.png \
+	brutale/image/apple-touch-icon.png \
+	brutale/image/android-chrome-192x192.png \
+	brutale/image/favicon-32x32.png \
+	brutale/favicon.ico \
+	brutale/css/style.css \
+	brutale/js/ui.js \
+	brutale/js/api.js \
+	brutale/js/app.js \
+	brutale/js/utils.js \
+	brutale/css/fonts/BebasNeue-Regular.woff2 \
+	brutale/css/fonts/PlusJakartaSans-Bold.woff2 \
+	brutale/css/fonts/DMSans-Regular.woff2 \
+	brutale/css/fonts/DMSans-Medium.woff2 \
+	brutale/css/fonts/DMSans-Bold.woff2 \
+	brutale/css/fonts/JetBrainsMono-Regular.woff2 \
+	brutale/css/fonts/JetBrainsMono-Bold.woff2
 
 man1_MANS = doc/snapraidd.1
 
@@ -208,7 +241,7 @@ distuninstallcheck_listfiles = \
 
 clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
-	rm -f commander.zip
+	rm -f commander.zip brutale.zip
 	rm -f makeslackware.sh makeslackdist.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
 
 maintainer-clean-local:

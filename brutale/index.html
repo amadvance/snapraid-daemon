@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapRAID Brutale</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="/image/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/image/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/image/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <script>
+        // Apply theme early to prevent flash
+        document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <a class="brand" href="https://www.snapraid.it" target="_blank" rel="noopener noreferrer">
+                <!-- <div class="logo-icon" id="icon-logo"></div> -->
+                <image class="logo-icon" src="image/android-chrome-192x192.png" with="60" height="60"/>
+                <div class="brand-text">
+                    <h1><span>SnapRAID</span><br><span class="brand-sub">Brutale</span></h1>
+                </div>
+            </a>
+
+            <nav class="nav-links">
+                <a href="#/" class="nav-item active" data-link>
+                    <span class="icon" id="icon-dashboard"></span> Dashboard
+                </a>
+                <a href="#/disks" class="nav-item" data-link>
+                    <span class="icon" id="icon-harddrive"></span> Disks
+                </a>
+                <a href="#/tasks" class="nav-item" data-link>
+                    <span class="icon" id="icon-activity"></span> Tasks
+                </a>
+                <a href="#/diff" class="nav-item" data-link>
+                    <span class="icon" id="icon-check"></span> Differences
+                </a>
+                <a href="#/recovery" class="nav-item" data-link>
+                    <span class="icon" id="icon-shield"></span> Recovery
+                </a>
+                <a href="#/settings" class="nav-item" data-link>
+                    <span class="icon" id="icon-settings"></span> Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div id="sidebar-status" class="sidebar-status">
+                    <!-- Dynamic Status -->
+                </div>
+                <div class="connection-status">
+                    <span class="pulse-dot"></span>
+                    <span id="connection-text">Connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Mobile Header -->
+            <header class="top-bar">
+                <div class="flex items-center gap-4">
+                    <button id="mobile-menu-btn" class="icon-btn mobile-only">
+                        <span class="icon" id="icon-menu"></span>
+                    </button>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="header-actions" id="header-actions">
+                        <!-- Dynamic Action Buttons injected here -->
+                    </div>
+                    <button id="theme-toggle" class="btn btn-secondary btn-icon" data-tooltip="Toggle Theme">
+                        <span class="icon" id="icon-theme"></span>
+                    </button>
+                </div>
+            </header>
+            
+            <div id="global-alerts" class="global-alerts"></div>
+
+            <!-- View Container -->
+            <div id="view-container" class="view-container">
+                <!-- Views are injected here by JS -->
+                <div class="loading-spinner"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

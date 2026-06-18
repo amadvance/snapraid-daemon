@@ -80,5 +80,6 @@ fi
 %{_mandir}/man1/snapraidd.1*
 %dir %{_datadir}/snapraidd
 %{_datadir}/snapraidd/commander.zip
+%{_datadir}/snapraidd/brutale.zip
 %config(noreplace) %{_sysconfdir}/snapraidd.conf
 /usr/lib/systemd/system/snapraidd.service

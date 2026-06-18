@@ -98,6 +98,7 @@ osslsigncode sign \
     -in "snapraidd.exe" \
     -out "../${NSIS_PKG_ROOT}/snapraidd.exe"
 cp commander.zip "../${NSIS_PKG_ROOT}"
+cp brutale.zip "../${NSIS_PKG_ROOT}"
 cp doc/*.txt "../${NSIS_PKG_ROOT}"
 cp pkg/snapraid-daemon.ico "../${NSIS_PKG_ROOT}"
 cp pkg/snapraid-daemon.nsis "../${NSIS_PKG_ROOT}"

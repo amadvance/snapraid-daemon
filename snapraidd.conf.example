@@ -162,7 +162,7 @@ net_config_full_access = 0
 #
 # ZIP Filename:
 # If the value is a simple filename ending in .zip with no path
-# components (e.g., commander.zip), the daemon searches for the file
+# components (e.g., commander.zip or brutale.zip), the daemon searches for the file
 # in the installation data directories. It first checks the configured
 # installation prefix at $PREFIX/share/snapraidd/, followed by the
 # system-wide directory at /usr/share/snapraidd/.
@@ -197,6 +197,11 @@ net_config_full_access = 0
 #
 # This option is not accessible from the REST API.
 # It requires a manual edit and a configuration reload (SIGHUP) to apply.
+#
+# Available options:
+#   - commander.zip (Default dashboard)
+#   - brutale.zip (Alternative high-contrast Neo-Brutalist dashboard)
+#
 net_web_root = commander.zip
 
 # The net_auth_credential specifies the credentials required to access the
