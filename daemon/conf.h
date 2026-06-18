@@ -39,6 +39,15 @@ int config_parse_level(const char* input, int* out);
 int config_parse_maintenance_schedule(const char* input, struct snapraid_config* config);
 
 /**
+ * Parse spindown_idle_minutes string.
+ * @param val Input string to parse
+ * @param data Pointer to store data disk spindown minutes
+ * @param parity Pointer to store parity disk spindown minutes
+ * @return 0 on success, -1 on error
+ */
+int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity);
+
+/**
  * Get string representation of log level.
  * @param level Log level value
  * @return String representation

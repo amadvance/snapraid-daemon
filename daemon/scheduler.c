@@ -52,7 +52,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	if (spindown < 0) {
 		/* if config has spindown management, don't wait, and spin down just after */
-		spindown = state->config.spindown_idle_minutes != 0;
+		spindown = state->config.spindown_idle_minutes_data != 0 || state->config.spindown_idle_minutes_parity != 0;
 	}
 
 	/*
@@ -110,7 +110,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	if (spindown < 0) {
 		/* if config has spindown management, don't wait, and spin down just after */
-		spindown = state->config.spindown_idle_minutes != 0;
+		spindown = state->config.spindown_idle_minutes_data != 0 || state->config.spindown_idle_minutes_parity != 0;
 	}
 
 	/*
@@ -189,13 +189,14 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	 *
 	 * Keep the lock to ensure that no other task is inserted in between.
 	 */
-	int spindown_idle_minutes = state->config.spindown_idle_minutes;
+	int spindown_data = state->config.spindown_idle_minutes_data;
+	int spindown_parity = state->config.spindown_idle_minutes_parity;
 
 	int ret = 0;
 	if (ret == 0)
 		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, 0, msg, msg_size, status);
 
-	if (ret == 0 && spindown_idle_minutes > 0)
+	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0))
 		(void)runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
 }
 
@@ -450,8 +451,17 @@ void* scheduler_thread(void* arg)
 
 			/* probe and spindown, use the lowest interval */
 			int64_t interval_minutes = state->config.probe_interval_minutes;
-			if (state->config.spindown_idle_minutes > 0 && (interval_minutes == 0 || interval_minutes > state->config.spindown_idle_minutes))
-				interval_minutes = state->config.spindown_idle_minutes;
+			int spindown_data = state->config.spindown_idle_minutes_data;
+			int spindown_parity = state->config.spindown_idle_minutes_parity;
+			int min_spindown = 0;
+			if (spindown_data > 0)
+				min_spindown = spindown_data;
+			if (spindown_parity > 0) {
+				if (min_spindown == 0 || spindown_parity < min_spindown)
+					min_spindown = spindown_parity;
+			}
+			if (min_spindown > 0 && (interval_minutes == 0 || interval_minutes > min_spindown))
+				interval_minutes = min_spindown;
 
 			if (interval_minutes > 0
 				&& mono_now_secs - last_probe_and_spindown_ts >= interval_minutes * (int64_t)60) {

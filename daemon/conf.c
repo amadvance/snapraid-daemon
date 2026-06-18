@@ -71,6 +71,35 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 	return 0;
 }
 
+int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity)
+{
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), val);
+
+	char* tokens[4];
+	unsigned n = strsplit(tokens, 4, copy, ",", " \t\r\n");
+
+	if (n == 1) {
+		int v;
+		if (parse_int(tokens[0], 0, 1440, &v) != 0)
+			return -1;
+		*data = v;
+		*parity = v;
+		return 0;
+	} else if (n == 2) {
+		int v_data, v_parity;
+		if (parse_int(tokens[0], 0, 1440, &v_data) != 0)
+			return -1;
+		if (parse_int(tokens[1], 0, 1440, &v_parity) != 0)
+			return -1;
+		*data = v_data;
+		*parity = v_parity;
+		return 0;
+	}
+
+	return -1;
+}
+
 
 const char* config_level_str(int level)
 {
@@ -425,7 +454,7 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "spindown_idle_minutes") == 0) {
-				if (parse_int(val, 0, 1440, &config->spindown_idle_minutes) == 0) {
+				if (config_parse_spindown_idle_minutes(val, &config->spindown_idle_minutes_data, &config->spindown_idle_minutes_parity) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -785,7 +814,8 @@ void config_default_locked(struct snapraid_state* state)
 	config->scrub_older_than = 0;
 	config->touch_zero_subseconds = 0;
 	config->probe_interval_minutes = 0;
-	config->spindown_idle_minutes = 0;
+	config->spindown_idle_minutes_data = 0;
+	config->spindown_idle_minutes_parity = 0;
 	config->hook_run_as_user[0] = 0;
 	config->hook_script[0] = 0;
 	config->hook_docker_pause[0] = 0;
@@ -834,7 +864,8 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	transient->scrub_older_than = config->scrub_older_than;
 	transient->touch_zero_subseconds = config->touch_zero_subseconds;
 	transient->probe_interval_minutes = config->probe_interval_minutes;
-	transient->spindown_idle_minutes = config->spindown_idle_minutes;
+	transient->spindown_idle_minutes_data = config->spindown_idle_minutes_data;
+	transient->spindown_idle_minutes_parity = config->spindown_idle_minutes_parity;
 	sncpy(transient->hook_run_as_user, sizeof(transient->hook_run_as_user), config->hook_run_as_user);
 	sncpy(transient->hook_script, sizeof(transient->hook_script), config->hook_script);
 	sncpy(transient->hook_docker_pause, sizeof(transient->hook_docker_pause), config->hook_docker_pause);
@@ -887,7 +918,8 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config->scrub_older_than = transient->scrub_older_than;
 	config->touch_zero_subseconds = transient->touch_zero_subseconds;
 	config->probe_interval_minutes = transient->probe_interval_minutes;
-	config->spindown_idle_minutes = transient->spindown_idle_minutes;
+	config->spindown_idle_minutes_data = transient->spindown_idle_minutes_data;
+	config->spindown_idle_minutes_parity = transient->spindown_idle_minutes_parity;
 	sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), transient->hook_run_as_user);
 	sncpy(config->hook_script, sizeof(config->hook_script), transient->hook_script);
 	sncpy(config->hook_docker_pause, sizeof(config->hook_docker_pause), transient->hook_docker_pause);
@@ -915,7 +947,13 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config_set_int(config, "scrub_older_than", config->scrub_older_than);
 	config_set_int(config, "touch_zero_subseconds", config->touch_zero_subseconds);
 	config_set_int(config, "probe_interval_minutes", config->probe_interval_minutes);
-	config_set_int(config, "spindown_idle_minutes", config->spindown_idle_minutes);
+	if (config->spindown_idle_minutes_data == config->spindown_idle_minutes_parity) {
+		config_set_int(config, "spindown_idle_minutes", config->spindown_idle_minutes_data);
+	} else {
+		char buf[64];
+		snprintf(buf, sizeof(buf), "%d, %d", config->spindown_idle_minutes_data, config->spindown_idle_minutes_parity);
+		config_set_string(config, "spindown_idle_minutes", buf);
+	}
 	config_set_string(config, "hook_run_as_user", config->hook_run_as_user);
 	config_set_string(config, "hook_script", config->hook_script);
 	config_set_string(config, "hook_docker_pause", config->hook_docker_pause);

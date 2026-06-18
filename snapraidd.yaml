@@ -575,7 +575,7 @@ paths:
           description: Invalid method.
           $ref: '#/components/responses/CommandResult'
 
-  /snapraid/v1/config:
+  /snapraid/v2/config:
     get:
       summary: Retrieve active daemon configuration
       description: >
@@ -1793,13 +1793,17 @@ components:
             disk is already in an active/idle state to prevent spin-up.
             Set to 0 to disable monitoring.
         spindown_idle_minutes:
-          type: integer
-          example: 30
+          type: string
+          example: '30'
           description: >
             Inactivity threshold for disk spindown. Activity defined as
             physical read/write I/O. Power-state probes do not reset
             this timer but allow more frequent I/O detection.
-            Set to 0 to disable.
+            Set to 0 to disable. Specify one integer value for both data
+            and parity disks, or two comma-separated integer values for
+            separate timeouts (e.g. "15, 30"). A value of 0 disables spindown
+            for that specific disk type (e.g., "0, 30" disables spindown for
+            data disks but spins down parity disks after 30 idle minutes).
         hook_run_as_user:
           type: string
           example: 'nobody'
