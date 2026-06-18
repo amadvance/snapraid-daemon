@@ -1,6 +1,11 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.13 2026/06
+============
+ * Make the light theme the default in the web dashboard (Commander) and
+   prevent a Flash of Unstyled Content (FOUC) on page reload.
+
 1.12 2026/06
 ============
  * Fix configuration saving under SystemD due to read-only restriction.

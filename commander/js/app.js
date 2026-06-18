@@ -27,7 +27,7 @@ const app = {
 
     init: () => {
         // Theme Init
-        const savedTheme = localStorage.getItem('theme') || 'dark';
+        const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.dataset.theme = savedTheme;
 
         // Render Icons
