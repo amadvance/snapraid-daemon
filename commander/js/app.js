@@ -743,7 +743,7 @@ const app = {
 
                 // Check if it should be a number
                 if (['sync_threshold_deletes', 'sync_threshold_updates',
-                    'scrub_older_than', 'probe_interval_minutes', 'spindown_idle_minutes'].includes(key)) {
+                    'scrub_older_than', 'probe_interval_minutes'].includes(key)) {
                     const parsed = parseInt(value, 10);
                     if (isNaN(parsed) || isNaN(Number(value)) || value.includes('.')) {
                         const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
@@ -751,6 +751,18 @@ const app = {
                         return;
                     }
                     updates[key] = parsed;
+                } else if (key === 'spindown_idle_minutes') {
+                    if (/^\s*\d+\s*(?:,\s*\d+\s*)?$/.test(value)) {
+                        if (value.includes(',')) {
+                            updates[key] = value.split(',').map(v => parseInt(v.trim(), 10)).join(', ');
+                        } else {
+                            updates[key] = parseInt(value, 10).toString();
+                        }
+                    } else {
+                        const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
+                        showToast(`Failed to save: Invalid value ${displayVal} for ${key}`, 'error');
+                        return;
+                    }
                 } else if (key === 'scrub_percentage') {
                     const parsed = parseFloat(value);
                     if (isNaN(parsed) || isNaN(Number(value))) {

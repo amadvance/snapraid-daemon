@@ -612,6 +612,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 {
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
 	jsmn_parser jp;
@@ -669,10 +671,26 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("spindown_idle_minutes")) == 0) {
 				++j;
-				if (json_int(js, &jv[j], 0, 1440, &transient.spindown_idle_minutes) == 0) {
+				if (is_v2) {
+					char val_str[64];
+					if (json_string(js, &jv[j], val_str, sizeof(val_str)) != 0
+						|| config_parse_spindown_idle_minutes(val_str, &transient.spindown_idle_minutes_data, &transient.spindown_idle_minutes_parity) != 0) {
+						json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+						goto bad;
+					}
 				} else {
-					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
-					goto bad;
+					char val_str[64];
+					size_t len = jv[j].end - jv[j].start;
+					if (jv[j].type != JSMN_PRIMITIVE || len + 1 > sizeof(val_str)) {
+						json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+						goto bad;
+					}
+					memcpy(val_str, &js[jv[j].start], len);
+					val_str[len] = 0;
+					if (config_parse_spindown_idle_minutes(val_str, &transient.spindown_idle_minutes_data, &transient.spindown_idle_minutes_parity) != 0) {
+						json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
+						goto bad;
+					}
 				}
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("sync_threshold_deletes")) == 0) {
@@ -903,6 +921,8 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	int level = 0;
 	ss_t s;
 	char schedule_buf[64];
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
@@ -924,7 +944,17 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_bool(&s, level, "touch_zero_subseconds", config->touch_zero_subseconds);
 
 	ss_json_int(&s, level, "probe_interval_minutes", config->probe_interval_minutes);
-	ss_json_int(&s, level, "spindown_idle_minutes", config->spindown_idle_minutes);
+	if (is_v2) {
+		char buf[64];
+		if (config->spindown_idle_minutes_data == config->spindown_idle_minutes_parity) {
+			snprintf(buf, sizeof(buf), "%d", config->spindown_idle_minutes_data);
+		} else {
+			snprintf(buf, sizeof(buf), "%d, %d", config->spindown_idle_minutes_data, config->spindown_idle_minutes_parity);
+		}
+		ss_json_str(&s, level, "spindown_idle_minutes", buf);
+	} else {
+		ss_json_int(&s, level, "spindown_idle_minutes", config->spindown_idle_minutes_data);
+	}
 
 	ss_json_str(&s, level, "hook_run_as_user", config->hook_run_as_user);
 	ss_json_str(&s, level, "hook_script", config->hook_script);
@@ -2406,7 +2436,8 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 
 	ss_prints(&s, "# HELP snapraid_config_spindown_idle_minutes Spin down disks after this many idle minutes (0 = disabled)\n");
 	ss_prints(&s, "# TYPE snapraid_config_spindown_idle_minutes gauge\n");
-	ss_printf(&s, "snapraid_config_spindown_idle_minutes %d\n", config->spindown_idle_minutes);
+	ss_printf(&s, "snapraid_config_spindown_idle_minutes{kind=\"data\"} %d\n", config->spindown_idle_minutes_data);
+	ss_printf(&s, "snapraid_config_spindown_idle_minutes{kind=\"parity\"} %d\n", config->spindown_idle_minutes_parity);
 	ss_prints(&s, "\n");
 
 	ss_prints(&s, "# HELP snapraid_config_probe_interval_minutes Interval between probe commands in minutes (0 = disabled)\n");
@@ -2926,7 +2957,8 @@ int rest_init(struct snapraid_state* state)
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks", handler_disks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity", handler_activity, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state); /* deprecated but kept for compatibility */
+	mg_set_request_handler(state->rest_context, "/snapraid/v2/config", handler_config, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/system", handler_system, state);

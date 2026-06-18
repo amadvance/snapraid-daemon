@@ -3,6 +3,13 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Allow separate spindown idle timeouts for data and parity disks by
+   specifying two comma-separated values in "spindown_idle_minutes"
+   (e.g., 15, 30). If only one value is specified, it applies to both.
+   This introduces the new REST API "/snapraid/v2/config" endpoint where
+   the spindown configuration is returned and set as a string, while
+   retaining backward compatibility with the legacy "/snapraid/v1/config"
+   endpoint (which only returns the data disk timeout as an integer).
  * Added support for saving task log files in gzip (.gz) format, controlled
    by the "sys_log_compression" configuration option.
  * Added a "notify_start" configuration option to trigger a notification

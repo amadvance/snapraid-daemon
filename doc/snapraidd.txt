@@ -607,6 +607,13 @@ Note that this applies only to `data` and `parity` disks configured in
 `snapraid.conf`. Any other disks, including `extra` disks, are not
 subject to spindown.
 
+You can specify a single integer (e.g. 15) to apply the timeout to both
+data and parity disks, or two comma-separated integers (e.g. 15, 30)
+to set separate timeouts for data and parity disks respectively.
+A value of 0 disables spindown for that specific disk type. For example,
+`0, 30` disables spindown for data disks but spins down parity disks
+after 30 idle minutes.
+
 This timer monitors the global activity of the disks across the entire
 operating system. A disk will only be spun down if it has remained
 completely idle for the specified period. If any other application,

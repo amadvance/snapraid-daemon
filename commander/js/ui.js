@@ -1074,7 +1074,7 @@ export const renderSettings = (config) => {
             <div class="grid-3">
             <div class="card">
                 <h3>Automation</h3>
-                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Defines the specific time or day to automatically run the maintenance sequence (e.g., 02:00 or Mon 03:00, Wed 02:00). Leave empty to disable.')}
+                ${inputField('maintenance_schedule', 'Maintenance Schedule', 'text', 'Schedule maintenance times (e.g., 02:00) or days (e.g., Mon 03:00, Wed 02:00). Separate multiple entries with commas. Leave blank to disable.')}
                 ${inputField('scrub_percentage', 'Scrub Percentage', 'text', 'The percentage of the array to be verified for data integrity after each successful sync (e.g., enter 5 for 5% or 1.5 for 1.5%). Set to 0 to disable scrub.', false, 'inputmode="decimal"')}
                 ${inputField('scrub_older_than', 'Scrub Older Than (days)', 'text', 'Only scrubs data blocks that haven\'t been verified within this many days.', false, 'inputmode="numeric"')}
                 ${boolField('touch_zero_subseconds', 'Touch Zero Subseconds', 'Update timestamps lacking sub-second precision to accurately identify moved or renamed files.')}
@@ -1094,7 +1094,7 @@ export const renderSettings = (config) => {
                 <h3>Monitor</h3>
                 ${boolField('check_updates', 'Check for Updates', 'Periodically checks for a new version of the daemon and engine.')}
                 ${inputField('probe_interval_minutes', 'Probe Interval (mins)', 'text', 'Determines how often the daemon collects health data from disks that are currently spinning. Set to 0 to disable.', false, 'inputmode="numeric"')}
-                ${inputField('spindown_idle_minutes', 'Disk Spindown Timeout (mins)', 'text', 'Automatically puts disks into a low-power standby state after the specified duration of inactivity. Set to 0 to disable.', false, 'inputmode="numeric"')}
+                ${inputField('spindown_idle_minutes', 'Data & Parity Spindown Timeout (mins)', 'text', 'Puts these disks into standby after inactivity. Enter one value for both, or two comma-separated values for data and parity (e.g., 15, 30). Set to 0 to disable.')}
             </div>
             </div>
 

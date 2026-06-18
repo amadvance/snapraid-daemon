@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-const BASE_URL = '/snapraid/v1';
-
 async function request(endpoint, options = {}) {
+    const version = options.version || 'v1';
+    const baseUrl = `/snapraid/${version}`;
+    const cleanOptions = { ...options };
+    delete cleanOptions.version;
     try {
-        const response = await fetch(`${BASE_URL}${endpoint}`, {
+        const response = await fetch(`${baseUrl}${endpoint}`, {
             headers: { 'Content-Type': 'application/json', 'X-Pinggy-No-Screen': 'true' },
-            ...options
+            ...cleanOptions
         });
 
         if (response.status === 204)
@@ -51,9 +53,9 @@ export const API = {
         const query = new URLSearchParams(params).toString();
         return request(`/tasks${query ? `?${query}` : ''}`);
     },
-    getConfig: () => request('/config'),
+    getConfig: () => request('/config', { version: 'v2' }),
     getSystem: () => request('/system'),
-    updateConfig: (config) => request('/config', { method: 'PATCH', body: JSON.stringify(config) }),
+    updateConfig: (config) => request('/config', { method: 'PATCH', body: JSON.stringify(config), version: 'v2' }),
 
     schedule: (tasks) => request('/schedule', { method: 'POST', body: JSON.stringify({ tasks }) }),
 

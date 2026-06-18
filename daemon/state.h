@@ -513,7 +513,8 @@ struct snapraid_config {
 	int scrub_older_than; /**< Scrub blocks older than this many days */
 	int touch_zero_subseconds; /**< 1 to touch befoer sync, 0 otherwise */
 	int probe_interval_minutes; /**< Interval for disk probing in minutes */
-	int spindown_idle_minutes; /**< Interval for disk spindown in minutes */
+	int spindown_idle_minutes_data; /**< Interval for data disk spindown in minutes */
+	int spindown_idle_minutes_parity; /**< Interval for parity disk spindown in minutes */
 	char hook_run_as_user[CONFIG_MAX]; /**< User to run scripts as */
 	char hook_script[CONFIG_MAX]; /**< Hook script path */
 	char hook_docker_pause[CONFIG_MAX]; /**< Docker containers to pause, comma-separated */
