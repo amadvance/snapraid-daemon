@@ -249,8 +249,6 @@ void app_done(void)
 
 #include "messages.h"
 
-#define SERVICE_NAME "snapraidd"
-
 SERVICE_STATUS g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
 static DWORD dwCheckPoint = 1;
@@ -290,7 +288,7 @@ void windows_eventlog(int level, const char* msg)
 		break;
 	}
 
-	h = RegisterEventSource(NULL, SERVICE_NAME);
+	h = RegisterEventSource(NULL, DAEMON_NAME);
 	if (!h)
 		return;
 
@@ -398,7 +396,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 
 	struct snapraid_state* state = state_ptr();
 
-	g_StatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
+	g_StatusHandle = RegisterServiceCtrlHandler(DAEMON_NAME, ServiceCtrlHandler);
 	if (g_StatusHandle == NULL)
 		return;
 
@@ -462,7 +460,7 @@ int main(int argc, char* argv[])
 		os_done();
 	} else {
 		SERVICE_TABLE_ENTRY ServiceTable[] = {
-			{ (char*)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain },
+			{ (char*)DAEMON_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain },
 			{ NULL, NULL }
 		};
 

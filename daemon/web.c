@@ -31,7 +31,7 @@
  */
 void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int net_security_headers, const char* net_allowed_origin)
 {
-	ss_printf(s, "Server: %s/%s\r\n", DAEMON, PACKAGE_VERSION);
+	ss_printf(s, "Server: %s/%s\r\n", DAEMON_NAME, PACKAGE_VERSION);
 
 	char date_buf[64];
 	struct tm tm_gmt;
@@ -164,7 +164,7 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 	(void)conn;
 
 	/* Identify the server and version */
-	ss_printf(s, "Server: %s/%s\r\n", DAEMON, PACKAGE_VERSION);
+	ss_printf(s, "Server: %s/%s\r\n", DAEMON_NAME, PACKAGE_VERSION);
 
 	/* Standard HTTP Date header */
 	char date_buf[64];
