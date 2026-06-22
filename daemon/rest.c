@@ -553,9 +553,9 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (state->global.health != HEALTH_PASSED && state->global.health_reason[0] != 0)
-		ss_json_str(&s, level, "health_reason", state->global.health_reason);
+	ss_json_str(&s, level, "health", health_name(state->array.health));
+	if (state->array.health != HEALTH_PASSED && state->array.health_reason[0] != 0)
+		ss_json_str(&s, level, "health_reason", state->array.health_reason);
 	ss_json_close(&s, &level);
 
 	state_unlock();
@@ -1718,13 +1718,13 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
-	json_disk_list(&s, level, &state->disk_list, DISK_DATA, state->global.last_time);
+	json_disk_list(&s, level, &state->array.disk_list, DISK_DATA, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "parity_disks");
-	json_disk_list(&s, level, &state->disk_list, DISK_PARITY, state->global.last_time);
+	json_disk_list(&s, level, &state->array.disk_list, DISK_PARITY, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "extra_disks");
-	json_disk_list(&s, level, &state->disk_list, DISK_EXTRA, state->global.last_time);
+	json_disk_list(&s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
 
@@ -2003,7 +2003,7 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 static int handler_array(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
-	struct snapraid_global* global = &state->global;
+	struct snapraid_array* array = &state->array;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
@@ -2024,7 +2024,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	uint64_t total_space_bytes = 0;
 	uint64_t free_space_bytes = 0;
 	int data_count = 0;
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 
 		if (disk->kind != DISK_DATA)
@@ -2053,30 +2053,31 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 	json_pulse(&s, level, &state->pulse);
 	ss_json_str(&s, level, "daemon_version", PACKAGE_VERSION);
 	if (state->config.check_updates) {
-		if (state->global.latest_daemon_version[0] != 0) {
-			ss_json_str(&s, level, "latest_daemon_version", state->global.latest_daemon_version);
+		if (state->latest_daemon_version[0] != 0) {
+			ss_json_str(&s, level, "latest_daemon_version", state->latest_daemon_version);
 		}
-		if (state->global.latest_engine_version[0] != 0) {
-			ss_json_str(&s, level, "latest_engine_version", state->global.latest_engine_version);
+		if (state->latest_engine_version[0] != 0) {
+			ss_json_str(&s, level, "latest_engine_version", state->latest_engine_version);
 		}
 	}
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
-	ss_json_str(&s, level, "health", health_name(state->global.health));
-	if (*global->version) { /* engine was run */
-		ss_json_str(&s, level, "engine_version", global->version);
-		ss_json_str(&s, level, "engine_conf", global->conf_engine);
-		if (*global->content)
-			ss_json_str(&s, level, "engine_content", global->content);
+	ss_json_str(&s, level, "health", health_name(state->array.health));
+	if (*state->engine_version)
+		ss_json_str(&s, level, "engine_version", state->engine_version);
+	if (*array->engine_conf) {
+		ss_json_str(&s, level, "engine_conf", array->engine_conf);
+		if (*array->content)
+			ss_json_str(&s, level, "engine_content", array->content);
 	}
-	if (global->last_time)
-		ss_json_pair_iso8601(&s, level, "last_command_at", global->last_time);
-	if (*global->last_cmd)
-		ss_json_str(&s, level, "last_command", global->last_cmd);
-	if (global->blocksize) { /* engine was run and it has a configuration file */
-		ss_json_int(&s, level, "block_size_bytes", global->blocksize);
-		ss_json_int(&s, level, "data_disks_count", disk_count(&state->disk_list, DISK_DATA));
-		ss_json_int(&s, level, "parity_disks_count", disk_count(&state->disk_list, DISK_PARITY));
-		ss_json_int(&s, level, "extra_disks_count", disk_count(&state->disk_list, DISK_EXTRA));
+	if (array->last_time)
+		ss_json_pair_iso8601(&s, level, "last_command_at", array->last_time);
+	if (*array->last_cmd)
+		ss_json_str(&s, level, "last_command", array->last_cmd);
+	if (array->blocksize) { /* engine was run and it has a configuration file */
+		ss_json_int(&s, level, "block_size_bytes", array->blocksize);
+		ss_json_int(&s, level, "data_disks_count", disk_count(&state->array.disk_list, DISK_DATA));
+		ss_json_int(&s, level, "parity_disks_count", disk_count(&state->array.disk_list, DISK_PARITY));
+		ss_json_int(&s, level, "extra_disks_count", disk_count(&state->array.disk_list, DISK_EXTRA));
 		if (total_space_bytes != SMART_UNASSIGNED)
 			ss_json_u64(&s, level, "total_space_bytes", total_space_bytes);
 		if (free_space_bytes != SMART_UNASSIGNED)
@@ -2087,31 +2088,31 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		double fp = fp_array(state);
 		if (fp != 0)
 			ss_json_double(&s, level, "failure_probability", fp);
-		ss_json_u64(&s, level, "files_count", global->file_total);
-		ss_json_u64(&s, level, "blocks_bad", global->block_bad);
-		ss_json_u64(&s, level, "blocks_rehash", global->block_rehash);
-		ss_json_u64(&s, level, "blocks_unsynced", global->block_unsynced);
-		ss_json_u64(&s, level, "blocks_unscrubbed", global->block_unscrubbed);
-		ss_json_u64(&s, level, "blocks_count", global->block_total);
-		if (global->sync_time)
-			ss_json_pair_iso8601(&s, level, "last_sync_at", global->sync_time);
-		if (global->scrub_time)
-			ss_json_pair_iso8601(&s, level, "last_scrub_at", global->scrub_time);
-		if (global->diff_time)
-			ss_json_pair_iso8601(&s, level, "last_diff_at", global->diff_time);
-		if (global->fix_time)
-			ss_json_pair_iso8601(&s, level, "last_fix_at", global->fix_time);
+		ss_json_u64(&s, level, "files_count", array->file_total);
+		ss_json_u64(&s, level, "blocks_bad", array->block_bad);
+		ss_json_u64(&s, level, "blocks_rehash", array->block_rehash);
+		ss_json_u64(&s, level, "blocks_unsynced", array->block_unsynced);
+		ss_json_u64(&s, level, "blocks_unscrubbed", array->block_unscrubbed);
+		ss_json_u64(&s, level, "blocks_count", array->block_total);
+		if (array->sync_time)
+			ss_json_pair_iso8601(&s, level, "last_sync_at", array->sync_time);
+		if (array->scrub_time)
+			ss_json_pair_iso8601(&s, level, "last_scrub_at", array->scrub_time);
+		if (array->diff_time)
+			ss_json_pair_iso8601(&s, level, "last_diff_at", array->diff_time);
+		if (array->fix_time)
+			ss_json_pair_iso8601(&s, level, "last_fix_at", array->fix_time);
 		ss_json_bool(&s, level, "hold_off", state->runner.hold_off);
-		ss_json_u64(&s, level, "diff_equal", global->diff_current.diff_equal);
-		ss_json_u64(&s, level, "diff_added", global->diff_current.diff_added);
-		ss_json_u64(&s, level, "diff_removed", global->diff_current.diff_removed);
-		ss_json_u64(&s, level, "diff_updated", global->diff_current.diff_updated);
-		ss_json_u64(&s, level, "diff_moved", global->diff_current.diff_moved);
-		ss_json_u64(&s, level, "diff_copied", global->diff_current.diff_copied);
-		ss_json_u64(&s, level, "diff_relocated", global->diff_current.diff_relocated);
-		ss_json_u64(&s, level, "diff_restored", global->diff_current.diff_restored);
+		ss_json_u64(&s, level, "diff_equal", array->diff_current.diff_equal);
+		ss_json_u64(&s, level, "diff_added", array->diff_current.diff_added);
+		ss_json_u64(&s, level, "diff_removed", array->diff_current.diff_removed);
+		ss_json_u64(&s, level, "diff_updated", array->diff_current.diff_updated);
+		ss_json_u64(&s, level, "diff_moved", array->diff_current.diff_moved);
+		ss_json_u64(&s, level, "diff_copied", array->diff_current.diff_copied);
+		ss_json_u64(&s, level, "diff_relocated", array->diff_current.diff_relocated);
+		ss_json_u64(&s, level, "diff_restored", array->diff_current.diff_restored);
 		ss_json_array_open(&s, &level, "diffs");
-		for (tommy_node* i = tommy_list_head(&global->diff_current.file_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&array->diff_current.file_list); i; i = i->next) {
 			struct snapraid_file* file = i->data;
 			if (--limit_diffs < 0)
 				break;
@@ -2126,10 +2127,10 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_close(&s, &level);
 		}
 		ss_json_array_close(&s, &level);
-		ss_json_u64(&s, level, "fix_recovered", global->fix_current.fix_recovered);
-		ss_json_u64(&s, level, "fix_unrecoverable", global->fix_current.fix_unrecoverable);
+		ss_json_u64(&s, level, "fix_recovered", array->fix_current.fix_recovered);
+		ss_json_u64(&s, level, "fix_unrecoverable", array->fix_current.fix_unrecoverable);
 		ss_json_array_open(&s, &level, "fixes");
-		for (tommy_node* i = tommy_list_head(&global->fix_current.file_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&array->fix_current.file_list); i; i = i->next) {
 			struct snapraid_file* file = i->data;
 			if (--limit_fixes < 0)
 				break;
@@ -2140,7 +2141,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 			ss_json_close(&s, &level);
 		}
 		ss_json_array_close(&s, &level);
-		json_scrub_list(&s, level, &state->global.bucket_list, state->global.last_time);
+		json_scrub_list(&s, level, &state->array.bucket_list, state->array.last_time);
 	}
 	ss_json_close(&s, &level);
 
@@ -2155,7 +2156,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 /**
  * Hook for internal CivetWeb messages.
- * \param conn    The connection associated with the message (can be NULL for global errors).
+ * \param conn    The connection associated with the message (can be NULL for array errors).
  * \param message The actual error or warning string.
  * \return 0 to let CivetWeb also write to its own error_log_file (if configured), 1 to tell CivetWeb the message has been handled.
  */
@@ -2301,7 +2302,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 
 	state_lock();
 
-	struct snapraid_global* global = &state->global;
+	struct snapraid_array* array = &state->array;
 	struct snapraid_config* config = &state->config;
 	struct snapraid_runner* runner = &state->runner;
 	struct snapraid_pulse* pulse = &state->pulse;
@@ -2309,7 +2310,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	/* array health */
 	ss_prints(&s, "# HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
 	ss_prints(&s, "# TYPE snapraid_array_health gauge\n");
-	ss_printf(&s, "snapraid_array_health %d\n", metrics_health_numeric(global->health));
+	ss_printf(&s, "snapraid_array_health %d\n", metrics_health_numeric(array->health));
 	ss_prints(&s, "\n");
 
 	/* build info */
@@ -2317,84 +2318,84 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	ss_prints(&s, "# TYPE snapraid_build_info gauge\n");
 	ss_printf(&s, "snapraid_build_info{daemon_version=\"%s\",engine_version=\"%s\"} 1\n",
 		PACKAGE_VERSION,
-		*global->version ? global->version : "");
+		*state->engine_version ? state->engine_version : "");
 	ss_prints(&s, "\n");
 
 	/* array scalars (only when engine has run) */
-	if (global->blocksize) {
+	if (array->blocksize) {
 		ss_prints(&s, "# HELP snapraid_array_block_size_bytes SnapRAID block size in bytes\n");
 		ss_prints(&s, "# TYPE snapraid_array_block_size_bytes gauge\n");
-		ss_printf(&s, "snapraid_array_block_size_bytes %u\n", global->blocksize);
+		ss_printf(&s, "snapraid_array_block_size_bytes %u\n", array->blocksize);
 		ss_prints(&s, "\n");
 
 		ss_prints(&s, "# HELP snapraid_array_data_disks_count Number of configured data disks\n");
 		ss_prints(&s, "# TYPE snapraid_array_data_disks_count gauge\n");
-		ss_printf(&s, "snapraid_array_data_disks_count %d\n", disk_count(&state->disk_list, DISK_DATA));
+		ss_printf(&s, "snapraid_array_data_disks_count %d\n", disk_count(&state->array.disk_list, DISK_DATA));
 		ss_prints(&s, "\n");
 
 		ss_prints(&s, "# HELP snapraid_array_parity_disks_count Number of configured parity disks\n");
 		ss_prints(&s, "# TYPE snapraid_array_parity_disks_count gauge\n");
-		ss_printf(&s, "snapraid_array_parity_disks_count %d\n", disk_count(&state->disk_list, DISK_PARITY));
+		ss_printf(&s, "snapraid_array_parity_disks_count %d\n", disk_count(&state->array.disk_list, DISK_PARITY));
 		ss_prints(&s, "\n");
 
 		ss_prints(&s, "# HELP snapraid_array_extra_disks_count Number of configured extra disks\n");
 		ss_prints(&s, "# TYPE snapraid_array_extra_disks_count gauge\n");
-		ss_printf(&s, "snapraid_array_extra_disks_count %d\n", disk_count(&state->disk_list, DISK_EXTRA));
+		ss_printf(&s, "snapraid_array_extra_disks_count %d\n", disk_count(&state->array.disk_list, DISK_EXTRA));
 		ss_prints(&s, "\n");
 
 		ss_prints(&s, "# HELP snapraid_array_files Current count of tracked files (gauge snapshot, not a counter)\n");
 		ss_prints(&s, "# TYPE snapraid_array_files gauge\n");
-		ss_printf(&s, "snapraid_array_files %" PRIu64 "\n", global->file_total);
+		ss_printf(&s, "snapraid_array_files %" PRIu64 "\n", array->file_total);
 		ss_prints(&s, "\n");
 
 		ss_prints(&s, "# HELP snapraid_array_blocks Total number of blocks in the array\n");
 		ss_prints(&s, "# TYPE snapraid_array_blocks gauge\n");
-		ss_printf(&s, "snapraid_array_blocks %" PRIu64 "\n", global->block_total);
+		ss_printf(&s, "snapraid_array_blocks %" PRIu64 "\n", array->block_total);
 		ss_prints(&s, "\n");
 	}
 
 	/* block integrity */
 	ss_prints(&s, "# HELP snapraid_blocks_bad Number of bad blocks detected\n");
 	ss_prints(&s, "# TYPE snapraid_blocks_bad gauge\n");
-	ss_printf(&s, "snapraid_blocks_bad %" PRIu64 "\n", global->block_bad);
+	ss_printf(&s, "snapraid_blocks_bad %" PRIu64 "\n", array->block_bad);
 	ss_prints(&s, "\n");
 
 	ss_prints(&s, "# HELP snapraid_blocks_unsynced Number of blocks not yet synced to parity\n");
 	ss_prints(&s, "# TYPE snapraid_blocks_unsynced gauge\n");
-	ss_printf(&s, "snapraid_blocks_unsynced %" PRIu64 "\n", global->block_unsynced);
+	ss_printf(&s, "snapraid_blocks_unsynced %" PRIu64 "\n", array->block_unsynced);
 	ss_prints(&s, "\n");
 
 	ss_prints(&s, "# HELP snapraid_blocks_unscrubbed Number of blocks not yet scrubbed\n");
 	ss_prints(&s, "# TYPE snapraid_blocks_unscrubbed gauge\n");
-	ss_printf(&s, "snapraid_blocks_unscrubbed %" PRIu64 "\n", global->block_unscrubbed);
+	ss_printf(&s, "snapraid_blocks_unscrubbed %" PRIu64 "\n", array->block_unscrubbed);
 	ss_prints(&s, "\n");
 
 	ss_prints(&s, "# HELP snapraid_blocks_rehash Number of blocks scheduled for rehash\n");
 	ss_prints(&s, "# TYPE snapraid_blocks_rehash gauge\n");
-	ss_printf(&s, "snapraid_blocks_rehash %" PRIu64 "\n", global->block_rehash);
+	ss_printf(&s, "snapraid_blocks_rehash %" PRIu64 "\n", array->block_rehash);
 	ss_prints(&s, "\n");
 
 	/* timestamps (omitted if operation never ran) */
-	if (global->sync_time || global->scrub_time || global->diff_time || global->fix_time || global->last_time) {
+	if (array->sync_time || array->scrub_time || array->diff_time || array->fix_time || array->last_time) {
 		ss_prints(&s, "# HELP snapraid_last_command_timestamp_seconds Unix timestamp of the last completed command\n");
 		ss_prints(&s, "# TYPE snapraid_last_command_timestamp_seconds gauge\n");
-		if (global->sync_time) {
-			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"sync\"} %" PRIi64 "\n", (int64_t)global->sync_time);
+		if (array->sync_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"sync\"} %" PRIi64 "\n", (int64_t)array->sync_time);
 		}
-		if (global->scrub_time) {
-			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"scrub\"} %" PRIi64 "\n", (int64_t)global->scrub_time);
+		if (array->scrub_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"scrub\"} %" PRIi64 "\n", (int64_t)array->scrub_time);
 		}
-		if (global->diff_time) {
-			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"diff\"} %" PRIi64 "\n", (int64_t)global->diff_time);
+		if (array->diff_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"diff\"} %" PRIi64 "\n", (int64_t)array->diff_time);
 		}
-		if (global->fix_time) {
-			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"fix\"} %" PRIi64 "\n", (int64_t)global->fix_time);
+		if (array->fix_time) {
+			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"fix\"} %" PRIi64 "\n", (int64_t)array->fix_time);
 		}
-		if (global->last_time) {
-			const char* last_c = *global->last_cmd ? global->last_cmd : "any";
+		if (array->last_time) {
+			const char* last_c = *array->last_cmd ? array->last_cmd : "any";
 			if (strcmp(last_c, "sync") != 0 && strcmp(last_c, "scrub") != 0 && strcmp(last_c, "diff") != 0 && strcmp(last_c, "fix") != 0) {
 				ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"%s\"} %" PRIi64 "\n",
-					last_c, (int64_t)global->last_time);
+					last_c, (int64_t)array->last_time);
 			}
 		}
 		ss_prints(&s, "\n");
@@ -2403,14 +2404,14 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	/* diff counts */
 	ss_prints(&s, "# HELP snapraid_diff_files File diff counts from the last diff run by change type\n");
 	ss_prints(&s, "# TYPE snapraid_diff_files gauge\n");
-	ss_printf(&s, "snapraid_diff_files{change=\"equal\"} %" PRIi64 "\n", global->diff_current.diff_equal);
-	ss_printf(&s, "snapraid_diff_files{change=\"added\"} %" PRIi64 "\n", global->diff_current.diff_added);
-	ss_printf(&s, "snapraid_diff_files{change=\"removed\"} %" PRIi64 "\n", global->diff_current.diff_removed);
-	ss_printf(&s, "snapraid_diff_files{change=\"updated\"} %" PRIi64 "\n", global->diff_current.diff_updated);
-	ss_printf(&s, "snapraid_diff_files{change=\"moved\"} %" PRIi64 "\n", global->diff_current.diff_moved);
-	ss_printf(&s, "snapraid_diff_files{change=\"copied\"} %" PRIi64 "\n", global->diff_current.diff_copied);
-	ss_printf(&s, "snapraid_diff_files{change=\"relocated\"} %" PRIi64 "\n", global->diff_current.diff_relocated);
-	ss_printf(&s, "snapraid_diff_files{change=\"restored\"} %" PRIi64 "\n", global->diff_current.diff_restored);
+	ss_printf(&s, "snapraid_diff_files{change=\"equal\"} %" PRIi64 "\n", array->diff_current.diff_equal);
+	ss_printf(&s, "snapraid_diff_files{change=\"added\"} %" PRIi64 "\n", array->diff_current.diff_added);
+	ss_printf(&s, "snapraid_diff_files{change=\"removed\"} %" PRIi64 "\n", array->diff_current.diff_removed);
+	ss_printf(&s, "snapraid_diff_files{change=\"updated\"} %" PRIi64 "\n", array->diff_current.diff_updated);
+	ss_printf(&s, "snapraid_diff_files{change=\"moved\"} %" PRIi64 "\n", array->diff_current.diff_moved);
+	ss_printf(&s, "snapraid_diff_files{change=\"copied\"} %" PRIi64 "\n", array->diff_current.diff_copied);
+	ss_printf(&s, "snapraid_diff_files{change=\"relocated\"} %" PRIi64 "\n", array->diff_current.diff_relocated);
+	ss_printf(&s, "snapraid_diff_files{change=\"restored\"} %" PRIi64 "\n", array->diff_current.diff_restored);
 	ss_prints(&s, "\n");
 
 	/* config thresholds */
@@ -2455,7 +2456,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	ss_prints(&s, "# HELP snapraid_disk_health Per-disk health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
 	ss_prints(&s, "# TYPE snapraid_disk_health gauge\n");
 	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
-		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 			struct snapraid_disk* disk = i->data;
 			if (disk->kind != METRICS_DISK_ROLES[r].kind)
 				continue;
@@ -2470,7 +2471,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	ss_prints(&s, "# HELP snapraid_disk_error Session errors per disk (cleared after clean scrub)\n");
 	ss_prints(&s, "# TYPE snapraid_disk_error gauge\n");
 	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
-		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 			struct snapraid_disk* disk = i->data;
 			if (disk->kind != METRICS_DISK_ROLES[r].kind)
 				continue;

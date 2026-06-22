@@ -403,11 +403,8 @@ struct snapraid_bucket {
 	tommy_node node;
 };
 
-struct snapraid_global {
-	char version[64]; /**< SnapRAID engine full version. */
-	char latest_daemon_version[64]; /**< Latest daemon version fetched from GitHub. */
-	char latest_engine_version[64]; /**< Latest engine version fetched from GitHub. */
-	char conf_engine[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
+struct snapraid_array {
+	char engine_conf[PATH_MAX]; /**< Configuration file of the SnapRAID engine. */
 	char content[PATH_MAX]; /**< Content file. */
 	int64_t content_probe_unixtime; /**< Modification time of the content file. 0 if unknown. */
 	int64_t content_last_unixtime; /**< Last write or read of the content file. 0 if unknown. */
@@ -416,6 +413,8 @@ struct snapraid_global {
 	char last_cmd[64]; /**< Last command started */
 	int health; /**< Health of the array. Updated after any task. */
 	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
+
+	tommy_list disk_list; /**< List of disks */
 
 	int64_t sync_time; /**< Time of the last sync run. If 0 never run. */
 	int64_t scrub_time; /**< Time of the last scrub run. If 0 never run. */
@@ -585,6 +584,9 @@ struct snapraid_state {
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */
+	char engine_version[64]; /**< SnapRAID engine full version. */
+	char latest_daemon_version[64]; /**< Latest daemon version fetched from GitHub. */
+	char latest_engine_version[64]; /**< Latest engine version fetched from GitHub. */
 	struct snapraid_pulse pulse; /**< Pulse counters. */
 	struct mg_context* rest_context; /**< The context of the rest support */
 	struct mg_callbacks rest_callbacks; /**< CivetWeb callbacks */
@@ -592,10 +594,9 @@ struct snapraid_state {
 	uint64_t rest_latest_auth; /**< Monotonic time in seconds of the latest authentication */
 	struct snapraid_runner runner; /**< Task runner system */
 	struct snapraid_scheduler scheduler; /**< Maintenance scheduler */
-	struct snapraid_global global; /**< Global array metadata */
+	struct snapraid_array array; /**< Global array metadata */
 	struct snapraid_config config; /**< Runtime configuration */
 	struct snapraid_system system; /**< Host system information */
-	tommy_list disk_list; /**< List of disks */
 
 	/**< Data protected by the web lock */
 	thread_rwlock_t web_lock; /**< Protection for the following data */

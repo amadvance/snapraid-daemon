@@ -140,7 +140,7 @@ void version_check(struct snapraid_state* state)
 		return;
 	}
 
-	check_repo_version(state, curl_path, "amadvance/snapraid-daemon", state->global.latest_daemon_version, sizeof(state->global.latest_daemon_version));
-	check_repo_version(state, curl_path, "amadvance/snapraid", state->global.latest_engine_version, sizeof(state->global.latest_engine_version));
+	check_repo_version(state, curl_path, "amadvance/snapraid-daemon", state->latest_daemon_version, sizeof(state->latest_daemon_version));
+	check_repo_version(state, curl_path, "amadvance/snapraid", state->latest_engine_version, sizeof(state->latest_engine_version));
 }
 
