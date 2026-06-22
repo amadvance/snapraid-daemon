@@ -42,6 +42,7 @@ snapraidd
 *.exe
 *.o
 snapraidd.service
+snapraidd@.service
 rc.snapraidd
 makeslackware.sh
 makeslackdist.sh

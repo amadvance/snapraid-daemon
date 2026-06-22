@@ -32,13 +32,6 @@ SnapRAID Daemon TODO
 - In manual maintenance allow to enable/disable sync and select how much to scrub.
   Use as default the settings.
 
-- Allow to customize the DAEMON/SERVICE_NAME tags to allow multiple
-  daemon/services at the same time.
-  It can be automatically imported from the executable name.
-  Unify DAEMON/SERVICE_NAME in DAEMON_TAG.
-  Add also support to customize the snapraid command line.
-  Required to use a different snapraid.conf for selecting the array.
-
 - Unprivileged execution mode
   - Starts as 'root' (Unix) or 'SYSTEM' (Windows) to parse config and open raw
     disk descriptors.

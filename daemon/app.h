@@ -54,6 +54,11 @@ void app_system_info(struct snapraid_system* system);
  */
 void app_system_refresh(struct snapraid_system* system);
 
+/**
+ * Set the instance
+ */
+void app_instance(const char* instance);
+
 /****************************************************************************/
 /* daemon */
 

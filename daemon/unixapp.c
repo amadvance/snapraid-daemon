@@ -307,6 +307,11 @@ void app_system_refresh(struct snapraid_system* system)
 	}
 }
 
+void app_instance(const char* instance)
+{
+	(void)instance;
+}
+
 int os_shutdown(void)
 {
 	const char* poweroff_path = app_find_poweroff();

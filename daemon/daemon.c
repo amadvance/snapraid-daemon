@@ -108,6 +108,16 @@ static void usage(const char* conf)
 	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
 	printf("  " SWITCH_GETOPT_LONG("-v, --verbose         ", "-v") "  Verbose output\n");
 	printf("  " SWITCH_GETOPT_LONG("-g, --gen-auth U:P    ", "-g") "  Generate Argon2id credential line\n");
+#ifdef __MINGW32__
+#if HAVE_GETOPT_LONG
+	printf("  " "    --service-install   " "  Install the current configuration as a Windows service\n");
+	printf("  " "    --service-remove    " "  Remove the Windows service of the current configuration\n");
+	printf("  " "    --service-start-all " "  Start all Windows services associated with the daemon\n");
+	printf("  " "    --service-stop-all  " "  Stop all Windows services associated with the daemon\n");
+	printf("  " "    --service-remove-all" "  Stop and remove all Windows services associated with the daemon\n");
+	printf("  " "    --service-list      " "  List all Windows services associated with the daemon\n");
+#endif
+#endif
 	printf("  " SWITCH_GETOPT_LONG("-H, --help            ", "-H") "  Show this help message\n");
 	printf("  " SWITCH_GETOPT_LONG("-V, --version         ", "-V") "  Show version and exit\n");
 
@@ -118,6 +128,13 @@ static void usage(const char* conf)
 
 /****************************************************************************/
 /* main */
+
+#define OPT_SERVICE_INSTALL 256
+#define OPT_SERVICE_REMOVE 257
+#define OPT_SERVICE_START_ALL 258
+#define OPT_SERVICE_STOP_ALL 259
+#define OPT_SERVICE_REMOVE_ALL 260
+#define OPT_SERVICE_LIST 261
 
 #if HAVE_GETOPT_LONG
 struct option long_options[] = {
@@ -131,7 +148,14 @@ struct option long_options[] = {
 	{ "gen-auth", 1, 0, 'g' },
 	{ "help", 0, 0, 'H' },
 	{ "version", 0, 0, 'V' },
-
+#ifdef __MINGW32__
+	{ "service-install", 0, 0, OPT_SERVICE_INSTALL },
+	{ "service-remove", 0, 0, OPT_SERVICE_REMOVE },
+	{ "service-start-all", 0, 0, OPT_SERVICE_START_ALL },
+	{ "service-stop-all", 0, 0, OPT_SERVICE_STOP_ALL },
+	{ "service-remove-all", 0, 0, OPT_SERVICE_REMOVE_ALL },
+	{ "service-list", 0, 0, OPT_SERVICE_LIST },
+#endif
 	{ 0, 0, 0, 0 }
 };
 #endif
@@ -172,6 +196,7 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 				exit(EXIT_FAILURE);
 			}
 			sncpy(state->instance, sizeof(state->instance), optarg);
+			app_instance(state->instance);
 			break;
 		}
 		case 'N' :
@@ -192,11 +217,40 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 		case 'V' :
 			version();
 			exit(EXIT_SUCCESS);
+#ifdef __MINGW32__
+		case OPT_SERVICE_INSTALL :
+			state->service_install = 1;
+			break;
+		case OPT_SERVICE_REMOVE :
+			state->service_remove = 1;
+			break;
+		case OPT_SERVICE_START_ALL :
+			state->service_start_all = 1;
+			break;
+		case OPT_SERVICE_STOP_ALL :
+			state->service_stop_all = 1;
+			break;
+		case OPT_SERVICE_REMOVE_ALL :
+			state->service_remove_all = 1;
+			break;
+		case OPT_SERVICE_LIST :
+			state->service_list = 1;
+			break;
+#endif
 		default :
 			usage(state->config.conf);
 			exit(EXIT_FAILURE);
 		}
 	}
+
+#ifdef __MINGW32__
+	if (state->service_install + state->service_remove
+		+ state->service_start_all + state->service_stop_all
+		+ state->service_remove_all + state->service_list > 1) {
+		fprintf(stderr, "Error: Service options are mutually exclusive.\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
 }
 
 int daemon_init(struct snapraid_state* state)

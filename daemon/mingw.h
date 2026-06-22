@@ -547,6 +547,10 @@ int windows_join(thread_id_t thread, void** retval);
 /****************************************************************************/
 /* service */
 
+#if !HAVE_GETOPT_LONG
+#error HAVE_GETOPT_LONG is required in Windows for the service options
+#endif
+
 /**
  * Log into Eventlog
  */

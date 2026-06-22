@@ -600,6 +600,15 @@ struct snapraid_state {
 	char instance[64]; /**< Instance name specified via -i, --instance */
 	char log_ident[128]; /**< Formatted logging identifier for syslog */
 
+#ifdef __MINGW32__
+	int service_install; /**< Install Windows service and exit */
+	int service_remove;  /**< Remove Windows service and exit */
+	int service_start_all; /**< Start all Windows services and exit */
+	int service_stop_all;  /**< Stop all Windows services and exit */
+	int service_remove_all; /**< Remove all Windows services and exit */
+	int service_list;       /**< List all Windows services and exit */
+#endif
+
 	/**< Data protected by the web lock */
 	thread_rwlock_t web_lock; /**< Protection for the following data */
 	struct snapraid_web web; /**< Web asset cache */
