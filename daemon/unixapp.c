@@ -135,11 +135,11 @@ void app_default_conf(char* dst, size_t dst_size)
 {
 #ifdef SYSCONFDIR
 	/* if it exists, give precedence to sysconfdir, usually /usr/local/etc (note that PACKAGE is snapraid-daemon) */
-	sncpy(dst, dst_size, SYSCONFDIR "/" DAEMON ".conf");
+	sncpy(dst, dst_size, SYSCONFDIR "/" DAEMON_NAME ".conf");
 	if (eaccess(dst, F_OK) == 0)
 		return;
 #endif
-	sncpy(dst, dst_size, "/etc/" DAEMON ".conf");
+	sncpy(dst, dst_size, "/etc/" DAEMON_NAME ".conf");
 }
 
 void app_default_data(char* dst, size_t dst_size, const char* root)
@@ -150,7 +150,7 @@ void app_default_data(char* dst, size_t dst_size, const char* root)
 		return;
 #endif
 	/* otherwise use  /usr/share/snapraidd */
-	snprintf(dst, dst_size, "/usr/share/" DAEMON "/%s", root);
+	snprintf(dst, dst_size, "/usr/share/" DAEMON_NAME "/%s", root);
 }
 
 /**
@@ -359,10 +359,10 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 	} else {
 		if (geteuid() == 0) {
 			/* standard for root-level daemons */
-			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON);
+			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON_NAME);
 		} else {
 			/* standard for user-level processes */
-			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON);
+			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON_NAME);
 		}
 	}
 
@@ -391,7 +391,7 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 
 	if (fcntl(fd, F_SETLK, &fl) == -1) {
 		if (errno == EACCES || errno == EAGAIN) {
-			fprintf(stderr, "%s is already running.\n", DAEMON);
+			fprintf(stderr, "%s is already running.\n", DAEMON_NAME);
 		} else {
 			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
 		}

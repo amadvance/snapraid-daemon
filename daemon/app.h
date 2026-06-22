@@ -9,7 +9,7 @@
 /****************************************************************************/
 /* app */
 
-#define DAEMON "snapraidd"
+#define DAEMON_NAME "snapraidd"
 
 /**
  * Find the SnapRAID binary in the system.

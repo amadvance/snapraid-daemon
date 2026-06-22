@@ -97,7 +97,7 @@ static void usage(const char* conf)
 {
 	version();
 
-	printf("Usage: " DAEMON " [options]\n");
+	printf("Usage: " DAEMON_NAME " [options]\n");
 	printf("\n");
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
@@ -184,7 +184,7 @@ int daemon_init(struct snapraid_state* state)
 	char msg[MSG_MAX];
 	int status;
 
-	log_init(DAEMON);
+	log_init(DAEMON_NAME);
 	log_msg(LVL_INFO, "daemon starting");
 	log_msg(LVL_INFO, "version=%s", VERSION);
 #ifndef _WIN32
