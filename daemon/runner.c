@@ -39,16 +39,16 @@ static int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
  */
 static int runner_health_check_locked(struct snapraid_state* state)
 {
-	state->global.health_reason[0] = 0;
-	int new_health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
+	state->array.health_reason[0] = 0;
+	int new_health = health_array(state, state->array.health_reason, sizeof(state->array.health_reason));
 
-	int old_health = state->global.health;
+	int old_health = state->array.health;
 
 	/* if health change */
 	if (old_health != new_health) {
 		/* set the new health and pulse */
 		pulse(state, PULSE_ARRAY);
-		state->global.health = new_health;
+		state->array.health = new_health;
 
 		/* send a report, but not if it's a change from PENDING */
 		if (old_health != HEALTH_PENDING) {
@@ -76,7 +76,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 		}
 	}
 
-	return state->global.health;
+	return state->array.health;
 }
 
 static int runner_need_hook(int cmd)
@@ -218,11 +218,11 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	/* if we run a diff completed, use its result as diff (note that its exit_code is 2 on differences) */
 	if (diff_task != 0 && task_success(diff_task))
-		diff_stat = &state->global.diff_current;
+		diff_stat = &state->array.diff_current;
 
 	/* if we have sync completed, use the previous diff stat */
 	if (sync_task != 0 && task_success(sync_task))
-		diff_stat = &state->global.diff_prev;
+		diff_stat = &state->array.diff_prev;
 
 	report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat);
 
@@ -276,9 +276,9 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 {
 	log_task_reset();
 
-	if (state->global.health == HEALTH_PREFAIL) {
+	if (state->array.health == HEALTH_PREFAIL) {
 		log_task(LVL_INFO, "executing system shutdown on prefail health status");
-	} else if (state->global.health == HEALTH_FAILING) {
+	} else if (state->array.health == HEALTH_FAILING) {
 		log_task(LVL_INFO, "executing system shutdown on failing health status");
 	} else {
 		log_task(LVL_INFO, "executing system shutdown after maintenance");
@@ -378,7 +378,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 	char hook_docker_pause[CONFIG_MAX];
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
-	char conf_engine[PATH_MAX];
+	char engine_conf[PATH_MAX];
 	char log_file[PATH_MAX];
 
 	state_lock();
@@ -390,7 +390,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(conf, sizeof(conf), state->config.conf);
-	sncpy(conf_engine, sizeof(conf_engine), state->global.conf_engine);
+	sncpy(engine_conf, sizeof(engine_conf), state->array.engine_conf);
 	state_unlock();
 
 	if (hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
@@ -452,8 +452,8 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		if (conf[0] != 0) {
 			add_env(envv, &envv_count, "SNAPRAID_DAEMON_CONFIG", "%s", conf);
 		}
-		if (conf_engine[0] != 0) {
-			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", conf_engine);
+		if (engine_conf[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", engine_conf);
 		}
 		envv[envv_count] = NULL;
 
@@ -511,7 +511,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 	char hook_docker_pause[CONFIG_MAX];
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
-	char conf_engine[PATH_MAX];
+	char engine_conf[PATH_MAX];
 
 	/* diff stats */
 	int64_t diff_added = 0;
@@ -558,18 +558,18 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		error_recovered = task->error_recovered;
 		error_unrecoverable = task->error_unrecoverable;
 	}
-	int array_health = state->global.health;
+	int array_health = state->array.health;
 	sncpy(hook_script, sizeof(hook_script), state->config.hook_script);
 	sncpy(hook_docker_pause, sizeof(hook_docker_pause), state->config.hook_docker_pause);
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(conf, sizeof(conf), state->config.conf);
-	sncpy(conf_engine, sizeof(conf_engine), state->global.conf_engine);
+	sncpy(engine_conf, sizeof(engine_conf), state->array.engine_conf);
 	if (cmd == CMD_DIFF || cmd == CMD_SYNC) {
-		diff_added = state->global.diff_current.diff_added;
-		diff_removed = state->global.diff_current.diff_removed;
-		diff_updated = state->global.diff_current.diff_updated;
-		diff_moved = state->global.diff_current.diff_moved;
-		diff_copied = state->global.diff_current.diff_copied;
+		diff_added = state->array.diff_current.diff_added;
+		diff_removed = state->array.diff_current.diff_removed;
+		diff_updated = state->array.diff_current.diff_updated;
+		diff_moved = state->array.diff_current.diff_moved;
+		diff_copied = state->array.diff_current.diff_copied;
 	}
 	state_unlock();
 
@@ -649,8 +649,8 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		if (conf[0] != 0) {
 			add_env(envv, &envv_count, "SNAPRAID_DAEMON_CONFIG", "%s", conf);
 		}
-		if (conf_engine[0] != 0) {
-			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", conf_engine);
+		if (engine_conf[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", engine_conf);
 		}
 		envv[envv_count] = NULL;
 
@@ -1029,14 +1029,14 @@ static int runner_precondition(struct snapraid_state* state)
 		break;
 	default :
 		/* other commands are run only if the array is sane */
-		if (state->global.health == HEALTH_PREFAIL) {
+		if (state->array.health == HEALTH_PREFAIL) {
 			const char* msg = "Array is in PREFAIL! Task aborted!";
 			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
 			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
 			return -1;
 		}
 
-		if (state->global.health == HEALTH_FAILING) {
+		if (state->array.health == HEALTH_FAILING) {
 			const char* msg = "Array is FAILING!!! Task aborted!!!";
 			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
 			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
@@ -1058,9 +1058,9 @@ static void runner_postcondition(struct snapraid_state* state)
 		/*
 		 * Trigger read of the content file if needed
 		 */
-		if (state->global.content[0] == 0 /* it's the first run */
+		if (state->array.content[0] == 0 /* it's the first run */
 		        /* the content file was modified from command line */
-			|| (state->global.content_last_unixtime != 0 && state->global.content_probe_unixtime > state->global.content_last_unixtime)
+			|| (state->array.content_last_unixtime != 0 && state->array.content_probe_unixtime > state->array.content_last_unixtime)
 		) {
 			if (runner_locked(state, CMD_STARTUP, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
 				log_msg(LVL_ERROR, "failed to run the startup read command");
@@ -1080,7 +1080,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 
 	/* insert in the argument list the disk to spin down */
 	if (spindown_data != 0 || spindown_parity != 0) {
-		for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+		for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 			struct snapraid_disk* disk = i->data;
 			int active = 0;
 

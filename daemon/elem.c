@@ -726,11 +726,11 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 	if (reason)
 		reason[0] = 0;
 
-	if (state->global.version[0] == 0 || app_find_engine(state->config.sys_engine) == 0) { /* never run or uninstalled */
+	if (state->engine_version[0] == 0 || app_find_engine(state->config.sys_engine) == 0) { /* never run or uninstalled */
 		health = HEALTH_PENDING;
 		if (reason)
 			snprintf(reason, reason_size, "The snapraid binary was not found in the expected location. Please install SnapRAID and restart the daemon.");
-	} else if (tommy_list_empty(&state->disk_list)) {
+	} else if (tommy_list_empty(&state->array.disk_list)) {
 		health = HEALTH_PENDING;
 		if (reason) {
 #ifdef _WIN32
@@ -741,12 +741,12 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 		}
 	}
 
-	if (state->global.block_bad != 0) {
-		snprintf(msg, sizeof(msg), "The array has %" PRIu64 " bad blocks (silent data errors)", state->global.block_bad);
+	if (state->array.block_bad != 0) {
+		snprintf(msg, sizeof(msg), "The array has %" PRIu64 " bad blocks (silent data errors)", state->array.block_bad);
 		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		int low_health = health_disk(disk, msg, sizeof(msg));
 		health = health_worse(health, low_health, reason, reason_size, msg);
@@ -759,7 +759,7 @@ double afr_array(struct snapraid_state* state)
 {
 	double afr = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;
@@ -835,7 +835,7 @@ int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time)
 {
 	int ret = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->disk_list); i; i = i->next) {
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;

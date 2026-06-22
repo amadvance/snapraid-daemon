@@ -20,7 +20,7 @@ struct snapraid_state* state_init(void)
 	thread_rwlock_init(&state->web_lock);
 	state->daemon_running = DAEMON_LOADING;
 	state->daemon_start_time = time(0);
-	state->global.health = health_array(state, state->global.health_reason, sizeof(state->global.health_reason));
+	state->array.health = health_array(state, state->array.health_reason, sizeof(state->array.health_reason));
 
 	return state;
 }
@@ -34,13 +34,13 @@ void state_done(struct snapraid_state* state)
 	if (state->runner.latest && state->runner.latest->running) /* if running it isn't in the lists */
 		task_free(state->runner.latest);
 	tommy_list_foreach(&state->runner.history_list, task_free);
-	tommy_list_foreach(&state->global.diff_parse.file_list, file_free);
-	tommy_list_foreach(&state->global.diff_current.file_list, file_free);
-	tommy_list_foreach(&state->global.diff_prev.file_list, file_free);
-	tommy_list_foreach(&state->global.fix_current.file_list, file_free);
-	tommy_list_foreach(&state->global.bucket_parse_list, bucket_free);
-	tommy_list_foreach(&state->global.bucket_list, bucket_free);
-	tommy_list_foreach(&state->disk_list, disk_free);
+	tommy_list_foreach(&state->array.diff_parse.file_list, file_free);
+	tommy_list_foreach(&state->array.diff_current.file_list, file_free);
+	tommy_list_foreach(&state->array.diff_prev.file_list, file_free);
+	tommy_list_foreach(&state->array.fix_current.file_list, file_free);
+	tommy_list_foreach(&state->array.bucket_parse_list, bucket_free);
+	tommy_list_foreach(&state->array.bucket_list, bucket_free);
+	tommy_list_foreach(&state->array.disk_list, disk_free);
 	tommy_list_foreach(&state->web.page_list, page_free);
 	tommy_list_foreach(&state->parser_association, association_free);
 	crypto_wipe(state->rest_auth_cache, sizeof(state->rest_auth_cache));

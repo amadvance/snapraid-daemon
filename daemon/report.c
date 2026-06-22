@@ -682,7 +682,7 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
 
 	/* array health */
-	array_health = state->global.health;
+	array_health = state->array.health;
 	ss_printf(ss, "ARRAY HEALTH: %s\n", health_report_wide(array_health));
 
 	/* overall status message */
@@ -698,7 +698,7 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "  Overall Status: Pending\n");
 
 	/* bad blocks */
-	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", state->global.block_bad);
+	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", state->array.block_bad);
 
 	ss_prints(ss, "\n");
 
@@ -711,28 +711,28 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	sp.health_len = 9;
 
 	/* get field lenghts */
-	spacing_disk_list(&state->disk_list, &sp);
+	spacing_disk_list(&state->array.disk_list, &sp);
 
 	++sp.name_len; /* extra space after the name */
 
 	/* data disks */
-	if (disk_count(&state->disk_list, DISK_DATA) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS:\n");
-		print_disk_list_wide(&state->disk_list, DISK_DATA, ss, &sp);
+		print_disk_list_wide(&state->array.disk_list, DISK_DATA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* parity disks */
-	if (disk_count(&state->disk_list, DISK_PARITY) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS:\n");
-		print_disk_list_wide(&state->disk_list, DISK_PARITY, ss, &sp);
+		print_disk_list_wide(&state->array.disk_list, DISK_PARITY, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* other disks */
-	if (disk_count(&state->disk_list, DISK_EXTRA) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_EXTRA) != 0) {
 		ss_prints(ss, "EXTRA DISKS:\n");
-		print_disk_list_wide(&state->disk_list, DISK_EXTRA, ss, &sp);
+		print_disk_list_wide(&state->array.disk_list, DISK_EXTRA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
@@ -794,7 +794,7 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	if (state->system.hostname[0] != 0)
 		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
 
-	int array_health = state->global.health;
+	int array_health = state->array.health;
 	ss_printf(ss, "HEALTH: %s\n", health_report_wide(array_health));
 
 	ss_prints(ss, "STATUS: ");
@@ -809,24 +809,24 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	else
 		ss_prints(ss, "Pending\n");
 
-	ss_printf(ss, "BAD BLOCKS: %" PRIu64 "\n", state->global.block_bad);
+	ss_printf(ss, "BAD BLOCKS: %" PRIu64 "\n", state->array.block_bad);
 	ss_prints(ss, "\n");
 
-	if (disk_count(&state->disk_list, DISK_DATA) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS\n");
-		print_disk_list_narrow(&state->disk_list, DISK_DATA, ss);
+		print_disk_list_narrow(&state->array.disk_list, DISK_DATA, ss);
 		ss_prints(ss, "\n");
 	}
 
-	if (disk_count(&state->disk_list, DISK_PARITY) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS\n");
-		print_disk_list_narrow(&state->disk_list, DISK_PARITY, ss);
+		print_disk_list_narrow(&state->array.disk_list, DISK_PARITY, ss);
 		ss_prints(ss, "\n");
 	}
 
-	if (disk_count(&state->disk_list, DISK_EXTRA) != 0) {
+	if (disk_count(&state->array.disk_list, DISK_EXTRA) != 0) {
 		ss_prints(ss, "EXTRA DISKS\n");
-		print_disk_list_narrow(&state->disk_list, DISK_EXTRA, ss);
+		print_disk_list_narrow(&state->array.disk_list, DISK_EXTRA, ss);
 		ss_prints(ss, "\n");
 	}
 
