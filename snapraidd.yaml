@@ -372,6 +372,12 @@ paths:
                         condition.
                       * pending: The aggregate health has not yet been
                         determined.
+                  instance:
+                    type: string
+                    example: 'main'
+                    description: >
+                      The daemon instance name specified via -i, --instance.
+                      This field is omitted if no instance is defined.
                   health_reason:
                     type: string
                     description: >
@@ -2128,6 +2134,12 @@ components:
           example: '/etc/snapraid.conf'
           description: >
             Absolute path to the SnapRAID Daemon configuration file.
+        instance:
+          type: string
+          example: 'main'
+          description: >
+            The daemon instance name specified via -i, --instance.
+            This field is omitted if no instance is defined.
         health:
           type: string
           enum: [passed, corrupt, prefail, failing, pending]

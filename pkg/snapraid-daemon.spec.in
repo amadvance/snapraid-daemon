@@ -60,7 +60,7 @@ if [ $1 -eq 0 ] ; then
     # Package removal:
     # We stop and disable the service only during a total removal. 
     # During an upgrade, we leave it alone so the new version can restart it.
-    /usr/bin/systemctl --no-reload disable --now snapraidd.service >/dev/null 2>&1 || :
+    /usr/bin/systemctl --no-reload disable --now snapraidd.service 'snapraidd@*.service' >/dev/null 2>&1 || :
 fi
 
 %postun
@@ -70,7 +70,7 @@ fi
 if [ $1 -ge 1 ] ; then 
     # Package upgrade:
     # The new binary is now in place. We restart the daemon so it begins running the new code.
-    /usr/bin/systemctl try-restart snapraidd.service >/dev/null 2>&1 || :
+    /usr/bin/systemctl try-restart snapraidd.service 'snapraidd@*.service' >/dev/null 2>&1 || :
 fi
 
 %files
@@ -83,3 +83,4 @@ fi
 %{_datadir}/snapraidd/brutale.zip
 %config(noreplace) %{_sysconfdir}/snapraidd.conf
 /usr/lib/systemd/system/snapraidd.service
+/usr/lib/systemd/system/snapraidd@.service

@@ -101,6 +101,8 @@ static void usage(const char* conf)
 	printf("\n");
 	printf("Options:\n");
 	printf("  " SWITCH_GETOPT_LONG("-c, --conf FILE       ", "-c") "  Configuration file\n");
+	printf("  " SWITCH_GETOPT_LONG("-C, --engine-conf FILE", "-C") "  Override the default SnapRAID configuration file path\n");
+	printf("  " SWITCH_GETOPT_LONG("-i, --instance NAME   ", "-i") "  Specify the daemon instance name\n");
 	printf("  " SWITCH_GETOPT_LONG("-f, --foreground      ", "-f") "  Run in foreground (do not daemonize)\n");
 	printf("  " SWITCH_GETOPT_LONG("-N, --no-cache        ", "-N") "  Load web pages at runtime without caching them\n");
 	printf("  " SWITCH_GETOPT_LONG("-p, --pidfile FILE    ", "-p") "  Override the default PID file location\n");
@@ -121,6 +123,8 @@ static void usage(const char* conf)
 struct option long_options[] = {
 	{ "foreground", 0, 0, 'f' },
 	{ "conf", 1, 0, 'c' },
+	{ "engine-conf", 1, 0, 'C' },
+	{ "instance", 1, 0, 'i' },
 	{ "no-cache", 0, 0, 'N' },
 	{ "pidfile", 1, 0, 'p' },
 	{ "verbose", 0, 0, 'v' },
@@ -132,7 +136,7 @@ struct option long_options[] = {
 };
 #endif
 
-#define OPTIONS "fc:Np:vg:HV"
+#define OPTIONS "fc:C:i:Np:vg:HV"
 
 void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 {
@@ -154,6 +158,22 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 		case 'c' :
 			sncpy(state->config.conf, sizeof(state->config.conf), optarg);
 			break;
+		case 'C' :
+			sncpy(state->array.engine_conf, sizeof(state->array.engine_conf), optarg);
+			break;
+		case 'i' : {
+			if (optarg[0] == 0) {
+				fprintf(stderr, "Error: Instance name cannot be empty\n");
+				exit(EXIT_FAILURE);
+			}
+			size_t len = strspn(optarg, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-");
+			if (optarg[len] != 0) {
+				fprintf(stderr, "Error: Invalid character '%c' in instance name. Only [a-zA-Z0-9_-] are allowed.\n", optarg[len]);
+				exit(EXIT_FAILURE);
+			}
+			sncpy(state->instance, sizeof(state->instance), optarg);
+			break;
+		}
 		case 'N' :
 			state->web.page_nocache = 1;
 			break;
@@ -184,7 +204,12 @@ int daemon_init(struct snapraid_state* state)
 	char msg[MSG_MAX];
 	int status;
 
-	log_init(DAEMON_NAME);
+	if (state->instance[0]) {
+		snprintf(state->log_ident, sizeof(state->log_ident), "%s-%s", DAEMON_NAME, state->instance);
+		log_init(state->log_ident);
+	} else {
+		log_init(DAEMON_NAME);
+	}
 	log_msg(LVL_INFO, "daemon starting");
 	log_msg(LVL_INFO, "version=%s", VERSION);
 #ifndef _WIN32

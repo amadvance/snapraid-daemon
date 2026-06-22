@@ -597,6 +597,8 @@ struct snapraid_state {
 	struct snapraid_array array; /**< Global array metadata */
 	struct snapraid_config config; /**< Runtime configuration */
 	struct snapraid_system system; /**< Host system information */
+	char instance[64]; /**< Instance name specified via -i, --instance */
+	char log_ident[128]; /**< Formatted logging identifier for syslog */
 
 	/**< Data protected by the web lock */
 	thread_rwlock_t web_lock; /**< Protection for the following data */

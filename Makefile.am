@@ -14,7 +14,7 @@ snapraidd_LDADD = $(ZLIB_LIBS) $(ZSTD_LIBS)
 # init system
 if INSTALL_SYSTEMD
 systemdsystemunitdir = @SERVICEDIR@
-systemdsystemunit_DATA = snapraidd.service
+systemdsystemunit_DATA = snapraidd.service snapraidd@.service
 endif
 
 if INSTALL_BSD_INIT
@@ -22,8 +22,8 @@ rcdir = @RCDIR@
 rc_SCRIPTS = rc.snapraidd
 endif
 
-noinst_DATA = rc.snapraidd snapraidd.service
-CLEANFILES = rc.snapraidd snapraidd.service
+noinst_DATA = rc.snapraidd snapraidd.service snapraidd@.service
+CLEANFILES = rc.snapraidd snapraidd.service snapraidd@.service
 
 # Web UI
 COMMANDER_DIST = \
@@ -401,6 +401,13 @@ snapraidd.service: snapraidd.service.in
 	sed \
 		-e 's|@bindir[@]|$(bindir)|g' \
 		-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
+		< $< > $@-t && mv $@-t $@
+
+snapraidd@.service: snapraidd.service.in
+	sed \
+		-e 's|^Description=.*|Description=SnapRAID Daemon - Array:%i|g' \
+		-e 's|^PIDFile=.*|PIDFile=/run/snapraidd-%i.pid|g' \
+		-e 's|^ExecStart=.*|ExecStart=$(bindir)/snapraidd -c $(sysconfdir)/snapraidd-%i.conf -C $(sysconfdir)/snapraid-%i.conf -i %i|g' \
 		< $< > $@-t && mv $@-t $@
 
 rc.snapraidd: rc.snapraidd.in

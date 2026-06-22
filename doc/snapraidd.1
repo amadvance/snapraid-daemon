@@ -770,6 +770,9 @@ Path to the daemon configuration file.
 .HP 4
 .I SNAPRAID_ENGINE_CONFIG
 Path to the SnapRAID engine configuration file.
+.HP 4
+.I SNAPRAID_INSTANCE
+The name of the daemon instance (if specified via \-i).
 .PD
 .RE
 .PP
@@ -1396,6 +1399,86 @@ array statistics.
 .I down_idle
 Executes a conditional spindown operation of the disks that
 have exceeded the \`spindown_idle_minutes\` threshold.
+.PD
+.RE
+.SH MULTIPLE ARRAYS 
+To manage multiple independent SnapRAID arrays on a single systemd
+host, you can run multiple daemon instances using the systemd
+template unit \`snapraidd@.service\`.
+.PP
+Each instance runs isolated under its own configuration, listening port,
+and SnapRAID array config.
+.PP
+To configure multiple instances:
+.PP
+Create distinct daemon configuration files:
+.PP
+.RS 4
+cp /etc/snapraidd.conf /etc/snapraidd\-main.conf
+.PD 0
+.PP
+.PD
+cp /etc/snapraidd.conf /etc/snapraidd\-backup.conf
+.PD 0
+.PD
+.RE
+.PP
+Edit \`/etc/snapraidd\-main.conf\` to set a custom port and log folder:
+.PP
+.RS 4
+net_port = 127.0.0.1:7627
+.PD 0
+.PP
+.PD
+sys_log_directory = /var/log/snapraid/main
+.PD 0
+.PD
+.RE
+.PP
+Edit \`/etc/snapraidd\-backup.conf\` to use a different port and log folder:
+.PP
+.RS 4
+net_port = 127.0.0.1:7628
+.PD 0
+.PP
+.PD
+sys_log_directory = /var/log/snapraid/backup
+.PD 0
+.PD
+.RE
+.PP
+Disable the default single\-array service (if running):
+.PP
+.RS 4
+systemctl disable \-\-now snapraidd.service
+.PD 0
+.PD
+.RE
+.PP
+Enable and start the template instances. The instance name after the
+@ corresponds to the suffix of the config file. For example, \`main\`
+will load \`/etc/snapraidd\-main.conf\` and use \`/etc/snapraid\-main.conf\`
+as the SnapRAID engine configuration:
+.PP
+.RS 4
+systemctl enable \-\-now snapraidd@main
+.PD 0
+.PP
+.PD
+systemctl enable \-\-now snapraidd@backup
+.PD 0
+.PD
+.RE
+.PP
+Access the independent dashboards at:
+.PP
+.RS 4
+http://localhost:7627
+.PD 0
+.PP
+.PD
+http://localhost:7628
+.PD 0
 .PD
 .RE
 .SH SIGNALS 

@@ -380,6 +380,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 	char conf[PATH_MAX];
 	char engine_conf[PATH_MAX];
 	char log_file[PATH_MAX];
+	char instance[64];
 
 	state_lock();
 	int cmd = task->cmd;
@@ -391,6 +392,7 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(conf, sizeof(conf), state->config.conf);
 	sncpy(engine_conf, sizeof(engine_conf), state->array.engine_conf);
+	sncpy(instance, sizeof(instance), state->instance);
 	state_unlock();
 
 	if (hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
@@ -455,6 +457,9 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 		if (engine_conf[0] != 0) {
 			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", engine_conf);
 		}
+		if (instance[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_INSTANCE", "%s", instance);
+		}
 		envv[envv_count] = NULL;
 
 		os_privileges_acquire();
@@ -512,6 +517,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
 	char engine_conf[PATH_MAX];
+	char instance[64];
 
 	/* diff stats */
 	int64_t diff_added = 0;
@@ -564,6 +570,7 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 	sncpy(hook_run_as_user, sizeof(hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(conf, sizeof(conf), state->config.conf);
 	sncpy(engine_conf, sizeof(engine_conf), state->array.engine_conf);
+	sncpy(instance, sizeof(instance), state->instance);
 	if (cmd == CMD_DIFF || cmd == CMD_SYNC) {
 		diff_added = state->array.diff_current.diff_added;
 		diff_removed = state->array.diff_current.diff_removed;
@@ -651,6 +658,9 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 		}
 		if (engine_conf[0] != 0) {
 			add_env(envv, &envv_count, "SNAPRAID_ENGINE_CONFIG", "%s", engine_conf);
+		}
+		if (instance[0] != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_INSTANCE", "%s", instance);
 		}
 		envv[envv_count] = NULL;
 
@@ -1284,6 +1294,10 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 	}
 
 	sl_insert_str(&task->arg_list, snapraid);
+	if (state->array.engine_conf[0] != 0) {
+		sl_insert_str(&task->arg_list, "-c");
+		sl_insert_str(&task->arg_list, state->array.engine_conf);
+	}
 	sl_insert_str(&task->arg_list, command_name(cmd_translate));
 	sl_insert_str(&task->arg_list, "--gui");
 	sl_insert_str(&task->arg_list, "--log");

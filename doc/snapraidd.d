@@ -634,6 +634,7 @@ Configuration
 	SNAPRAID_RUN_AS_USER - The user account configured for running the hooks.
 	SNAPRAID_DAEMON_CONFIG - Path to the daemon configuration file.
 	SNAPRAID_ENGINE_CONFIG - Path to the SnapRAID engine configuration file.
+	SNAPRAID_INSTANCE - The name of the daemon instance (if specified via -i).
 
 	During `task-end` and `task-error` events, the following additional
 	variables are also available:
@@ -1086,6 +1087,48 @@ REST API
 		array statistics.
 	down_idle - Executes a conditional spindown operation of the disks that
 		have exceeded the `spindown_idle_minutes` threshold.
+
+Multiple arrays
+	To manage multiple independent SnapRAID arrays on a single systemd
+	host, you can run multiple daemon instances using the systemd
+	template unit `snapraidd@.service`.
+
+	Each instance runs isolated under its own configuration, listening port,
+	and SnapRAID array config.
+
+	To configure multiple instances:
+
+	Create distinct daemon configuration files:
+
+		:cp /etc/snapraidd.conf /etc/snapraidd-main.conf
+		:cp /etc/snapraidd.conf /etc/snapraidd-backup.conf
+
+	Edit `/etc/snapraidd-main.conf` to set a custom port and log folder:
+
+		:net_port = 127.0.0.1:7627
+		:sys_log_directory = /var/log/snapraid/main
+
+	Edit `/etc/snapraidd-backup.conf` to use a different port and log folder:
+
+		:net_port = 127.0.0.1:7628
+		:sys_log_directory = /var/log/snapraid/backup
+
+	Disable the default single-array service (if running):
+
+		:systemctl disable --now snapraidd.service
+
+	Enable and start the template instances. The instance name after the
+	@ corresponds to the suffix of the config file. For example, `main`
+	will load `/etc/snapraidd-main.conf` and use `/etc/snapraid-main.conf`
+	as the SnapRAID engine configuration:
+
+		:systemctl enable --now snapraidd@main
+		:systemctl enable --now snapraidd@backup
+
+	Access the independent dashboards at:
+
+		:http://localhost:7627
+		:http://localhost:7628
 
 Signals
 	This section defines how the daemon responds to standard Unix signals,

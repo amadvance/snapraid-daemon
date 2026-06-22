@@ -351,18 +351,25 @@ int os_shutdown(void)
 /****************************************************************************/
 /* daemon */
 
-static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg, const char* instance)
 {
+	char name[128];
+	if (instance && instance[0]) {
+		snprintf(name, sizeof(name), "%s-%s", DAEMON_NAME, instance);
+	} else {
+		sncpy(name, sizeof(name), DAEMON_NAME);
+	}
+
 	/* determine the path if not explicitly provided */
 	if (pidfile_arg && pidfile_arg[0]) {
 		sncpy(pidfile_path, pidfile_size, pidfile_arg);
 	} else {
 		if (geteuid() == 0) {
 			/* standard for root-level daemons */
-			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", DAEMON_NAME);
+			snprintf(pidfile_path, pidfile_size, "/run/%s.pid", name);
 		} else {
 			/* standard for user-level processes */
-			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", DAEMON_NAME);
+			snprintf(pidfile_path, pidfile_size, "/tmp/%s.pid", name);
 		}
 	}
 
@@ -391,7 +398,7 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 
 	if (fcntl(fd, F_SETLK, &fl) == -1) {
 		if (errno == EACCES || errno == EAGAIN) {
-			fprintf(stderr, "%s is already running.\n", DAEMON_NAME);
+			fprintf(stderr, "%s is already running.\n", name);
 		} else {
 			fprintf(stderr, "Error locking PID file: %s\n", strerror(errno));
 		}
@@ -424,7 +431,7 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
  * Daemonize the current process.
  * @return The PID file descriptor on success, -1 on error
  */
-static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg)
+static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg, const char* instance)
 {
 	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
@@ -452,7 +459,7 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 	 * We do this BEFORE closing I/O so we can still report errors to stderr
 	 * if another instance is already running.
 	 */
-	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg);
+	int pidfd = os_pidfile(pidfile_path, pidfile_size, pidfile_arg, instance);
 	if (pidfd < 0)
 		return -1;
 
@@ -496,7 +503,7 @@ int main(int argc, char* argv[])
 
 	int pidfd = -1;
 	if (!state->log.foreground) {
-		pidfd = os_daemonize(pidfile, sizeof(pidfile), state->config.pidfile_arg);
+		pidfd = os_daemonize(pidfile, sizeof(pidfile), state->config.pidfile_arg, state->instance);
 		if (pidfd == -1)
 			exit(EXIT_FAILURE);
 	}
