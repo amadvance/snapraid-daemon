@@ -554,6 +554,9 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 	}
 
 	ss_json_str(&s, level, "health", health_name(state->array.health));
+	if (state->instance[0] != 0) {
+		ss_json_str(&s, level, "instance", state->instance);
+	}
 	if (state->array.health != HEALTH_PASSED && state->array.health_reason[0] != 0)
 		ss_json_str(&s, level, "health_reason", state->array.health_reason);
 	ss_json_close(&s, &level);
@@ -2061,6 +2064,9 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		}
 	}
 	ss_json_str(&s, level, "daemon_conf", state->config.conf);
+	if (state->instance[0] != 0) {
+		ss_json_str(&s, level, "instance", state->instance);
+	}
 	ss_json_str(&s, level, "health", health_name(state->array.health));
 	if (*state->engine_version)
 		ss_json_str(&s, level, "engine_version", state->engine_version);

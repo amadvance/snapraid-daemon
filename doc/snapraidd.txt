@@ -661,6 +661,7 @@ SNAPRAID_LOG_FILE - Path to the task execution log file.
 SNAPRAID_RUN_AS_USER - The user account configured for running the hooks.
 SNAPRAID_DAEMON_CONFIG - Path to the daemon configuration file.
 SNAPRAID_ENGINE_CONFIG - Path to the SnapRAID engine configuration file.
+SNAPRAID_INSTANCE - The name of the daemon instance (if specified via -i).
 
 During `task-end` and `task-error` events, the following additional
 variables are also available:
@@ -1134,25 +1135,70 @@ down_idle - Executes a conditional spindown operation of the disks that
     have exceeded the `spindown_idle_minutes` threshold.
 
 
-8 SIGNALS
+8 MULTIPLE ARRAYS
+=================
+
+To manage multiple independent SnapRAID arrays on a single systemd
+host, you can run multiple daemon instances using the systemd
+template unit `snapraidd@.service`.
+
+Each instance runs isolated under its own configuration, listening port,
+and SnapRAID array config.
+
+To configure multiple instances:
+
+Create distinct daemon configuration files:
+
+    cp /etc/snapraidd.conf /etc/snapraidd-main.conf
+    cp /etc/snapraidd.conf /etc/snapraidd-backup.conf
+
+Edit `/etc/snapraidd-main.conf` to set a custom port and log folder:
+
+    net_port = 127.0.0.1:7627
+    sys_log_directory = /var/log/snapraid/main
+
+Edit `/etc/snapraidd-backup.conf` to use a different port and log folder:
+
+    net_port = 127.0.0.1:7628
+    sys_log_directory = /var/log/snapraid/backup
+
+Disable the default single-array service (if running):
+
+    systemctl disable --now snapraidd.service
+
+Enable and start the template instances. The instance name after the
+@ corresponds to the suffix of the config file. For example, `main`
+will load `/etc/snapraidd-main.conf` and use `/etc/snapraid-main.conf`
+as the SnapRAID engine configuration:
+
+    systemctl enable --now snapraidd@main
+    systemctl enable --now snapraidd@backup
+
+Access the independent dashboards at:
+
+    http://localhost:7627
+    http://localhost:7628
+
+
+9 SIGNALS
 =========
 
 This section defines how the daemon responds to standard Unix signals,
 allowing for external process control and graceful management of the
 service lifecycle.
 
----- 8.0.1 SIGHUP ----
+---- 9.0.1 SIGHUP ----
 Reloads the configuration file and resets the internal state.
 It also reloads the Web UI. This is the recommended way to
 apply changes to static	parameters without restarting the
 service.
 
----- 8.0.2 SIGTERM, SIGINT ----
+---- 9.0.2 SIGTERM, SIGINT ----
 Initiates a graceful shutdown. If a task is currently
 running, the daemon attempts to terminate the child process
 before exiting.
 
----- 8.0.3 SIGQUIT ----
+---- 9.0.3 SIGQUIT ----
 Immediately terminates the process using the default signal
 action and may generate a core dump. This signal is intended
 for emergency debugging and post mortem analysis of a hung
@@ -1160,74 +1206,74 @@ or misbehaving daemon. No cleanup or graceful shutdown is
 performed.
 
 
-9 FILES
-=======
+10 FILES
+========
 
 The following list specifies the default filesystem paths used by the
 daemon for configuration, data persistence, and inter-process communication.
 
-9.1 Linux
----------
+10.1 Linux
+----------
 
 On Linux and Unix-like systems:
 
----- 9.1.1 $PREFIX/etc/snapraidd.conf ----
+---- 10.1.1 $PREFIX/etc/snapraidd.conf ----
 The primary configuration file location. The $PREFIX variable
 represents the installation path chosen at build time (typically
 via the `--prefix` argument to the configure script). Common
 values include `/usr/local` or `/usr`. If this file does not
 exist, the daemon falls back to `/etc/snapraidd.conf`.
 
----- 9.1.2 $PREFIX/share/snapraidd ----
+---- 10.1.2 $PREFIX/share/snapraidd ----
 The primary system data directory. This is the first location
 searched for the web dashboard ZIP file (e.g., commander.zip or brutale.zip).
 If not found here, the daemon falls back to `/usr/share/snapraidd`.
 
----- 9.1.3 /etc/snapraidd.conf ----
+---- 10.1.3 /etc/snapraidd.conf ----
 The secondary/system-wide configuration file location, used if
 the prefix-specific file is missing.
 
----- 9.1.4 /usr/share/snapraidd ----
+---- 10.1.4 /usr/share/snapraidd ----
 The secondary/system-wide data directory, used as a fallback for
 web assets.
 
----- 9.1.5 /run/snapraidd.pid ----
+---- 10.1.5 /run/snapraidd.pid ----
 Default PID file location.
 
----- 9.1.6 /var/log/snapraid ----
+---- 10.1.6 /var/log/snapraid ----
 Default directory for SnapRAID command execution logs. This
 directory contains the output of the SnapRAID binary itself,
 rather than the daemon's service logs.
 If this directory does not exist, the daemon will attempt to create it
 upon the first execution of a SnapRAID command.
 
-9.2 Windows
------------
+10.2 Windows
+------------
 
 On Windows systems:
 
----- 9.2.1 snapraidd.conf ----
+---- 10.2.1 snapraidd.conf ----
 The configuration file is expected to be in the same directory
 where the `snapraidd.exe` binary is located.
 
----- 9.2.2 log\ ----
+---- 10.2.2 log\ ----
 A subdirectory named `log` within the installation directory is
 used to store the SnapRAID command execution logs. If this
 directory does not exist, the service will attempt to create it
 upon the first execution of a SnapRAID command.
 
----- 9.2.3 commander.zip or brutale.zip ----
+---- 10.2.3 commander.zip or brutale.zip ----
 The web dashboard assets are searched for in the same directory
 as the executable.
 
 
-10 COPYRIGHT
+11 COPYRIGHT
 ============
 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 
 
-11 SEE ALSO
+12 SEE ALSO
 ===========
 
 snapraid(1)

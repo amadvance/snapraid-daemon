@@ -5,7 +5,13 @@ set -e
 if [ -d /run/systemd/system ]; then
     systemctl daemon-reload >/dev/null || true
     systemctl enable snapraidd.service >/dev/null || true
-    systemctl restart snapraidd.service >/dev/null || true
+    if [ -z "$2" ]; then
+        # Fresh install: start the default service
+        systemctl start snapraidd.service >/dev/null || true
+    else
+        # Upgrade: restart default and any active template services
+        systemctl try-restart snapraidd.service 'snapraidd@*.service' >/dev/null || true
+    fi
 fi
 
 exit 0

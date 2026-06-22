@@ -22,7 +22,8 @@ const app = {
         lastSystemRefresh: 0,
         dashboardArray: null,
         dashboardActivity: null,
-        disks: null
+        disks: null,
+        instance: null
     },
 
     init: () => {
@@ -206,6 +207,10 @@ const app = {
     pollState: async () => {
         try {
             const state = await API.getState();
+            if (state.instance && app.state.instance !== state.instance) {
+                app.state.instance = state.instance;
+                app.updatePageTitle();
+            }
             const pulse = state.pulse;
             const oldPulse = app.state.pulse || {};
             const wasDisconnected = !app.state.isConnected;
@@ -339,6 +344,32 @@ const app = {
         }
     },
 
+    getRouteTitle: (route) => {
+        switch (route) {
+            case '#/': return 'Dashboard';
+            case '#/disks': return 'Disks';
+            case '#/tasks': return 'Tasks';
+            case '#/diff': return 'Differences';
+            case '#/recovery': return 'Recovery';
+            case '#/settings': return 'Settings';
+            default: return 'Page Not Found';
+        }
+    },
+
+    updatePageTitle: (baseTitle) => {
+        const route = app.state.currentRoute || '#/';
+        const title = baseTitle || app.getRouteTitle(route);
+        const titleEl = document.getElementById('page-title');
+        if (titleEl) {
+            if (app.state.instance) {
+                const capInstance = app.state.instance.charAt(0).toUpperCase() + app.state.instance.slice(1);
+                titleEl.innerText = `${capInstance} ${title}`;
+            } else {
+                titleEl.innerText = title;
+            }
+        }
+    },
+
     handleRoute: async () => {
         app.stopPolling();
 
@@ -355,7 +386,6 @@ const app = {
 
         const view = document.getElementById('view-container');
         const actions = document.getElementById('header-actions');
-        const title = document.getElementById('page-title');
 
         view.innerHTML = '<div class="loading-spinner"></div>';
         actions.innerHTML = '';
@@ -363,7 +393,7 @@ const app = {
         try {
             switch (hash) {
                 case '#/':
-                    title.innerText = 'Dashboard';
+                    app.updatePageTitle('Dashboard');
                     const health = app.state.dashboardArray?.health;
                     if (health === 'failing' || health === 'prefail') {
                         actions.innerHTML = `
@@ -381,7 +411,7 @@ const app = {
                     await app.loadDashboard({ array: true, activity: true, system: true });
                     break;
                 case '#/disks':
-                    title.innerText = 'Disks';
+                    app.updatePageTitle('Disks');
                     actions.innerHTML = `
                         <button class="btn btn-primary" data-tooltip="Spin up all array disks" data-action="spin-up">Up</button>
                         <button class="btn btn-primary" data-tooltip="Spin down all array disks" data-action="spin-down">Down</button>
@@ -389,24 +419,24 @@ const app = {
                     await app.loadDisks();
                     break;
                 case '#/tasks':
-                    title.innerText = 'Tasks';
+                    app.updatePageTitle('Tasks');
                     actions.innerHTML = '';
                     await app.loadTasks();
                     break;
                 case '#/diff':
-                    title.innerText = 'Differences';
+                    app.updatePageTitle('Differences');
                     actions.innerHTML = `
                         <button class="btn btn-primary" data-tooltip="Trigger a new differences check" data-action="diff">Differences</button>
                     `;
                     await app.loadDifferences();
                     break;
                 case '#/recovery':
-                    title.innerText = 'Recovery';
+                    app.updatePageTitle('Recovery');
                     actions.innerHTML = '';
                     await app.loadRecovery();
                     break;
                 case '#/settings':
-                    title.innerText = 'Settings';
+                    app.updatePageTitle('Settings');
                     actions.innerHTML = `
                         <button class="btn btn-secondary" data-tooltip="Discard changes and refresh settings" data-action="recovery-cancel">Cancel</button>
                         <button class="btn btn-primary" data-tooltip="Save configuration changes to server" data-action="settings-save">Save</button>

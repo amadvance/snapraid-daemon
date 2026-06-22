@@ -3,7 +3,7 @@ set -e
 
 if [ "$1" = "purge" ]; then
     if [ -d /run/systemd/system ]; then
-        systemctl disable snapraidd.service >/dev/null || true
+        systemctl disable snapraidd.service 'snapraidd@*.service' >/dev/null || true
     fi
 fi
 
