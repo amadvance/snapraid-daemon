@@ -374,6 +374,7 @@ const app = {
         app.stopPolling();
 
         // Start Pulse Polling (Global for all pages)
+        app.pollState();
         app.state.pollingInterval = setInterval(app.pollState, 3000);
 
         const hash = window.location.hash || '#/';

@@ -65,69 +65,22 @@ Function .onInit
     ${EndIf}
 FunctionEnd
 
-!macro StopServiceLogic UN
-Function ${UN}StopSnapRAIDService
-    DetailPrint "Checking SnapRAID Daemon status..."
-
-    # nsExec::Exec pushes the return code to the stack
-    nsExec::Exec 'sc query snapraidd'
-    Pop $1
-
-    ${If} $1 == 0
-        DetailPrint "Service found. Stopping..."
-        ExecWait 'sc stop snapraidd'
-
-        StrCpy $0 0
-        LoopStopCheck:
-            IntOp $0 $0 + 1
-            ${If} $0 > 30
-                Goto ServiceTimeout
-            ${EndIf}
-
-            # Get raw status text
-            nsExec::ExecToStack 'sc query snapraidd'
-            Pop $1
-            Pop $2
-
-            Push "$2"
-            Push "STOPPED"
-!ifdef __UNINSTALL__
-            Call un.StrStr
-!else
-            Call StrStr
-!endif
-            Pop $3
-
-            ${If} $3 != ""
-                Goto ServiceIsDown
-            ${EndIf}
-
-            DetailPrint "Waiting for service to stop... (Second: $0/30)"
-
-            Sleep 1000
-            Goto LoopStopCheck
-
-        ServiceTimeout:
-            DetailPrint "Stop timed out. Forcing taskkill..."
-            ExecWait 'taskkill /F /IM snapraidd.exe'
-            Sleep 1000
-    ${EndIf}
-    ServiceIsDown:
-FunctionEnd
-!macroend
-
-# Generate two versions of the function
-!insertmacro StopServiceLogic ""
-!insertmacro StopServiceLogic "un."
-
 # Define the registry path for the Event Log
 !define LOG_REG "SYSTEM\CurrentControlSet\Services\EventLog\Application\snapraidd"
 
 # --- Installation Section ---
 
 Section "Install"
-    # STOP THE SERVICE (IF ANY)
-    Call StopSnapRAIDService
+    # STOP ALL INSTANCES (default + user-created)
+    ClearErrors
+    ExecWait '"$INSTDIR\snapraidd.exe" --service-stop-all' $0
+    ${If} ${Errors}
+    ${OrIf} $0 != 0
+        # taskkill kills every process using snapraidd.exe, unlocking the binary
+        DetailPrint "Stop timed out. Forcing taskkill..."
+        ExecWait 'taskkill /F /IM snapraidd.exe'
+        Sleep 1000
+    ${EndIf}
 
     # FILES
     SetOutPath $INSTDIR
@@ -150,7 +103,7 @@ Section "Install"
     Delete "$INSTDIR\install.txt"
     Delete "$INSTDIR\todo.txt"
 
-    # CONFIGURATION
+    # CONFIGURATION & SERVICE REGISTRATION
     SetOutPath $INSTDIR
     # Check if snapraidd.conf already exists on the Windows machine
     IfFileExists "$INSTDIR\snapraidd.conf" SkipConfig
@@ -161,14 +114,40 @@ Section "Install"
         DetailPrint "Existing configuration detected. Skipping overwrite."
     ConfigDone:
 
-    # REGISTER THE EVENT SOURCE
-    WriteRegStr HKLM "${LOG_REG}" "EventMessageFile" "$INSTDIR\snapraidd.exe"
-    WriteRegDWORD HKLM "${LOG_REG}" "TypesSupported" 0x00000007 # Info, Warn, and Error
+    # Determine if ANY snapraidd service is registered
+    StrCpy $0 0
+    StrCpy $3 0 # 0 = none found, 1 = found at least one
+    LoopCheckServices:
+        EnumRegKey $1 HKLM "SYSTEM\CurrentControlSet\Services" $0
+        StrCmp $1 "" DoneCheckServices
+        
+        # Check if service name starts with "snapraidd"
+        StrCpy $2 $1 9
+        StrCmp $2 "snapraidd" 0 NextCheckService
+        
+        # Check if it is an exact match or followed by "-" (e.g. snapraidd-instance)
+        StrCpy $2 $1 1 9
+        StrCmp $2 "" FoundOurService
+        StrCmp $2 "-" FoundOurService
+        Goto NextCheckService
+        
+    FoundOurService:
+        # Found at least one service!
+        StrCpy $3 1
+        Goto DoneCheckServices
+        
+    NextCheckService:
+        IntOp $0 $0 + 1
+        Goto LoopCheckServices
+    DoneCheckServices:
 
-    # SERVICE REGISTRATION
-    ExecWait 'sc create snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto DisplayName= "SnapRAID Daemon"'
-    ExecWait 'sc config snapraidd binPath= "\"$INSTDIR\snapraidd.exe\"" start= auto'
-    ExecWait 'sc start snapraidd'
+    ${If} $3 == 0
+        # No service is registered: install the default service
+        ExecWait '"$INSTDIR\snapraidd.exe" --service-install'
+    ${EndIf}
+
+    # RESTART ALL INSTANCES (default + user-created)
+    ExecWait '"$INSTDIR\snapraidd.exe" --service-start-all'
 
     # Save the installation directory to the registry
     WriteRegStr HKLM "Software\snapraid" "Install_Dir" "$INSTDIR"
@@ -196,11 +175,18 @@ SectionEnd
 # --- Uninstaller Section ---
 
 Section "Uninstall"
-    # STOP THE SERVICE
-    Call un.StopSnapRAIDService
-
-    # DELETE THE SERVICE
-    ExecWait 'sc delete snapraidd'
+    # STOP AND REMOVE ALL SERVICES
+    ClearErrors
+    ExecWait '"$INSTDIR\snapraidd.exe" --service-remove-all' $0
+    ${If} ${Errors}
+    ${OrIf} $0 != 0
+        # Kill any remaining processes (safety net)
+        DetailPrint "Stop timed out. Forcing taskkill..."
+        ExecWait 'taskkill /F /IM snapraidd.exe'
+        Sleep 1000
+	# Clean up the Event Source registry keys
+	DeleteRegKey HKLM "${LOG_REG}"
+    ${EndIf}
 
     # FIREWALL
     DetailPrint "Removing Firewall exception..."
@@ -209,9 +195,6 @@ Section "Uninstall"
 
     # DELETE KEYS
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\snapraidd"
-
-    # Clean up the Event Source registry keys
-    DeleteRegKey HKLM "${LOG_REG}"
 
     # REMOVE SHORTCUT
     Delete "$DESKTOP\SnapRAID Commander.lnk"

@@ -2,8 +2,15 @@ Name{number}
 	snapraidd - A background companion daemon for SnapRAID.
 
 Synopsis
-	:snapraidd [-c, --conf CONFIG] [-f, --foreground] [-p, --pidfile FILE]
-	:	[-N, --no-cache] [-v, --verbose] [-g, --gen-auth USERNAME:PASSWORD]
+	:snapraidd [-c, --conf CONFIG] [-C, --engine-conf FILE] [-i, --instance NAME]
+	:	[-f, --foreground] [-p, --pidfile FILE] [-N, --no-cache]
+	:	[-v, --verbose]
+
+	:snapraidd [-i, --instance NAME] [--service-install] [--service-remove]
+	:	[--service-start-all] [--service-stop-all] [--service-remove-all]
+	:	[--service-list]
+
+	:snapraidd [-g, --gen-auth USERNAME:PASSWORD]
 
 	:snapraidd [-V, --version] [-H, --help]
 
@@ -36,9 +43,20 @@ Options
 		path chosen at build time (typically via the `--prefix`
 		argument to the configure script).
 
+	-C, --engine-conf FILE
+		Specifies the path to the SnapRAID array configuration file.
+		If not specified, the SnapRAID engine's default configuration resolution is used.
+
 	-f, --foreground
 		Runs the process in the foreground. This prevents the
 		daemon from detaching from the terminal (daemonizing).
+
+	-i, --instance NAME
+		Specifies the daemon instance name. When running multiple
+		instances of the daemon, this option separates their namespaces
+		(e.g., config file suffix, PID file, logging identifiers, and
+		Windows service names). The name must only contain alphanumeric
+		characters, hyphens, and underscores.
 
 	-p, --pidfile FILE
 		Overrides the default location for the PID file. Default:
@@ -66,6 +84,32 @@ Options
 		Generates a secure Argon2id credential string for the configured
 		username and password, and prints the configuration line ready to
 		be added to the `snapraidd.conf` file.
+
+	--service-install
+		[Windows Only] Installs and starts the current configuration as a Windows service.
+		If an instance name is specified using the `-i` option, a dedicated
+		service is created and started for that instance. This allows running
+		multiple instances of the daemon simultaneously.
+
+	--service-remove
+		[Windows Only] Stops and removes the Windows service associated with the
+		current configuration. If an instance name is specified using `-i`,
+		only that specific instance service is stopped and removed.
+
+	--service-start-all
+		[Windows Only] Starts all Windows services associated with SnapRAID Daemon
+		(i.e., all services starting with `snapraidd`).
+
+	--service-stop-all
+		[Windows Only] Stops all Windows services associated with SnapRAID Daemon.
+
+	--service-remove-all
+		[Windows Only] Stops and removes all Windows services associated with
+		SnapRAID Daemon.
+
+	--service-list
+		[Windows Only] Lists all registered Windows services associated with
+		SnapRAID Daemon and their current execution status.
 
 	-H, --help
 		Prints a short help screen.
@@ -1088,7 +1132,7 @@ REST API
 	down_idle - Executes a conditional spindown operation of the disks that
 		have exceeded the `spindown_idle_minutes` threshold.
 
-Multiple arrays
+Multiple arrays in Linux systemd
 	To manage multiple independent SnapRAID arrays on a single systemd
 	host, you can run multiple daemon instances using the systemd
 	template unit `snapraidd@.service`.
@@ -1117,6 +1161,10 @@ Multiple arrays
 
 		:systemctl disable --now snapraidd.service
 
+	Create distinct SnapRAID engine configuration files for each array,
+	e.g. `/etc/snapraid-main.conf` and `/etc/snapraid-backup.conf`,
+	each pointing to its own set of disks and parity drives.
+
 	Enable and start the template instances. The instance name after the
 	@ corresponds to the suffix of the config file. For example, `main`
 	will load `/etc/snapraidd-main.conf` and use `/etc/snapraid-main.conf`
@@ -1129,6 +1177,59 @@ Multiple arrays
 
 		:http://localhost:7627
 		:http://localhost:7628
+
+Multiple arrays in Windows
+	To manage multiple independent SnapRAID arrays on a Windows host,
+	you can install multiple distinct Windows service instances of the
+	daemon using the `--service-install` command with the `-i` option.
+
+	Each instance runs under its own configuration and listening port.
+
+	To configure multiple instances:
+
+	Create distinct daemon configuration files in your installation directory:
+
+		:copy C:\snapraid\snapraidd.conf C:\snapraid\snapraidd-main.conf
+		:copy C:\snapraid\snapraidd.conf C:\snapraid\snapraidd-backup.conf
+
+	Edit `C:\snapraid\snapraidd-main.conf` to set a custom port and log folder:
+
+		:net_port = 127.0.0.1:7627
+		:sys_log_directory = C:\snapraid\log\main
+
+	Edit `C:\snapraid\snapraidd-backup.conf` to use a different port and log folder:
+
+		:net_port = 127.0.0.1:7628
+		:sys_log_directory = C:\snapraid\log\backup
+
+	Remove the default service instance (if registered):
+
+		:C:\snapraid\snapraidd.exe --service-remove
+
+	Create distinct SnapRAID engine configuration files for each array,
+	e.g. `C:\snapraid\snapraid-main.conf` and
+	`C:\snapraid\snapraid-backup.conf`, each pointing to its own set of
+	disks and parity drives.
+
+	Install the service instances using the `--service-install` option.
+	Use `-c` to specify the daemon configuration file and `-C` to specify
+	the SnapRAID engine configuration file for each instance:
+
+		:C:\snapraid\snapraidd.exe --service-install -i main -c C:\snapraid\snapraidd-main.conf -C C:\snapraid\snapraid-main.conf
+		:C:\snapraid\snapraidd.exe --service-install -i backup -c C:\snapraid\snapraidd-backup.conf -C C:\snapraid\snapraid-backup.conf
+
+	This registers and starts two Windows services named `snapraidd-main` and
+	`snapraidd-backup` configured to start automatically.
+
+	Access the independent dashboards at:
+
+		:http://localhost:7627
+		:http://localhost:7628
+
+	To remove a service instance, run the `--service-remove` option:
+
+		:C:\snapraid\snapraidd.exe --service-remove -i main
+		:C:\snapraid\snapraidd.exe --service-remove -i backup
 
 Signals
 	This section defines how the daemon responds to standard Unix signals,

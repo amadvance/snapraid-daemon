@@ -3,6 +3,11 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Added support for managing multiple independent SnapRAID arrays:
+   - On Linux/systemd, daemon instances can be managed individually using
+     the template unit `snapraidd@.service`.
+   - On Windows, multiple service instances can be registered and managed using
+     the `--service-install` option with the `-i` flag.
  * Introduced "Brutale", an alternative high-contrast Neo-Brutalist WebUI.
    Proceed with caution: this interface is loud, unapologetic, and might
    cause spontaneous desires to build raw concrete structures

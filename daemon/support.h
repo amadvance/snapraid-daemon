@@ -403,6 +403,29 @@ static inline size_t sncpy(char* dst, size_t dst_size, const char* src)
 }
 #endif
 
+#ifndef HAVE_STRLCAT
+/**
+ * Append string with size limit.
+ * @param dst Destination buffer
+ * @param dst_size Destination buffer size
+ * @param src Source string to append
+ * @return Total length of the string it tried to create
+ */
+size_t sncat(char* dst, size_t dst_size, const char* src);
+#else
+/**
+ * Append string with size limit.
+ * @param dst Destination buffer
+ * @param dst_size Destination buffer size
+ * @param src Source string to append
+ * @return Total length of the string it tried to create
+ */
+static inline size_t sncat(char* dst, size_t dst_size, const char* src)
+{
+	return strlcat(dst, src, dst_size);
+}
+#endif
+
 /**
  * Convert string to integer.
  * @return 0 on success, -1 on error

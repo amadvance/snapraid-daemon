@@ -692,6 +692,42 @@ size_t sncpy(char* dst, size_t dst_size, const char* src)
 }
 #endif
 
+#ifndef HAVE_STRLCAT
+size_t sncat(char* dst, size_t dst_size, const char* src)
+{
+	char* d = dst;
+	const char* s = src;
+	size_t n = dst_size;
+	size_t dlen;
+
+	while (n != 0 && *d != 0) {
+		--n;
+		++d;
+	}
+	dlen = (size_t)(d - dst);
+	n = dst_size - dlen;
+
+	if (n == 0) {
+		while (*s != 0) {
+			++s;
+		}
+		return dlen + (size_t)(s - src);
+	}
+
+	while (*s != 0) {
+		if (n > 1) {
+			*d = *s;
+			++d;
+			--n;
+		}
+		++s;
+	}
+	*d = 0;
+
+	return dlen + (size_t)(s - src);
+}
+#endif
+
 int strint(int* out, const char* s)
 {
 	char* e;

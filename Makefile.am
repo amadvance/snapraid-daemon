@@ -432,7 +432,7 @@ if HAVE_ADVD2
 	advd2 xml < $(srcdir)/$< > $@
 endif
 
-MANUAL=./snapraidd -f -N
+MANUAL=./snapraidd -f -N -i manual
 
 run:
 	$(MANUAL)
