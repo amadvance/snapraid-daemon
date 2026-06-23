@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
-#include "os.h"
 #include "app.h"
 #include "state.h"
 #include "support.h"
@@ -496,11 +495,11 @@ static int runner_hook_begin(struct snapraid_state* state, struct snapraid_task*
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with exit code %d", script_ret);
 			return -1;
 		} else {
-			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, os_signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:pre_signal:%d\n", script_ret - 128);
 			if (exit_neg_msg)
-				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The pre_run_script terminated with signal %s(%d)", os_signal_name(script_ret - 128), script_ret - 128);
 			return -1;
 		}
 		if (log_f)
@@ -689,11 +688,11 @@ static void runner_hook_end(struct snapraid_state* state, struct snapraid_task* 
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with exit code %d", script_ret);
 		} else {
-			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, signal_name(script_ret - 128), script_ret - 128);
+			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook_script, os_signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
-				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with signal %s(%d)", signal_name(script_ret - 128), script_ret - 128);
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with signal %s(%d)", os_signal_name(script_ret - 128), script_ret - 128);
 		}
 		if (log_f)
 			zflush(log_f);
@@ -887,7 +886,7 @@ static void runner_go(struct snapraid_state* state)
 				if (log_f != 0)
 					zprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
 			} else if (WIFSIGNALED(status)) {
-				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, signal_name(WTERMSIG(status)), WTERMSIG(status));
+				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, os_signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
 					zprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
@@ -1006,7 +1005,7 @@ bail:
 			task->state = PROCESS_STATE_SIGNAL;
 
 			/* cancel queued tasks */
-			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), signal_name(task->exit_sig), task->exit_sig);
+			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), os_signal_name(task->exit_sig), task->exit_sig);
 			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
 		} else {
 			/* it should never happen */

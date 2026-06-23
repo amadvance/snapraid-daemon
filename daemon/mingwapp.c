@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
 #ifdef __MINGW32__ /* Only for MingW */
 
-#include "os.h"
 #include "app.h"
 #include "support.h"
 #include "log.h"
@@ -17,6 +16,14 @@ static char path_snapraid[PATH_MAX];
 static char path_conf[PATH_MAX];
 static char path_log[PATH_MAX];
 static char path_data[PATH_MAX];
+
+/****************************************************************************/
+/* signal */
+
+int os_signal_interrupt(void)
+{
+	return state_ptr()->daemon_running == DAEMON_QUIT;
+}
 
 /****************************************************************************/
 /* app */
@@ -976,7 +983,7 @@ int main(int argc, char* argv[])
 {
 	struct snapraid_state* state = state_init();
 
-	os_init();
+	os_init(OS_INIT_OPT_WINFIND);
 	app_init();
 
 	daemon_options(state, argc, argv);

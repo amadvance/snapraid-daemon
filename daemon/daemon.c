@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
 #include "app.h"
-#include "os.h"
 #include "state.h"
 #include "support.h"
 #include "rest.h"
@@ -368,7 +367,7 @@ void daemon_run(struct snapraid_state* state)
 	}
 
 	if (state->daemon_sig)
-		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", signal_name(state->daemon_sig), state->daemon_sig);
+		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", os_signal_name(state->daemon_sig), state->daemon_sig);
 
 	state_unlock();
 

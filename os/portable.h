@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2011 Andrea Mazzoleni
+// Copyright (C) 2026 Andrea Mazzoleni
 
 #ifndef __PORTABLE_H
 #define __PORTABLE_H
@@ -51,6 +51,7 @@
 #ifdef __MINGW32__
 #if defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO == 1
 #define attribute_printf gnu_printf /* GNU format */
+#define printf(...) __mingw_printf(__VA_ARGS__) /* to support %z in printf */
 #else
 #define attribute_printf ms_printf /* MSVCRT format */
 #endif
@@ -67,6 +68,75 @@
 
 #ifndef __noreturn
 #define __noreturn __attribute__((noreturn))
+#endif
+
+/**
+ * Architecture for inline assembly.
+ */
+#if HAVE_ASSEMBLY
+#if defined(__i386__)
+#define CONFIG_X86 1
+#define CONFIG_X86_32 1
+#endif
+
+#if defined(__x86_64__)
+#define CONFIG_X86 1
+#define CONFIG_X86_64 1
+#endif
+
+#if defined(__aarch64__) && defined(__ARM_FEATURE_CRC32)
+#define CONFIG_ARM_CRC 1
+#endif
+#endif
+
+/**
+ * Includes some platform specific headers.
+ */
+#if HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+
+#if HAVE_SYS_MOUNT_H
+#include <sys/mount.h>
+#endif
+
+#if HAVE_SYS_VFS_H
+#include <sys/vfs.h>
+#endif
+
+#if HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#endif
+
+#if HAVE_SYS_FILE_H
+#include <sys/file.h>
+#endif
+
+#if HAVE_SYS_SYSCTL_H
+#include <sys/sysctl.h>
+#endif
+
+#if HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
+
+#if HAVE_LINUX_FS_H
+#include <linux/fs.h>
+#endif
+
+#if HAVE_LINUX_BTRFS_H
+#include <linux/btrfs.h>
+#endif
+
+#if HAVE_LINUX_FIEMAP_H
+#include <linux/fiemap.h>
+#endif
+
+#if HAVE_BLKID_BLKID_H
+#include <blkid/blkid.h>
+#if HAVE_BLKID_DEVNO_TO_DEVNAME && HAVE_BLKID_GET_TAG_VALUE
+#define HAVE_BLKID 1
+#endif
 #endif
 
 /**
@@ -104,6 +174,10 @@
 #else
 #include <time.h>
 #endif
+#endif
+
+#if HAVE_MACH_MACH_TIME_H
+#include <mach/mach_time.h>
 #endif
 
 #if HAVE_DIRENT_H
@@ -187,28 +261,31 @@
 #include <zstd.h>
 #endif
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <DiskArbitration/DiskArbitration.h>
+#include <mach-o/dyld.h>
+#endif
+
+#if HAVE_IO_H
+#include <io.h>
+#endif
+
 #if HAVE_GETOPT_LONG
 #define SWITCH_GETOPT_LONG(a, b) a
 #else
 #define SWITCH_GETOPT_LONG(a, b) b
 #endif
 
-#ifdef HAVE_LINUX_CLOSE_RANGE_H
-#include <linux/close_range.h>
+/**
+ * Enables lock file support.
+ */
+#if HAVE_FLOCK && HAVE_FTRUNCATE
+#define HAVE_LOCKFILE 1
 #endif
 
-/* implement close_range for glibc 2.33 or earlier */
-#if defined(__linux__) && !defined(HAVE_CLOSE_RANGE)
-#include <sys/syscall.h>
-#ifndef __NR_close_range
-#define __NR_close_range 436
-#endif
-#define close_range close_range_impl
-static inline int close_range_impl(unsigned int first, unsigned int last, unsigned int flags)
-{
-	return syscall(__NR_close_range, first, last, flags);
-}
-#define HAVE_CLOSE_RANGE 1
+#ifdef HAVE_LINUX_CLOSE_RANGE_H
+#include <linux/close_range.h>
 #endif
 
 /*

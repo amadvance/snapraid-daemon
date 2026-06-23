@@ -6,7 +6,7 @@
 #define tommy_calloc calloc_nofail
 #define tommy_free free
 
-#include "daemon/portable.h"
+#include "os/portable.h"
 #include "daemon/support.h" /* for malloc/calloc_nofail() */
 
 #include "tommyhash.c"
