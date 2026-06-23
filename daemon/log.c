@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
 #include "state.h"
 #include "elem.h"
@@ -76,12 +76,11 @@ static void log_out(int level, int syslog, int termlog, const char* fmt, va_list
 
 #define LOG_MAX 1024
 
-void log_msg(int level, const char* fmt, ...)
+void vlog_msg(int level, const char* fmt, va_list ap)
 {
 	int syslog;
 	int termlog;
 	int verboselog;
-	va_list ap;
 
 	log_lock();
 	struct snapraid_state* state = state_ptr();
@@ -94,17 +93,23 @@ void log_msg(int level, const char* fmt, ...)
 	if (level == LVL_DEBUG && !verboselog)
 		return;
 
-	va_start(ap, fmt);
 	log_out(level, syslog, termlog, fmt, ap);
+}
+
+void log_msg(int level, const char* fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vlog_msg(level, fmt, ap);
 	va_end(ap);
 }
 
-void log_task(int level, const char* fmt, ...)
+void vlog_task(int level, const char* fmt, va_list ap)
 {
 	int syslog;
 	int termlog;
 	int verboselog;
-	va_list ap;
 
 	log_lock();
 	struct snapraid_state* state = state_ptr();
@@ -120,7 +125,7 @@ void log_task(int level, const char* fmt, ...)
 		strcpy(buf, "syslog: ");
 		size_t len = strlen(buf);
 
-		va_start(ap2, fmt);
+		va_copy(ap2, ap);
 		vsnprintf(buf + len, sizeof(buf) - len, fmt, ap2);
 		va_end(ap2);
 
@@ -132,8 +137,30 @@ void log_task(int level, const char* fmt, ...)
 	if (level == LVL_DEBUG && !verboselog)
 		return;
 
-	va_start(ap, fmt);
 	log_out(level, syslog, termlog, fmt, ap);
+}
+
+void log_task(int level, const char* fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vlog_task(level, fmt, ap);
+	va_end(ap);
+}
+
+void os_syslog(int level, const char* format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	switch (level) {
+	case OS_LVL_CRITICAL : vlog_task(LVL_CRITICAL, format, ap); break;
+	case OS_LVL_ERROR : vlog_task(LVL_ERROR, format, ap); break;
+	case OS_LVL_WARNING : vlog_task(LVL_WARNING, format, ap); break;
+	case OS_LVL_INFO : vlog_task(LVL_INFO, format, ap); break;
+	}
+
 	va_end(ap);
 }
 
@@ -174,58 +201,5 @@ void log_done(void)
 #ifndef _WIN32
 	closelog();
 #endif
-}
-
-const char* signal_name(int sig)
-{
-	switch (sig) {
-#ifdef SIGHUP
-	case SIGHUP : return "SIGHUP";
-#endif
-#ifdef SIGINT
-	case SIGINT : return "SIGINT";
-#endif
-#ifdef SIGQUIT
-	case SIGQUIT : return "SIGQUIT";
-#endif
-#ifdef SIGILL
-	case SIGILL : return "SIGILL";
-#endif
-#ifdef SIGTRAP
-	case SIGTRAP : return "SIGTRAP";
-#endif
-#ifdef SIGABRT
-	case SIGABRT : return "SIGABRT";
-#endif
-#ifdef SIGBUS
-	case SIGBUS : return "SIGBUS";
-#endif
-#ifdef SIGFPE
-	case SIGFPE : return "SIGFPE";
-#endif
-#ifdef SIGKILL
-	case SIGKILL : return "SIGKILL";
-#endif
-#ifdef SIGUSR1
-	case SIGUSR1 : return "SIGUSR1";
-#endif
-#ifdef SIGSEGV
-	case SIGSEGV : return "SIGSEGV";
-#endif
-#ifdef SIGUSR2
-	case SIGUSR2 : return "SIGUSR2";
-#endif
-#ifdef SIGPIPE
-	case SIGPIPE : return "SIGPIPE";
-#endif
-#ifdef SIGALRM
-	case SIGALRM : return "SIGALRM";
-#endif
-#ifdef SIGTERM
-	case SIGTERM : return "SIGTERM";
-#endif
-	}
-
-	return "UNKNOWN";
 }
 

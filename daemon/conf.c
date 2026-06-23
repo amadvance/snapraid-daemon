@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
 #include "app.h"
-#include "os.h"
 #include "state.h"
 #include "support.h"
 #include "log.h"

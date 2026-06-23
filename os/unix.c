@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2025 Andrea Mazzoleni
+// Copyright (C) 2026 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
 #ifndef __MINGW32__ /* Only for Unix */
 
 #include "os.h"
-#include "state.h"
-#include "log.h"
 
 /****************************************************************************/
 /* signal */
@@ -30,18 +28,6 @@ void os_signal_restore_after_fork(void)
 	sigset_t mask;
 	sigemptyset(&mask);
 	sigprocmask(SIG_SETMASK, &mask, NULL); /* cannot use pthread_sigmask after fork */
-}
-
-void os_signal_set(int enable)
-{
-	sigset_t set;
-
-	sigemptyset(&set);
-	sigaddset(&set, SIGTERM);
-	sigaddset(&set, SIGINT);
-	sigaddset(&set, SIGHUP);
-
-	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
 }
 
 void os_signal_init(void (*handler_term)(int sig), void (*handler_hup)(int sig))
@@ -68,8 +54,73 @@ void os_signal_init(void (*handler_term)(int sig), void (*handler_hup)(int sig))
 	sigaction(SIGPIPE, &sa, 0);
 }
 
+void os_signal_set(int enable)
+{
+	sigset_t set;
+
+	sigemptyset(&set);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGHUP);
+
+	pthread_sigmask(enable ? SIG_UNBLOCK : SIG_BLOCK, &set, 0);
+}
+
+const char* os_signal_name(int sig)
+{
+	switch (sig) {
+#ifdef SIGHUP
+	case SIGHUP : return "SIGHUP";
+#endif
+#ifdef SIGINT
+	case SIGINT : return "SIGINT";
+#endif
+#ifdef SIGQUIT
+	case SIGQUIT : return "SIGQUIT";
+#endif
+#ifdef SIGILL
+	case SIGILL : return "SIGILL";
+#endif
+#ifdef SIGTRAP
+	case SIGTRAP : return "SIGTRAP";
+#endif
+#ifdef SIGABRT
+	case SIGABRT : return "SIGABRT";
+#endif
+#ifdef SIGBUS
+	case SIGBUS : return "SIGBUS";
+#endif
+#ifdef SIGFPE
+	case SIGFPE : return "SIGFPE";
+#endif
+#ifdef SIGKILL
+	case SIGKILL : return "SIGKILL";
+#endif
+#ifdef SIGUSR1
+	case SIGUSR1 : return "SIGUSR1";
+#endif
+#ifdef SIGSEGV
+	case SIGSEGV : return "SIGSEGV";
+#endif
+#ifdef SIGUSR2
+	case SIGUSR2 : return "SIGUSR2";
+#endif
+#ifdef SIGPIPE
+	case SIGPIPE : return "SIGPIPE";
+#endif
+#ifdef SIGALRM
+	case SIGALRM : return "SIGALRM";
+#endif
+#ifdef SIGTERM
+	case SIGTERM : return "SIGTERM";
+#endif
+	}
+
+	return "UNKNOWN";
+}
+
 /****************************************************************************/
-/* unix */
+/* fs */
 
 #if !HAVE_EACCESS
 int eaccess(const char* pathname, int mode)
@@ -77,6 +128,191 @@ int eaccess(const char* pathname, int mode)
 	return faccessat(AT_FDCWD, pathname, mode, AT_EACCESS);
 }
 #endif
+
+#if HAVE_POSIX_FADVISE
+int posix_fadvise_wrapper(int fd, off_t offset, off_t len, int advice)
+{
+	int ret = posix_fadvise(fd, offset, len, advice);
+
+	if (ret == ENOENT)
+		return ENOSYS;
+
+	return ret;
+}
+#endif
+
+int open_noatime(const char* file, int flags)
+{
+#ifdef O_NOATIME
+	int f = open(file, flags | O_NOATIME);
+
+	/* only root is allowed to use O_NOATIME, in case retry without it */
+	if (f == -1 && errno == EPERM)
+		f = open(file, flags);
+	return f;
+#else
+	return open(file, flags);
+#endif
+}
+
+int dirent_hidden(struct dirent* dd)
+{
+	return dd->d_name[0] == '.';
+}
+
+size_t direct_size(void)
+{
+	long size;
+
+	size = sysconf(_SC_PAGESIZE);
+
+	if (size == -1) {
+		/* LCOV_EXCL_START */
+		os_syslog(OS_LVL_CRITICAL, "no page size");
+		os_exit();
+		/* LCOV_EXCL_STOP */
+	}
+
+	return size;
+}
+
+const char* stat_desc(struct stat* st)
+{
+	if (S_ISREG(st->st_mode))
+		return "regular";
+	if (S_ISDIR(st->st_mode))
+		return "directory";
+	if (S_ISCHR(st->st_mode))
+		return "character";
+	if (S_ISBLK(st->st_mode))
+		return "block-device";
+	if (S_ISFIFO(st->st_mode))
+		return "fifo";
+	if (S_ISLNK(st->st_mode))
+		return "symlink";
+	if (S_ISSOCK(st->st_mode))
+		return "socket";
+	return "unknown";
+}
+
+int filephy(const char* path, uint64_t size, uint64_t* physical)
+{
+#if HAVE_LINUX_FIEMAP_H
+	/*
+	 * In Linux get the real physical address of the file
+	 * Note that FIEMAP doesn't require root permission
+	 */
+	int f;
+	struct fiemap* fiemap;
+	size_t fiemap_size;
+	unsigned int blknum;
+
+	/*
+	 * First try with FIEMAP
+	 * if works for ext2, ext3, ext4, xfs, btrfs
+	 */
+	fiemap_size = sizeof(struct fiemap) + sizeof(struct fiemap_extent);
+	fiemap = malloc(fiemap_size);
+	if (!fiemap) {
+		/* LCOV_EXCL_START */
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	f = open(path, O_RDONLY);
+	if (f == -1) {
+		/* LCOV_EXCL_START */
+		free(fiemap);
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	memset(fiemap, 0, fiemap_size);
+	fiemap->fm_start = 0;
+	fiemap->fm_length = ~0ULL;
+	fiemap->fm_flags = FIEMAP_FLAG_SYNC; /* required to ensure that just created files report a valid address and not 0 */
+	fiemap->fm_extent_count = 1; /* we are interested only at the first block */
+
+	if (ioctl(f, FS_IOC_FIEMAP, fiemap) != -1) {
+		uint32_t flags = fiemap->fm_extents[0].fe_flags;
+		uint64_t offset = fiemap->fm_extents[0].fe_physical;
+
+		/* check some condition for validating the offset */
+		if (flags & FIEMAP_EXTENT_DATA_INLINE) {
+			/* if the data is inline, we don't have an offset to report */
+			*physical = FILEPHY_WITHOUT_OFFSET;
+		} else if (flags & FIEMAP_EXTENT_UNKNOWN) {
+			/* if the offset is unknown, we don't have an offset to report */
+			*physical = FILEPHY_WITHOUT_OFFSET;
+		} else if (offset == 0) {
+			/*
+			 * 0 is the general fallback for file-systems when
+			 * they don't have an offset to report
+			 */
+			*physical = FILEPHY_WITHOUT_OFFSET;
+		} else {
+			/* finally report the real offset */
+			*physical = offset + FILEPHY_REAL_OFFSET;
+		}
+
+		free(fiemap);
+
+		if (close(f) == -1)
+			return -1;
+		return 0;
+	}
+
+	free(fiemap);
+
+	/* if the file is empty, FIBMAP doesn't work, and we don't even try to use it */
+	if (size == 0) {
+		*physical = FILEPHY_WITHOUT_OFFSET;
+		if (close(f) == -1)
+			return -1;
+		return 0;
+	}
+
+	/*
+	 * Then try with FIBMAP
+	 * it works for jfs, reiserfs, ntfs-3g
+	 * in exfat it always returns 0, that it's anyway better than the fake inodes
+	 */
+	blknum = 0; /* first block */
+	if (ioctl(f, FIBMAP, &blknum) != -1) {
+		*physical = blknum + FILEPHY_REAL_OFFSET;
+		if (close(f) == -1)
+			return -1;
+		return 0;
+	}
+
+	/*
+	 * Otherwise don't use anything, and keep the directory traversal order
+	 * at now this should happen only for vfat
+	 * and it's surely better than using fake inodes
+	 */
+	*physical = FILEPHY_UNREPORTED_OFFSET;
+	if (close(f) == -1)
+		return -1;
+#else
+	/*
+	 * In a generic Unix use a dummy value for all the files
+	 * We don't want to risk to use the inode without knowing
+	 * if it really improves performance.
+	 * In this way we keep them in the directory traversal order
+	 * that at least keeps files in the same directory together.
+	 * Note also that in newer file-system with snapshot, like ZFS,
+	 * the inode doesn't represent even more the disk position, because files
+	 * are not overwritten in place, but rewritten in another location
+	 * of the disk.
+	 */
+	*physical = FILEPHY_UNREPORTED_OFFSET;
+
+	(void)path; /* not used here */
+	(void)size;
+#endif
+
+	return 0;
+}
 
 /****************************************************************************/
 /* exec */
@@ -189,24 +425,24 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 
 	bytes_read = pread(fd, shebang, sizeof(shebang) - 1, 0); /* reserve space for the terminating 0 */
 	if (bytes_read < 0) {
-		log_task(LVL_ERROR, "failed to read script shebang, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to read script shebang, path=%s, errno=%s(%d)", script_path, strerror(errno), errno);
 		return -1;
 	}
 	if (bytes_read < 4) {
-		log_task(LVL_ERROR, "script %s is too small or missing a shebang", script_path);
+		os_syslog(OS_LVL_INFO, "script %s is too small or missing a shebang", script_path);
 		return -1;
 	}
 	shebang[bytes_read] = 0;
 
 	/* check for shebang */
 	if (shebang[0] != '#' || shebang[1] != '!') {
-		log_task(LVL_ERROR, "script %s is missing shebang (#!)", script_path);
+		os_syslog(OS_LVL_INFO, "script %s is missing shebang (#!)", script_path);
 		return -1;
 	}
 
 	char* end_of_line = strchr(shebang, '\n');
 	if (!end_of_line || end_of_line - shebang > 128) {
-		log_task(LVL_ERROR, "script %s has invalid or overlong shebang (#!), exceeds 126 characters", script_path);
+		os_syslog(OS_LVL_INFO, "script %s has invalid or overlong shebang (#!), exceeds 126 characters", script_path);
 		return -1;
 	}
 	*end_of_line = 0;
@@ -217,7 +453,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 		++interpreter;
 
 	if (*interpreter == 0) {
-		log_task(LVL_ERROR, "script %s has empty shebang", script_path);
+		os_syslog(OS_LVL_INFO, "script %s has empty shebang", script_path);
 		return -1;
 	}
 
@@ -238,49 +474,49 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
 	}
 
 	if (!found) {
-		log_task(LVL_ERROR, "script %s uses disallowed interpreter %s", script_path, interpreter);
+		os_syslog(OS_LVL_INFO, "script %s uses disallowed interpreter %s", script_path, interpreter);
 		return -1;
 	}
 
 	/* verify interpreter exists and is safe */
 	if (stat(interpreter, &st) != 0) {
-		log_task(LVL_ERROR, "interpreter %s does not exist, errno=%s(%d)", interpreter, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "interpreter %s does not exist, errno=%s(%d)", interpreter, strerror(errno), errno);
 		return -1;
 	}
 
 	/* interpreter must be a regular file */
 	if (!S_ISREG(st.st_mode)) {
-		log_task(LVL_ERROR, "interpreter %s must be a regular file", interpreter);
+		os_syslog(OS_LVL_INFO, "interpreter %s must be a regular file", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be owned by root */
 	if (st.st_uid != 0) {
-		log_task(LVL_ERROR, "interpreter %s not owned by root", interpreter);
+		os_syslog(OS_LVL_INFO, "interpreter %s not owned by root", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_task(LVL_ERROR, "interpreter %s is world-writable", interpreter);
+		os_syslog(OS_LVL_INFO, "interpreter %s is world-writable", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not group-writable (unless group is root) */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != 0) {
-		log_task(LVL_ERROR, "interpreter %s is group-writable by non-root group", interpreter);
+		os_syslog(OS_LVL_INFO, "interpreter %s is group-writable by non-root group", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be executable */
 	if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-		log_task(LVL_ERROR, "interpreter %s is not executable", interpreter);
+		os_syslog(OS_LVL_INFO, "interpreter %s is not executable", interpreter);
 		return -1;
 	}
 
 	/* interpreter must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
-		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", interpreter);
+		os_syslog(OS_LVL_INFO, "file %s has setuid/setgid bits set", interpreter);
 		return -1;
 	}
 
@@ -323,7 +559,7 @@ static int verify_shebang_interpreter(int fd, const char* script_path)
  *
  * Returns an open file descriptor (>= 0) on success. The caller is
  * responsible for closing it. Returns -1 on any verification failure;
- * the specific reason is emitted via log_task(LVL_ERROR, ...).
+ * the specific reason is emitted via os_syslog(OS_LVL_INFO, ...).
  */
 static int verify_executable(const char* exec_path, char* resolved_path, int is_script)
 {
@@ -338,29 +574,29 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 
 	/* verify path is absolute */
 	if (exec_path[0] != '/') {
-		log_task(LVL_ERROR, "path %s must be absolute", exec_path);
+		os_syslog(OS_LVL_INFO, "path %s must be absolute", exec_path);
 		return -1;
 	}
 
 	/* resolve the path to prevent symlink attacks */
 	if (!realpath(exec_path, resolved_path)) {
-		log_task(LVL_ERROR, "failed to resolve %s, errno=%s(%d)", exec_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to resolve %s, errno=%s(%d)", exec_path, strerror(errno), errno);
 		return -1;
 	}
 
 	char* last_slash = strrchr(resolved_path, '/');
 	if (last_slash == 0) {
-		log_task(LVL_ERROR, "relative execution of %s not allowed", resolved_path);
+		os_syslog(OS_LVL_INFO, "relative execution of %s not allowed", resolved_path);
 		return -1;
 	}
 	if (last_slash == resolved_path) {
-		log_task(LVL_ERROR, "root dir execution of %s not allowed", resolved_path);
+		os_syslog(OS_LVL_INFO, "root dir execution of %s not allowed", resolved_path);
 		return -1;
 	}
 
 	const char* exec_name = last_slash + 1;
 	if (exec_name[0] == 0) {
-		log_task(LVL_ERROR, "no executable name in %s", exec_path);
+		os_syslog(OS_LVL_INFO, "no executable name in %s", exec_path);
 		return -1;
 	}
 
@@ -371,33 +607,33 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 
 	int dir_fd = open(dir_path, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 	if (dir_fd < 0) {
-		log_task(LVL_ERROR, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to open directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
 		return -1;
 	}
 
 	if (fstat(dir_fd, &st) != 0) {
-		log_task(LVL_ERROR, "failed to stat directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to stat directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
 		close(dir_fd);
 		return -1;
 	}
 
 	/* directory must be owned by root or the daemon's real user */
 	if (st.st_uid != process_uid && st.st_uid != process_euid && st.st_uid != 0) {
-		log_task(LVL_ERROR, "directory %s owner must match the daemon owner or be root", dir_path);
+		os_syslog(OS_LVL_INFO, "directory %s owner must match the daemon owner or be root", dir_path);
 		close(dir_fd);
 		return -1;
 	}
 
 	/* directory must be not group-writable unless group matches daemon */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != process_gid && st.st_gid != process_egid && st.st_gid != 0) {
-		log_task(LVL_ERROR, "directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
+		os_syslog(OS_LVL_INFO, "directory %s must be not group-writable unless group matches daemon owner or root", dir_path);
 		close(dir_fd);
 		return -1;
 	}
 
 	/* directory must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_task(LVL_ERROR, "directory %s must be not world-writable", dir_path);
+		os_syslog(OS_LVL_INFO, "directory %s must be not world-writable", dir_path);
 		close(dir_fd);
 		return -1;
 	}
@@ -417,7 +653,7 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 
 	int fd = openat(dir_fd, exec_name, flags);
 	if (fd < 0) {
-		log_task(LVL_ERROR, "failed to open %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to open %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(dir_fd);
 		return -1;
 	}
@@ -426,14 +662,14 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 
 	/* get the file handle (TOCTOU Protection) */
 	if (fstat(fd, &st) == -1) {
-		log_task(LVL_ERROR, "failed to stat %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to stat %s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(fd);
 		return -1;
 	}
 
 	/* ensure it's a regular file */
 	if (!S_ISREG(st.st_mode)) {
-		log_task(LVL_ERROR, "file %s is not a regular file", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s is not a regular file", resolved_path);
 		close(fd);
 		return -1;
 	}
@@ -442,7 +678,7 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 	if (!is_script) {
 		char magic[2];
 		if (read(fd, magic, 2) == 2 && magic[0] == '#' && magic[1] == '!') {
-			log_task(LVL_ERROR, "file %s is a script, which is not supported", resolved_path);
+			os_syslog(OS_LVL_INFO, "file %s is a script, which is not supported", resolved_path);
 			close(fd);
 			return -1;
 		}
@@ -453,40 +689,57 @@ static int verify_executable(const char* exec_path, char* resolved_path, int is_
 
 	/* ensure it has execute permissions */
 	if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-		log_task(LVL_ERROR, "file %s is not an executable", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s is not an executable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* must be owned by root or the daemon's real user */
 	if (st.st_uid != process_uid && st.st_uid != process_euid && st.st_uid != 0) {
-		log_task(LVL_ERROR, "file %s owner must match the daemon owner or be root", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s owner must match the daemon owner or be root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* must be not group-writable unless group matches daemon */
 	if ((st.st_mode & S_IWGRP) && st.st_gid != process_gid && st.st_gid != process_egid && st.st_gid != 0) {
-		log_task(LVL_ERROR, "file %s must be not group-writable unless group matches daemon owner or root", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s must be not group-writable unless group matches daemon owner or root", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* must be not world-writable */
 	if (st.st_mode & S_IWOTH) {
-		log_task(LVL_ERROR, "file %s must be not world-writable", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s must be not world-writable", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	/* must be not setuid / setgid */
 	if (st.st_mode & (S_ISUID | S_ISGID)) {
-		log_task(LVL_ERROR, "file %s has setuid/setgid bits set", resolved_path);
+		os_syslog(OS_LVL_INFO, "file %s has setuid/setgid bits set", resolved_path);
 		close(fd);
 		return -1;
 	}
 
 	return fd;
+}
+
+int os_validate_exec_input(const char* str)
+{
+	/* reject paths trying to go up levels */
+	if (strstr(str, "..") != 0) {
+		os_syslog(OS_LVL_INFO, "invalid argument %s for execution", str);
+		return -1;
+	}
+
+	/* reject inputs starting with '-' to prevent Flag Injection */
+	if (str[0] == '-') {
+		os_syslog(OS_LVL_INFO, "invalid argument %s for execution", str);
+		return -1;
+	}
+
+	return 0;
 }
 
 /**
@@ -514,7 +767,7 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 
 	pid = fork();
 	if (pid < 0) {
-		log_task(LVL_ERROR, "failed to fork script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to fork script=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		close(fd);
 		return -1;
 	}
@@ -630,34 +883,34 @@ int os_script(char** argv, char** envp, const char* run_as_user)
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_task(LVL_ERROR, "failed to wait for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to wait for script, path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		return -1;
 	}
 
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_task(LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
+		os_syslog(OS_LVL_WARNING, "script %s took %" PRId64 " seconds", resolved_path, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_task(LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
+			os_syslog(OS_LVL_INFO, "script %s terminated in %" PRId64 " seconds with success", resolved_path, execution_time);
 		else
-			log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
+			os_syslog(OS_LVL_INFO, "script %s terminated in %" PRId64 " seconds with exit code %d", resolved_path, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
-			log_task(LVL_WARNING, "script %s timeout after %" PRId64 " seconds", resolved_path, execution_time);
+			os_syslog(OS_LVL_INFO, "script %s timeout after %" PRId64 " seconds", resolved_path, execution_time);
 		} else {
-			log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, signal_name(sig), sig);
+			os_syslog(OS_LVL_INFO, "script %s terminated in %" PRId64 " seconds with signal %s(%d)", resolved_path, execution_time, os_signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_task(LVL_ERROR, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
+		os_syslog(OS_LVL_INFO, "script %s terminated in %" PRId64 " seconds for unknown reason, status=%d", resolved_path, execution_time, status);
 		return -1;
 	}
 }
@@ -673,7 +926,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	/* create pipe only if we have text to send */
 	if (stdin_text != NULL) {
 		if (pipe(pipe_fds) < 0) {
-			log_task(LVL_ERROR, "failed to create pipe for command, errno=%s(%d)", strerror(errno), errno);
+			os_syslog(OS_LVL_INFO, "failed to create input pipe, errno=%s(%d)", strerror(errno), errno);
 			return -1;
 		}
 	}
@@ -682,7 +935,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 
 	pid = fork();
 	if (pid < 0) {
-		log_task(LVL_ERROR, "failed to fork command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to fork command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		if (pipe_fds[0] != -1) {
 			close(pipe_fds[0]);
 			close(pipe_fds[1]);
@@ -778,7 +1031,7 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 		/* write text to child's stdin */
 		ssize_t len = strlen(stdin_text);
 		if (write(pipe_fds[1], stdin_text, len) != len) {
-			log_task(LVL_WARNING, "failed to write full stdin to command %s", command);
+			os_syslog(OS_LVL_INFO, "failed to write full stdin to command %s", command);
 		}
 		/* closing the pipe sends EOF to the child (e.g., tells curl data is done) */
 		close(pipe_fds[1]);
@@ -789,34 +1042,34 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		log_task(LVL_ERROR, "failed to wait for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
+		os_syslog(OS_LVL_INFO, "failed to wait for command, command=%s, errno=%s(%d)", command, strerror(errno), errno);
 		return -1;
 	}
 
 	stop = os_tick_sec();
 	int64_t execution_time = stop - start;
 	if (execution_time > 30)
-		log_task(LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
+		os_syslog(OS_LVL_WARNING, "command %s ran for %" PRId64 " seconds that is unexpectedly long", command, execution_time);
 
 	if (WIFEXITED(status)) {
 		int exit_code = WEXITSTATUS(status);
 		if (exit_code == 0)
-			log_task(LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
+			os_syslog(OS_LVL_INFO, "command %s terminated in %" PRId64 " seconds with success", command, execution_time);
 		else
-			log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
+			os_syslog(OS_LVL_INFO, "command %s terminated in %" PRId64 " seconds with exit code %d", command, execution_time, exit_code);
 		return exit_code;
 	} else if (WIFSIGNALED(status)) {
 		/* child died from a signal */
 		int sig = WTERMSIG(status);
 		if (sig == SIGALRM) {
-			log_task(LVL_WARNING, "command %s timeout after %" PRId64 " seconds", command, execution_time);
+			os_syslog(OS_LVL_INFO, "command %s timeout after %" PRId64 " seconds", command, execution_time);
 		} else {
-			log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, signal_name(sig), sig);
+			os_syslog(OS_LVL_INFO, "command %s terminated in %" PRId64 " seconds with signal %s(%d)", command, execution_time, os_signal_name(sig), sig);
 		}
 		return 128 + sig;
 	} else {
 		/* in Linux it should never happen */
-		log_task(LVL_ERROR, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
+		os_syslog(OS_LVL_INFO, "command %s terminated in %" PRId64 " seconds for unknown reason, status=%d", command, execution_time, status);
 		return -1;
 	}
 }
@@ -876,6 +1129,7 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 
 	if (has_out) {
 		if (pipe_cloexec(out_pipe) < 0) {
+			os_syslog(OS_LVL_INFO, "failed to open output pipe, errno=%s(%d)", strerror(errno), errno);
 			close(fd);
 			return -1;
 		}
@@ -883,6 +1137,7 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 
 	if (has_err) {
 		if (pipe_cloexec(err_pipe) < 0) {
+			os_syslog(OS_LVL_INFO, "failed to open error pipe, errno=%s(%d)", strerror(errno), errno);
 			if (has_out) {
 				close(out_pipe[0]);
 				close(out_pipe[1]);
@@ -894,6 +1149,7 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 
 	pid = fork();
 	if (pid < 0) {
+		os_syslog(OS_LVL_INFO, "failed to fork path=%s, errno=%s(%d)", resolved_path, strerror(errno), errno);
 		if (has_out) {
 			close(out_pipe[0]);
 			close(out_pipe[1]);
@@ -995,17 +1251,21 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 	close(fd);
 
 	if (has_out) {
+#ifdef F_SETPIPE_SZ
 		if (fcntl(out_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
-			log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+			os_syslog(OS_LVL_INFO, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
 		}
+#endif
 		close(out_pipe[1]);
 		*stdout_read_fd = out_pipe[0];
 	}
 
 	if (has_err) {
+#ifdef F_SETPIPE_SZ
 		if (fcntl(err_pipe[0], F_SETPIPE_SZ, 4096) == -1) {
-			log_task(LVL_WARNING, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
+			os_syslog(OS_LVL_INFO, "failed to set pipe size, errno=%s(%d)", strerror(errno), errno);
 		}
+#endif
 		close(err_pipe[1]);
 		*stderr_read_fd = err_pipe[0];
 	}
@@ -1021,6 +1281,10 @@ int os_wait(pid_t pid, int* status)
 		ret = waitpid(pid, status, 0);
 	} while (ret == -1 && errno == EINTR);
 
+	if (ret == -1) {
+		os_syslog(OS_LVL_INFO, "failed to wait, errno=%s(%d)", strerror(errno), errno);		
+	}
+
 	return ret;
 }
 
@@ -1034,8 +1298,190 @@ int os_term(pid_t pid)
 	return kill(-pid, SIGTERM);
 }
 
+int os_spawn_and_wait(const char** argv)
+{
+	pid_t pid = os_spawn((char**)argv, 0, 0, 0);
+	if (pid < 0) {
+		/* LCOV_EXCL_START */
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	int status;
+	int ret = os_wait(pid, &status);
+	if (ret == -1) {
+		/* LCOV_EXCL_START */
+		return -1;
+		/* LCOV_EXCL_STOP */
+	}
+
+	if (WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		return 128 + WTERMSIG(status);
+	}
+
+	return -1;
+}
+
+OS_FILE* os_popen(const char** argv)
+{
+	int stdout_fd = -1;
+	OS_FILE* os_file = malloc(sizeof(OS_FILE));
+	if (!os_file)
+		return 0;
+
+	pid_t pid = os_spawn((char**)argv, &stdout_fd, 0, 0);
+	if (pid < 0) {
+		free(os_file);
+		return 0;
+	}
+
+	FILE* fp = fdopen(stdout_fd, "r");
+	if (!fp) {
+		/* LCOV_EXCL_START */
+		int saved_errno = errno;
+		close(stdout_fd);
+		int status;
+		os_wait(pid, &status);
+		errno = saved_errno;
+		free(os_file);
+		return 0;
+		/* LCOV_EXCL_STOP */
+	}
+
+	os_file->fp = fp;
+	os_file->pid = pid;
+
+	return os_file;
+}
+
+char* os_fgets(char* s, int size, OS_FILE* stream)
+{
+	return fgets(s, size, stream->fp);
+}
+
+int os_pclose(OS_FILE* stream)
+{
+	/* leep handles locally to free container block immediately */
+	FILE* fp = stream->fp;
+	pid_t pid = stream->pid;
+	free(stream);
+
+	/* close buffered stream, releasing the underlying fd */
+	fclose(fp);
+
+	int status = 0;
+	if (os_wait(pid, &status) < 0) {
+		return -1;
+	}
+
+	return status;
+}
+
+/****************************************************************************/
+/* privileges */
+
+static uid_t unpriv_uid = -1;
+static gid_t unpriv_gid = -1;
+static int can_switch = 0;
+
+void os_privileges_drop(void)
+{
+	/*
+	 * Detect if running as root
+	 *
+	 * Note that all calls to os_privileges_release() and os_privileges_acquire()
+	 * are no-ops before this detection.
+	 */
+	if (getuid() == 0 || geteuid() == 0) {
+		/* find the unprivileged user "nobody" */
+		struct passwd* pw = getpwnam("nobody");
+		if (pw) {
+			unpriv_uid = pw->pw_uid;
+			unpriv_gid = pw->pw_gid;
+			can_switch = 1;
+		}
+	}
+
+	os_privileges_release();
+}
+
+void os_privileges_acquire(void)
+{
+	if (can_switch) {
+		if (seteuid(0) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to acquire privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+		if (setegid(0) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to acquire group privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+	}
+}
+
+void os_privileges_release(void)
+{
+	if (can_switch) {
+		if (setegid(unpriv_gid) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to release group privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+		if (seteuid(unpriv_uid) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to release privileges, errno=%s(%d)", strerror(errno), errno);
+		}
+	}
+}
+
 /****************************************************************************/
 /* os */
+
+uint64_t os_tick(void)
+{
+#if HAVE_MACH_ABSOLUTE_TIME
+	/* for Mac OS X */
+	return mach_absolute_time();
+#elif HAVE_CLOCK_GETTIME && (defined(CLOCK_MONOTONIC) || defined(CLOCK_MONOTONIC_RAW))
+	/* for Linux */
+	struct timespec tv;
+
+	/* nanosecond precision with clock_gettime() */
+#if defined(CLOCK_MONOTONIC_RAW)
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &tv) != 0) {
+#else
+	if (clock_gettime(CLOCK_MONOTONIC, &tv) != 0) {
+#endif
+		/* LCOV_EXCL_START */
+		return 0;
+		/* LCOV_EXCL_STOP */
+	}
+
+	return tv.tv_sec * 1000000000ULL + tv.tv_nsec;
+#else
+	/* other platforms */
+	struct timeval tv;
+
+	/* microsecond precision with gettimeofday() */
+	if (gettimeofday(&tv, 0) != 0) {
+		/* LCOV_EXCL_START */
+		return 0;
+		/* LCOV_EXCL_STOP */
+	}
+
+	return tv.tv_sec * 1000000ULL + tv.tv_usec;
+#endif
+}
+
+uint64_t os_tick_ms(void)
+{
+	struct timeval tv;
+
+	if (gettimeofday(&tv, 0) != 0) {
+		/* LCOV_EXCL_START */
+		return 0;
+		/* LCOV_EXCL_STOP */
+	}
+
+	return tv.tv_sec * 1000ULL + tv.tv_usec / 1000;
+}
 
 uint64_t os_tick_sec(void)
 {
@@ -1075,53 +1521,86 @@ int os_randomize(void* ptr, size_t size)
 	return 0;
 }
 
-static uid_t unpriv_uid = -1;
-static gid_t unpriv_gid = -1;
-static int can_switch = 0;
-
-void os_privileges_drop(void)
+void os_clear(void)
 {
-	/*
-	 * Detect if running as root
-	 *
-	 * Note that all calls to os_privileges_release() and os_privileges_acquire()
-	 * are no-ops before this detection.
-	 */
-	if (getuid() == 0 || geteuid() == 0) {
-		/* find the unprivileged user "nobody" */
-		struct passwd* pw = getpwnam("nobody");
-		if (pw) {
-			unpriv_uid = pw->pw_uid;
-			unpriv_gid = pw->pw_gid;
-			can_switch = 1;
-		}
-	}
-
-	os_privileges_release();
+	/* ANSI codes */
+	printf("\033[H"); /* cursor at topleft */
+	printf("\033[2J"); /* clear screen */
 }
 
-void os_privileges_acquire(void)
+/* LCOV_EXCL_START */
+void os_abort(void)
 {
-	if (can_switch) {
-		if (seteuid(0) != 0) {
-			log_task(LVL_ERROR, "failed to acquire privileges, errno=%s(%d)", strerror(errno), errno);
-		}
-		if (setegid(0) != 0) {
-			log_task(LVL_ERROR, "failed to acquire group privileges, errno=%s(%d)", strerror(errno), errno);
+#if HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS
+	void* stack[32];
+	char** messages;
+	unsigned size;
+	unsigned i;
+#endif
+
+	printf("Stacktrace of " PACKAGE " v" VERSION);
+#ifdef _linux
+	printf(", linux");
+#endif
+#ifdef __GNUC__
+	printf(", gcc " __VERSION__);
+#endif
+	printf(", %d-bit", (int)sizeof(void*) * 8);
+	printf(", PATH_MAX=%d", PATH_MAX);
+	printf("\n");
+
+#if HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS
+	size = backtrace(stack, 32);
+
+	messages = backtrace_symbols(stack, size);
+
+	for (i = 1; i < size; ++i) {
+		const char* msg;
+
+		if (messages)
+			msg = messages[i];
+		else
+			msg = "<unknown>";
+
+		printf("[bt] %02u: %s\n", i, msg);
+
+		if (messages) {
+			int ret;
+			char addr2line[1024];
+			size_t j = 0;
+			while (msg[j] != '(' && msg[j] != ' ' && msg[j] != 0)
+				++j;
+
+			snprintf(addr2line, sizeof(addr2line), "addr2line %p -e %.*s", stack[i], (unsigned)j, msg);
+
+			ret = system(addr2line);
+			if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)
+				printf("exit:%d\n", WEXITSTATUS(ret));
+			if (WIFSIGNALED(ret))
+				printf("signal:%d\n", WTERMSIG(ret));
 		}
 	}
+#endif
+
+	printf("Please report this error to the SnapRAID Issues:\n");
+	printf("https://github.com/amadvance/snapraid/issues\n");
+
+	abort();
+}
+/* LCOV_EXCL_STOP */
+
+void os_exit(void)
+{
+	exit(EXIT_FAILURE);
 }
 
-void os_privileges_release(void)
+void os_init(unsigned opt)
 {
-	if (can_switch) {
-		if (setegid(unpriv_gid) != 0) {
-			log_task(LVL_ERROR, "failed to release group privileges, errno=%s(%d)", strerror(errno), errno);
-		}
-		if (seteuid(unpriv_uid) != 0) {
-			log_task(LVL_ERROR, "failed to release privileges, errno=%s(%d)", strerror(errno), errno);
-		}
-	}
+	(void)opt;
+}
+
+void os_done(void)
+{
 }
 
 #endif

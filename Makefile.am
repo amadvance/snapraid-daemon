@@ -95,10 +95,10 @@ snapraidd_SOURCES = \
 	daemon/report.c \
 	daemon/notify.c \
 	daemon/smart.c \
-	daemon/unix.c \
 	daemon/unixapp.c \
-	daemon/mingw.c \
 	daemon/mingwapp.c \
+	os/unix.c \
+	os/mingw.c \
 	civetweb/civetweb.c \
 	tommyds/tommy.c \
 	monocypher/monocypher.c
@@ -120,10 +120,10 @@ noinst_HEADERS = \
 	civetweb/md5.inl \
 	civetweb/response.inl \
 	civetweb/sort.inl \
-	daemon/portable.h \
-	daemon/unix.h \
-	daemon/mingw.h \
-	daemon/os.h \
+	os/portable.h \
+	os/unix.h \
+	os/mingw.h \
+	os/os.h \
 	daemon/app.h \
 	daemon/state.h \
 	daemon/runner.h \
@@ -359,11 +359,8 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/app.h \
 	$(srcdir)/daemon/elem.h \
 	$(srcdir)/daemon/log.h \
-	$(srcdir)/daemon/mingw.h \
 	$(srcdir)/daemon/notify.h \
-	$(srcdir)/daemon/os.h \
 	$(srcdir)/daemon/parser.h \
-	$(srcdir)/daemon/portable.h \
 	$(srcdir)/daemon/report.h \
 	$(srcdir)/daemon/rest.h \
 	$(srcdir)/daemon/runner.h \
@@ -371,11 +368,15 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/smart.h \
 	$(srcdir)/daemon/state.h \
 	$(srcdir)/daemon/support.h \
-	$(srcdir)/daemon/unix.h \
 	$(srcdir)/daemon/version.h \
 	$(srcdir)/daemon/web.h \
 	$(srcdir)/daemon/zip.h \
-	$(srcdir)/daemon/zio.h
+	$(srcdir)/daemon/zio.h \
+	$(srcdir)/os/mingw.h \
+	$(srcdir)/os/os.h \
+	$(srcdir)/os/portable.h \
+	$(srcdir)/os/unix.h
+
 $(DAEMON_PREFIX)conf.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)daemon.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)elem.$(OBJEXT): $(DAEMON_INCLUDES)

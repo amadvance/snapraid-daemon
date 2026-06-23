@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2011 Andrea Mazzoleni
+// Copyright (C) 2026 Andrea Mazzoleni
 
 #ifndef __PORTABLE_MINGW_H
 #define __PORTABLE_MINGW_H
@@ -9,6 +9,12 @@
 #include <wchar.h>
 
 #define SYSLOG "EventLog"
+
+#define OS_LVL_CRITICAL 1
+#define OS_LVL_ERROR 2
+#define OS_LVL_WARNING 3
+#define OS_LVL_INFO 4
+#define OS_LVL_DEBUG 5
 
 /* map Windows name to POSIX name */
 #define strncasecmp _strnicmp
@@ -41,12 +47,43 @@ wchar_t* convert_arg(wchar_t* conv_buf, const char* src, int only_if_required);
 #define convert(buf, a) convert_arg(buf, a, 0)
 #define convert_if_required(buf, a) convert_arg(buf, a, 1)
 
+/**
+ * Convert a generic string from UTF16 to UTF8.
+ * \param conv_buf Destination UTF-8 buffer of size CONV_MAX.
+ * \param src Source UTF-16 null-terminated string.
+ * \return The converted string. It never fails.
+ */
 char* u16tou8(char* conv_buf, const wchar_t* src);
 
 /**
  * Convert a generic string from UTF8 to UTF16.
+ * \param conv_buf Destination UTF-16 buffer of size CONV_MAX.
+ * \param src Source UTF-8 null-terminated string.
+ * \return The converted string. It never fails.
  */
 wchar_t* u8tou16(wchar_t* conv_buf, const char* src);
+
+/**
+ * Convert a generic string from UTF16 to UTF8.
+ * \param conv_buf Destination UTF-8 buffer.
+ * \param number_of_char Size of the destination buffer in bytes.
+ * \param src Source UTF-16 string.
+ * \param number_of_wchar Number of wide characters to convert.
+ * \param result_length_without_terminator Optional pointer to receive the converted length.
+ * \return The converted string, or 0 on failure.
+ */
+char* u16tou8_mayfail(char* conv_buf, size_t number_of_char, const wchar_t* src, size_t number_of_wchar, size_t* result_length_without_terminator);
+
+/**
+ * Convert a generic string from UTF8 to UTF16.
+ * \param conv_buf Destination UTF-16 buffer.
+ * \param conv_size Size of the destination buffer in wchar_t elements.
+ * \param src Source UTF-8 string.
+ * \param number_of_char Number of bytes to convert (or -1 for null-terminated string).
+ * \param result_length_without_terminator Optional pointer to receive the converted length.
+ * \return The converted string, or 0 on failure.
+ */
+wchar_t* u8tou16_mayfail(wchar_t* conv_buf, size_t number_of_wchar, const char* src, size_t number_of_char, size_t* result_length_without_terminator);
 
 /****************************************************************************/
 /* file */
@@ -398,7 +435,7 @@ const char* windows_stat_desc(struct stat* st);
 unsigned windows_sleep(unsigned seconds);
 
 /**
- * List usleep().
+ * Like usleep().
  */
 void windows_usleep(uint64_t useconds);
 
@@ -412,6 +449,12 @@ int windows_readlink(const char* file, char* buffer, size_t size);
  * Return ENOSYS if symlinks are not supported.
  */
 int windows_symlink(const char* existing, const char* file);
+
+/**
+ * Like symlink().
+ * Return ENOSYS if symlinks are not supported.
+ */
+int windows_symlink_directory(const char* existing, const char* file);
 
 /**
  * Like link().
@@ -469,6 +512,16 @@ struct tm* windows_localtime_r(const time_t* timer, struct tm* result);
 char* windows_realpath(const char* path, char* resolved_path);
 
 /**
+ * Like GetFileAttributes()
+ */
+int windows_get_file_attributes(const char* file);
+
+/**
+ * Like SetFileAttributes()
+ */
+int windows_set_file_attributes(const char* file, int attributes);
+
+/**
  * Convert Windows error to errno.
  */
 void windows_errno(DWORD error);
@@ -503,6 +556,7 @@ typedef void* windows_key_t;
 #define thread_mutex_t windows_mutex_t
 #define thread_cond_t windows_cond_t
 #define thread_rwlock_t windows_rwlock_t
+#define thread_key_t windows_key_t
 #define pthread_mutex_init windows_mutex_init
 #define pthread_mutex_destroy windows_mutex_destroy
 #define pthread_mutex_lock windows_mutex_lock
@@ -519,6 +573,10 @@ typedef void* windows_key_t;
 #define pthread_cond_wait windows_cond_wait
 #define pthread_create windows_create
 #define pthread_join windows_join
+#define pthread_key_create windows_key_create
+#define pthread_key_delete windows_key_delete
+#define pthread_getspecific windows_getspecific
+#define pthread_setspecific windows_setspecific
 
 /**
  * Like the pthread_* equivalent.
@@ -537,12 +595,18 @@ int windows_cond_destroy(windows_cond_t* cond);
 int windows_cond_signal(windows_cond_t* cond);
 int windows_cond_broadcast(windows_cond_t* cond);
 int windows_cond_wait(windows_cond_t* cond, windows_mutex_t* mutex);
+int windows_create(thread_id_t* thread, void* attr, void* (*func)(void*), void* arg);
+int windows_join(thread_id_t thread, void** retval);
+
+/**
+ * Windows thread variables
+ *
+ * WARNING: windows_key_create and windows_key_delete must be called from a monothread context
+ */
 int windows_key_create(windows_key_t* key, void (*destructor)(void*));
 int windows_key_delete(windows_key_t key);
 void* windows_getspecific(windows_key_t key);
 int windows_setspecific(windows_key_t key, void* value);
-int windows_create(thread_id_t* thread, void* attr, void* (*func)(void*), void* arg);
-int windows_join(thread_id_t thread, void** retval);
 
 /****************************************************************************/
 /* service */

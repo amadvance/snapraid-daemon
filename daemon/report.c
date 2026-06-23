@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Andrea Mazzoleni
 
-#include "portable.h"
+#include "os/portable.h"
 
+#include "app.h"
 #include "report.h"
 #include "state.h"
 #include "support.h"
@@ -374,7 +375,7 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 		if (reason)
 			ss_printf(ss, "Signaled: %s\n", reason->msg);
 		else
-			ss_printf(ss, "Signaled %s\n", signal_name(task->exit_sig));
+			ss_printf(ss, "Signaled %s\n", os_signal_name(task->exit_sig));
 	} else if (task->state == PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "Canceled: %s\n", task->exit_msg);
 	} else {
@@ -442,7 +443,7 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 			}
 		}
 	} else if (task->state == PROCESS_STATE_SIGNAL) {
-		ss_printf(ss, "SIGNALED (%s)\n", signal_name(task->exit_sig));
+		ss_printf(ss, "SIGNALED (%s)\n", os_signal_name(task->exit_sig));
 		if (reason)
 			ss_printf(ss, "!! %s\n", reason->msg);
 	} else if (task->state == PROCESS_STATE_CANCEL) {
