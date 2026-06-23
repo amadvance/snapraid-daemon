@@ -5,6 +5,9 @@ SnapRAID-Daemon HISTORY
 ============
  * Make the light theme the default in the web dashboard (Commander) and
    prevent a Flash of Unstyled Content (FOUC) on page reload.
+ * Show the Refresh button also when the health status is Pending, 
+   allowing the user to force a recheck.
+ * Remove extra newlines from some HTTP error responses.
 
 1.12 2026/06
 ============
