@@ -81,10 +81,10 @@ static wchar_t* u8tou16(wchar_t* conv_buf, const char* src)
 	return conv_buf;
 }
 
-static char* u16tou8ex(char* conv_buf, const wchar_t* src, size_t number_of_wchar, size_t* result_length_without_terminator)
+static char* u16tou8ex(char* conv_buf, size_t conv_size, const wchar_t* src, size_t number_of_wchar, size_t* result_length_without_terminator)
 {
 	/* flags at 0 forces the API to never fail on malformed UTF-16 sequences */
-	int ret = WideCharToMultiByte(CP_UTF8, 0, src, number_of_wchar, conv_buf, CONV_MAX, 0, 0);
+	int ret = WideCharToMultiByte(CP_UTF8, 0, src, number_of_wchar, conv_buf, conv_size, 0, 0);
 	if (ret <= 0) {
 		DWORD error = GetLastError();
 		if (error == ERROR_INSUFFICIENT_BUFFER) {
@@ -105,7 +105,15 @@ static char* u16tou8(char* conv_buf, const wchar_t* src)
 	size_t len;
 
 	/* convert also the 0 terminator */
-	return u16tou8ex(conv_buf, src, wcslen(src) + 1, &len);
+	return u16tou8ex(conv_buf, CONV_MAX, src, wcslen(src) + 1, &len);
+}
+
+static char* u16to8size(char* conv_buf, size_t conv_size, const wchar_t* src)
+{
+	size_t len;
+
+	/* convert also the 0 terminator */
+	return u16tou8ex(conv_buf, conv_size, src, wcslen(src) + 1, &len);
 }
 
 static char path_snapraid[PATH_MAX];
@@ -543,7 +551,7 @@ static void windows_finddata2dirent(const WIN32_FIND_DATAW* info, struct windows
 	const char* name;
 	size_t len;
 
-	name = u16tou8ex(conv_buf, info->cFileName, wcslen(info->cFileName), &len);
+	name = u16tou8ex(conv_buf, CONV_MAX, info->cFileName, wcslen(info->cFileName), &len);
 
 	if (len + 1 >= sizeof(dirent->d_name)) {
 		log_msg(LVL_CRITICAL, "name too long");
@@ -1376,7 +1384,6 @@ static int argcat(WCHAR* cmd, int size, int pos, const WCHAR* arg)
 pid_t os_spawn(char** argv, int* stderr_read_int)
 {
 	wchar_t conv[CONV_MAX];
-	char conv8[CONV_MAX];
 	HANDLE stderr_write_handle;
 	HANDLE stderr_read_handle;
 	SECURITY_ATTRIBUTES sa;
@@ -1416,6 +1423,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 
 	/* prepare command line string (Windows uses a single string, not an array) */
 	WCHAR cmd_buffer[COMMAND_LINE_MAX];
+	char cmd_buffer_conv[COMMAND_LINE_MAX * 3]; /* * 3 is needed because a single UTF-16 character can take up to 3 bytes in UTF-8 */
 	int pos = 0;
 	for (int i = 0; argv[i]; ++i) {
 		pos = argcat(cmd_buffer, COMMAND_LINE_MAX, pos, u8tou16(conv, argv[i]));
@@ -1455,7 +1463,7 @@ pid_t os_spawn(char** argv, int* stderr_read_int)
 	);
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create process '%s' for spawn, errno=%s(%d)", u16tou8(conv8, cmd_buffer), strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process '%s' for spawn, errno=%s(%d)", u16to8size(cmd_buffer_conv, sizeof(cmd_buffer_conv), cmd_buffer), strerror(errno), errno);
 		CloseHandle(stderr_write_handle);
 		close(f); /* close also stderr_read_handle */
 		return -1;
@@ -1711,7 +1719,6 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 int os_script(char** argv, const char* run_as_user)
 {
 	wchar_t conv[CONV_MAX];
-	char conv8[CONV_MAX];
 	PROCESS_INFORMATION pi;
 	STARTUPINFOW si;
 	BOOL ret;
@@ -1733,6 +1740,7 @@ int os_script(char** argv, const char* run_as_user)
 
 	/* prepare command line string (Windows uses a single string, not an array) */
 	WCHAR cmd_buffer[COMMAND_LINE_MAX];
+	char cmd_buffer_conv[COMMAND_LINE_MAX * 3]; /* * 3 is needed because a single UTF-16 character can take up to 3 bytes in UTF-8 */
 	int pos = 0;
 
 	/*
@@ -1829,7 +1837,7 @@ int os_script(char** argv, const char* run_as_user)
 	}
 	if (!ret) {
 		windows_errno(GetLastError());
-		log_task(LVL_ERROR, "failed to create process '%s' for script, errno=%s(%d)", u16tou8(conv8, cmd_buffer), strerror(errno), errno);
+		log_task(LVL_ERROR, "failed to create process '%s' for script, errno=%s(%d)", u16to8size(cmd_buffer_conv, sizeof(cmd_buffer_conv), cmd_buffer), strerror(errno), errno);
 		return -1;
 	}
 

@@ -7,6 +7,8 @@ SnapRAID-Daemon HISTORY
    prevent a Flash of Unstyled Content (FOUC) on page reload.
  * Show the Refresh button also when the health status is Pending, 
    allowing the user to force a recheck.
+ * In Refresh, force all disks to spin up to ensure filesystem and SMART
+   information is read.
  * Remove extra newlines from some HTTP error responses.
 
 1.12 2026/06
