@@ -209,13 +209,11 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	int ret = 0;
 
 	/**
-	 * Schedule a probe command to ensure all filesystem information is read,
+	 * Schedule a up command to ensure all filesystem information is read,
 	 * because the subsequent read command avoids accessing the disks directly.
-	 * This prevents it from reading the filesystem UUID and detecting any
-	 * disk changes.
 	 */
 	if (ret == 0)
-		ret = runner_locked(state, CMD_REFRESH, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_REFRESH, CMD_UP, now, 0, msg, msg_size, status);
 
 	if (ret == 0)
 		ret = runner_locked(state, CMD_REFRESH, CMD_READ, now, 0, msg, msg_size, status);
