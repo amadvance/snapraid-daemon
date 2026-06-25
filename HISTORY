@@ -3,6 +3,9 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Export temperature warning/critical thresholds and status fields in the
+   REST API, and integrate them into the web dashboards to automatically
+   color-code drives (supporting higher limits for SSD, NVMe devices).
  * Added support for managing multiple independent SnapRAID arrays:
    - On Linux/systemd, daemon instances can be managed individually using
      the template unit `snapraidd@.service`.

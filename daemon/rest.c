@@ -1615,6 +1615,37 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 				ss_json_u64(s, level, "temperature_min_celsius", temp_min);
 			if (temp_max != SMART_UNASSIGNED)
 				ss_json_u64(s, level, "temperature_max_celsius", temp_max);
+
+			int is_nand = 0;
+			if (dev->rotational == 0) {
+				is_nand = 1;
+			} else if (dev->interf[0] != 0) {
+				if (strcasecmp(dev->interf, "nvme") == 0
+					|| strcasecmp(dev->interf, "sd") == 0 /* Secure Digital cards */
+					|| strcasecmp(dev->interf, "mmc") == 0 /* Embedded MultiMediaCards (eMMC) */
+					|| strcasecmp(dev->interf, "scm") == 0 /* Storage Class Memory */
+					|| strcasecmp(dev->interf, "ufs") == 0) { /* Universal Flash Storage */
+					is_nand = 1;
+				}
+			}
+
+			uint64_t warning_threshold = is_nand ? 55 : 40;
+			uint64_t critical_threshold = is_nand ? 60 : 45;
+			uint64_t danger_threshold = is_nand ? 70 : 50;
+
+			ss_json_u64(s, level, "temperature_warning_celsius", warning_threshold);
+			ss_json_u64(s, level, "temperature_critical_celsius", critical_threshold);
+			ss_json_u64(s, level, "temperature_danger_celsius", danger_threshold);
+
+			const char* status = "normal";
+			if (temp >= danger_threshold) {
+				status = "danger";
+			} else if (temp >= critical_threshold) {
+				status = "critical";
+			} else if (temp >= warning_threshold) {
+				status = "warning";
+			}
+			ss_json_str(s, level, "temperature_status", status);
 		}
 		if (dev->flags != SMART_UNASSIGNED) {
 			ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);

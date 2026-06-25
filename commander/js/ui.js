@@ -92,7 +92,7 @@ const statusBadge = (task) => {
  * @param {number} minTemp - Minimum temperature recorded.
  * @param {number} maxTemp - Maximum temperature recorded.
  */
-export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxTemp) {
+export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxTemp, warningTemp, criticalTemp, dangerTemp) {
     const container = document.getElementById(containerId);
     if (!container || !temperaturaArray || temperaturaArray.length === 0) return;
 
@@ -116,10 +116,15 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
 
     const getX = (index) => (index / maxIndex) * chartWidth + margin.left;
 
+    const warnLimit = warningTemp != null ? warningTemp : 40;
+    const critLimit = criticalTemp != null ? criticalTemp : 45;
+    const dangerLimit = dangerTemp != null ? dangerTemp : 50;
+
     const getColor = (temp) => {
-        if (temp < 40) return '#00d2ff'; // Cyan
-        if (temp < 50) return '#ffcc00'; // Amber
-        return '#ff4d4d';                // Red
+        if (temp < warnLimit) return '#00d2ff';   // Cyan
+        if (temp < critLimit) return '#ffcc00';   // Yellow
+        if (temp < dangerLimit) return '#ff9900'; // Orange
+        return '#ff4d4d';                         // Red
     };
 
     // 4. Build SVG String
@@ -762,8 +767,9 @@ const renderDiskCard = (disk, type, pulseAt) => {
         if (smartIssues.length > 0) smartStatus += `<div class="text-amber text-xs">${smartIssues.join('<br>')}</div>`;
 
         const temp = dev.smart?.temperature_celsius;
-        const tempClass = temp >= 50 ? 'text-red font-bold' : (temp >= 40 ? 'text-yellow font-bold' : '');
-        const powerClass = temp >= 50 ? 'active-red' : (temp >= 40 ? 'active-yellow' : 'active-cyan');
+        const tempStatus = dev.smart?.temperature_status;
+        const tempClass = tempStatus === 'danger' ? 'text-red font-bold' : (tempStatus === 'critical' ? 'text-orange font-bold' : (tempStatus === 'warning' ? 'text-yellow font-bold' : ''));
+        const powerClass = tempStatus === 'danger' ? 'active-red' : (tempStatus === 'critical' ? 'active-orange' : (tempStatus === 'warning' ? 'active-yellow' : 'active-cyan'));
         const tempStr = temp != null ? `${temp}°C` : '? °C';
         let tempTime = '';
         if (dev.smart?.measured_at)

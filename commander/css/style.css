@@ -64,6 +64,18 @@
     --c-amber-900: #7B3306;
     --c-amber-950: #461901;
 
+    --c-orange-50: #FFF7ED;
+    --c-orange-100: #FFEDD5;
+    --c-orange-200: #FED7AA;
+    --c-orange-300: #FDBA74;
+    --c-orange-400: #FB923C;
+    --c-orange-500: #F97316;
+    --c-orange-600: #EA580C;
+    --c-orange-700: #C2410C;
+    --c-orange-800: #9A3412;
+    --c-orange-900: #7C2D12;
+    --c-orange-950: #431407;
+
     --c-red-50: #FEF2F2;
     --c-red-100: #FFE2E2;
     --c-red-200: #FFC9C9;
@@ -712,6 +724,11 @@ a.badge:hover {
     color: var(--c-amber-500);
 }
 
+.badge-orange {
+    background: color-mix(in srgb, var(--c-orange-500) 20%, transparent);
+    color: var(--c-orange-500);
+}
+
 .badge-blue {
     background: color-mix(in srgb, var(--c-blue-500) 20%, transparent);
     color: var(--c-blue-500);
@@ -742,6 +759,11 @@ a.badge:hover {
     color: var(--c-amber-700);
 }
 
+[data-theme="light"] .badge-orange {
+    background: color-mix(in srgb, var(--c-orange-500) 25%, transparent);
+    color: var(--c-orange-700);
+}
+
 [data-theme="light"] .badge-blue {
     background: color-mix(in srgb, var(--c-blue-500) 25%, transparent);
     color: var(--c-blue-700);
@@ -765,6 +787,11 @@ a.badge:hover {
 [data-theme="light"] .badge-active-yellow {
     background: rgba(245, 158, 11, 0.3);
     color: var(--c-amber-700);
+}
+
+[data-theme="light"] .badge-active-orange {
+    background: color-mix(in srgb, var(--c-orange-500) 25%, transparent);
+    color: var(--c-orange-700);
 }
 
 [data-theme="light"] .badge-active-red {
@@ -793,6 +820,12 @@ a.badge:hover {
 .badge-active-yellow {
     background: rgba(245, 158, 11, 0.2);
     color: var(--c-amber-500);
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.badge-active-orange {
+    background: color-mix(in srgb, var(--c-orange-500) 20%, transparent);
+    color: var(--c-orange-500);
     animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -1246,6 +1279,10 @@ a.badge:hover {
 
 .text-yellow {
     color: var(--c-amber-500);
+}
+
+.text-orange {
+    color: var(--c-orange-500);
 }
 
 .text-amber {
@@ -1705,3 +1742,4 @@ h3 {
     margin-bottom: 1rem;
     font-size: 1.25rem;
 }
+
