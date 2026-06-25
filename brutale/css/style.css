@@ -720,37 +720,50 @@ a.badge:hover {
 
 .badge-active-cyan {
     background: var(--c-neo-cyan);
-    color: var(--c-black);
-    animation: pulse-soft 2s infinite;
+    color: var(--c-white);
+    animation: neo-jiggle-cyan 0.8s infinite;
 }
 
 .badge-active-yellow {
     background: var(--c-neo-amber);
     color: var(--c-white);
-    animation: pulse-soft 2s infinite;
+    animation: neo-jiggle-yellow 0.6s infinite;
 }
 
 .badge-active-orange {
     background: var(--c-neo-orange);
     color: var(--c-white);
-    animation: pulse-soft 2s infinite;
+    animation: neo-jiggle-orange 0.4s infinite;
 }
 
 .badge-active-red {
     background: var(--c-neo-pink);
     color: var(--c-white);
-    animation: pulse-soft 2s infinite;
+    animation: neo-jiggle-red 0.2s infinite;
 }
 
-@keyframes pulse-soft {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.85;
-        transform: scale(0.95);
-    }
+@keyframes neo-jiggle-cyan {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-1deg) translate(-0.5px, 0); }
+    75% { transform: rotate(1deg) translate(0.5px, 0); }
+}
+
+@keyframes neo-jiggle-yellow {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-2.5deg) translate(-0.5px, 0); }
+    75% { transform: rotate(2.5deg) translate(0.5px, 0); }
+}
+
+@keyframes neo-jiggle-orange {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-4.5deg) translate(-1px, 0); }
+    75% { transform: rotate(4.5deg) translate(1px, 0); }
+}
+
+@keyframes neo-jiggle-red {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-7deg) translate(-1.5px, 0); }
+    75% { transform: rotate(7deg) translate(1.5px, 0); }
 }
 
 /* Progress Bar */
