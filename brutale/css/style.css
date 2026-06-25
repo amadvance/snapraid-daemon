@@ -63,7 +63,8 @@
     /* Bold Neubrutalist Color Palette */
     --c-neo-yellow: #FFD23F;    /* Bold Yellow */
     --c-neo-purple: #B8A9FA;    /* Lavender */
-    --c-neo-orange: #FFA552;    /* Orange */
+    --c-neo-amber: #FFA552;     /* Amber */
+    --c-neo-orange: #F97316;    /* Orange */
     --c-neo-cyan: #74B9FF;      /* Sky Blue */
     --c-neo-green: #88D498;     /* Soft Green */
     --c-neo-pink: #FF6B6B;      /* Coral Pink */
@@ -693,6 +694,11 @@ a.badge:hover {
 }
 
 .badge-yellow {
+    background: var(--c-neo-amber);
+    color: var(--c-white);
+}
+
+.badge-orange {
     background: var(--c-neo-orange);
     color: var(--c-white);
 }
@@ -719,8 +725,14 @@ a.badge:hover {
 }
 
 .badge-active-yellow {
-    background: var(--c-neo-yellow);
-    color: var(--c-black);
+    background: var(--c-neo-amber);
+    color: var(--c-white);
+    animation: pulse-soft 2s infinite;
+}
+
+.badge-active-orange {
+    background: var(--c-neo-orange);
+    color: var(--c-white);
     animation: pulse-soft 2s infinite;
 }
 
@@ -1144,8 +1156,9 @@ a.badge:hover {
 .text-purple { color: var(--c-neo-purple); }
 .text-grey { color: var(--text-grey); }
 .text-red { color: var(--c-neo-pink); }
-.text-yellow { color: var(--c-neo-orange); }
-.text-amber { color: var(--c-neo-orange); }
+.text-yellow { color: var(--c-neo-amber); }
+.text-orange { color: var(--c-neo-orange); }
+.text-amber { color: var(--c-neo-amber); }
 .text-muted { color: var(--text-secondary); }
 
 .flex { display: flex; }

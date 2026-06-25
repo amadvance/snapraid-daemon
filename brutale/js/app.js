@@ -182,7 +182,7 @@ const app = {
                 disk.devices.forEach(dev => {
                     if (dev.temp_history_24h) {
                         const safeId = dev.node.replace(/[^a-z0-9]/gi, '-');
-                        renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h, dev.smart?.temperature_min_celsius, dev.smart?.temperature_max_celsius);
+                        renderTempSparkline(`sparkline-${safeId}`, dev.temp_history_24h, dev.smart?.temperature_min_celsius, dev.smart?.temperature_max_celsius, dev.smart?.temperature_warning_celsius, dev.smart?.temperature_critical_celsius, dev.smart?.temperature_danger_celsius);
                     }
                 });
             });

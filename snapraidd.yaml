@@ -1518,6 +1518,26 @@ components:
                 The highest recorded internal temperature of the drive in
                 degrees Celsius. Exceeding manufacturer limits (often 55-60°C)
                 typically triggers a PREFAIL status.
+            temperature_warning_celsius:
+              type: integer
+              description: >
+                The temperature threshold (inclusive) at or above which the drive
+                is considered to be in a warning state.
+            temperature_critical_celsius:
+              type: integer
+              description: >
+                The temperature threshold (inclusive) at or above which the drive
+                is considered to be in a critical state.
+            temperature_danger_celsius:
+              type: integer
+              description: >
+                The temperature threshold (inclusive) at or above which the drive
+                is considered to be in a danger state.
+            temperature_status:
+              type: string
+              enum: [normal, warning, critical, danger]
+              description: >
+                The current thermal health status of the device.
             failing:
               type: boolean
               description: >
