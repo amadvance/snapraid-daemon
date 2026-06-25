@@ -226,7 +226,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand:hover .logo-icon {
-    transform: rotate(-10deg);
+    animation: logo-jiggle 0.3s infinite;
+}
+
+@keyframes logo-jiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-6deg); }
+    75% { transform: rotate(6deg); }
 }
 
 .logo-icon {
