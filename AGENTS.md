@@ -174,35 +174,6 @@ These are **immutable** via API (require manual edit + reload):
 - **libzstd**: Zstandard compression (optional, for HTTP responses)
 - **math (libm)**: Failure probability calculations
 
-### Build System
-
-#### Autotools Workflow
-
-```bash
-./autogen.sh         # Generate configure script
-./configure          # Detect dependencies, select init system
-make                 # Compile binary
-sudo make install    # Install to /usr/local/bin
-```
-
-#### Key Build Files
-
-- `configure.ac`: Autoconf script (detects systemd vs BSD init)
-- `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
-- `uncrustify.cfg`: Code formatting rules (C style enforcement)
-
-#### Documentation Generation
-
-The man page `doc/snapraidd.1` and text manual `doc/snapraidd.txt` are generated from the source documentation file `doc/snapraidd.d`. The `Makefile.am` has the required pattern rules (using `advd2`) to build these documentation formats.
-
-#### Installation
-
-The build system auto-detects init type:
-- **systemd**: Installs to `/lib/systemd/system/snapraidd.service`
-- **BSD**: Installs to `/etc/rc.d/rc.snapraidd`
-
-Post-install hook provides systemctl commands.
-
 ### SMART Monitoring
 
 The daemon integrates with `smartctl` (from smartmontools) to extract:
@@ -255,6 +226,35 @@ Generated reports include:
 3. **API Access Control**: `net_acl` IP filtering, CORS policy
 4. **Config Immutability**: Critical settings require manual file edit
 5. **User Context**: `daemon_command()` uses `setuid()` for privilege separation
+
+### Build System
+
+#### Autotools Workflow
+
+```bash
+./autogen.sh         # Generate configure script
+./configure          # Detect dependencies, select init system
+make                 # Compile binary
+sudo make install    # Install to /usr/local/bin
+```
+
+#### Key Build Files
+
+- `configure.ac`: Autoconf script (detects systemd vs BSD init)
+- `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
+- `uncrustify.cfg`: Code formatting rules (C style enforcement)
+
+#### Documentation Generation
+
+- Run `make doc` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
+
+#### Installation
+
+The build system auto-detects init type:
+- **systemd**: Installs to `/lib/systemd/system/snapraidd.service`
+- **BSD**: Installs to `/etc/rc.d/rc.snapraidd`
+
+Post-install hook provides systemctl commands.
 
 ### Development Guidelines
 
