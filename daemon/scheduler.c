@@ -70,8 +70,12 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	if (ret == 0 && do_scrub)
 		(void)runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
-	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, 0, msg, msg_size, status);
+	if (ret == 0 && spindown) {
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_PROBE, now, 0, msg, msg_size, status);
+
+		if (ret == 0)
+			ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, 0, msg, msg_size, status);
+	}
 
 	(void)runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
 
@@ -128,8 +132,12 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	if (ret == 0)
 		(void)runner_locked(state, CMD_HEAL, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
-	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, 0, msg, msg_size, status);
+	if (ret == 0 && spindown) {
+		ret = runner_locked(state, CMD_HEAL, CMD_PROBE, now, 0, msg, msg_size, status);
+
+		if (ret == 0)
+			ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, 0, msg, msg_size, status);
+	}
 
 	(void)runner_locked(state, CMD_HEAL, CMD_REPORT, now, 0, msg, msg_size, status);
 
@@ -171,8 +179,12 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	if (ret == 0)
 		ret = runner_locked(state, CMD_UNDELETE, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
-	if (ret == 0 && spindown)
-		ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, 0, msg, msg_size, status);
+	if (ret == 0 && spindown) {
+		ret = runner_locked(state, CMD_UNDELETE, CMD_PROBE, now, 0, msg, msg_size, status);
+
+		if (ret == 0)
+			ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, 0, msg, msg_size, status);
+	}
 
 	(void)runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, 0, msg, msg_size, status);
 
@@ -195,8 +207,9 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	if (ret == 0)
 		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, 0, msg, msg_size, status);
 
-	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0))
+	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0)) {
 		(void)runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
+	}
 }
 
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
