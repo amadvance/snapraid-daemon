@@ -57,6 +57,14 @@ int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t
 int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status);
 
 /**
+ * Check if the specified command is currently running or scheduled in the queue.
+ * @param state Current snapraid state
+ * @param cmd Command ID
+ * @return 1 if running/scheduled, 0 otherwise
+ */
+int runner_has_cmd_locked(struct snapraid_state* state, int cmd);
+
+/**
  * Delete old log files.
  * @param state Current snapraid state
  * @param msg Buffer for error message

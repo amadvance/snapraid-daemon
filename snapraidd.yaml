@@ -820,12 +820,27 @@ components:
           format: int64
           description: >
             The historical minimum value observed by the daemon.
+            This is the primary metric of interest for normalized
+            prefail attributes, which decrease as health deteriorates.
         lowest_at:
           type: string
           example: '2026-02-20T14:15:00'
           description: >
-            The timestamp of the most recent occurrence where
-            the value reached the 'lowest' record.
+            The timestamp when the value was last observed
+            at its lowest record.
+        highest:
+          type: integer
+          format: int64
+          description: >
+            The historical maximum value observed by the daemon.
+            This is the primary metric of interest for raw critical
+            event and error counters, which increase as errors occur.
+        highest_at:
+          type: string
+          example: '2026-02-20T14:15:00'
+          description: >
+            The timestamp when the value was last observed
+            at its highest record.
 
     CommandRequest:
       type: object
@@ -1478,11 +1493,16 @@ components:
                     description: >
                       The current normalized value of the attribute, typically
                       scaled from 100 to 1 (where lower is usually worse).
+                  norm_history:
+                    $ref: '#/components/schemas/ValueHistory'
                   worst:
                     type: integer
                     description: >
-                      The lowest normalized value ever recorded for this
-                      attribute during the drive's lifetime.
+                      The lowest normalized value ever recorded by the drive's
+                      hardware during its lifetime. Note that this is recorded
+                      by the hardware itself, whereas the 'lowest' field in
+                      the history ('norm_history') is the minimum value
+                      observed by the daemon.
                   thresh:
                     type: integer
                     description: >

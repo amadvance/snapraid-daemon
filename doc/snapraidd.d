@@ -834,6 +834,10 @@ Configuration
 	Valid values are `info` (always send), `warning`, `error`, and `critical`.
 	The default is `error`.
 
+	Note that SMART attribute changes are rated as `warning`, while general
+	health status changes (such as failing or prefailing disks, or corrupted
+	array) are rated as `critical`.
+
     notify_run_as_user
 	The user account used for notify_heartbeat, notify_start, notify_result and mail
 	notifications. If missing or left blank, the task runs with the

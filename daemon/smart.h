@@ -19,11 +19,12 @@
 #define SMART_KIND_USE_RATIO 0x40 /**< It's a percentage measure from 0 to 100 */
 #define SMART_KIND_LIFE_RATIO 0x80 /**< It's a percentage measure from 100 to 0 */
 #define SMART_KIND_VENDOR 0x100 /**< It's a vendor specific value */
+#define SMART_KIND_NORM 0x200 /**< It's a norm value */
 
 /**
  * Convert a raw SMART value based on its kind.
  * @param raw Raw SMART attribute value
- * @param kind Attribute kind (one of SMART_KIND_*)
+ * @param kind Attribute kind (one of SMART_KIND_* combined with one of FORMAT_*)
  * @return Normalized numeric value
  */
 uint64_t smart_conv(uint64_t raw, int kind);
@@ -51,7 +52,7 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
  * @param level JSON indentation level
  * @param name Metric name
  * @param tracked Tracked metric structure
- * @param kind Attribute kind
+ * @param kind Attribute kind (one of SMART_KIND_* combined with one of FORMAT_*)
  */
 void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int kind);
 

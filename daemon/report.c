@@ -9,6 +9,7 @@
 #include "support.h"
 #include "log.h"
 #include "elem.h"
+#include "smart.h"
 
 static int disk_count_device(struct snapraid_disk* disk)
 {
@@ -658,10 +659,203 @@ static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 	}
 }
 
+static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, time_t queue_time)
+{
+	int header_printed = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* dev = j->data;
+			int dev_header_printed = 0;
+
+			for (int k = 0; k < SMART_COUNT; ++k) {
+				struct smart_attr* attr = &dev->smart[k];
+				int dev_attr_printed = 0;
+
+				/* 
+				 * Raw change
+				 *
+				 * No explicit kind/critical filtering is needed here because raw.prev
+				 * is only updated in parser.c for tracked critical/count attributes.
+				 */
+				if (attr->raw.value != SMART_UNASSIGNED
+					&& attr->raw.prev != SMART_UNASSIGNED
+					&& attr->raw.value != attr->raw.prev
+					&& attr->raw.prev_last >= queue_time
+				) {
+					int kind = smart_kind(k, attr->name);
+					uint64_t cv_val = smart_conv(attr->raw.value, kind);
+					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
+
+					if (cv_val != cv_old) {
+						if (!header_printed) {
+							print_line_separator(ss);
+							ss_prints(ss, "SMART CHANGES:\n\n");
+							header_printed = 1;
+						}
+						if (!dev_header_printed) {
+							ss_printf(ss, "Disk %s (serial: %s):\n", disk->name, dev->serial);
+							dev_header_printed = 1;
+						}
+						if (!dev_attr_printed) {
+							ss_printf(ss, "%s\n", attr->name);
+							dev_attr_printed = 1;
+						}
+
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+
+						ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
+					}
+				}
+
+				/* 
+				 * Norm change
+				 *
+				 * No explicit kind/prefail filtering is needed here because norm.prev
+				 * is only updated in parser.c for tracked prefail attributes.
+				 */
+				if (attr->norm.value != SMART_UNASSIGNED
+					&& attr->norm.prev != SMART_UNASSIGNED
+					&& attr->norm.value != attr->norm.prev
+					&& attr->norm.prev_last >= queue_time
+				) {
+					uint64_t cv_val = smart_conv(attr->norm.value, SMART_KIND_NORM);
+					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
+
+					if (cv_val != cv_old) {
+						if (!header_printed) {
+							print_line_separator(ss);
+							ss_prints(ss, "SMART CHANGES:\n\n");
+							header_printed = 1;
+						}
+						if (!dev_header_printed) {
+							ss_printf(ss, "Disk %s (serial: %s):\n", disk->name, dev->serial);
+							dev_header_printed = 1;
+						}
+						if (!dev_attr_printed) {
+							ss_printf(ss, "%s\n", attr->name);
+							dev_attr_printed = 1;
+						}
+
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+
+						ss_printf(ss, "norm %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")", changed, cv_old, cv_val, delta);
+						if (attr->worst != SMART_UNASSIGNED && attr->thresh != SMART_UNASSIGNED) {
+							ss_printf(ss, " (worst: %" PRIu64 ", thresh: %" PRIu64 ")", attr->worst, attr->thresh);
+						}
+						ss_printf(ss, "\n");
+					}
+				}
+			}
+		}
+	}
+	if (header_printed) {
+		ss_prints(ss, "\n");
+	}
+}
+
+static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, time_t queue_time)
+{
+	int header_printed = 0;
+
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
+			struct snapraid_device* dev = j->data;
+			int dev_header_printed = 0;
+
+			for (int k = 0; k < SMART_COUNT; ++k) {
+				struct smart_attr* attr = &dev->smart[k];
+				int dev_attr_printed = 0;
+
+				/* 
+				 * Raw change
+				 *
+				 * No explicit kind/critical filtering is needed here because raw.prev
+				 * is only updated in parser.c for tracked critical/count attributes.
+				 */
+				if (attr->raw.value != SMART_UNASSIGNED
+					&& attr->raw.prev != SMART_UNASSIGNED
+					&& attr->raw.value != attr->raw.prev
+					&& attr->raw.prev_last >= queue_time
+				) {
+					int kind = smart_kind(k, attr->name);
+					uint64_t cv_val = smart_conv(attr->raw.value, kind);
+					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
+
+					if (cv_val != cv_old) {
+						if (!header_printed) {
+							ss_prints(ss, "SMART CHANGES\n");
+							header_printed = 1;
+						}
+						if (!dev_header_printed) {
+							ss_printf(ss, "Disk %s:\n", disk->name);
+							dev_header_printed = 1;
+						}
+						if (!dev_attr_printed) {
+							ss_printf(ss, "%s\n", attr->name);
+							dev_attr_printed = 1;
+						}
+
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+
+						ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+					}
+				}
+
+				/* 
+				 * Norm change
+				 *
+				 * No explicit kind/prefail filtering is needed here because norm.prev
+				 * is only updated in parser.c for tracked prefail attributes.
+				 */
+				if (attr->norm.value != SMART_UNASSIGNED
+					&& attr->norm.prev != SMART_UNASSIGNED
+					&& attr->norm.value != attr->norm.prev
+					&& attr->norm.prev_last >= queue_time
+				) {
+					uint64_t cv_val = smart_conv(attr->norm.value, SMART_KIND_NORM);
+					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
+
+					if (cv_val != cv_old) {
+						if (!header_printed) {
+							ss_prints(ss, "SMART CHANGES\n");
+							header_printed = 1;
+						}
+						if (!dev_header_printed) {
+							ss_printf(ss, "Disk %s:\n", disk->name);
+							dev_header_printed = 1;
+						}
+						if (!dev_attr_printed) {
+							ss_printf(ss, "%s\n", attr->name);
+							dev_attr_printed = 1;
+						}
+
+						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* norm lower is worse */
+						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+
+						ss_printf(ss, "norm %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+						if (attr->worst != SMART_UNASSIGNED && attr->thresh != SMART_UNASSIGNED)
+							ss_printf(ss, "worst %" PRIu64 " thresh %" PRIu64 "\n", attr->worst, attr->thresh);
+					}
+				}
+			}
+		}
+	}
+	if (header_printed) {
+		ss_prints(ss, "\n");
+	}
+}
+
 /****************************************************************************/
 /* report */
 
 static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
+	struct snapraid_task* latest_report,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -737,28 +931,26 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "\n");
 	}
 
-	/* latest fix */
+	print_smart_changes_wide(state, ss, latest_report->unix_queue_time);
+
 	if (latest_fix) {
 		print_line_separator(ss);
 		print_task_wide(ss, "FIX", latest_fix);
 		ss_prints(ss, "\n");
 	}
 
-	/* latest sync */
 	if (latest_sync) {
 		print_line_separator(ss);
 		print_task_wide(ss, "SYNC", latest_sync);
 		ss_prints(ss, "\n");
 	}
 
-	/* latest scrub */
 	if (latest_scrub) {
 		print_line_separator(ss);
 		print_task_wide(ss, "SCRUB", latest_scrub);
 		ss_prints(ss, "\n");
 	}
 
-	/* global statistics */
 	if (diff_stat) {
 		print_line_separator(ss);
 		ss_prints(ss, "DIFFERENCES:\n\n");
@@ -779,11 +971,11 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		}
 	}
 
-	/* footer */
 	print_separator(ss);
 }
 
 void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
+	struct snapraid_task* latest_report,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -831,6 +1023,8 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "\n");
 	}
 
+	print_smart_changes_narrow(state, ss, latest_report->unix_queue_time);
+
 	if (latest_fix) {
 		print_task_narrow(ss, "FIX", latest_fix);
 		ss_prints(ss, "\n");
@@ -846,7 +1040,6 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "\n");
 	}
 
-	/* global statistics */
 	if (diff_stat) {
 		ss_prints(ss, "DIFFERENCES:\n");
 		ss_printf(ss, "- equal:    %10" PRId64 "\n", diff_stat->diff_equal);
@@ -868,6 +1061,7 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 }
 
 void report_locked(struct snapraid_state* state, ss_t* ss,
+	struct snapraid_task* latest_report,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -890,8 +1084,8 @@ void report_locked(struct snapraid_state* state, ss_t* ss,
 		is_mail = 0;
 
 	if (is_mail)
-		report_wide_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_wide_locked(state, ss, latest_report, latest_fix, latest_sync, latest_scrub, diff_stat);
 	else
-		report_narrow_locked(state, ss, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_narrow_locked(state, ss, latest_report, latest_fix, latest_sync, latest_scrub, diff_stat);
 }
 

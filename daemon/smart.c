@@ -244,12 +244,14 @@ struct smart_entry {
 	{ 0 }
 };
 
-uint64_t smart_conv(uint64_t raw, int format)
+uint64_t smart_conv(uint64_t raw, int kind)
 {
 	unsigned counter;
 
-	format &= FORMAT_MASK;
+	if ((kind & SMART_KIND_NORM) != 0)
+		return raw & 0xFF;
 
+	int format = kind & FORMAT_MASK;
 	switch (format) {
 	case FORMAT_8 :
 		return raw & 0xFF;
@@ -339,20 +341,25 @@ void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64
 	}
 }
 
-void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int format)
+void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked* tracked, int kind)
 {
-	ss_json_u64(s, level, name, smart_conv(tracked->value, format));
+	ss_json_u64(s, level, name, smart_conv(tracked->value, kind));
 
 	if (tracked->prev != SMART_UNASSIGNED) {
 		char history[KEYWORD_MAX];
 		snprintf(history, sizeof(history), "%s_history", name);
 		ss_json_object_open(s, &level, history);
-		ss_json_u64(s, level, "prev", smart_conv(tracked->prev, format));
+		ss_json_u64(s, level, "prev", smart_conv(tracked->prev, kind));
 		ss_json_pair_iso8601(s, level, "prev_at", tracked->prev_last);
 		if (tracked->lowest != SMART_UNASSIGNED
-			&& smart_conv(tracked->lowest, format) != smart_conv(tracked->value, format)) {
-			ss_json_u64(s, level, "lowest", smart_conv(tracked->lowest, format));
+			&& smart_conv(tracked->lowest, kind) != smart_conv(tracked->value, kind)) {
+			ss_json_u64(s, level, "lowest", smart_conv(tracked->lowest, kind));
 			ss_json_pair_iso8601(s, level, "lowest_at", tracked->lowest_last);
+		}
+		if (tracked->highest != SMART_UNASSIGNED
+			&& smart_conv(tracked->highest, kind) != smart_conv(tracked->value, kind)) {
+			ss_json_u64(s, level, "highest", smart_conv(tracked->highest, kind));
+			ss_json_pair_iso8601(s, level, "highest_at", tracked->highest_last);
 		}
 		ss_json_close(s, &level);
 	}
@@ -377,8 +384,8 @@ static void json_attr(ss_t* s, int* level, int kind_and_format, struct smart_att
 	else if (attr->flags & SMART_ATTR_WHEN_FAILED_NEVER)
 		ss_json_str(s, *level, "when_failed", "never");
 	json_tracked(s, *level, "raw", &attr->raw, format);
-	if (attr->norm != SMART_UNASSIGNED) {
-		ss_json_u64(s, *level, "norm", attr->norm);
+	if (attr->norm.value != SMART_UNASSIGNED) {
+		json_tracked(s, *level, "norm", &attr->norm, SMART_KIND_NORM);
 		if (attr->worst != SMART_UNASSIGNED)
 			ss_json_u64(s, *level, "worst", attr->worst);
 		if (attr->thresh != SMART_UNASSIGNED)

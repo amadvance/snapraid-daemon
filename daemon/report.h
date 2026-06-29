@@ -16,7 +16,7 @@
  * @param latest_scrub Pointer to the latest scrub task
  * @param diff_stat Pointer to difference statistics
  */
-void report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
+void report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_report, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
 
 /**
  * Generate a narrow text report (suitable for small screens).
@@ -27,7 +27,7 @@ void report_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task*
  * @param latest_scrub Pointer to the latest scrub task
  * @param diff_stat Pointer to difference statistics
  */
-void report_narrow_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
+void report_narrow_locked(struct snapraid_state* state, ss_t* ss, struct snapraid_task* latest_report, struct snapraid_task* latest_fix, struct snapraid_task* latest_sync, struct snapraid_task* latest_scrub, struct snapraid_diff_stat* diff_stat);
 
 #endif
 
