@@ -54,6 +54,23 @@ SnapRAID Daemon TODO
 Future Releases
 ===============
 
+- Even with the disk spundown, snapraid probe triggers disk activity on
+  the disk (but not the partitions). This means that if the disk has a
+  filesystem without any partition it will never spun down.
+
+  $ grep sda /proc/diskstats
+   8       0 sda 1571308 2702 781600941 3811368 143567 79 73273296 227785 0 4660322 4043256 0 0 0 0 288 4101
+   8       1 sda1 1525677 2702 781577373 3340141 143567 79 73273296 227785 0 4170745 3567927 0 0 0 0 0 0
+
+  $ sudo snapraid probe
+
+  $ grep sda /proc/diskstats
+   8       0 sda 1571317 2702 781600944 3811376 143567 79 73273296 227785 0 4660332 4043264 0 0 0 0 288 4101
+   8       1 sda1 1525677 2702 781577373 3340141 143567 79 73273296 227785 0 4170745 3567927 0 0 0 0 0 0
+  
+  A possibility is to gather diskstats before and after probe, and ignore
+  the changes during the command.
+
 - Support hw-probe to send data to linuxhw.
   https://github.com/linuxhw/hw-probe#appimage
   - Download appimage, check it's hash, and run it with -all -upload
