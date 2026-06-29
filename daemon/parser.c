@@ -8,6 +8,7 @@
 #include "log.h"
 #include "elem.h"
 #include "smart.h"
+#include "runner.h"
 #include "parser.h"
 
 /**
@@ -427,7 +428,7 @@ static struct snapraid_device* find_device_from_file(struct snapraid_state* stat
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
 	for (j = 0; j < SMART_COUNT; ++j) {
 		tracked_init(&device->smart[j].raw);
-		device->smart[j].norm = SMART_UNASSIGNED;
+		tracked_init(&device->smart[j].norm);
 		device->smart[j].worst = SMART_UNASSIGNED;
 		device->smart[j].thresh = SMART_UNASSIGNED;
 		device->smart[j].flags = 0;
@@ -926,7 +927,9 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		if (strint(&index, tag) == 0 && index >= 0 && index < 256) {
 			int kind = smart_kind(index, name);
 			uint64_t old_raw = device->smart[index].raw.value;
+			uint64_t old_norm = device->smart[index].norm.value;
 			int got_raw;
+			int got_norm;
 
 			if ((kind & SMART_KIND_PULSE) != 0) {
 				unsigned pulse;
@@ -935,7 +938,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				else
 					pulse = PULSE_DISKS;
 				got_raw = pulse_stru64(state, pulse, &device->smart[index].raw.value, raw);
-				pulse_stru64(state, pulse, &device->smart[index].norm, norm);
+				got_norm = pulse_stru64(state, pulse, &device->smart[index].norm.value, norm);
 				pulse_stru64(state, pulse, &device->smart[index].worst, worst);
 				pulse_stru64(state, pulse, &device->smart[index].thresh, thresh);
 				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
@@ -947,7 +950,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				 * like the number of HOST_READ_COMMANDS or TOTAL_LBAS_READ.
 				 */
 				got_raw = stru64(&device->smart[index].raw.value, raw);
-				stru64(&device->smart[index].norm, norm);
+				got_norm = stru64(&device->smart[index].norm.value, norm);
 				stru64(&device->smart[index].worst, worst);
 				stru64(&device->smart[index].thresh, thresh);
 				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
@@ -955,8 +958,56 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			}
 
 			/* track history only for CRITICAL and COUNT attributes */
-			if (got_raw == 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0)
+			if (got_raw == 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
 				tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
+
+				if (old_raw != SMART_UNASSIGNED
+					&& state->daemon_running != DAEMON_LOADING  /* do not report on loading past logs */
+				) {
+					uint64_t cv_old = smart_conv(old_raw, kind);
+					uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
+
+					if (cv_old != cv_val) {
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+					
+						log_task(LVL_WARNING, "SMART raw attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
+							name, disk, changed, cv_old, cv_val);
+
+						/* if there isn't already a report scheduled, schedule a new one */
+						if (!runner_has_cmd_locked(state, CMD_REPORT)) {
+							char msg[MSG_MAX];
+							int status;
+							runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
+						}
+					}
+				}
+			}
+
+			/* track history for all PREFAIL attributes' norm values */
+			if (got_norm == 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
+				tracked_update(&device->smart[index].norm, old_norm, SMART_KIND_NORM, state->array.last_time);
+
+				if (old_norm != SMART_UNASSIGNED
+					&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+				) {
+					uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
+					uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
+
+					if (cv_old != cv_val) {
+						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* norm lower is worse */
+
+						log_task(LVL_WARNING, "SMART norm attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
+							name, disk, changed, cv_old, cv_val);
+
+						/* if there isn't already a report scheduled, schedule a new one */
+						if (!runner_has_cmd_locked(state, CMD_REPORT)) {
+							char msg[MSG_MAX];
+							int status;
+							runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
+						}
+					}
+				}
+			}
 		}
 	}
 }

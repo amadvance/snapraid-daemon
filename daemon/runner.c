@@ -10,6 +10,7 @@
 #include "parser.h"
 #include "elem.h"
 #include "report.h"
+#include "smart.h"
 #include "notify.h"
 #include "runner.h"
 
@@ -18,7 +19,7 @@
 /**
  * Check if the specified command is currently running or scheduled in the queue.
  */
-static int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
+int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
 {
 	if (state->runner.latest != 0 && state->runner.latest->cmd == cmd)
 		return 1;
@@ -223,7 +224,50 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->array.diff_prev;
 
-	report_locked(state, &ss, fix_task, sync_task, scrub_task, diff_stat);
+	report_locked(state, &ss, report_task, fix_task, sync_task, scrub_task, diff_stat);
+
+	/* 
+	 * Check if any prefail/critical raw attributes or prefail norm attributes changed since queue_time
+	 *
+	 * The attributes checked here are implicitly restricted to those tracked by parser.c
+	 * (critical/count for raw, and prefail for norm) because only those have a prev value set.
+	 */
+	int has_smart_changes = 0;
+	time_t queue_time = report_task->unix_queue_time;
+	if (queue_time != 0) {
+		for (tommy_node* disk_node = tommy_list_head(&state->array.disk_list); disk_node != 0; disk_node = disk_node->next) {
+			struct snapraid_disk* disk = disk_node->data;
+			for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
+				struct snapraid_device* dev = dev_node->data;
+				for (int k = 0; k < SMART_COUNT; ++k) {
+					struct smart_attr* attr = &dev->smart[k];
+					if (attr->raw.value != SMART_UNASSIGNED
+						&& attr->raw.prev != SMART_UNASSIGNED
+						&& attr->raw.value != attr->raw.prev
+						&& attr->raw.prev_last >= queue_time
+					) {
+						has_smart_changes = 1;
+						break;
+					}
+					if (attr->norm.value != SMART_UNASSIGNED
+						&& attr->norm.prev != SMART_UNASSIGNED
+						&& attr->norm.value != attr->norm.prev
+						&& attr->norm.prev_last >= queue_time
+					) {
+						has_smart_changes = 1;
+						break;
+					}
+				}
+				if (has_smart_changes)
+					break;
+			}
+			if (has_smart_changes)
+				break;
+		}
+	}
+	if (has_smart_changes) {
+		report_level = level_mix(report_level, LVL_WARNING);
+	}
 
 	/* propagate the array health to the report task */
 	/* do not call health_task() as the report cannot fail */

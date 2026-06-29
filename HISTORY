@@ -3,6 +3,11 @@ SnapRAID-Daemon HISTORY
 
 2.0 WIP
 =======
+ * Schedule a report notification on raw value changes of counting/critical
+   SMART attributes and on normalized value changes of prefail attributes.
+   Historical tracking for normalized values (with highest/worst baselines
+   and threshold values) is exported via REST API/YAML and integrated
+   into status reports.
  * Export temperature warning/critical thresholds and status fields in the
    REST API, and integrate them into the web dashboards to automatically
    color-code drives (supporting higher limits for SSD, NVMe devices).

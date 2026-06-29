@@ -862,8 +862,10 @@ void tracked_init(struct snapraid_tracked* tracked)
 	tracked->value = SMART_UNASSIGNED;
 	tracked->prev = SMART_UNASSIGNED;
 	tracked->lowest = SMART_UNASSIGNED;
+	tracked->highest = SMART_UNASSIGNED;
 	tracked->prev_last = 0;
 	tracked->lowest_last = 0;
+	tracked->highest_last = 0;
 }
 
 void tracked_update(struct snapraid_tracked* tracked, uint64_t old, int kind, int64_t last_time)
@@ -878,6 +880,15 @@ void tracked_update(struct snapraid_tracked* tracked, uint64_t old, int kind, in
 	} else if (smart_conv(tracked->lowest, kind) == smart_conv(tracked->value, kind)) {
 		tracked->lowest_last = last_time;
 	}
+
+	if (tracked->highest == SMART_UNASSIGNED
+		|| smart_conv(tracked->value, kind) > smart_conv(tracked->highest, kind)) {
+		tracked->highest = tracked->value;
+		tracked->highest_last = last_time;
+	} else if (smart_conv(tracked->highest, kind) == smart_conv(tracked->value, kind)) {
+		tracked->highest_last = last_time;
+	}
+
 	if (old != SMART_UNASSIGNED
 		&& smart_conv(old, kind) != smart_conv(tracked->value, kind)) {
 		tracked->prev = old;

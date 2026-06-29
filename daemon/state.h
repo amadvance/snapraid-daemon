@@ -124,8 +124,10 @@ struct snapraid_tracked {
 	uint64_t value; /**< current value */
 	uint64_t prev; /**< previous value */
 	uint64_t lowest; /**< lowest ever seen */
+	uint64_t highest; /**< highest ever seen */
 	int64_t prev_last; /**< Time of when the attribute got the current value */
-	int64_t lowest_last; /**< Time of when the lowest attribute was last seen */
+	int64_t lowest_last; /**< Time when the attribute was last observed at its lowest value */
+	int64_t highest_last; /**< Time when the attribute was last observed at its highest value */
 };
 
 /**
@@ -142,7 +144,7 @@ struct snapraid_tracked {
 struct smart_attr {
 	char name[KEYWORD_MAX]; /**< SMART attribute name. */
 	struct snapraid_tracked raw; /**< SMART attributes raw. */
-	uint64_t norm; /**< SMART attributes normalized. */
+	struct snapraid_tracked norm; /**< SMART attributes normalized. */
 	uint64_t worst; /**< SMART attributes worst. */
 	uint64_t thresh; /**< SMART attributes threshold. */
 	int flags; /**< SMART_ATTR_* flags */
