@@ -10,6 +10,9 @@ SnapRAID-Daemon HISTORY
  * In Refresh, force all disks to spin up to ensure filesystem and SMART
    information is read.
  * Remove extra newlines from some HTTP error responses.
+ * Reset the disk access idle timer when a disk is spun up manually by
+   external tools (like hdparm or smartctl) and not by read/write activity
+   to prevent it from being immediately spun down again.
 
 1.12 2026/06
 ============

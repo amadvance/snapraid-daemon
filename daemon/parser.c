@@ -849,6 +849,22 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		if (device->power != power) {
 			pulse(state, PULSE_DISKS);
 			device->power = power;
+
+			/*
+			 * If the disk was spun up, it means it had some activity
+			 * (even if only the spin-up command itself).
+			 *
+			 * In case this activity is not detected in the "stat" info,
+			 * reset access_count_initial_time to prevent the disk
+			 * from being immediately spun down again.
+			 */
+			if (power == POWER_ACTIVE) {
+				struct snapraid_disk* disk_spunup = find_disk(&state->disk_list, task->number, disk, DISK_UNDEFINED);
+				if (disk_spunup != 0) {
+					disk_spunup->access_count_initial_time = state->global.last_time;
+					disk_spunup->access_count_latest_time = state->global.last_time;
+				}
+			}
 		}
 	} else if (strcmp(tag, "flags") == 0) {
 		uint64_t flags;
