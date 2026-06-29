@@ -451,11 +451,6 @@ h1, h2, h3, h4, h5, h6 {
     transition: transform 0.1s, box-shadow 0.1s;
 }
 
-.card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: var(--shadow-hard-hover);
-}
-
 .card-border-blue {
     border-left: 10px solid var(--c-neo-cyan) !important;
 }
