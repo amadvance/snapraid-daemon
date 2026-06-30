@@ -58,6 +58,7 @@
     --c-amber-300: #FFD230;
     --c-amber-400: #FFB93B;
     --c-amber-500: #FE9A37;
+    --c-amber-550: #EF8531;
     --c-amber-600: #E1712B;
     --c-amber-700: #BB4D1A;
     --c-amber-800: #973C08;
@@ -1286,7 +1287,7 @@ a.badge:hover {
 }
 
 .text-amber {
-    color: var(--c-amber-500);
+    color: var(--c-amber-550);
 }
 
 .text-muted {
@@ -1643,6 +1644,56 @@ input[type=number]:focus {
 .smart-clickable:hover {
     background-color: var(--smart-clickable-hover);
 }
+
+/* SMART Status Styling */
+.smart-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.smart-status[data-status="passed"] {
+    color: var(--c-emerald-500);
+}
+
+.smart-status[data-status="failing"],
+.smart-status[data-status="prefail"] {
+    display: inline-flex;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    justify-content: center;
+}
+
+.smart-status[data-status="failing"] {
+    background: color-mix(in srgb, var(--c-red-500) 20%, transparent);
+    color: var(--c-red-500);
+}
+
+[data-theme="light"] .smart-status[data-status="failing"] {
+    background: color-mix(in srgb, var(--c-red-500) 25%, transparent);
+    color: var(--c-red-700);
+}
+
+.smart-status[data-status="prefail"] {
+    background: color-mix(in srgb, var(--c-amber-500) 20%, transparent);
+    color: var(--c-amber-500);
+}
+
+[data-theme="light"] .smart-status[data-status="prefail"] {
+    background: color-mix(in srgb, var(--c-amber-500) 25%, transparent);
+    color: var(--c-amber-700);
+}
+
+.smart-status[data-status="pending"],
+.smart-status[data-status="prefail-logged"],
+.smart-status[data-status="error-logged"],
+.smart-status[data-status="selftest-error-logged"] {
+    color: var(--text-grey);
+}
+
 
 .modal-container.large {
     max-width: 850px;

@@ -753,21 +753,32 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 });
             }
         }
+        
+        let smartStatusText = 'SMART PENDING';
+        let smartStatusKey = 'pending';
 
-        let smartStatus = '<span class="text-grey font-bold text-xs">SMART PENDING</span>';
-        if (dev.smart?.measured_at)
-            smartStatus = '<span class="text-emerald font-bold text-xs">SMART PASSED</span>';
-        if (dev.smart?.failing)
-            smartStatus = `<span class="badge badge-red">SMART FAILING</span>`;
-        else if (dev.smart?.prefail)
-            smartStatus = `<span class="badge badge-yellow">SMART PREFAIL</span>`;
-        else if (dev.smart?.prefail_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but PREFAIL logged)</span>`;
-        else if (dev.smart?.error_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but ERROR logged)</span>`;
-        else if (dev.smart?.selftest_error_logged)
-            smartStatus = `<span class="text-grey font-bold text-xs">SMART PASSED (but SELFTEST ERROR logged)</span>`;
+        if (dev.smart?.measured_at) {
+            smartStatusText = 'SMART PASSED';
+            smartStatusKey = 'passed';
+        }
+        if (dev.smart?.failing) {
+            smartStatusText = 'SMART FAILING';
+            smartStatusKey = 'failing';
+        } else if (dev.smart?.prefail) {
+            smartStatusText = 'SMART PREFAIL';
+            smartStatusKey = 'prefail';
+        } else if (dev.smart?.prefail_logged) {
+            smartStatusText = 'SMART PASSED (but PREFAIL logged)';
+            smartStatusKey = 'prefail-logged';
+        } else if (dev.smart?.error_logged) {
+            smartStatusText = 'SMART PASSED (but ERROR logged)';
+            smartStatusKey = 'error-logged';
+        } else if (dev.smart?.selftest_error_logged) {
+            smartStatusText = 'SMART PASSED (but SELFTEST error)';
+            smartStatusKey = 'selftest-error-logged';
+        }
 
+        let smartStatus = `<span class="smart-status" data-status="${smartStatusKey}">${smartStatusText}</span>`;
         if (smartIssues.length > 0) smartStatus += `<div class="text-amber text-xs">${smartIssues.join('<br>')}</div>`;
 
         const temp = dev.smart?.temperature_celsius;

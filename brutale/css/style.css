@@ -1417,7 +1417,8 @@ a.badge:hover {
     color: var(--c-black) !important;
 }
 
-.smart-clickable .badge {
+.smart-clickable .badge,
+.smart-clickable .smart-status {
     background: none !important;
     border: none !important;
     box-shadow: none !important;
@@ -1425,7 +1426,58 @@ a.badge:hover {
     font-size: inherit !important;
     line-height: inherit !important;
     display: inline !important;
+    font-weight: 700;
 }
+
+.smart-clickable .smart-status[data-status="failing"] {
+    color: var(--c-neo-pink) !important;
+    display: inline-flex !important;
+    align-items: center;
+}
+
+.smart-clickable .smart-status[data-status="failing"]::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--c-neo-pink);
+    margin-right: 6px;
+    border: 1px solid var(--border);
+    animation: status-dot-pulse 0.5s infinite ease-in-out;
+    flex-shrink: 0;
+}
+
+.smart-clickable .smart-status[data-status="prefail"] {
+    color: var(--c-neo-orange) !important;
+    display: inline-flex !important;
+    align-items: center;
+}
+
+.smart-clickable .smart-status[data-status="prefail"]::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--c-neo-orange);
+    margin-right: 6px;
+    border: 1px solid var(--border);
+    animation: status-dot-pulse 0.5s infinite ease-in-out;
+    flex-shrink: 0;
+}
+
+@keyframes status-dot-pulse {
+    0%, 100% {
+        transform: scale(0.85);
+        opacity: 0.75;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+}
+
 
 .smart-clickable:hover {
     transform: translate(-2px, -2px);
