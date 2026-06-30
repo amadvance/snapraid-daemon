@@ -743,7 +743,11 @@ const renderDiskCard = (disk, type, pulseAt) => {
             if (dev.smart.attributes) {
                 dev.smart.attributes.forEach(attr => {
                     if (attr.critical && attr.measure === 'count' && attr.raw !== 0) {
-                        let label = `${attr.name.toLowerCase()}: ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
+                        let label = `${attr.name.toLowerCase()}: raw ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
+                        smartIssues.push(label);
+                    }
+                    if (attr.type === 'prefail' && attr.norm_history?.prev !== undefined && attr.norm_history?.prev !== null) {
+                        let label = `${attr.name.toLowerCase()}: norm ${attr.norm} ${formatHistory(attr.norm, attr.norm_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
                 });
