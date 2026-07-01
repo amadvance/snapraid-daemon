@@ -8,6 +8,10 @@ SnapRAID-Daemon HISTORY
    Historical tracking for normalized values (with highest/worst baselines
    and threshold values) is exported via REST API/YAML and integrated
    into status reports.
+ * Added a "smartignore" configuration option to allow ignoring specific
+   SMART attributes (e.g., Spin_Up_Time, Raw_Read_Error_Rate) for one or
+   more disks to avoid generating report notifications when they change.
+   Ignored attributes are marked as ignored in status reports and in the REST API.
  * Export temperature warning/critical thresholds and status fields in the
    REST API, and integrate them into the web dashboards to automatically
    color-code drives (supporting higher limits for SSD, NVMe devices).

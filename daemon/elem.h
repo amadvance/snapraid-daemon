@@ -101,6 +101,36 @@ struct snapraid_run* run_dup(struct snapraid_run* run);
 void run_free(void* void_run);
 
 /****************************************************************************/
+/* smartignore */
+
+/**
+ * Allocate and initialize a new smartignore.
+ * @return Pointer to newly allocated smartignore
+ */
+struct snapraid_smartignore* smartignore_alloc(const char* disk_name, const char* attr_name);
+
+/**
+ * Duplicate a smartignore
+ */
+struct snapraid_smartignore* smartignore_dup(struct snapraid_smartignore* smartignore);
+
+/**
+ * Free a smartignore.
+ * @param void_smartignore Pointer to the smartignore entry
+ */
+void smartignore_free(void* void_smartignore);
+
+/**
+ * Check if a SMART attribute should be ignored.
+ * @param disk_name The disk name to check
+ * @param attr_index The SMART attribute ID
+ * @param attr_name The SMART attribute name
+ * @param smartignore_list The list of ignore rules to match against
+ * @return 1 if the attribute should be ignored, 0 otherwise
+ */
+int smartignore_match(const char* disk_name, int attr_index, const char* attr_name, tommy_list* smartignore_list);
+
+/****************************************************************************/
 /* association */
 
 /**

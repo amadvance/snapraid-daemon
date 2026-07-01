@@ -529,7 +529,7 @@ static void spacing_disk_list(tommy_list* disk_list, struct disk_spacing* sp)
 	}
 }
 
-static void print_device_wide(struct snapraid_device* device, ss_t* ss, struct disk_spacing* sp, int has_many)
+static void print_device_wide(struct snapraid_state* state, const char* disk_name, struct snapraid_device* device, ss_t* ss, struct disk_spacing* sp, int has_many)
 {
 	if (has_many) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len);
@@ -550,11 +550,19 @@ static void print_device_wide(struct snapraid_device* device, ss_t* ss, struct d
 	ss_prints(ss, "\n");
 	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
+			ss_printf(ss, "(ignored) Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		} else {
+			ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		}
 	}
 	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
+			ss_printf(ss, "(ignored) Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		} else {
+			ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		}
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_wide(device->flags);
@@ -565,7 +573,7 @@ static void print_device_wide(struct snapraid_device* device, ss_t* ss, struct d
 	}
 }
 
-static void print_device_narrow(struct snapraid_device* device, ss_t* ss, int has_many)
+static void print_device_narrow(struct snapraid_state* state, const char* disk_name, struct snapraid_device* device, ss_t* ss, int has_many)
 {
 	if (has_many) {
 		ss_printf(ss, " %s", health_report_narrow(device->health));
@@ -581,10 +589,18 @@ static void print_device_narrow(struct snapraid_device* device, ss_t* ss, int ha
 	ss_printf(ss, " %s\n", device->serial[0] ? device->serial : "-");
 
 	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
-		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
+			ss_printf(ss, "(ignored) Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		} else {
+			ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
+		}
 	}
 	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
-		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
+			ss_printf(ss, "(ignored) Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		} else {
+			ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
+		}
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_narrow(device->flags);
@@ -594,7 +610,7 @@ static void print_device_narrow(struct snapraid_device* device, ss_t* ss, int ha
 	}
 }
 
-static void print_disk_list_wide(tommy_list* disk_list, int kind, ss_t* ss, struct disk_spacing* sp)
+static void print_disk_list_wide(struct snapraid_state* state, tommy_list* disk_list, int kind, ss_t* ss, struct disk_spacing* sp)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -615,7 +631,7 @@ static void print_disk_list_wide(tommy_list* disk_list, int kind, ss_t* ss, stru
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;
-			print_device_wide(device, ss, sp, has_many);
+			print_device_wide(state, disk->name, device, ss, sp, has_many);
 		}
 
 		/* print error counters if not zero */
@@ -627,7 +643,7 @@ static void print_disk_list_wide(tommy_list* disk_list, int kind, ss_t* ss, stru
 	}
 }
 
-static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
+static void print_disk_list_narrow(struct snapraid_state* state, tommy_list* disk_list, int kind, ss_t* ss)
 {
 	for (tommy_node* i = tommy_list_head(disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -648,7 +664,7 @@ static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
 			struct snapraid_device* device = j->data;
-			print_device_narrow(device, ss, has_many);
+			print_device_narrow(state, disk->name, device, ss, has_many);
 		}
 
 		/* print error counters if not zero */
@@ -659,21 +675,61 @@ static void print_disk_list_narrow(tommy_list* disk_list, int kind, ss_t* ss)
 	}
 }
 
+struct smart_header {
+	int header_printed;
+	int disk_printed;
+	int attr_printed;
+};
+
+static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* dev_serial, const char* attr_name, int is_ignored)
+{
+	if (!sh->header_printed) {
+		print_line_separator(ss);
+		ss_prints(ss, "SMART CHANGES:\n\n");
+		sh->header_printed = 1;
+	}
+	if (!sh->disk_printed) {
+		ss_printf(ss, "Disk %s (serial: %s):\n", disk_name, dev_serial);
+		sh->disk_printed = 1;
+	}
+	if (!sh->attr_printed) {
+		ss_printf(ss, "%s%s\n", attr_name, is_ignored ? " (ignored)" : "");
+		sh->attr_printed = 1;
+	}
+}
+
+static void print_smart_header_narrow(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* attr_name, int is_ignored)
+{
+	if (!sh->header_printed) {
+		ss_prints(ss, "SMART CHANGES\n");
+		sh->header_printed = 1;
+	}
+	if (!sh->disk_printed) {
+		ss_printf(ss, "Disk %s:\n", disk_name);
+		sh->disk_printed = 1;
+	}
+	if (!sh->attr_printed) {
+		ss_printf(ss, "%s%s\n", attr_name, is_ignored ? " (ignored)" : "");
+		sh->attr_printed = 1;
+	}
+}
+
 static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, time_t queue_time)
 {
-	int header_printed = 0;
+	struct smart_header sh;
+	sh.header_printed = 0;
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
 			struct snapraid_device* dev = j->data;
-			int dev_header_printed = 0;
+			sh.disk_printed = 0;
 
 			for (int k = 0; k < SMART_COUNT; ++k) {
 				struct smart_attr* attr = &dev->smart[k];
-				int dev_attr_printed = 0;
+				sh.attr_printed = 0;
 
-				/* 
+				/*
 				 * Raw change
 				 *
 				 * No explicit kind/critical filtering is needed here because raw.prev
@@ -689,28 +745,16 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
 
 					if (cv_val != cv_old) {
-						if (!header_printed) {
-							print_line_separator(ss);
-							ss_prints(ss, "SMART CHANGES:\n\n");
-							header_printed = 1;
-						}
-						if (!dev_header_printed) {
-							ss_printf(ss, "Disk %s (serial: %s):\n", disk->name, dev->serial);
-							dev_header_printed = 1;
-						}
-						if (!dev_attr_printed) {
-							ss_printf(ss, "%s\n", attr->name);
-							dev_attr_printed = 1;
-						}
+						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
 
-						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
 						ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
 					}
 				}
 
-				/* 
+				/*
 				 * Norm change
 				 *
 				 * No explicit kind/prefail filtering is needed here because norm.prev
@@ -725,21 +769,9 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
 
 					if (cv_val != cv_old) {
-						if (!header_printed) {
-							print_line_separator(ss);
-							ss_prints(ss, "SMART CHANGES:\n\n");
-							header_printed = 1;
-						}
-						if (!dev_header_printed) {
-							ss_printf(ss, "Disk %s (serial: %s):\n", disk->name, dev->serial);
-							dev_header_printed = 1;
-						}
-						if (!dev_attr_printed) {
-							ss_printf(ss, "%s\n", attr->name);
-							dev_attr_printed = 1;
-						}
+						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
 
-						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* lower is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
 						ss_printf(ss, "norm %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")", changed, cv_old, cv_val, delta);
@@ -750,28 +782,71 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 					}
 				}
 			}
+
+			/* error_protocol change */
+			sh.attr_printed = 0;
+			if (dev->error_protocol.value != SMART_UNASSIGNED
+				&& dev->error_protocol.prev != SMART_UNASSIGNED
+				&& dev->error_protocol.value != dev->error_protocol.prev
+				&& dev->error_protocol.prev_last >= queue_time
+			) {
+				uint64_t cv_val = dev->error_protocol.value;
+				uint64_t cv_old = dev->error_protocol.prev;
+
+				if (cv_val != cv_old) {
+					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Error_Protocol", ignored);
+
+					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
+					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+					ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
+				}
+			}
+
+			/* error_medium change */
+			sh.attr_printed = 0;
+			if (dev->error_medium.value != SMART_UNASSIGNED
+				&& dev->error_medium.prev != SMART_UNASSIGNED
+				&& dev->error_medium.value != dev->error_medium.prev
+				&& dev->error_medium.prev_last >= queue_time
+			) {
+				uint64_t cv_val = dev->error_medium.value;
+				uint64_t cv_old = dev->error_medium.prev;
+
+				if (cv_val != cv_old) {
+					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Error_Medium", ignored);
+
+					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
+					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+					ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
+				}
+			}
 		}
 	}
-	if (header_printed) {
+	if (sh.header_printed) {
 		ss_prints(ss, "\n");
 	}
 }
 
 static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, time_t queue_time)
 {
-	int header_printed = 0;
+	struct smart_header sh;
+	sh.header_printed = 0;
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
+		sh.disk_printed = 0; /* it doesn't print the serial, so all devices goes in the same disk section */
+
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
 			struct snapraid_device* dev = j->data;
-			int dev_header_printed = 0;
 
 			for (int k = 0; k < SMART_COUNT; ++k) {
 				struct smart_attr* attr = &dev->smart[k];
-				int dev_attr_printed = 0;
+				sh.attr_printed = 0;
 
-				/* 
+				/*
 				 * Raw change
 				 *
 				 * No explicit kind/critical filtering is needed here because raw.prev
@@ -787,27 +862,16 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
 
 					if (cv_val != cv_old) {
-						if (!header_printed) {
-							ss_prints(ss, "SMART CHANGES\n");
-							header_printed = 1;
-						}
-						if (!dev_header_printed) {
-							ss_printf(ss, "Disk %s:\n", disk->name);
-							dev_header_printed = 1;
-						}
-						if (!dev_attr_printed) {
-							ss_printf(ss, "%s\n", attr->name);
-							dev_attr_printed = 1;
-						}
+						print_smart_header_narrow(ss, &sh, disk->name, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
 
-						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
+						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
 						ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
 					}
 				}
 
-				/* 
+				/*
 				 * Norm change
 				 *
 				 * No explicit kind/prefail filtering is needed here because norm.prev
@@ -822,20 +886,9 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
 
 					if (cv_val != cv_old) {
-						if (!header_printed) {
-							ss_prints(ss, "SMART CHANGES\n");
-							header_printed = 1;
-						}
-						if (!dev_header_printed) {
-							ss_printf(ss, "Disk %s:\n", disk->name);
-							dev_header_printed = 1;
-						}
-						if (!dev_attr_printed) {
-							ss_printf(ss, "%s\n", attr->name);
-							dev_attr_printed = 1;
-						}
+						print_smart_header_narrow(ss, &sh, disk->name, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
 
-						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* norm lower is worse */
+						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* lower is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
 						ss_printf(ss, "norm %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
@@ -844,9 +897,49 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 					}
 				}
 			}
+
+			/* error_protocol change */
+			sh.attr_printed = 0;
+			if (dev->error_protocol.value != SMART_UNASSIGNED
+				&& dev->error_protocol.prev != SMART_UNASSIGNED
+				&& dev->error_protocol.value != dev->error_protocol.prev
+				&& dev->error_protocol.prev_last >= queue_time
+			) {
+				uint64_t cv_val = dev->error_protocol.value;
+				uint64_t cv_old = dev->error_protocol.prev;
+
+				if (cv_val != cv_old) {
+					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
+					print_smart_header_narrow(ss, &sh, disk->name, "Error_Protocol", ignored);
+
+					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
+					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+					ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+				}
+			}
+
+			/* error_medium change */
+			sh.attr_printed = 0;
+			if (dev->error_medium.value != SMART_UNASSIGNED
+				&& dev->error_medium.prev != SMART_UNASSIGNED
+				&& dev->error_medium.value != dev->error_medium.prev
+				&& dev->error_medium.prev_last >= queue_time
+			) {
+				uint64_t cv_val = dev->error_medium.value;
+				uint64_t cv_old = dev->error_medium.prev;
+
+				if (cv_val != cv_old) {
+					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
+					print_smart_header_narrow(ss, &sh, disk->name, "Error_Medium", ignored);
+
+					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
+					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+					ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+				}
+			}
 		}
 	}
-	if (header_printed) {
+	if (sh.header_printed) {
 		ss_prints(ss, "\n");
 	}
 }
@@ -913,21 +1006,21 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	/* data disks */
 	if (disk_count(&state->array.disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS:\n");
-		print_disk_list_wide(&state->array.disk_list, DISK_DATA, ss, &sp);
+		print_disk_list_wide(state, &state->array.disk_list, DISK_DATA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* parity disks */
 	if (disk_count(&state->array.disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS:\n");
-		print_disk_list_wide(&state->array.disk_list, DISK_PARITY, ss, &sp);
+		print_disk_list_wide(state, &state->array.disk_list, DISK_PARITY, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
 	/* other disks */
 	if (disk_count(&state->array.disk_list, DISK_EXTRA) != 0) {
 		ss_prints(ss, "EXTRA DISKS:\n");
-		print_disk_list_wide(&state->array.disk_list, DISK_EXTRA, ss, &sp);
+		print_disk_list_wide(state, &state->array.disk_list, DISK_EXTRA, ss, &sp);
 		ss_prints(ss, "\n");
 	}
 
@@ -1007,19 +1100,19 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 
 	if (disk_count(&state->array.disk_list, DISK_DATA) != 0) {
 		ss_prints(ss, "DATA DISKS\n");
-		print_disk_list_narrow(&state->array.disk_list, DISK_DATA, ss);
+		print_disk_list_narrow(state, &state->array.disk_list, DISK_DATA, ss);
 		ss_prints(ss, "\n");
 	}
 
 	if (disk_count(&state->array.disk_list, DISK_PARITY) != 0) {
 		ss_prints(ss, "PARITY DISKS\n");
-		print_disk_list_narrow(&state->array.disk_list, DISK_PARITY, ss);
+		print_disk_list_narrow(state, &state->array.disk_list, DISK_PARITY, ss);
 		ss_prints(ss, "\n");
 	}
 
 	if (disk_count(&state->array.disk_list, DISK_EXTRA) != 0) {
 		ss_prints(ss, "EXTRA DISKS\n");
-		print_disk_list_narrow(&state->array.disk_list, DISK_EXTRA, ss);
+		print_disk_list_narrow(state, &state->array.disk_list, DISK_EXTRA, ss);
 		ss_prints(ss, "\n");
 	}
 

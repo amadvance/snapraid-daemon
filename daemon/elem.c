@@ -162,6 +162,66 @@ void run_free(void* void_run)
 }
 
 /****************************************************************************/
+/* smartignore */
+
+/**
+ * Allocate and initialize a new smartignore.
+ * @return Pointer to newly allocated smartignore
+ */
+struct snapraid_smartignore* smartignore_alloc(const char* disk_name, const char* attr_name)
+{
+	struct snapraid_smartignore* smartignore = calloc_nofail(1, sizeof(struct snapraid_smartignore));
+	sncpy(smartignore->disk_name, sizeof(smartignore->disk_name), disk_name);
+	sncpy(smartignore->attr_name, sizeof(smartignore->attr_name), attr_name);
+	if (strint(&smartignore->attr_index, attr_name) != 0) {
+		smartignore->attr_index = 0;
+	}
+	return smartignore;
+}
+
+/**
+ * Duplicate a smartignore
+ */
+struct snapraid_smartignore* smartignore_dup(struct snapraid_smartignore* smartignore)
+{
+	return smartignore_alloc(smartignore->disk_name, smartignore->attr_name);
+}
+
+/**
+ * Free a smartignore.
+ * @param void_smartignore Pointer to the smartignore entry
+ */
+void smartignore_free(void* void_smartignore)
+{
+	free(void_smartignore);
+}
+
+int smartignore_match(const char* disk_name, int attr_index, const char* attr_name, tommy_list* smartignore_list)
+{
+	if (tommy_list_empty(smartignore_list)) {
+		return 0;
+	}
+
+	for (tommy_node* i = tommy_list_head(smartignore_list); i != 0; i = i->next) {
+		struct snapraid_smartignore* smartignore = i->data;
+		if ((smartignore->disk_name[0] == '*' && smartignore->disk_name[1] == 0)
+			|| strcmp(smartignore->disk_name, disk_name) == 0) {
+			if (smartignore->attr_index != 0) {
+				if (attr_index != 0 && smartignore->attr_index == attr_index) {
+					return 1;
+				}
+			} else {
+				if (strcasecmp(smartignore->attr_name, attr_name) == 0) {
+					return 1;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+/****************************************************************************/
 /* association */
 
 struct snapraid_association* association_alloc(const char* file, const char* id)

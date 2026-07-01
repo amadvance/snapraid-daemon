@@ -1329,6 +1329,12 @@ components:
             the underlying error condition is resolved.
         error_protocol_history:
           $ref: '#/components/schemas/ValueHistory'
+        error_protocol_ignored:
+          type: boolean
+          description: >
+            Indicates if the error_protocol attribute is explicitly ignored
+            by the user configuration. If true, changes to this count
+            will not trigger warning notifications.
         error_medium:
           type: integer
           format: int64
@@ -1340,6 +1346,12 @@ components:
             the underlying error condition is resolved.
         error_medium_history:
           $ref: '#/components/schemas/ValueHistory'
+        error_medium_ignored:
+          type: boolean
+          description: >
+            Indicates if the error_medium attribute is explicitly ignored
+            by the user configuration. If true, changes to this count
+            will not trigger warning notifications.
         wear_level:
           type: integer
           description: >
@@ -1414,6 +1426,12 @@ components:
                       hardware health. When true, any degradation in this
                       value should be treated as a high-priority warning,
                       regardless of whether the 'type' is 'prefail' or 'oldage'.
+                  ignored:
+                    type: boolean
+                    description: >
+                      Indicates if this attribute is explicitly ignored by the
+                      user configuration. Ignored attributes do not generate
+                      notifications when their values degrade.
                   type:
                     type: string
                     enum: [prefail, oldage]

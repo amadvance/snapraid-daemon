@@ -733,20 +733,21 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
     const devicesHtml = disk.devices.map(dev => {
         const smartIssues = [];
-        if (dev.error_medium > 0) {
+        if (dev.error_medium > 0 && !dev.error_medium_ignored) {
             smartIssues.push(`medium_errors: ${dev.error_medium} ${formatHistory(dev.error_medium, dev.error_medium_history, pulseAt)}`);
         }
-        if (dev.error_protocol > 0) {
+        if (dev.error_protocol > 0 && !dev.error_protocol_ignored) {
             smartIssues.push(`protocol_errors: ${dev.error_protocol} ${formatHistory(dev.error_protocol, dev.error_protocol_history, pulseAt)}`);
         }
         if (dev.smart) {
             if (dev.smart.attributes) {
                 dev.smart.attributes.forEach(attr => {
+                    if (attr.ignored && attr.when_failed !== 'now') return;
                     if (attr.critical && attr.measure === 'count' && attr.raw !== 0) {
                         let label = `${attr.name.toLowerCase()}: raw ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
-                    if (attr.type === 'prefail' && attr.norm_history?.prev !== undefined && attr.norm_history?.prev !== null) {
+                    if (attr.when_failed === 'now' || (attr.type === 'prefail' && attr.norm_history?.prev !== undefined && attr.norm_history?.prev !== null)) {
                         let label = `${attr.name.toLowerCase()}: norm ${attr.norm} ${formatHistory(attr.norm, attr.norm_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
