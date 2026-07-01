@@ -12,16 +12,6 @@ SnapRAID Daemon TODO
   Device /dev/sda changed power from standby to active
   Device /dev/sda changed smart attribute XXXX from xxx to yyy
 
-- Send a notification report every time a PREFAIL attribute changes.
-  Messages can be generated in the parser, and then a dedicated report can be
-  scheduled at the end of each task.
-  However, a system is needed to ignore some of them.
-  If done via CLI, they will no longer be visible. It would be better to do it from the daemon.
-  New configurations option are required.
-    notify_smartignore = DISK/DEVICE/* ATTRS...
-    notify_smartignore = parity 188 command_timeout protocol_error (disables the notification, but not the display)
-    smartignore = * 188 command_timeout protocol_error (completly disables the attribute everywhere, similar to disabling it in the CLI)
-
 - Count data data/io error happened in the past (monotonic increasing, never resetting to 0).
   Show this counter in yellow.
   > past_error_data

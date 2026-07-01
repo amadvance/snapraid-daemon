@@ -238,6 +238,36 @@ bail:
 	return -1;
 }
 
+int config_parse_smart_ignore(const char* input, struct snapraid_config* config)
+{
+	char* tokens[64];
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), input);
+
+	unsigned n = strsplit(tokens, 64, copy, " \t", " \t\r\n");
+	if (n < 2) {
+		return -1;
+	}
+
+	/*
+	 * Reject "0" as an attribute index since 0 is reserved as the sentinel value
+	 * indicating a name-based rule in smartignore_match.
+	 */
+	for (unsigned i = 1; i < n; ++i) {
+		int val;
+		if (strint(&val, tokens[i]) == 0 && val == 0) {
+			return -1;
+		}
+	}
+
+	for (unsigned i = 1; i < n; ++i) {
+		struct snapraid_smartignore* smartignore = smartignore_alloc(tokens[0], tokens[i]);
+		tommy_list_insert_tail(&config->smartignore_list, &smartignore->node, smartignore);
+	}
+
+	return 0;
+}
+
 static const char* config_level(int level)
 {
 	switch (level) {
@@ -444,6 +474,11 @@ int config_load_locked(struct snapraid_state* state)
 				}
 			} else if (strcmp(key, "maintenance_schedule") == 0) {
 				if (config_parse_maintenance_schedule(val, config) == 0) {
+				} else {
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
+			} else if (strcmp(key, "smartignore") == 0) {
+				if (config_parse_smart_ignore(val, config) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
@@ -805,6 +840,8 @@ void config_default_locked(struct snapraid_state* state)
 	config->check_updates = 0;
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_init(&config->maintenance_list);
+	tommy_list_foreach(&config->smartignore_list, smartignore_free);
+	tommy_list_init(&config->smartignore_list);
 	config->sync_threshold_deletes = 0;
 	config->sync_threshold_updates = 0;
 	config->sync_prehash = 0;
@@ -855,6 +892,11 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 		struct snapraid_run* run = run_dup(i->data);
 		tommy_list_insert_tail(&transient->maintenance_list, &run->node, run);
 	}
+	tommy_list_init(&transient->smartignore_list);
+	for (tommy_node* i = tommy_list_head(&config->smartignore_list); i != 0; i = i->next) {
+		struct snapraid_smartignore* smartignore = smartignore_dup(i->data);
+		tommy_list_insert_tail(&transient->smartignore_list, &smartignore->node, smartignore);
+	}
 	transient->sync_threshold_deletes = config->sync_threshold_deletes;
 	transient->sync_threshold_updates = config->sync_threshold_updates;
 	transient->sync_prehash = config->sync_prehash;
@@ -881,6 +923,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 void config_free(struct snapraid_config* config)
 {
 	tommy_list_foreach(&config->maintenance_list, run_free);
+	tommy_list_foreach(&config->smartignore_list, smartignore_free);
 }
 
 int config_apply_locked(struct snapraid_state* state, struct snapraid_config* transient)
@@ -909,6 +952,11 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	config->maintenance_list = transient->maintenance_list;
 	tommy_list_init(&transient->maintenance_list);
+
+	tommy_list_foreach(&config->smartignore_list, smartignore_free);
+	config->smartignore_list = transient->smartignore_list;
+	tommy_list_init(&transient->smartignore_list);
+
 	config->sync_threshold_deletes = transient->sync_threshold_deletes;
 	config->sync_threshold_updates = transient->sync_threshold_updates;
 	config->sync_prehash = transient->sync_prehash;
@@ -991,5 +1039,6 @@ void config_done(struct snapraid_state* state)
 {
 	tommy_list_foreach(&state->config.line_list, config_line_free);
 	tommy_list_foreach(&state->config.maintenance_list, run_free);
+	tommy_list_foreach(&state->config.smartignore_list, smartignore_free);
 }
 

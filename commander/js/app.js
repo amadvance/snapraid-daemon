@@ -844,9 +844,10 @@ const app = {
         // Add protocol and medium errors manually to critical metrics
         if (device.error_protocol != null) {
             const rowClass = device.error_protocol > 0 ? 'text-amber' : 'text-emerald';
+            const label = device.error_protocol_ignored ? 'PROTOCOL ERRORS (ignored)' : 'PROTOCOL ERRORS';
             criticalRows.push(`
                 <tr>
-                    <td class="font-bold text-xs">PROTOCOL ERRORS</td>
+                    <td class="font-bold text-xs">${label}</td>
                     <td class="${rowClass} font-mono text-xs font-bold">${device.error_protocol}</td>
                     <td class="${rowClass} font-mono text-xs">-</td>
                     <td class="${rowClass} font-mono text-xs">-</td>
@@ -857,9 +858,10 @@ const app = {
         }
         if (device.error_medium != null) {
             const rowClass = device.error_medium > 0 ? 'text-amber' : 'text-emerald';
+            const label = device.error_medium_ignored ? 'MEDIUM ERRORS (ignored)' : 'MEDIUM ERRORS';
             criticalRows.push(`
                 <tr>
-                    <td class="font-bold text-xs">MEDIUM ERRORS</td>
+                    <td class="font-bold text-xs">${label}</td>
                     <td class="${rowClass} font-mono text-xs font-bold">${device.error_medium}</td>
                     <td class="${rowClass} font-mono text-xs">-</td>
                     <td class="${rowClass} font-mono text-xs">-</td>
@@ -899,7 +901,10 @@ const app = {
         // 2. Process attributes array for criticalRows and otherRows
         if (s.attributes) {
             s.attributes.forEach(attr => {
-                const label = attr.name.replace(/_/g, ' ').toUpperCase();
+                let label = attr.name.replace(/_/g, ' ').toUpperCase();
+                if (attr.ignored) {
+                    label += ' (ignored)';
+                }
                 if (attr.critical || attr.when_failed === 'now' || attr.when_failed === 'past') {
                     let rowClass = 'text-emerald';
                     if (attr.when_failed === 'now')

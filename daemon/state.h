@@ -483,6 +483,13 @@ struct snapraid_config_line {
 	tommy_node node;
 };
 
+struct snapraid_smartignore {
+	char disk_name[KEYWORD_MAX]; /**< Name of the disk or '*' */
+	char attr_name[KEYWORD_MAX]; /**< Attribute ID or name */
+	int attr_index; /**< Attribute ID index, or 0 if string name */
+	tommy_node node;
+};
+
 struct snapraid_config {
 	/* private part of the configuration */
 	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
@@ -506,6 +513,7 @@ struct snapraid_config {
 	char net_auth_credential[CONFIG_MAX]; /**< Argon2id hashed credentials for Basic Auth */
 	int check_updates; /**< 1 to enable periodic update check, 0 otherwise */
 	tommy_list maintenance_list; /**< List of snapraid_run */
+	tommy_list smartignore_list; /**< List of snapraid_smartignore */
 	int sync_threshold_deletes; /**< Threshold for deletes before sync fails */
 	int sync_threshold_updates; /**< Threshold for updates before sync fails */
 	int sync_prehash; /**< 1 to enable prehash, 0 otherwise */

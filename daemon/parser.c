@@ -780,6 +780,34 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 	pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label);
 }
 
+static void report_attribute_change(struct snapraid_state* state, const char* disk,
+	int attr_index, const char* attr_name, const char* attr_type, int is_higher_worse,
+	uint64_t cv_old, uint64_t cv_val)
+{
+	if (cv_old == cv_val)
+		return;
+
+	int ignored = smartignore_match(disk, attr_index, attr_name, &state->config.smartignore_list);
+	if (!ignored) {
+		const char* changed;
+		if (is_higher_worse) {
+			changed = cv_old < cv_val ? "degraded" : "improved";
+		} else {
+			changed = cv_old > cv_val ? "degraded" : "improved";
+		}
+
+		log_task(LVL_WARNING, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
+			attr_type, attr_name, disk, changed, cv_old, cv_val);
+
+		/* if there isn't already a report scheduled, schedule a new one */
+		if (!runner_has_cmd_locked(state, CMD_REPORT)) {
+			char msg[MSG_MAX];
+			int status;
+			runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
+		}
+	}
+}
+
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -832,11 +860,23 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		uint64_t old = device->error_protocol.value;
 		if (pulse_stru64(state, PULSE_DISKS, &device->error_protocol.value, val) == 0) {
 			tracked_update(&device->error_protocol, old, 0, state->array.last_time);
+
+			if (old != SMART_UNASSIGNED
+				&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+			) {
+				report_attribute_change(state, disk, 0, "error_protocol", "raw", 1, old, device->error_protocol.value);
+			}
 		}
 	} else if (strcmp(tag, "error_medium") == 0) {
 		uint64_t old = device->error_medium.value;
 		if (pulse_stru64(state, PULSE_DISKS, &device->error_medium.value, val) == 0) {
 			tracked_update(&device->error_medium, old, 0, state->array.last_time);
+
+			if (old != SMART_UNASSIGNED
+				&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+			) {
+				report_attribute_change(state, disk, 0, "error_medium", "raw", 1, old, device->error_medium.value);
+			}
 		}
 	} else if (strcmp(tag, "wear_level") == 0)
 		pulse_stru64(state, PULSE_DISKS, &device->wear_level, val);
@@ -926,6 +966,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 
 		if (strint(&index, tag) == 0 && index >= 0 && index < 256) {
 			int kind = smart_kind(index, name);
+
 			uint64_t old_raw = device->smart[index].raw.value;
 			uint64_t old_norm = device->smart[index].norm.value;
 			int got_raw;
@@ -962,24 +1003,11 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
 
 				if (old_raw != SMART_UNASSIGNED
-					&& state->daemon_running != DAEMON_LOADING  /* do not report on loading past logs */
+					&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
 				) {
 					uint64_t cv_old = smart_conv(old_raw, kind);
 					uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
-
-					if (cv_old != cv_val) {
-						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* raw higher is worse */
-					
-						log_task(LVL_WARNING, "SMART raw attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
-							name, disk, changed, cv_old, cv_val);
-
-						/* if there isn't already a report scheduled, schedule a new one */
-						if (!runner_has_cmd_locked(state, CMD_REPORT)) {
-							char msg[MSG_MAX];
-							int status;
-							runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
-						}
-					}
+					report_attribute_change(state, disk, index, name, "raw", 1, cv_old, cv_val);
 				}
 			}
 
@@ -992,20 +1020,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				) {
 					uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
 					uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
-
-					if (cv_old != cv_val) {
-						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* norm lower is worse */
-
-						log_task(LVL_WARNING, "SMART norm attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
-							name, disk, changed, cv_old, cv_val);
-
-						/* if there isn't already a report scheduled, schedule a new one */
-						if (!runner_has_cmd_locked(state, CMD_REPORT)) {
-							char msg[MSG_MAX];
-							int status;
-							runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
-						}
-					}
+					report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
 				}
 			}
 		}

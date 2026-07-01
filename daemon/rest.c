@@ -1563,7 +1563,7 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t refere
 	ss_json_close(s, &level);
 }
 
-static void json_device_list(ss_t* s, int level, tommy_list* list, time_t reference)
+static void json_device_list(struct snapraid_state* state, ss_t* s, int level, const char* disk_name, tommy_list* list, time_t reference)
 {
 	++level;
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
@@ -1586,10 +1586,18 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 			ss_json_u64(s, level, "size_bytes", dev->size);
 		if (dev->rotational != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "rotational", dev->rotational);
-		if (dev->error_protocol.value != SMART_UNASSIGNED)
+		if (dev->error_protocol.value != SMART_UNASSIGNED) {
 			json_tracked(s, level, "error_protocol", &dev->error_protocol, 0);
-		if (dev->error_medium.value != SMART_UNASSIGNED)
+			if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
+				ss_json_bool(s, level, "error_protocol_ignored", 1);
+			}
+		}
+		if (dev->error_medium.value != SMART_UNASSIGNED) {
 			json_tracked(s, level, "error_medium", &dev->error_medium, 0);
+			if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
+				ss_json_bool(s, level, "error_medium_ignored", 1);
+			}
+		}
 		if (dev->wear_level != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "wear_level", dev->wear_level);
 		if (dev->afr != 0)
@@ -1601,7 +1609,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 		if (dev->smart_time)
 			ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
 		/* low level attributes */
-		json_smart_list(s, level, dev);
+		json_smart_list(state, disk_name, s, level, dev);
 		if (dev->smart[9].raw.value != SMART_UNASSIGNED)
 			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw.value & 0xFFFFFF);
 		/* high level attributes */
@@ -1659,7 +1667,7 @@ static void json_device_list(ss_t* s, int level, tommy_list* list, time_t refere
 	}
 }
 
-static void json_disk_list(ss_t* s, int level, tommy_list* list, int kind, int64_t reference)
+static void json_disk_list(struct snapraid_state* state, ss_t* s, int level, tommy_list* list, int kind, int64_t reference)
 {
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -1701,7 +1709,7 @@ static void json_disk_list(ss_t* s, int level, tommy_list* list, int kind, int64
 		ss_json_array_close(s, &level);
 
 		ss_json_array_open(s, &level, "devices");
-		json_device_list(s, level, &disk->device_list, reference);
+		json_device_list(state, s, level, disk->name, &disk->device_list, reference);
 		ss_json_array_close(s, &level);
 		ss_json_close(s, &level);
 	}
@@ -1751,13 +1759,13 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
-	json_disk_list(&s, level, &state->array.disk_list, DISK_DATA, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_DATA, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "parity_disks");
-	json_disk_list(&s, level, &state->array.disk_list, DISK_PARITY, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_PARITY, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "extra_disks");
-	json_disk_list(&s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time);
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
 

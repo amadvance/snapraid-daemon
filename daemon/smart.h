@@ -62,7 +62,7 @@ void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked*
  * @param level JSON indentation level
  * @param dev Device structure
  */
-void json_smart_list(ss_t* s, int level, struct snapraid_device* dev);
+void json_smart_list(struct snapraid_state* state, const char* disk_name, ss_t* s, int level, struct snapraid_device* dev);
 
 #endif
 

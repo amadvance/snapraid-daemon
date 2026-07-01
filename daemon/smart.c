@@ -365,13 +365,15 @@ void json_tracked(ss_t* s, int level, const char* name, struct snapraid_tracked*
 	}
 }
 
-static void json_attr(ss_t* s, int* level, int kind_and_format, struct smart_attr* attr)
+static void json_attr(struct snapraid_state* state, const char* disk_name, int attr_index, ss_t* s, int* level, int kind_and_format, struct smart_attr* attr)
 {
 	int kind = kind_and_format;
 	int format = kind_and_format & FORMAT_MASK;
 
 	ss_json_open(s, level);
 	ss_json_str(s, *level, "name", attr->name);
+	if (smartignore_match(disk_name, attr_index, attr->name, &state->config.smartignore_list))
+		ss_json_bool(s, *level, "ignored", 1);
 	ss_json_bool(s, *level, "critical", (kind & SMART_KIND_CRITICAL) != 0);
 	if (attr->flags & SMART_ATTR_TYPE_PREFAIL)
 		ss_json_str(s, *level, "type", "prefail");
@@ -470,7 +472,7 @@ static void json_attr(ss_t* s, int* level, int kind_and_format, struct smart_att
 	ss_json_close(s, level);
 }
 
-void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
+void json_smart_list(struct snapraid_state* state, const char* disk_name, ss_t* s, int level, struct snapraid_device* dev)
 {
 	char processed[SMART_COUNT];
 
@@ -509,7 +511,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 
 		processed[id] = 1;
 
-		json_attr(s, &level, entry->kind | entry->format, attr);
+		json_attr(state, disk_name, id, s, &level, entry->kind | entry->format, attr);
 	}
 
 	/* output all PREFAIL that are not yet processed */
@@ -528,7 +530,7 @@ void json_smart_list(ss_t* s, int level, struct snapraid_device* dev)
 		if (attr->raw.value == SMART_UNASSIGNED)
 			continue;
 
-		json_attr(s, &level, SMART_KIND_CRITICAL | SMART_KIND_VENDOR, attr);
+		json_attr(state, disk_name, j, s, &level, SMART_KIND_CRITICAL | SMART_KIND_VENDOR, attr);
 	}
 
 	ss_json_array_close(s, &level);
