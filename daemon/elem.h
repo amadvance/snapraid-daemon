@@ -184,7 +184,7 @@ int task_level(struct snapraid_task* task);
 /**
  * Set the start time ensuring uniquiness.
  */
-void task_set_unique_start_time(struct snapraid_state* state, struct snapraid_task* task, time_t now);
+void task_set_unique_start_time_locked(struct snapraid_state* state, struct snapraid_task* task, time_t now);
 
 /****************************************************************************/
 /* schedule */
@@ -356,21 +356,21 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size);
  * @param reason_size Size of reason buffer
  * @return Health status ID
  */
-int health_array(struct snapraid_state* state, char* reason, size_t reason_size);
+int health_array_locked(struct snapraid_state* state, char* reason, size_t reason_size);
 
 /**
  * Calculate Annual Failure Rate (AFR) for the array.
  * @param state Current snapraid state
  * @return AFR value
  */
-double afr_array(struct snapraid_state* state);
+double afr_array_locked(struct snapraid_state* state);
 
 /**
  * Calculate failure probability for the array.
  * @param state Current snapraid state
  * @return Failure probability (0.0 to 1.0)
  */
-double fp_array(struct snapraid_state* state);
+double fp_array_locked(struct snapraid_state* state);
 
 /****************************************************************************/
 /* temperature */

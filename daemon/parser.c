@@ -161,7 +161,7 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
 /**
  * Apply the association to all devices
  */
-static void parser_mapping_process(struct snapraid_state* state)
+static void parser_mapping_process_locked(struct snapraid_state* state)
 {
 	/*
 	 * Remap devices using the listed association
@@ -1642,7 +1642,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state->parser_previous_was_association = 0; /* no lock required for parser_* fields as private to parser */
 
 		state_lock();
-		parser_mapping_process(state);
+		parser_mapping_process_locked(state);
 		state_unlock();
 	}
 
@@ -1984,13 +1984,13 @@ int parse_timestamp(const char* name, time_t* out)
 	return 0;
 }
 
-void parse_begin(struct snapraid_state* state)
+void parse_begin_locked(struct snapraid_state* state)
 {
 	/* clear the association mapping */
 	parser_mapping_start(state);
 }
 
-void parse_end(struct snapraid_state* state, struct snapraid_task* task)
+void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task)
 {
 	/* remove disks that were not referenced */
 	remove_disappeared_disks(state, task);
@@ -2083,7 +2083,7 @@ int parse_past_log(struct snapraid_state* state)
 		state->runner.latest = task;
 		sncpy(task->log_file, sizeof(task->log_file), path);
 
-		parse_begin(state);
+		parse_begin_locked(state);
 
 		log_task_reset();
 
@@ -2096,7 +2096,7 @@ int parse_past_log(struct snapraid_state* state)
 
 		log_task_push(&task->message_list);
 
-		parse_end(state, task);
+		parse_end_locked(state, task);
 
 		/* compute the task health */
 		task->health = health_task(task, 0, 0);

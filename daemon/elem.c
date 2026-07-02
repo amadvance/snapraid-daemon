@@ -357,7 +357,7 @@ int task_level(struct snapraid_task* task)
 	return level;
 }
 
-void task_set_unique_start_time(struct snapraid_state* state, struct snapraid_task* task, time_t now)
+void task_set_unique_start_time_locked(struct snapraid_state* state, struct snapraid_task* task, time_t now)
 {
 	if (now <= state->runner.last_start_time)
 		now = state->runner.last_start_time + 1;
@@ -789,7 +789,7 @@ int health_task(struct snapraid_task* task, char* reason, size_t reason_size)
 	return health;
 }
 
-int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
+int health_array_locked(struct snapraid_state* state, char* reason, size_t reason_size)
 {
 	char msg[HEALTH_REASON_MAX];
 	int health = HEALTH_PASSED;
@@ -826,7 +826,7 @@ int health_array(struct snapraid_state* state, char* reason, size_t reason_size)
 	return health;
 }
 
-double afr_array(struct snapraid_state* state)
+double afr_array_locked(struct snapraid_state* state)
 {
 	double afr = 0;
 
@@ -853,9 +853,9 @@ static double poisson_prob_at_least_one_failure(double rate)
 	return 1.0 - exp(-rate);
 }
 
-double fp_array(struct snapraid_state* state)
+double fp_array_locked(struct snapraid_state* state)
 {
-	double afr = afr_array(state);
+	double afr = afr_array_locked(state);
 	if (afr == 0)
 		return 0;
 	return poisson_prob_at_least_one_failure(afr);
