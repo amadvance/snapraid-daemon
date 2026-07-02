@@ -265,6 +265,7 @@ Post-install hook provides systemctl commands.
 - **Headers**: All `.h` files have include guards (`#ifndef __NAME_H`)
 - **Preferences**: Use 0 instead of NULL and '\0'
 - **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
+- **Safety Checks**: Avoid adding safety checks for conditions that never happen
  
 #### Frontend UI Guidelines
 
