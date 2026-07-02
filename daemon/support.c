@@ -510,7 +510,11 @@ void ss_json_pair_iso8601(ss_t* s, int level, const char* field, time_t arg)
 	struct tm res;
 	struct tm* tm_info = localtime_r(&arg, &res);
 
-	strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", tm_info);
+	if (tm_info) {
+		strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", tm_info);
+	} else {
+		sncpy(buf, sizeof(buf), "1970-01-01T00:00:00");
+	}
 
 	ss_json_str(s, level, field, buf);
 }
