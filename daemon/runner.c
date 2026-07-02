@@ -184,7 +184,7 @@ static int runner_report_locked(struct snapraid_state* state)
 		struct snapraid_task* task = i->data;
 
 		/* they should have the same queue time */
-		if (task->unix_queue_time != report_task->unix_queue_time)
+		if (!task_same_group(task, report_task))
 			break;
 
 		/* keep track of the most critical level */
@@ -226,7 +226,7 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	report_locked(state, &ss, report_task, fix_task, sync_task, scrub_task, diff_stat);
 
-	/* 
+	/*
 	 * Check if any prefail/critical raw attributes or prefail norm attributes changed since queue_time
 	 *
 	 * The attributes checked here are implicitly restricted to those tracked by parser.c
@@ -1029,7 +1029,7 @@ bail:
 
 		/* cancel queued tasks */
 		snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-		task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
+		task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
 	} else {
 		if (WIFEXITED(status)) {
 			/* child's exit(code) or return from main */
@@ -1041,7 +1041,7 @@ bail:
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */
 				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-				task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
+				task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
 			}
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */
@@ -1050,7 +1050,7 @@ bail:
 
 			/* cancel queued tasks */
 			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), os_signal_name(task->exit_sig), task->exit_sig);
-			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
+			task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
 		} else {
 			/* it should never happen */
 			task->exit_code = -1;
@@ -1058,7 +1058,7 @@ bail:
 
 			/* cancel queued tasks */
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-			task_list_cancel(&state->runner.waiting_list, &state->runner.history_list, msg);
+			task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
 		}
 	}
 }

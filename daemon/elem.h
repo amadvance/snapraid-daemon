@@ -166,9 +166,14 @@ void task_free(void* void_task);
 int task_success(struct snapraid_task* task);
 
 /**
- * Cancel tasks and move in the history list. Stop at the first REPORT tasks
+ * Check if two tasks belong to the same group based on queue time.
  */
-void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg);
+int task_same_group(const struct snapraid_task* task1, const struct snapraid_task* task2);
+
+/**
+ * Cancel tasks of the same group in the waiting list and move them to the history list.
+ */
+void task_list_cancel(struct snapraid_task* failed_task, tommy_list* waiting_list, tommy_list* history_list, const char* msg);
 
 /**
  * Get the info level of the task from it's result
