@@ -444,6 +444,13 @@ struct snapraid_page {
 struct snapraid_page* page_alloc(const char* path, size_t content_size);
 
 /**
+ * Duplicate a web page entry.
+ * @param src Pointer to source page to duplicate
+ * @return Pointer to newly allocated duplicate page
+ */
+struct snapraid_page* page_dup(const struct snapraid_page* src);
+
+/**
  * Free a web page entry.
  * @param void_page Pointer to the page entry
  */
