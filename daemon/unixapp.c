@@ -383,7 +383,7 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 	 * O_NOFOLLOW Prevents attacks about making a dangling link pointing
 	 * to another file that will be created with the daemon ownership.
 	 */
-	int fd = open(pidfile_path, O_RDWR | O_CREAT | O_NOFOLLOW, 0644);
+	int fd = open(pidfile_path, O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0644);
 	if (fd == -1) {
 		fprintf(stderr, "Error: Could not open PID file %s: %s\n", pidfile_path, strerror(errno));
 		return -1;
@@ -472,13 +472,15 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 
 	/* ensure the daemon doesn't block any filesystem unmounting */
 	if (chdir("/") != 0) {
+		unlink(pidfile_path);
 		close(pidfd);
 		return -1;
 	}
 
 	/* redirect Standard I/O to /dev/null */
-	int fd = open("/dev/null", O_RDWR);
+	int fd = open("/dev/null", O_RDWR | O_CLOEXEC);
 	if (fd == -1) {
+		unlink(pidfile_path);
 		close(pidfd);
 		return -1;
 	}
@@ -487,6 +489,7 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 		|| dup2(fd, STDOUT_FILENO) < 0
 		|| dup2(fd, STDERR_FILENO) < 0) {
 		close(fd);
+		unlink(pidfile_path);
 		close(pidfd);
 		return -1;
 	}
