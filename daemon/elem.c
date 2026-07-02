@@ -986,9 +986,19 @@ struct snapraid_page* page_alloc(const char* path, size_t content_size)
 	return page;
 }
 
+struct snapraid_page* page_dup(const struct snapraid_page* src)
+{
+	struct snapraid_page* dup = page_alloc(src->path, src->size);
+	dup->mime_type = src->mime_type;
+	dup->is_static = src->is_static;
+
+	memcpy(dup->content, src->content, src->size);
+
+	return dup;
+}
+
 void page_free(void* void_page)
 {
-	struct snapraid_page* page = void_page;
-	free(page);
+	free(void_page);
 }
 

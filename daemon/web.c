@@ -570,8 +570,15 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 				return send_error(conn, 304);
 			}
 
-			int status = send_file(conn, page_time, page->content, page->size, page->mime_type, page->is_static);
+			/* duplicate before unlocking */
+			struct snapraid_page* dup = page_dup(page);
+
+			/* unlock before sending */
 			web_unlock();
+
+			int status = send_file(conn, page_time, dup->content, dup->size, dup->mime_type, dup->is_static);
+
+			page_free(dup);
 			return status;
 		}
 
