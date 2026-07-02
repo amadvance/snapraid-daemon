@@ -592,19 +592,10 @@ int config_reload_locked(struct snapraid_state* state)
 	if (config_load_locked(state) != 0)
 		return -1;
 
-	/* restart web server */
+	/* return 1 if web server configuration changed and rest_reload is needed */
 	if (net_enabled != config->net_enabled
 		|| (net_enabled && (strcmp(net_acl, config->net_acl) != 0 || strcmp(net_port, config->net_port) != 0))) {
-		if (net_enabled) {
-			log_msg(LVL_INFO, "deinitializing the web server due to different configuration");
-			rest_done(state);
-		}
-		if (config->net_enabled) {
-			log_msg(LVL_INFO, "initializing the web server due to different configuration");
-			if (rest_init(state) != 0) {
-				log_msg(LVL_ERROR, "failed to restart web server");
-			}
-		}
+		return 1;
 	}
 
 	return 0;

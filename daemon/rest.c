@@ -2937,19 +2937,19 @@ bail:
 	return 0;
 }
 
-int rest_init(struct snapraid_state* state)
+int rest_init(struct snapraid_state* state, int net_enabled, const char* net_port, const char* net_acl)
 {
 	const char* options[20];
 	char listening_port[CONFIG_MAX];
 	int listening_port_default;
 	int i;
 
-	if (!state->config.net_enabled)
+	if (!net_enabled)
 		return 0;
 
 	i = 0;
 
-	sncpy(listening_port, sizeof(listening_port), state->config.net_port);
+	sncpy(listening_port, sizeof(listening_port), net_port);
 	listening_port_default = 0;
 	if (listening_port[0] == 0) {
 		/* listen to both IPv4 and IPv6 */
@@ -2958,9 +2958,9 @@ int rest_init(struct snapraid_state* state)
 	}
 	options[i++] = "listening_ports";
 	options[i++] = listening_port;
-	if (state->config.net_acl[0] != 0) {
+	if (net_acl && net_acl[0] != 0) {
 		options[i++] = "access_control_list";
-		options[i++] = state->config.net_acl;
+		options[i++] = net_acl;
 	}
 	options[i++] = "num_threads";
 	options[i++] = "4";
@@ -3016,15 +3016,36 @@ int rest_init(struct snapraid_state* state)
 	return 0;
 }
 
-void rest_done(struct snapraid_state* state)
+void rest_done(struct snapraid_state* state, int net_enabled)
 {
-	if (!state->config.net_enabled)
+	if (!net_enabled)
 		return;
 
-	mg_stop(state->rest_context);
+	if (state->rest_context) {
+		mg_stop(state->rest_context);
+		state->rest_context = 0;
+	}
 
 	mg_exit_library();
 
 	log_msg(LVL_INFO, "web server stopped");
+}
+
+int rest_reload(struct snapraid_state* state, int prev_net_enabled, int net_enabled, const char* net_port, const char* net_acl)
+{
+	if (prev_net_enabled) {
+		log_msg(LVL_INFO, "deinitializing the web server due to different configuration");
+		rest_done(state, prev_net_enabled);
+	}
+
+	if (net_enabled) {
+		log_msg(LVL_INFO, "initializing the web server due to different configuration");
+		if (rest_init(state, net_enabled, net_port, net_acl) != 0) {
+			log_msg(LVL_ERROR, "failed to restart web server");
+			return -1;
+		}
+	}
+
+	return 0;
 }
 

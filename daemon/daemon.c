@@ -307,7 +307,7 @@ int daemon_init(struct snapraid_state* state)
 	 */
 	scheduler_init(state);
 
-	if (rest_init(state) != 0) {
+	if (rest_init(state, state->config.net_enabled, state->config.net_port, state->config.net_acl) != 0) {
 		log_msg(LVL_ERROR, "failed to start the rest api");
 		return -1;
 	}
@@ -339,17 +339,36 @@ void daemon_run(struct snapraid_state* state)
 
 			log_msg(LVL_INFO, "reload requested");
 
-			if (config_reload_locked(state) != 0) {
+			int prev_net_enabled = state->config.net_enabled;
+			int reload_rest = 0;
+			int ret = config_reload_locked(state);
+			if (ret < 0) {
 				log_msg(LVL_ERROR, "failed to reload config from %s", state->config.conf);
+			} else if (ret > 0) {
+				reload_rest = 1;
 			}
 
+			int net_enabled = state->config.net_enabled;
+			char net_port[CONFIG_MAX];
+			char net_acl[CONFIG_MAX];
 			char net_web_root[PATH_MAX];
+
+			sncpy(net_port, sizeof(net_port), state->config.net_port);
+			sncpy(net_acl, sizeof(net_acl), state->config.net_acl);
 			sncpy(net_web_root, sizeof(net_web_root), state->config.net_web_root);
 
 			state_unlock();
 
+			if (reload_rest) {
+				if (rest_reload(state, prev_net_enabled, net_enabled, net_port, net_acl) != 0) {
+					log_msg(LVL_CRITICAL, "failed to reload web server");
+					os_exit();
+				}
+			}
+
 			if (web_reload(state, net_web_root) != 0) {
-				log_msg(LVL_ERROR, "failed to reload web pages from %s", net_web_root);
+				log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
+				os_exit();
 			}
 
 			state_lock();
@@ -377,7 +396,7 @@ void daemon_run(struct snapraid_state* state)
 void daemon_done(struct snapraid_state* state)
 {
 	web_done(state);
-	rest_done(state);
+	rest_done(state, state->config.net_enabled);
 	scheduler_done(state);
 	runner_done(state);
 	config_done(state);
