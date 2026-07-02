@@ -633,12 +633,20 @@ struct snapraid_state {
 
 /**
  * Initialize the global state system.
+ *
+ * This function is called during daemon startup in a single-threaded (mono thread)
+ * context.
+ *
  * @return Pointer to global state structure
  */
 struct snapraid_state* state_init(void);
 
 /**
  * Cleanup the global state system.
+ *
+ * This function is called during daemon shutdown in a single-threaded (mono thread)
+ * context after all worker threads have terminated and with no locks held.
+ *
  * @param state State structure to cleanup
  */
 void state_done(struct snapraid_state* state);
