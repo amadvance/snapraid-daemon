@@ -500,8 +500,8 @@ static int do_service_remove_all(void)
 				char reg_path[PATH_MAX];
 				wchar_t wreg_path[PATH_MAX];
 				snprintf(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", name);
-				u8tou16(wreg_path, reg_path);
-				RegDeleteKeyW(HKEY_LOCAL_MACHINE, wreg_path);
+				if (u8tou16_mayfail(wreg_path, sizeof(wreg_path) / sizeof(wreg_path[0]), reg_path, strlen(reg_path) + 1, 0))
+					RegDeleteKeyW(HKEY_LOCAL_MACHINE, wreg_path);
 			} else {
 				fprintf(stderr, "OpenService %s failed (%lu)\n", name, GetLastError());
 				overall_success = -1;
@@ -545,14 +545,14 @@ static int do_service_list(void)
 			u16tou8(display, services[i].lpDisplayName);
 			const char* status_str;
 			switch (services[i].ServiceStatusProcess.dwCurrentState) {
-			case SERVICE_STOPPED: status_str = "Stopped"; break;
-			case SERVICE_START_PENDING: status_str = "Starting"; break;
-			case SERVICE_STOP_PENDING: status_str = "Stopping"; break;
-			case SERVICE_RUNNING: status_str = "Running"; break;
-			case SERVICE_CONTINUE_PENDING: status_str = "Continue Pending"; break;
-			case SERVICE_PAUSE_PENDING: status_str = "Pause Pending"; break;
-			case SERVICE_PAUSED: status_str = "Paused"; break;
-			default: status_str = "Unknown"; break;
+			case SERVICE_STOPPED : status_str = "Stopped"; break;
+			case SERVICE_START_PENDING : status_str = "Starting"; break;
+			case SERVICE_STOP_PENDING : status_str = "Stopping"; break;
+			case SERVICE_RUNNING : status_str = "Running"; break;
+			case SERVICE_CONTINUE_PENDING : status_str = "Continue Pending"; break;
+			case SERVICE_PAUSE_PENDING : status_str = "Pause Pending"; break;
+			case SERVICE_PAUSED : status_str = "Paused"; break;
+			default : status_str = "Unknown"; break;
 			}
 
 			printf("%-24s %-32s %-12s\n", name, display, status_str);
@@ -605,7 +605,12 @@ static int do_service_install(const struct snapraid_state* state)
 
 	if (state->config.conf[0]) {
 		wchar_t wconf[PATH_MAX];
-		DWORD attrib = GetFileAttributesW(u8tou16(wconf, state->config.conf));
+		if (!u8tou16_mayfail(wconf, sizeof(wconf) / sizeof(wconf[0]), state->config.conf, strlen(state->config.conf) + 1, 0)) {
+			fprintf(stderr, "Failed conversion of configuration file\n");
+			return -1;
+		}
+
+		DWORD attrib = GetFileAttributesW(wconf);
 		if (attrib == INVALID_FILE_ATTRIBUTES || (attrib & FILE_ATTRIBUTE_DIRECTORY)) {
 			fprintf(stderr, "Warning: config file '%s' not found\n", state->config.conf);
 		}
@@ -630,9 +635,12 @@ static int do_service_install(const struct snapraid_state* state)
 		sncat(bin_path, sizeof(bin_path), "\"");
 	}
 
-	u8tou16(wservice_name, service_name);
-	u8tou16(wservice_display, service_display);
-	u8tou16(wbin_path, bin_path);
+	if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0)
+		|| !u8tou16_mayfail(wservice_display, sizeof(wservice_display) / sizeof(wservice_display[0]), service_display, strlen(service_display) + 1, 0)
+		|| !u8tou16_mayfail(wbin_path, sizeof(wbin_path) / sizeof(wbin_path[0]), bin_path, strlen(bin_path) + 1, 0)) {
+		fprintf(stderr, "Failed conversion of Service Name/Display/Path\n");
+		return -1;
+	}
 
 	schSCManager = open_sc_manager();
 	if (0 == schSCManager) {
@@ -669,8 +677,7 @@ static int do_service_install(const struct snapraid_state* state)
 					0,
 					0,
 					0,
-					wservice_display))
-				{
+					wservice_display)) {
 					fprintf(stderr, "ChangeServiceConfig failed (%lu)\n", GetLastError());
 					CloseServiceHandle(schService);
 					CloseServiceHandle(schSCManager);
@@ -690,9 +697,10 @@ static int do_service_install(const struct snapraid_state* state)
 
 	SERVICE_DESCRIPTIONW sd;
 	wchar_t wservice_desc[256];
-	u8tou16(wservice_desc, service_desc);
-	sd.lpDescription = wservice_desc;
-	ChangeServiceConfig2W(schService, SERVICE_CONFIG_DESCRIPTION, &sd);
+	if (u8tou16_mayfail(wservice_desc, sizeof(wservice_desc) / sizeof(wservice_desc[0]), service_desc, strlen(service_desc) + 1, 0)) {
+		sd.lpDescription = wservice_desc;
+		ChangeServiceConfig2W(schService, SERVICE_CONFIG_DESCRIPTION, &sd);
+	}
 
 	SERVICE_FAILURE_ACTIONS sfa;
 	SC_ACTION actions[2];
@@ -710,13 +718,13 @@ static int do_service_install(const struct snapraid_state* state)
 	char reg_path[PATH_MAX];
 	wchar_t wreg_path[PATH_MAX];
 	snprintf(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", service_name);
-	u8tou16(wreg_path, reg_path);
-
-	if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, wreg_path, 0, 0, REG_OPTION_NON_VOLATILE, KEY_WRITE, 0, &hk, 0) == ERROR_SUCCESS) {
-		DWORD types = EVENTLOG_ERROR_TYPE | EVENTLOG_WARNING_TYPE | EVENTLOG_INFORMATION_TYPE;
-		RegSetValueExW(hk, L"EventMessageFile", 0, REG_SZ, (const BYTE*)wpath, (wcslen(wpath) + 1) * sizeof(wchar_t));
-		RegSetValueExW(hk, L"TypesSupported", 0, REG_DWORD, (const BYTE*)&types, sizeof(types));
-		RegCloseKey(hk);
+	if (u8tou16_mayfail(wreg_path, sizeof(wreg_path) / sizeof(wreg_path[0]), reg_path, strlen(reg_path) + 1, 0)) {
+		if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, wreg_path, 0, 0, REG_OPTION_NON_VOLATILE, KEY_WRITE, 0, &hk, 0) == ERROR_SUCCESS) {
+			DWORD types = EVENTLOG_ERROR_TYPE | EVENTLOG_WARNING_TYPE | EVENTLOG_INFORMATION_TYPE;
+			RegSetValueExW(hk, L"EventMessageFile", 0, REG_SZ, (const BYTE*)wpath, (wcslen(wpath) + 1) * sizeof(wchar_t));
+			RegSetValueExW(hk, L"TypesSupported", 0, REG_DWORD, (const BYTE*)&types, sizeof(types));
+			RegCloseKey(hk);
+		}
 	}
 
 	int ret = 0;
@@ -751,7 +759,10 @@ static int do_service_remove(void)
 		return -1;
 	}
 
-	u8tou16(wservice_name, service_name);
+	if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0)) {
+		CloseServiceHandle(schSCManager);
+		return -1;
+	}
 	schService = OpenServiceW(schSCManager, wservice_name, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
 	if (schService == 0) {
 		fprintf(stderr, "OpenService failed (%lu)\n", GetLastError());
@@ -780,8 +791,9 @@ static int do_service_remove(void)
 	char reg_path[PATH_MAX];
 	wchar_t wreg_path[PATH_MAX];
 	snprintf(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", service_name);
-	u8tou16(wreg_path, reg_path);
-	RegDeleteKeyW(HKEY_LOCAL_MACHINE, wreg_path);
+	if (u8tou16_mayfail(wreg_path, sizeof(wreg_path) / sizeof(wreg_path[0]), reg_path, strlen(reg_path) + 1, 0)) {
+		RegDeleteKeyW(HKEY_LOCAL_MACHINE, wreg_path);
+	}
 
 	if (ret == 0) {
 		printf("Service %s removed successfully.\n", service_name);
@@ -811,7 +823,10 @@ void windows_eventlog(int level, const char* msg)
 		return;
 	}
 
-	u8tou16(wmsg, msg);
+	if (!u8tou16_mayfail(wmsg, sizeof(wmsg) / sizeof(wmsg[0]), msg, strlen(msg) + 1, 0)) {
+		fprintf(stderr, "%s\n", msg);
+		return;
+	}
 	strings[0] = wmsg;
 
 	/* determine the MessageId from messages.mc based on the log level */
@@ -941,7 +956,8 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR* argv)
 	struct snapraid_state* state = state_ptr();
 	wchar_t wservice_name[128];
 
-	u8tou16(wservice_name, service_name);
+	if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0))
+		return;
 	g_StatusHandle = RegisterServiceCtrlHandlerW(wservice_name, ServiceCtrlHandler);
 	if (g_StatusHandle == 0)
 		return;
@@ -1054,7 +1070,8 @@ int main(int argc, char* argv[])
 		os_done();
 	} else {
 		wchar_t wservice_name[128];
-		u8tou16(wservice_name, service_name);
+		if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0))
+			return 1;
 		SERVICE_TABLE_ENTRYW ServiceTable[] = {
 			{ wservice_name, (LPSERVICE_MAIN_FUNCTIONW)ServiceMain },
 			{ 0, 0 }
