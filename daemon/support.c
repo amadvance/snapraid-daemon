@@ -999,7 +999,7 @@ void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t ou
 
 void* malloc_nofail(size_t size)
 {
-	void* ptr = malloc(size);
+	void* ptr = malloc(size ? size : 1);
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
