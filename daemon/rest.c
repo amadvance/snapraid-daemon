@@ -256,7 +256,7 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 	ss_init(&s, content_length + 1);
 
 	while (ss_len(&s) < content_length) {
-		int r = mg_read(conn, ss_top(&s), ss_avail(&s));
+		int r = mg_read(conn, ss_top(&s), content_length - ss_len(&s));
 		if (r <= 0) {
 			sncpy(msg, msg_size, "Payload Too Short");
 			ss_done(&s);
