@@ -430,6 +430,8 @@ void* scheduler_thread(void* arg)
 				version_check(state);
 
 				state_lock();
+				if (!state->daemon_running)
+					break;
 				/* continue with other tasks */
 			}
 
@@ -443,6 +445,8 @@ void* scheduler_thread(void* arg)
 				(void)runner_delete_old_log(state, msg, sizeof(msg), &status); /* error already logged */
 
 				state_lock();
+				if (!state->daemon_running)
+					break;
 				/* continue with other tasks */
 			}
 
@@ -454,6 +458,8 @@ void* scheduler_thread(void* arg)
 				(void)runner_delete_old_history(state, msg, sizeof(msg), &status); /* error already logged */
 
 				state_lock();
+				if (!state->daemon_running)
+					break;
 				/* continue with other tasks */
 			}
 
