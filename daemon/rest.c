@@ -252,7 +252,8 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 		return 413;
 	}
 
-	ss_init(&s, content_length);
+	/* allocate space for content_length + 1 to leave room for NUL termination by json_token */
+	ss_init(&s, content_length + 1);
 
 	while (ss_len(&s) < content_length) {
 		int r = mg_read(conn, ss_top(&s), ss_avail(&s));
@@ -267,6 +268,9 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 
 	*js = ss_ptr(&s);
 	*jl = ss_len(&s);
+
+	/* set the NUL terminator, just to avoid to leave it unset */
+	(*js)[content_length] = 0;
 
 	return 200;
 }
