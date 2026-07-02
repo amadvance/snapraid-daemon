@@ -1557,6 +1557,12 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	*stop_number = number;
 
 	if (pid > 0) {
+		/*
+		 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
+		 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
+		 * In practice, PID recycling across the OS requires tens of thousands of process spawns
+		 * and wrap-around, making this an accepted non-issue.
+		 */
 		if (os_term(pid) != 0) {
 			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
 			sncpy(msg, msg_size, "Failed to stop task");
