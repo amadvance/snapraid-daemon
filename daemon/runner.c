@@ -40,7 +40,7 @@ int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
 static int runner_health_check_locked(struct snapraid_state* state)
 {
 	state->array.health_reason[0] = 0;
-	int new_health = health_array(state, state->array.health_reason, sizeof(state->array.health_reason));
+	int new_health = health_array_locked(state, state->array.health_reason, sizeof(state->array.health_reason));
 
 	int old_health = state->array.health;
 
@@ -363,7 +363,7 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 /**
  * Check if the previous task can be omitted
  */
-static struct snapraid_task* omit_task(struct snapraid_state* state, struct snapraid_task* task)
+static struct snapraid_task* omit_task_locked(struct snapraid_state* state, struct snapraid_task* task)
 {
 	if (tommy_list_empty(&state->runner.history_list))
 		return 0;
@@ -768,7 +768,7 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 	}
 }
 
-static void runner_go(struct snapraid_state* state)
+static void runner_go_locked(struct snapraid_state* state)
 {
 	char msg[MSG_MAX];
 	char exit_neg_msg[MSG_MAX];
@@ -841,7 +841,7 @@ static void runner_go(struct snapraid_state* state)
 	int pre_hook_flags = state->runner.hook_flags;
 	state->runner.hook_flags = 0;
 
-	parse_begin(state);
+	parse_begin_locked(state);
 
 	/* check if the next task needs a script */
 	int next_need_script = 0;
@@ -1014,7 +1014,7 @@ bail:
 		&& WIFEXITED(status)
 		&& WEXITSTATUS(status) == 0
 	) {
-		struct snapraid_task* omit = omit_task(state, task);
+		struct snapraid_task* omit = omit_task_locked(state, task);
 		if (omit) {
 			log_msg(LVL_INFO, "task %d removed probe for no activity", omit->number);
 			/* delete its log file */
@@ -1051,7 +1051,7 @@ bail:
 			task->exit_code = WEXITSTATUS(status);
 			task->state = PROCESS_STATE_TERM;
 
-			parse_end(state, task);
+			parse_end_locked(state, task);
 
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */
@@ -1078,7 +1078,7 @@ bail:
 	}
 }
 
-static int runner_precondition(struct snapraid_state* state)
+static int runner_precondition_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 
@@ -1116,7 +1116,7 @@ static int runner_precondition(struct snapraid_state* state)
 	return 0;
 }
 
-static void runner_postcondition(struct snapraid_state* state)
+static void runner_postcondition_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 	char msg[MSG_MAX];
@@ -1192,7 +1192,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 		/* free the down_idle task */
 		task_free(task);
 	} else {
-		runner_go(state);
+		runner_go_locked(state);
 	}
 }
 
@@ -1213,7 +1213,7 @@ static void* runner_thread(void* arg)
 
 			/* setup a new task to run */
 			struct snapraid_task* task = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
-			task_set_unique_start_time(state, task, now);
+			task_set_unique_start_time_locked(state, task, now);
 
 			/* set in the latest */
 			state->runner.latest = task;
@@ -1226,14 +1226,14 @@ static void* runner_thread(void* arg)
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
 				runner_shutdown_locked(state);
-			} else if (runner_precondition(state) == 0) {
+			} else if (runner_precondition_locked(state) == 0) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
 				if (task->cmd == CMD_DOWN_IDLE) {
 					runner_spindown_inactive_locked(state);
 				} else {
-					runner_go(state);
-					runner_postcondition(state);
+					runner_go_locked(state);
+					runner_postcondition_locked(state);
 				}
 			} else {
 				task->state = PROCESS_STATE_CANCEL;

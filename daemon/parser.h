@@ -35,12 +35,12 @@ int parse_past_log(struct snapraid_state* state);
 /**
  * Start the parsing
  */
-void parse_begin(struct snapraid_state* state);
+void parse_begin_locked(struct snapraid_state* state);
 
 /**
  * End the parsing
  */
-void parse_end(struct snapraid_state* state, struct snapraid_task* task);
+void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task);
 
 #endif
 
