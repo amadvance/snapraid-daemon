@@ -632,7 +632,7 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 
 				memcpy(dst + j, utf8, utf8_len);
 				j += utf8_len;
-				i += 4;
+				i += 5;
 				goto next_char;
 			}
 			default :
