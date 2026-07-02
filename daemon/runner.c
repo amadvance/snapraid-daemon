@@ -21,7 +21,7 @@
  */
 int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
 {
-	if (state->runner.latest != 0 && state->runner.latest->cmd == cmd)
+	if (state->runner.latest != 0 && state->runner.latest->running && state->runner.latest->cmd == cmd)
 		return 1;
 
 	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
