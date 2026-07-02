@@ -99,7 +99,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	close(stdout_fd);
 
 	int status = 0;
-	int ret = os_wait(pid, &status);
+	pid_t ret = os_wait(pid, &status);
 	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: wait failed, errno=%s(%d)", repo, strerror(errno), errno);
 		ss_done(&ss);

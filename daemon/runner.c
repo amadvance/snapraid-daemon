@@ -139,8 +139,8 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 			zprintf(log_f, "daemon:%s_fail\n", log_prefix);
 	} else {
 		int status;
-		pid_t wait_pid = os_wait(pid, &status);
-		if (wait_pid == -1) {
+		pid_t pid_ret = os_wait(pid, &status);
+		if (pid_ret == -1) {
 			log_task(LVL_ERROR, "failed to wait for docker %s, errno=%s(%d)", action, strerror(errno), errno);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:%s_fail\n", log_prefix);
