@@ -275,7 +275,12 @@ int task_success(struct snapraid_task* task)
 	return task->exit_code == 0;
 }
 
-void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const char* msg)
+int task_same_group(const struct snapraid_task* task1, const struct snapraid_task* task2)
+{
+	return task1->unix_queue_time == task2->unix_queue_time;
+}
+
+void task_list_cancel(struct snapraid_task* failed_task, tommy_list* waiting_list, tommy_list* history_list, const char* msg)
 {
 	time_t now = time(0);
 	tommy_node* i = tommy_list_head(waiting_list);
@@ -283,9 +288,15 @@ void task_list_cancel(tommy_list* waiting_list, tommy_list* history_list, const 
 		tommy_node* i_next = i->next;
 		struct snapraid_task* task = i->data;
 
-		/* stop at the first report, down, or shutdown command */
-		if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN || task->cmd == CMD_SHUTDOWN)
+		/* stop at the first task not part of the group */
+		if (!task_same_group(task, failed_task))
 			break;
+
+		/* do not cancel report, down, or shutdown commands so cleanup and notifications execute */
+		if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN || task->cmd == CMD_SHUTDOWN) {
+			i = i_next;
+			continue;
+		}
 
 		/* remove from the waiting list */
 		tommy_list_remove_existing(waiting_list, i);
