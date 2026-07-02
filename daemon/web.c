@@ -348,6 +348,9 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			const char* mime_type = get_mime_type(relative, &is_static);
 			if (mime_type == 0) {
 				log_msg(LVL_WARNING, "crawler ignore unknown file %s", path);
+#ifndef _WIN32
+				close(fd);
+#endif
 				continue;
 			}
 
