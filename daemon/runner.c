@@ -113,16 +113,21 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 		return 0;
 	}
 
-	/* argv will have: docker_path, action, and then the containers, and then NULL */
-	char** argv = calloc_nofail(n + 3, sizeof(char*));
+	/*
+	 * argv will have: docker_path, action, "--", and then the containers, and then NULL.
+	 * The "--" separator ensures container names starting with a hyphen (e.g. -h or --help)
+	 * are treated strictly as positional container arguments rather than CLI options.
+	 */
+	char** argv = calloc_nofail(n + 4, sizeof(char*));
 
 	argv[0] = (char*)docker_path;
 	argv[1] = (char*)action;
+	argv[2] = "--";
 
 	for (unsigned i = 0; i < n; ++i) {
-		argv[2 + i] = tokens[i];
+		argv[3 + i] = tokens[i];
 	}
-	argv[2 + n] = NULL;
+	argv[3 + n] = NULL;
 
 	int ret = -1;
 	os_privileges_acquire();
