@@ -132,6 +132,10 @@ void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int ne
 			int is_https = (x_proto && strcasecmp(x_proto, "https") == 0) || ri->is_ssl;
 			const char* proto = is_https ? "https" : "http";
 
+			/*
+			 * CivetWeb's parse_http_headers() automatically NUL-terminates header
+			 * values at \r or \n, so 'host' is already sanitized against CRLF injection
+			 */
 			ss_printf(s, "Access-Control-Allow-Origin: %s://%s\r\n", proto, host ? host : "null");
 		} else {
 			ss_printf(s, "Access-Control-Allow-Origin: %s\r\n", net_allowed_origin);
