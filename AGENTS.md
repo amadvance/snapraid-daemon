@@ -266,6 +266,7 @@ Post-install hook provides systemctl commands.
 - **Preferences**: Use 0 instead of NULL and '\0'
 - **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
 - **Safety Checks**: Avoid adding safety checks for conditions that never happen
+- **Commit Messages**: Every time a change is done, a single line commit description should be provided for that change
  
 #### Frontend UI Guidelines
 
