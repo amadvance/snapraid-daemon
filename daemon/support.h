@@ -114,7 +114,22 @@ static inline void ss_prints(ss_t* s, const char* arg)
  * @param s String stream
  * @param fmt Format string
  * @param ap Variable arguments
- * @return Number of characters written
+ * @return Number of characters written on success, or -1 on formatting failure.
+ *
+ * It is guaranteed not to fail (and never return -1) when standard narrow string
+ * (%s, %c) and numeric (%d, %u, %x, %f, %p, etc.) specifiers are used.
+ *
+ * The specifiers to avoid that can cause formatting failure (-1) are:
+ *   - Wide Character / String Specifiers: %lc, %ls, %C, %S
+ *     Reason: Converts wchar_t sequences using locale encoding functions (wcrtomb/wcsrtombs).
+ *     Returns -1 with EILSEQ if an invalid wide-character code point is encountered.
+ *   - The Output Count Specifier: %n
+ *     Reason: Writes the count of formatted characters to an int* pointer. Modern hardened C
+ *     libraries (e.g. glibc with _FORTIFY_SOURCE) flag or disable %n as a security risk, causing
+ *     vsnprintf() to fail or abort.
+ *   - Invalid or Unrecognized Specifiers: e.g., %q, %k
+ *     Reason: ISO C specifies that invalid/unknown conversion specifiers produce undefined
+ *     behavior or an immediate -1 error from vsnprintf().
  */
 ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap);
 
@@ -122,7 +137,7 @@ ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap);
  * Print formatted string to string stream.
  * @param s String stream
  * @param fmt Format string
- * @return Number of characters written
+ * @return Number of characters written on success, or -1 on formatting failure.
  */
 ssize_t ss_printf(ss_t* s, const char* fmt, ...) __attribute__((format(attribute_printf, 2, 3)));
 
@@ -131,7 +146,7 @@ ssize_t ss_printf(ss_t* s, const char* fmt, ...) __attribute__((format(attribute
  * @param s String stream
  * @param c Character to repeat
  * @param pad Number of repetitions
- * @return Number of characters written
+ * @return Number of characters written. It never fails.
  */
 ssize_t ss_printc(ss_t* s, char c, size_t pad);
 
@@ -140,7 +155,7 @@ ssize_t ss_printc(ss_t* s, char c, size_t pad);
  * @param s String stream
  * @param str String to print
  * @param pad Minimum width (padded with spaces on the right)
- * @return Number of characters written
+ * @return Number of characters written. It never fails.
  */
 ssize_t ss_printr(ss_t* s, const char* str, size_t pad);
 
@@ -149,7 +164,7 @@ ssize_t ss_printr(ss_t* s, const char* str, size_t pad);
  * @param s String stream
  * @param str String to print
  * @param pad Minimum width (padded with spaces on the left)
- * @return Number of characters written
+ * @return Number of characters written. It never fails.
  */
 ssize_t ss_printl(ss_t* s, const char* str, size_t pad);
 
