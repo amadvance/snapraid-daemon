@@ -486,7 +486,7 @@ struct snapraid_hook {
  * @param task Optional pointer to task (may be NULL during shutdown)
  * @param hook Pointer to hook context structure to populate
  */
-static void hook_context_acquire_locked(const struct snapraid_state* state, const struct snapraid_task* task, struct snapraid_hook* hook)
+static void hook_context_acquire_locked(struct snapraid_state* state, const struct snapraid_task* task, struct snapraid_hook* hook)
 {
 	memset(hook, 0, sizeof(*hook));
 
@@ -497,7 +497,6 @@ static void hook_context_acquire_locked(const struct snapraid_state* state, cons
 	sncpy(hook->engine_conf, sizeof(hook->engine_conf), state->array.engine_conf);
 	sncpy(hook->instance, sizeof(hook->instance), state->instance);
 	hook->array_health = state->array.health;
-	hook->cmd = CMD_SYNC;
 	hook->task_health = HEALTH_PENDING;
 
 	if (task) {
@@ -525,6 +524,10 @@ static void hook_context_acquire_locked(const struct snapraid_state* state, cons
 			hook->diff_moved = state->array.diff_current.diff_moved;
 			hook->diff_copied = state->array.diff_current.diff_copied;
 		}
+	} else {
+		hook->has_task = 0;
+		hook->number = ++state->runner.number_allocator;
+		hook->cmd = 0; /* value used when no task is specified, like at daemon termination */
 	}
 }
 
@@ -581,7 +584,9 @@ static int runner_hook_begin(const struct snapraid_hook* hook, ZFILE* log_f, cha
 
 		add_env(envv, &envv_count, "SNAPRAID_EVENT", "%s", "task-begin");
 		add_env(envv, &envv_count, "SNAPRAID_NUMBER", "%d", number);
-		add_env(envv, &envv_count, "SNAPRAID_COMMAND", "%s", command_name(cmd));
+		if (cmd != 0) {
+			add_env(envv, &envv_count, "SNAPRAID_COMMAND", "%s", command_name(cmd));
+		}
 		if (high_cmd != 0 && high_cmd != cmd) {
 			add_env(envv, &envv_count, "SNAPRAID_HIGH_COMMAND", "%s", command_name(high_cmd));
 		}
@@ -654,10 +659,9 @@ static int runner_hook_begin(const struct snapraid_hook* hook, ZFILE* log_f, cha
 
 static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
 {
-	int cmd = hook->cmd;
 	int number = hook->number;
 
-	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook->hook_script[0] != 0 && runner_need_hook(cmd)) {
+	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook->hook_script[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		char* hook_argv[3];
 		char hook_event[KEYWORD_MAX];
 		int script_ret;
@@ -677,12 +681,11 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 		memset(envv, 0, sizeof(envv));
 
 		add_env(envv, &envv_count, "SNAPRAID_EVENT", "%s", success ? "task-end" : "task-error");
+		add_env(envv, &envv_count, "SNAPRAID_NUMBER", "%d", hook->number);
 		if (hook->has_task) {
-			add_env(envv, &envv_count, "SNAPRAID_NUMBER", "%d", hook->number);
 			add_env(envv, &envv_count, "SNAPRAID_COMMAND", "%s", command_name(hook->cmd));
-			if (hook->high_cmd != 0 && hook->high_cmd != hook->cmd) {
+			if (hook->high_cmd != 0 && hook->high_cmd != hook->cmd)
 				add_env(envv, &envv_count, "SNAPRAID_HIGH_COMMAND", "%s", command_name(hook->high_cmd));
-			}
 			if (hook->log_file[0] != 0) {
 				add_env(envv, &envv_count, "SNAPRAID_LOG_FILE", "%s", hook->log_file);
 			}
@@ -712,20 +715,18 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 			add_env(envv, &envv_count, "SNAPRAID_ERROR_DATA", "%" PRIu64, hook->error_data);
 			add_env(envv, &envv_count, "SNAPRAID_ERROR_SOFT", "%" PRIu64, hook->error_soft);
 
-			if (cmd == CMD_FIX) {
+			if (hook->cmd == CMD_FIX) {
 				add_env(envv, &envv_count, "SNAPRAID_ERROR_RECOVERED", "%" PRIu64, hook->error_recovered);
 				add_env(envv, &envv_count, "SNAPRAID_ERROR_UNRECOVERABLE", "%" PRIu64, hook->error_unrecoverable);
 			}
 
-			if (cmd == CMD_DIFF || cmd == CMD_SYNC) {
+			if (hook->cmd == CMD_DIFF || hook->cmd == CMD_SYNC) {
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_ADDED", "%" PRIi64, hook->diff_added);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_REMOVED", "%" PRIi64, hook->diff_removed);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_UPDATED", "%" PRIi64, hook->diff_updated);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_MOVED", "%" PRIi64, hook->diff_moved);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_COPIED", "%" PRIi64, hook->diff_copied);
 			}
-		} else {
-			add_env(envv, &envv_count, "SNAPRAID_COMMAND", "%s", command_name(hook->cmd));
 		}
 		if (hook->hook_run_as_user[0] != 0) {
 			add_env(envv, &envv_count, "SNAPRAID_RUN_AS_USER", "%s", hook->hook_run_as_user);
@@ -776,7 +777,7 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 			zflush(log_f);
 	}
 
-	if ((hook_flags & HOOK_FLAG_DOCKER) && hook->hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
+	if ((hook_flags & HOOK_FLAG_DOCKER) && hook->hook_docker_pause[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		const char* docker_path = app_find_docker();
 		if (docker_path) {
 			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook->hook_docker_pause);
