@@ -156,7 +156,11 @@ void app_default_data(char* dst, size_t dst_size, const char* root)
  * @brief Parses a system attribute file.
  * @param path The filesystem path (e.g., "/proc/cpuinfo").
  * @param tag The tag to search for (e.g., "model name"). If NULL, matches the first line.
- * @param position The zero-based index of the whitespace-separated argument to return. If -1 return everything
+ * @param separator The separator char (e.g., ':').
+ * @param position The token position to return. If -1, returns all content after the tag/separator.
+ *                 When 'tag' is provided, the tag itself is considered token position 0,
+ *                 making position 1 the first whitespace-separated argument after the separator/tag.
+ *                 When 'tag' is NULL, position 0 is the first token of the line.
  * @param out The output buffer.
  * @param out_size Size of the output buffer.
  * @return char* Pointer to 'out' on success, NULL on failure.
