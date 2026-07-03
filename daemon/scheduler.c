@@ -55,10 +55,12 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	}
 
 	/*
-	 * Schedule all the actions, note that they are just scheduled,
-	 * the eventual failure won't be detected here.
+	 * Schedule all the actions into the task queue under lock.
 	 *
-	 * Keep the lock to ensure that no other task is inserted in between.
+	 * Note: runner_locked() only enqueues tasks for asynchronous execution
+	 * and reports queuing status via the 'status' and 'msg' parameters.
+	 * (void) is explicitly used on optional or report/cleanup tasks (e.g. CMD_SCRUB, CMD_REPORT)
+	 * to ensure they are enqueued even if a preceding step fails to enqueue.
 	 */
 	int ret = 0;
 	if (ret == 0)
@@ -68,7 +70,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && do_scrub)
-		(void)runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown) {
 		ret = runner_locked(state, CMD_MAINTENANCE, CMD_PROBE, now, 0, msg, msg_size, status);
@@ -77,11 +79,13 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 			ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, 0, msg, msg_size, status);
 	}
 
-	(void)runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
 
-	if (automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance")) {
-		(void)runner_locked(state, CMD_MAINTENANCE, CMD_SHUTDOWN, now, 0, msg, msg_size, status);
-	}
+	if (ret == 0 && automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance"))
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SHUTDOWN, now, 0, msg, msg_size, status);
+
+	(void)ret;
 
 	sl_free(&sync_arg_list);
 	sl_free(&scrub_arg_list);
@@ -117,10 +121,13 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	}
 
 	/*
-	 * Schedule all the actions, note that they are just scheduled,
-	 * the eventual failure won't be detected here.
+	 * Schedule all the actions into the task queue under lock.
 	 *
-	 * Keep the lock to ensure that no other task is inserted in between.
+	 * Note: runner_locked() only enqueues tasks for asynchronous execution
+	 * and reports queuing status via the 'status' and 'msg' parameters.
+	 *
+	 * (void)ret is explicitly used to ignore the result of the latest task to
+	 * keep the same coding pattern.
 	 */
 	int ret = 0;
 	if (ret == 0)
@@ -130,7 +137,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 		ret = runner_locked(state, CMD_HEAL, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
 
 	if (ret == 0)
-		(void)runner_locked(state, CMD_HEAL, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown) {
 		ret = runner_locked(state, CMD_HEAL, CMD_PROBE, now, 0, msg, msg_size, status);
@@ -139,7 +146,10 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 			ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, 0, msg, msg_size, status);
 	}
 
-	(void)runner_locked(state, CMD_HEAL, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		ret = runner_locked(state, CMD_HEAL, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	(void)ret;
 
 	sl_free(&fix_arg_list);
 	sl_free(&scrub_arg_list);
@@ -167,10 +177,13 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	}
 
 	/*
-	 * Schedule all the actions, note that they are just scheduled,
-	 * the eventual failure won't be detected here.
+	 * Schedule all the actions into the task queue under lock.
 	 *
-	 * Keep the lock to ensure that no other task is inserted in between.
+	 * Note: runner_locked() only enqueues tasks for asynchronous execution
+	 * and reports queuing status via the 'status' and 'msg' parameters.
+	 *
+	 * (void)ret is explicitly used to ignore the result of the latest task to
+	 * keep the same coding pattern.
 	 */
 	int ret = 0;
 	if (ret == 0)
@@ -186,7 +199,10 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 			ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, 0, msg, msg_size, status);
 	}
 
-	(void)runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		ret = runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	(void)ret;
 
 	sl_free(&fix_arg_list);
 
@@ -198,7 +214,11 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	/*
 	 * Schedule a probe and spindown on idle
 	 *
-	 * Keep the lock to ensure that no other task is inserted in between.
+	 * Note: runner_locked() only enqueues tasks for asynchronous execution
+	 * and reports queuing status via the 'status' and 'msg' parameters.
+	 *
+	 * (void)ret is explicitly used to ignore the result of the latest task to
+	 * keep the same coding pattern.
 	 */
 	int spindown_data = state->config.spindown_idle_minutes_data;
 	int spindown_parity = state->config.spindown_idle_minutes_parity;
@@ -207,9 +227,10 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	if (ret == 0)
 		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, 0, msg, msg_size, status);
 
-	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0)) {
-		(void)runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
-	}
+	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0))
+		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
+
+	(void)ret;
 }
 
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
@@ -244,7 +265,10 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	if (ret == 0)
 		ret = runner_locked(state, CMD_REFRESH, CMD_READ, now, 0, msg, msg_size, status);
 
-	(void)runner_locked(state, CMD_REFRESH, CMD_REPORT, now, 0, msg, msg_size, status);
+	if (ret == 0)
+		ret = runner_locked(state, CMD_REFRESH, CMD_REPORT, now, 0, msg, msg_size, status);
+
+	(void)ret;
 
 	state_unlock();
 }
@@ -260,13 +284,21 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 	 * the eventual failure won't be detected here.
 	 *
 	 * Keep the lock to ensure that no other task is inserted in between.
+	 *
+	 * Note: runner_locked() only enqueues tasks for asynchronous execution
+	 * and reports queuing status via the 'status' and 'msg' parameters.
+	 *
+	 * (void)ret is explicitly used to ignore the result of the latest task to
+	 * keep the same coding pattern.
 	 */
 	int ret = 0;
 	for (tommy_node* i = tommy_list_head(scheds); i != 0; i = i->next) {
 		struct snapraid_schedule* sched = i->data;
-		if (ret == 0 || sched->cmd == CMD_REPORT)
+		if (ret == 0)
 			ret = runner_locked(state, 0 /* sequence of commands */, sched->cmd, now, &sched->args, msg, msg_size, status);
 	}
+
+	(void)ret;
 
 	state_unlock();
 }
