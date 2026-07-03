@@ -94,12 +94,35 @@ static inline void ss_write(ss_t* s, const char* arg, ssize_t len)
  * Print string to string stream.
  * @param s String stream
  * @param arg String to print
+ *
+ * Uses __builtin_constant_p and __builtin_types_compatible_p under GCC/Clang
+ * to compute string length at compile time for string literals ("...") and character
+ * arrays (char[]), avoiding runtime strlen() overhead.
+ *
+ * __builtin_types_compatible_p is required to verify that arg is an array type
+ * (char[] / const char[]) and not a pointer type (char* / const char*). Without
+ * this check, if a constant pointer (e.g., const char* const ptr) is passed,
+ * __builtin_constant_p(arg) evaluates to true while sizeof(arg) evaluates to
+ * the size of the pointer variable (8/4 bytes) rather than the length of the string,
+ * causing buffer truncation or out-of-bounds reads.
+ *
+ * Examples:
+ * - ss_prints(s, "pippo");               -> Literal char[6]: sizeof("pippo") - 1 = 5 (compile-time)
+ * - const char P[] = "pippo";
+ *   ss_prints(s, P);                     -> Array char[6]: sizeof(P) - 1 = 5 (compile-time)
+ * - const char* P = "pippo";
+ *   ss_prints(s, P);                     -> Pointer const char*: sizeof(P) = 8 (pointer size!)
+ *                                           __builtin_types_compatible_p catches pointer type
+ *                                           and safely uses strlen(P) = 5 (runtime).
  */
 #if defined(__GNUC__) || defined(__clang__)
 #define ss_prints(s, arg) \
 	do { \
 		const char* p_arg = (arg); \
-		ssize_t p_len = __builtin_constant_p(arg) ? sizeof(arg) - 1 : strlen(p_arg); \
+		ssize_t p_len = (__builtin_constant_p(arg) \
+			&& !__builtin_types_compatible_p(__typeof__(arg), const char*) \
+			&& !__builtin_types_compatible_p(__typeof__(arg), char*)) \
+			? sizeof(arg) - 1 : strlen(p_arg); \
 		ss_write(s, p_arg, p_len); \
 	} while (0)
 #else /* no __builtin_constant_p available */
