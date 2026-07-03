@@ -354,46 +354,59 @@ static int send_json_answer(struct mg_connection* conn, int status, ss_t* body)
 
 static int send_json_success(struct mg_connection* conn, int status)
 {
+	ss_t body;
+	ss_init(&body, KEYWORD_MAX);
+
+	int level = 0;
+	ss_json_open(&body, &level);
+	ss_json_bool(&body, level, "success", 1);
+	ss_json_close(&body, &level);
+
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
-
-	char body[KEYWORD_MAX];
-	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": true\n}\n");
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
 	send_headers(conn, &s);
 	ss_prints(&s, "Content-Type: application/json\r\n");
-	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	ss_printf(&s, "Content-Length: %" PRIu64 "\r\n", (uint64_t)ss_len(&body));
 	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
 	mg_write(conn, ss_ptr(&s), ss_len(&s));
-	mg_write(conn, body, body_len);
+	mg_write(conn, ss_ptr(&body), ss_len(&body));
 
 	ss_done(&s);
+	ss_done(&body);
 
 	return status;
 }
 
 static int send_json_error(struct mg_connection* conn, int status, const char* message)
 {
+	ss_t body;
+	ss_init(&body, KEYWORD_MAX + MSG_MAX);
+
+	int level = 0;
+	ss_json_open(&body, &level);
+	ss_json_bool(&body, level, "success", 0);
+	ss_json_str(&body, level, "message", message);
+	ss_json_close(&body, &level);
+
 	ss_t s;
 	ss_init(&s, HTTP_HEADERS_MAX);
-
-	char body[KEYWORD_MAX + MSG_MAX];
-	int body_len = snprintf(body, sizeof(body), "{\n  \"success\": false,\n  \"message\": \"%s\"\n}\n", message);
 
 	ss_printf(&s, "HTTP/1.1 %d %s\r\n", status, mg_get_response_code_text(conn, status));
 	send_headers(conn, &s);
 	ss_prints(&s, "Content-Type: application/json\r\n");
-	ss_printf(&s, "Content-Length: %d\r\n", body_len);
+	ss_printf(&s, "Content-Length: %" PRIu64 "\r\n", (uint64_t)ss_len(&body));
 	ss_prints(&s, "Connection: close\r\n");
 	ss_prints(&s, "\r\n");
 
 	mg_write(conn, ss_ptr(&s), ss_len(&s));
-	mg_write(conn, body, body_len);
+	mg_write(conn, ss_ptr(&body), ss_len(&body));
 
 	ss_done(&s);
+	ss_done(&body);
 
 	return status;
 }
