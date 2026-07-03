@@ -187,6 +187,10 @@ static int result_locked(struct snapraid_state* state, int high_cmd, int report_
 
 	ss_init(&ss, strlen(report_text) + 128);
 
+	/*
+	 * Placeholder values (subject, level, priority, tag, command, exit_code) are internal,
+	 * hardcoded strings or formatted integers and do not contain untrusted user inputs.
+	 */
 	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
 		log_task(LVL_ERROR, "command string overflow, notification not sent");
 		goto bail;
@@ -303,6 +307,10 @@ static int start_locked(struct snapraid_state* state, int high_cmd)
 
 	ss_init(&ss, 128);
 
+	/*
+	 * Placeholder values (subject, level, priority, tag, command) are internal,
+	 * hardcoded strings or formatted integers and do not contain untrusted user inputs.
+	 */
 	if (replace_argument(template, placeholders, values, cmd, sizeof(cmd)) != 0) {
 		log_task(LVL_ERROR, "command string overflow, notification not sent");
 		goto bail;
