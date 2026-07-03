@@ -239,7 +239,7 @@ ssize_t ss_vprintf(ss_t* s, const char* fmt, va_list ap)
 	s->len += (size_t)needed;
 	va_end(ap_retry);
 
-	return 0;
+	return needed;
 }
 
 ssize_t ss_printf(ss_t* s, const char* fmt, ...)
