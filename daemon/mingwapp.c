@@ -340,6 +340,11 @@ static int enum_services_status(SC_HANDLE schSCManager, ENUM_SERVICE_STATUS_PROC
 
 		DWORD err = GetLastError();
 		if (err == ERROR_MORE_DATA) {
+			/*
+			 * Reallocate lpBuffer with dwBytesNeeded and reset dwResumeHandle to 0 to fetch all services
+			 * in a single call. If new services are registered concurrently, the loop reallocates and retries
+			 * until it successfully completes.
+			 */
 			free(lpBuffer);
 			lpBuffer = malloc_nofail(dwBytesNeeded);
 			dwResumeHandle = 0;
