@@ -252,17 +252,24 @@ static ssize_t read_fd(int fd, void* buffer, ssize_t size)
 	return total;
 }
 
-static ssize_t read_file(const char* path, struct stat* st, char** body)
+static ssize_t read_file(const char* path, char** body)
 {
-	int f = open(path, O_RDONLY | O_BINARY);
+	int f = open(path, O_RDONLY | O_BINARY | O_NOFOLLOW | O_CLOEXEC);
 	if (f == -1) {
 		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
 		return -1;
 	}
 
-	*body = malloc_nofail(st->st_size);
+	struct stat fst;
+	if (fstat(f, &fst) != 0 || !S_ISREG(fst.st_mode)) {
+		log_msg(LVL_ERROR, "crawler error statting %s, errno=%s(%d)", path, strerror(errno), errno);
+		close(f);
+		return -1;
+	}
 
-	if (read_fd(f, *body, st->st_size) != st->st_size) {
+	*body = malloc_nofail(fst.st_size);
+
+	if (read_fd(f, *body, fst.st_size) != fst.st_size) {
 		log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
 		close(f);
 		free(*body);
@@ -271,7 +278,8 @@ static ssize_t read_file(const char* path, struct stat* st, char** body)
 	}
 
 	close(f);
-	return st->st_size;
+
+	return fst.st_size;
 }
 
 #ifndef _WIN32
@@ -655,7 +663,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 		return send_error(conn, 304);
 
 	char* body = 0;
-	ssize_t body_len = read_file(resolved_path, &st, &body);
+	ssize_t body_len = read_file(resolved_path, &body);
 	if (body_len == -1) {
 		return send_error(conn, 500);
 	}
