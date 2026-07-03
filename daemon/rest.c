@@ -939,7 +939,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	struct snapraid_config* config = &state->config;
 	int level = 0;
 	ss_t s;
-	char schedule_buf[64];
+	char schedule_buf[CONFIG_MAX];
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
 
