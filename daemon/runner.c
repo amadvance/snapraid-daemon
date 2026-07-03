@@ -232,47 +232,69 @@ static int runner_report_locked(struct snapraid_state* state)
 	report_locked(state, &ss, report_task, fix_task, sync_task, scrub_task, diff_stat);
 
 	/*
-	 * Check if any prefail/critical raw attributes or prefail norm attributes changed since queue_time
-	 *
-	 * The attributes checked here are implicitly restricted to those tracked by parser.c
-	 * (critical/count for raw, and prefail for norm) because only those have a prev value set.
+	 * Check if any prefail/critical raw attributes, prefail norm attributes, or error counters degraded since queue_time
 	 */
-	int has_smart_changes = 0;
+	int has_warning_smart_changes = 0;
 	time_t queue_time = report_task->unix_queue_time;
 	if (queue_time != 0) {
 		for (tommy_node* disk_node = tommy_list_head(&state->array.disk_list); disk_node != 0; disk_node = disk_node->next) {
 			struct snapraid_disk* disk = disk_node->data;
 			for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
 				struct snapraid_device* dev = dev_node->data;
+
+				if (!smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)) {
+					if (dev->error_protocol.value != SMART_UNASSIGNED
+						&& dev->error_protocol.prev != SMART_UNASSIGNED
+						&& dev->error_protocol.value > dev->error_protocol.prev /* only if increased */
+						&& dev->error_protocol.prev_last >= queue_time
+					) {
+						has_warning_smart_changes = 1;
+						break;
+					}
+				}
+
+				if (!smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list)) {
+					if (dev->error_medium.value != SMART_UNASSIGNED
+						&& dev->error_medium.prev != SMART_UNASSIGNED
+						&& dev->error_medium.value > dev->error_medium.prev /* only if increased */
+						&& dev->error_medium.prev_last >= queue_time
+					) {
+						has_warning_smart_changes = 1;
+						break;
+					}
+				}
+
 				for (int k = 0; k < SMART_COUNT; ++k) {
 					struct smart_attr* attr = &dev->smart[k];
+					if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
+						continue;
+
 					if (attr->raw.value != SMART_UNASSIGNED
 						&& attr->raw.prev != SMART_UNASSIGNED
-						&& attr->raw.value != attr->raw.prev
+						&& attr->raw.value > attr->raw.prev /* only if increased */
 						&& attr->raw.prev_last >= queue_time
 					) {
-						has_smart_changes = 1;
+						has_warning_smart_changes = 1;
 						break;
 					}
 					if (attr->norm.value != SMART_UNASSIGNED
 						&& attr->norm.prev != SMART_UNASSIGNED
-						&& attr->norm.value != attr->norm.prev
+						&& attr->norm.value < attr->norm.prev /* only if decreased */
 						&& attr->norm.prev_last >= queue_time
 					) {
-						has_smart_changes = 1;
+						has_warning_smart_changes = 1;
 						break;
 					}
 				}
-				if (has_smart_changes)
+				if (has_warning_smart_changes)
 					break;
 			}
-			if (has_smart_changes)
+			if (has_warning_smart_changes)
 				break;
 		}
 	}
-	if (has_smart_changes) {
+	if (has_warning_smart_changes)
 		report_level = level_mix(report_level, LVL_WARNING);
-	}
 
 	/* propagate the array health to the report task */
 	/* do not call health_task() as the report cannot fail */
