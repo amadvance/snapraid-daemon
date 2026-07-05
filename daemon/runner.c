@@ -1066,7 +1066,7 @@ bail:
 		message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_neg_msg);
 
 		/* cancel queued tasks */
-		snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
+		snprintf(msg, sizeof(msg), "The preceding %s operation failed to start", command_name(cmd));
 		task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
 	} else {
 		if (WIFEXITED(status)) {
