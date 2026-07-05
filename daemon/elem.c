@@ -280,10 +280,27 @@ int task_same_group(const struct snapraid_task* task1, const struct snapraid_tas
 	return task1->unix_queue_time == task2->unix_queue_time;
 }
 
-void task_list_cancel(struct snapraid_task* failed_task, tommy_list* waiting_list, tommy_list* history_list, const char* msg)
+static void task_cancel(struct snapraid_state* state, struct snapraid_task* task, const char* msg, time_t now)
+{
+	pulse(state, PULSE_TASKS);
+
+	/* remove from the waiting list */
+	tommy_list_remove_existing(&state->runner.waiting_list, &task->node);
+	sncpy(task->exit_msg, sizeof(task->exit_msg), msg);
+	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+	task->state = PROCESS_STATE_CANCEL;
+	task->unix_start_time = now;
+	task->unix_end_time = now;
+	log_msg(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
+
+	/* insert in the history */
+	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
+}
+
+void task_list_cancel_in_group(struct snapraid_state* state, struct snapraid_task* failed_task, const char* msg)
 {
 	time_t now = time(0);
-	tommy_node* i = tommy_list_head(waiting_list);
+	tommy_node* i = tommy_list_head(&state->runner.waiting_list);
 	while (i != 0) {
 		tommy_node* i_next = i->next;
 		struct snapraid_task* task = i->data;
@@ -298,17 +315,23 @@ void task_list_cancel(struct snapraid_task* failed_task, tommy_list* waiting_lis
 			continue;
 		}
 
-		/* remove from the waiting list */
-		tommy_list_remove_existing(waiting_list, i);
-		sncpy(task->exit_msg, sizeof(task->exit_msg), msg);
-		message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
-		task->state = PROCESS_STATE_CANCEL;
-		task->unix_start_time = now;
-		task->unix_end_time = now;
-		log_msg(LVL_WARNING, "task %d cancel %s", task->number, command_name(task->cmd));
+		task_cancel(state, task, msg, now);
 
-		/* insert in the history */
-		tommy_list_insert_tail(history_list, &task->node, task);
+		i = i_next;
+	}
+}
+
+void task_list_cancel_down(struct snapraid_state* state, const char* msg)
+{
+	time_t now = time(0);
+	tommy_node* i = tommy_list_head(&state->runner.waiting_list);
+	while (i != 0) {
+		tommy_node* i_next = i->next;
+		struct snapraid_task* task = i->data;
+
+		if (task->cmd == CMD_DOWN) {
+			task_cancel(state, task, msg, now);
+		}
 
 		i = i_next;
 	}
