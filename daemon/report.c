@@ -1167,7 +1167,6 @@ void report_locked(struct snapraid_state* state, ss_t* ss,
 	is_mail |= strstr(cmd, "mail") != 0;
 	is_mail |= strstr(cmd, "smtp") != 0;
 	is_mail |= strstr(cmd, "mutt") != 0;
-	is_mail |= strstr(cmd, "sendman") != 0;
 	is_mail |= strstr(cmd, "swaks") != 0;
 
 	/* forced */
