@@ -353,7 +353,7 @@ bail:
 	return -1;
 }
 
-int notify_start_locked(struct snapraid_state* state, int high_cmd)
+int notify_start_locked_yield(struct snapraid_state* state, int high_cmd)
 {
 	int ret = 0;
 
@@ -368,7 +368,7 @@ int notify_start_locked(struct snapraid_state* state, int high_cmd)
 	return ret;
 }
 
-int notify_result_locked(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
+int notify_result_locked_yield(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
 {
 	int ret = 0;
 
