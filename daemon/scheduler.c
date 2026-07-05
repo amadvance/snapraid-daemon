@@ -471,12 +471,9 @@ void* scheduler_thread(void* arg)
 			if (state->config.sys_log_retention_days > 0
 				&& state->config.sys_log_directory[0] != 0
 				&& mono_now_secs - last_delete_ts >= 3600) {
-				state_unlock();
-
 				last_delete_ts = mono_now_secs;
-				(void)runner_delete_old_log(state, msg, sizeof(msg), &status); /* error already logged */
+				(void)runner_delete_old_log_yield(state, msg, sizeof(msg), &status); /* error already logged */
 
-				state_lock();
 				if (!state->daemon_running)
 					break;
 				/* continue with other tasks */
@@ -484,12 +481,10 @@ void* scheduler_thread(void* arg)
 
 			/* clean history every 10 minutes */
 			if (mono_now_secs - last_history_ts >= 10 * 60) {
-				state_unlock();
-
 				last_history_ts = mono_now_secs;
-				(void)runner_delete_old_history(state, msg, sizeof(msg), &status); /* error already logged */
 
-				state_lock();
+				(void)runner_delete_old_history_locked(state, msg, sizeof(msg), &status); /* error already logged */
+
 				if (!state->daemon_running)
 					break;
 				/* continue with other tasks */

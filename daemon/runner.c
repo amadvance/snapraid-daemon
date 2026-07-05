@@ -1499,19 +1499,21 @@ static int delete_old_files(const char* dir_path, int days)
 	return 0;
 }
 
-int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+int runner_delete_old_log_yield(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	char sys_log_directory[PATH_MAX];
 	int sys_log_retention_days;
 
 	sncpy(msg, msg_size, "");
 
-	state_lock();
 	sncpy(sys_log_directory, sizeof(sys_log_directory), state->config.sys_log_directory);
 	sys_log_retention_days = state->config.sys_log_retention_days;
-	state_unlock();
 
-	if (delete_old_files(sys_log_directory, sys_log_retention_days) != 0) {
+	state_unlock();
+	int res = delete_old_files(sys_log_directory, sys_log_retention_days);
+	state_lock();
+
+	if (res != 0) {
 		sncpy(msg, msg_size, "Failed deleting old log files");
 		*status = 500;
 		return 0;
@@ -1521,14 +1523,12 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
 	return 0;
 }
 
-int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+int runner_delete_old_history_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 	time_t cutoff_seconds = now - HISTORY_PAST_DAYS * SECONDS_IN_A_DAY;
 
 	sncpy(msg, msg_size, "");
-
-	state_lock();
 
 	pulse(state, PULSE_TASKS);
 
@@ -1544,15 +1544,12 @@ int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t ms
 			if (state->runner.latest != task) {
 				tommy_list_remove_existing(&state->runner.history_list, &task->node);
 				task_free(task);
+				--count;
 			}
 		}
 
-		--count;
-
 		i = i_next;
 	}
-
-	state_unlock();
 
 	*status = 200;
 	return 0;
