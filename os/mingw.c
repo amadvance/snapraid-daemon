@@ -2951,76 +2951,85 @@ int os_command(const char* command, const char* run_as_user, const char* stdin_t
 	}
 }
 
+struct env_item {
+	tommy_node node;
+	WCHAR str[1];
+};
+
+static int env_item_compare(const void* void_a, const void* void_b)
+{
+	const struct env_item* a = void_a;
+	const struct env_item* b = void_b;
+
+	return _wcsicmp(a->str, b->str);
+}
+
+/**
+ * Combine base environment strings with extra envp variables into a single block.
+ *
+ * Win32 CreateProcessW requires environment blocks to be sorted alphabetically
+ * (case-insensitive) by variable name. Unsorted environment blocks cause Win32 CRT
+ * variable lookups (e.g. GetEnvironmentVariableW) in child processes to fail.
+ */
 static WCHAR* env_combine(const WCHAR* base_env, char** envp)
 {
-	size_t base_len = 0;
+	tommy_list list;
+	tommy_list_init(&list);
+
+	size_t total_len = 0;
+	WCHAR* new_env = NULL;
+
+	/* add base_env strings */
 	if (base_env) {
 		const WCHAR* p = base_env;
 		while (*p != 0) {
-			p += wcslen(p) + 1;
+			size_t len = wcslen(p);
+			struct env_item* item = malloc(sizeof(struct env_item) + len * sizeof(WCHAR));
+			if (!item)
+				goto bail;
+			memcpy(item->str, p, (len + 1) * sizeof(WCHAR));
+			tommy_list_insert_tail(&list, &item->node, item);
+			total_len += len + 1;
+			p += len + 1;
 		}
-		base_len = p - base_env + 1;
-	} else {
-		base_len = 1;
 	}
 
-	size_t envv_w_total_len = 0;
-	int envv_count = 0;
+	/* add envp strings */
 	if (envp) {
-		while (envp[envv_count] != NULL) {
-			envv_count++;
-		}
-	}
-
-	WCHAR** envv_w = NULL;
-	WCHAR* new_env = NULL;
-
-	if (envv_count > 0) {
-		envv_w = calloc(envv_count, sizeof(WCHAR*));
-		if (!envv_w) {
-			goto bail;
-		}
-		for (int i = 0; i < envv_count; ++i) {
+		for (int i = 0; envp[i] != NULL; ++i) {
 			wchar_t conv[CONV_MAX];
 			u8tou16(conv, envp[i]);
 			size_t len = wcslen(conv);
-			envv_w[i] = malloc((len + 1) * sizeof(WCHAR));
-			if (!envv_w[i]) {
-				errno = ENOMEM;
+			struct env_item* item = malloc(sizeof(struct env_item) + len * sizeof(WCHAR));
+			if (!item)
 				goto bail;
-			}
-			memcpy(envv_w[i], conv, (len + 1) * sizeof(WCHAR));
-			envv_w_total_len += len + 1;
+			memcpy(item->str, conv, (len + 1) * sizeof(WCHAR));
+			tommy_list_insert_tail(&list, &item->node, item);
+			total_len += len + 1;
 		}
 	}
 
-	size_t total_len = base_len + envv_w_total_len + 1;
-	new_env = malloc(total_len * sizeof(WCHAR));
-	if (!new_env) {
-		errno = ENOMEM;
-		goto bail;
-	}
+	tommy_list_sort(&list, env_item_compare);
 
-	WCHAR* dst = new_env;
-	if (base_len > 1 && base_env) {
-		memcpy(dst, base_env, (base_len - 1) * sizeof(WCHAR));
-		dst += base_len - 1;
-	}
-	for (int i = 0; i < envv_count; ++i) {
-		if (envv_w && envv_w[i]) {
-			size_t len = wcslen(envv_w[i]);
-			memcpy(dst, envv_w[i], (len + 1) * sizeof(WCHAR));
+	new_env = malloc((total_len + 1) * sizeof(WCHAR));
+	if (new_env) {
+		WCHAR* dst = new_env;
+		for (tommy_node* node = tommy_list_head(&list); node; node = node->next) {
+			struct env_item* item = node->data;
+			size_t len = wcslen(item->str);
+			memcpy(dst, item->str, (len + 1) * sizeof(WCHAR));
 			dst += len + 1;
 		}
+		*dst = 0; /* double-null terminator */
 	}
-	*dst = 0;
 
 bail:
-	if (envv_w) {
-		for (int i = 0; i < envv_count; ++i) {
-			free(envv_w[i]);
-		}
-		free(envv_w);
+	/* free all list items */
+	while (tommy_list_head(&list)) {
+		tommy_node* head = tommy_list_head(&list);
+		struct env_item* item = head->data;
+		tommy_list_remove_existing(&list, head);
+		free(item);
 	}
 
 	return new_env;
