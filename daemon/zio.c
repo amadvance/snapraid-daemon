@@ -81,6 +81,8 @@ size_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
+		if (nmemb > UINT_MAX / size)
+			return 0;
 		unsigned int total_bytes = (unsigned int)(size * nmemb);
 		int bytes_read = gzread(stream->handle.gz_file, ptr, total_bytes);
 		if (bytes_read <= 0)
@@ -102,6 +104,8 @@ size_t zwrite(const void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
+		if (nmemb > UINT_MAX / size)
+			return 0;
 		unsigned int total_bytes = (unsigned int)(size * nmemb);
 		int bytes_written = gzwrite(stream->handle.gz_file, ptr, total_bytes);
 		if (bytes_written <= 0)
