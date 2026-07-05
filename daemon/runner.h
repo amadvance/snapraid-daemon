@@ -72,7 +72,7 @@ int runner_has_cmd_locked(struct snapraid_state* state, int cmd);
  * @param status Pointer to store HTTP status code
  * @return Exit status of operation
  */
-int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+int runner_delete_old_log_yield(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
  * Delete old history entries.
@@ -82,7 +82,7 @@ int runner_delete_old_log(struct snapraid_state* state, char* msg, size_t msg_si
  * @param status Pointer to store HTTP status code
  * @return Exit status of operation
  */
-int runner_delete_old_history(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
+int runner_delete_old_history_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
  * Stop the current running task.
