@@ -329,7 +329,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	log_task_reset();
 
 	/* notify the report */
-	if (notify_result_locked(state, report_high_cmd, report_level, exit_code, ss_extract(&ss)) != 0) {
+	if (notify_result_locked_yield(state, report_high_cmd, report_level, exit_code, ss_extract(&ss)) != 0) {
 		char exit_msg[MSG_MAX];
 		report_task->exit_code = -1;
 		log_task_push(&report_task->message_list);
@@ -791,7 +791,7 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 	}
 }
 
-static void runner_go_locked(struct snapraid_state* state)
+static void runner_go_locked_yield(struct snapraid_state* state)
 {
 	char msg[MSG_MAX];
 	char exit_neg_msg[MSG_MAX];
@@ -1215,7 +1215,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 		/* free the down_idle task */
 		task_free(task);
 	} else {
-		runner_go_locked(state);
+		runner_go_locked_yield(state);
 	}
 }
 
@@ -1255,7 +1255,7 @@ static void* runner_thread(void* arg)
 				if (task->cmd == CMD_DOWN_IDLE) {
 					runner_spindown_inactive_locked(state);
 				} else {
-					runner_go_locked(state);
+					runner_go_locked_yield(state);
 					runner_postcondition_locked(state);
 				}
 			} else {
@@ -1499,7 +1499,7 @@ static int delete_old_files(const char* dir_path, int days)
 	return 0;
 }
 
-int runner_delete_old_log_yield(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
+int runner_delete_old_log_locked_yield(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	char sys_log_directory[PATH_MAX];
 	int sys_log_retention_days;

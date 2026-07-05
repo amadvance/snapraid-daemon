@@ -18,7 +18,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
 
-	notify_start_locked(state, CMD_MAINTENANCE);
+	notify_start_locked_yield(state, CMD_MAINTENANCE);
 
 	sl_init(&scrub_arg_list);
 	sl_init(&sync_arg_list);
@@ -105,7 +105,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	state_lock();
 
-	notify_start_locked(state, CMD_HEAL);
+	notify_start_locked_yield(state, CMD_HEAL);
 
 	sl_t fix_arg_list;
 	sl_t scrub_arg_list;
@@ -163,7 +163,7 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	state_lock();
 
-	notify_start_locked(state, CMD_UNDELETE);
+	notify_start_locked_yield(state, CMD_UNDELETE);
 
 	sl_t fix_arg_list;
 	sl_init(&fix_arg_list);
@@ -472,7 +472,7 @@ void* scheduler_thread(void* arg)
 				&& state->config.sys_log_directory[0] != 0
 				&& mono_now_secs - last_delete_ts >= 3600) {
 				last_delete_ts = mono_now_secs;
-				(void)runner_delete_old_log_yield(state, msg, sizeof(msg), &status); /* error already logged */
+				(void)runner_delete_old_log_locked_yield(state, msg, sizeof(msg), &status); /* error already logged */
 
 				if (!state->daemon_running)
 					break;
