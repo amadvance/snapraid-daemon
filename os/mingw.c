@@ -2732,28 +2732,43 @@ pid_t os_wait(pid_t pid, int* status)
 	return -1;
 }
 
+/**
+ * Terminate a running child process gracefully on Windows.
+ *
+ * Child processes spawned via os_spawn() with CREATE_NO_WINDOW have an invisible
+ * console host allocated by the OS. Attaching to the child's console allows
+ * sending a CTRL_BREAK_EVENT signal so SnapRAID CLI catches it and flushes state/checkpoints.
+ */
 int os_term(pid_t pid)
 {
 	HANDLE h = (void*)pid;
 	DWORD id = GetProcessId(h);
 
-	if (id == 0)
+	if (id == 0) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	/* detach from current console (if any) */
 	FreeConsole();
 
 	/* attach to the child's console */
-	if (!AttachConsole(id))
-		return -1;
+	if (!AttachConsole(id)) {
+		/* fallback: terminate process forcibly if console attachment fails */
+		if (!TerminateProcess(h, 1)) {
+			windows_errno(GetLastError());
+			return -1;
+		}
+		return 0;
+	}
 
-	/* Disable Ctrl-C for the PARENT so we don't kill ourselves */
+	/* disable Ctrl-C for the PARENT so we don't kill ourselves */
 	SetConsoleCtrlHandler(0, TRUE);
 
-	/* This will now reach the child's SetConsoleCtrlHandler */
+	/* this will now reach the child's SetConsoleCtrlHandler */
 	GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, id);
 
-	/* Clean up */
+	/* clean up */
 	FreeConsole();
 
 	return 0;
