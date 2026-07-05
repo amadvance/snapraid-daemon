@@ -173,7 +173,12 @@ int task_same_group(const struct snapraid_task* task1, const struct snapraid_tas
 /**
  * Cancel tasks of the same group in the waiting list and move them to the history list.
  */
-void task_list_cancel(struct snapraid_task* failed_task, tommy_list* waiting_list, tommy_list* history_list, const char* msg);
+void task_list_cancel_in_group(struct snapraid_state* state, struct snapraid_task* failed_task, const char* msg);
+
+/**
+ * Cancel down tasks in the waiting list and move them to the history list.
+ */
+void task_list_cancel_down(struct snapraid_state* state, const char* msg);
 
 /**
  * Get the info level of the task from it's result

@@ -1067,7 +1067,7 @@ bail:
 
 		/* cancel queued tasks */
 		snprintf(msg, sizeof(msg), "The preceding %s operation failed to start", command_name(cmd));
-		task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
+		task_list_cancel_in_group(state, task, msg);
 	} else {
 		if (WIFEXITED(status)) {
 			/* child's exit(code) or return from main */
@@ -1079,7 +1079,7 @@ bail:
 			if (!task_success(task)) {
 				/* cancel all queued tasks on failure */
 				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-				task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
+				task_list_cancel_in_group(state, task, msg);
 			}
 		} else if (WIFSIGNALED(status)) {
 			/* child died from a signal */
@@ -1088,7 +1088,7 @@ bail:
 
 			/* cancel queued tasks */
 			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), os_signal_name(task->exit_sig), task->exit_sig);
-			task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
+			task_list_cancel_in_group(state, task, msg);
 		} else {
 			/* it should never happen */
 			task->exit_code = -1;
@@ -1096,7 +1096,7 @@ bail:
 
 			/* cancel queued tasks */
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-			task_list_cancel(task, &state->runner.waiting_list, &state->runner.history_list, msg);
+			task_list_cancel_in_group(state, task, msg);
 		}
 	}
 }
@@ -1365,6 +1365,14 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 
 	if (now == 0)
 		now = time(0);
+
+	/*
+	 * Cancel any pending spindown tasks so disks are not put to sleep right before shutdown
+	 *
+	 * On shutdown the OS will have to unmount filesystems, which requires write operations to them.
+	 */
+	if (cmd == CMD_SHUTDOWN)
+		task_list_cancel_down(state, "Canceled before shutdown");
 
 	struct snapraid_task* task = task_alloc();
 	task->cmd = cmd;
