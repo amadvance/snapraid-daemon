@@ -76,6 +76,9 @@ int runner_delete_old_log_locked_yield(struct snapraid_state* state, char* msg, 
 
 /**
  * Delete old history entries.
+ *
+ * This function will never delete the latest executed task (state->runner.latest).
+ *
  * @param state Current snapraid state
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
