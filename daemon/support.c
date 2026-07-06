@@ -3,6 +3,7 @@
 
 #include "os/portable.h"
 
+#include "app.h"
 #include "support.h"
 
 /****************************************************************************/
@@ -1007,7 +1008,7 @@ void* malloc_nofail(size_t size)
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 
@@ -1020,7 +1021,7 @@ void* calloc_nofail(size_t count, size_t size)
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 
@@ -1033,7 +1034,7 @@ void* realloc_nofail(void* ptr, size_t size)
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 
@@ -1046,7 +1047,7 @@ char* strdup_nofail(const char* str)
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 
@@ -1060,7 +1061,7 @@ void thread_mutex_init(thread_mutex_t* mutex)
 {
 	if (pthread_mutex_init(mutex, 0) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1069,7 +1070,7 @@ void thread_mutex_destroy(thread_mutex_t* mutex)
 {
 	if (pthread_mutex_destroy(mutex) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1078,7 +1079,7 @@ void thread_mutex_lock(thread_mutex_t* mutex)
 {
 	if (pthread_mutex_lock(mutex) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1087,7 +1088,7 @@ void thread_mutex_unlock(thread_mutex_t* mutex)
 {
 	if (pthread_mutex_unlock(mutex) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1096,7 +1097,7 @@ void thread_cond_init(thread_cond_t* cond)
 {
 	if (pthread_cond_init(cond, 0) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1105,7 +1106,7 @@ void thread_cond_destroy(thread_cond_t* cond)
 {
 	if (pthread_cond_destroy(cond) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1114,7 +1115,7 @@ void thread_cond_signal(thread_cond_t* cond)
 {
 	if (pthread_cond_signal(cond) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1123,7 +1124,7 @@ void thread_cond_broadcast(thread_cond_t* cond)
 {
 	if (pthread_cond_broadcast(cond) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1132,7 +1133,7 @@ void thread_cond_wait(thread_cond_t* cond, thread_mutex_t* mutex)
 {
 	if (pthread_cond_wait(cond, mutex) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1141,7 +1142,7 @@ void thread_rwlock_init(thread_rwlock_t* rwlock)
 {
 	if (pthread_rwlock_init(rwlock, 0) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1150,7 +1151,7 @@ void thread_rwlock_destroy(thread_rwlock_t* rwlock)
 {
 	if (pthread_rwlock_destroy(rwlock) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1159,7 +1160,7 @@ void thread_rwlock_rdlock(thread_rwlock_t* rwlock)
 {
 	if (pthread_rwlock_rdlock(rwlock) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1168,7 +1169,7 @@ void thread_rwlock_wrlock(thread_rwlock_t* rwlock)
 {
 	if (pthread_rwlock_wrlock(rwlock) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1177,7 +1178,7 @@ void thread_rwlock_unlock(thread_rwlock_t* rwlock)
 {
 	if (pthread_rwlock_unlock(rwlock) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1186,7 +1187,7 @@ void thread_create(thread_id_t* thread, void* (*func)(void*), void* arg)
 {
 	if (pthread_create(thread, 0, func, arg) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
@@ -1195,7 +1196,7 @@ void thread_join(thread_id_t thread, void** retval)
 {
 	if (pthread_join(thread, retval) != 0) {
 		/* LCOV_EXCL_START */
-		abort();
+		os_abort();
 		/* LCOV_EXCL_STOP */
 	}
 }
