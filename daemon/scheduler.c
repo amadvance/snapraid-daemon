@@ -455,6 +455,15 @@ void* scheduler_thread(void* arg)
 			if (!state->daemon_running)
 				break;
 
+			/*
+			 * Skip following ancillary actions (version check, log/history cleanup, probe/spindown)
+			 * if another task is currently running. Suppressing ancillary tasks during active operations
+			 * is an intentional tradeoff to avoid unnecessary overhead; deferred tasks will run
+			 * on subsequent scheduler cycles once the running task completes.
+			 */
+			if (state->runner.latest && state->runner.latest->running)
+				break;
+
 			int64_t mono_now_secs = os_tick_sec();
 
 			/* check for new version every 12 hours */
@@ -492,10 +501,6 @@ void* scheduler_thread(void* arg)
 
 			/* early exit on shutdown */
 			if (!state->daemon_running)
-				break;
-
-			/* skip following actions if something other is running */
-			if (state->runner.latest && state->runner.latest->running)
 				break;
 
 			/* probe and spindown, use the lowest interval */
