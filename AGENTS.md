@@ -262,6 +262,10 @@ Post-install hook provides systemctl commands.
 
 - **Format**: Enforce via `uncrustify -c uncrustify.cfg --no-backup *.c *.h`
 - **Naming**: Snake_case for functions, UPPER_CASE for macros/constants
+- **Locking Naming Conventions**:
+  - `_locked`: Function must be called while holding `state_lock`, and holds it continuously throughout execution without releasing it.
+  - `_locked_yield`: Function must be called while holding `state_lock`, but temporarily releases `state_lock` during execution (e.g., for I/O, script execution, or network calls) and re-acquires `state_lock` before returning.
+  - *(no postfix)*: Function is called without holding `state_lock` (or handles its own locking internally).
 - **Headers**: All `.h` files have include guards (`#ifndef __NAME_H`)
 - **Preferences**: Use 0 instead of NULL and '\0'
 - **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
