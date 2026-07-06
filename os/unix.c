@@ -1576,16 +1576,26 @@ void os_abort(void)
 	unsigned i;
 #endif
 
-	printf("Stacktrace of " PACKAGE " v" VERSION);
+	const char* platform = "";
+	const char* compiler = "";
+
 #ifdef _linux
-	printf(", linux");
+	platform = ", linux";
+#elif defined(__APPLE__)
+	platform = ", macOS";
+#elif defined(__FreeBSD__)
+	platform = ", FreeBSD";
 #endif
-#ifdef __GNUC__
-	printf(", gcc " __VERSION__);
+
+#if defined(__clang__)
+	compiler = ", clang " __clang_version__;
+#elif defined(__GNUC__)
+	compiler = ", gcc " __VERSION__;
 #endif
-	printf(", %d-bit", (int)sizeof(void*) * 8);
-	printf(", PATH_MAX=%d", PATH_MAX);
-	printf("\n");
+
+	os_syslog(OS_LVL_CRITICAL, "Stacktrace of " PACKAGE " v" VERSION
+		"%s%s, %d-bit, PATH_MAX=%d",
+		platform, compiler, (int)sizeof(void*) * 8, PATH_MAX);
 
 #if HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS
 	size = backtrace(stack, 32);
@@ -1600,28 +1610,40 @@ void os_abort(void)
 		else
 			msg = "<unknown>";
 
-		printf("[bt] %02u: %s\n", i, msg);
+		os_syslog(OS_LVL_CRITICAL, "[bt] %02u: %s", i, msg);
 
 		if (messages) {
 			int ret;
 			char addr2line[1024];
+			char path[1024];
 			size_t j = 0;
 			while (msg[j] != '(' && msg[j] != ' ' && msg[j] != 0)
 				++j;
 
-			snprintf(addr2line, sizeof(addr2line), "addr2line %p -e %.*s", stack[i], (unsigned)j, msg);
+			if (j >= sizeof(path))
+				j = sizeof(path) - 1;
+			memcpy(path, msg, j);
+			path[j] = 0;
 
-			ret = system(addr2line);
-			if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)
-				printf("exit:%d\n", WEXITSTATUS(ret));
-			if (WIFSIGNALED(ret))
-				printf("signal:%d\n", WTERMSIG(ret));
+			/*
+			 * Verify that the path consists only of safe characters (alphanumeric, slash, dot, dash, underscore).
+			 * This prevents arbitrary command execution via crafted executable names or directories.
+			 */
+			if (j > 0 && strspn(path, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_") == j) {
+				snprintf(addr2line, sizeof(addr2line), "addr2line %p -e %s", stack[i], path);
+
+				ret = system(addr2line);
+				if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)
+					os_syslog(OS_LVL_CRITICAL, "exit:%d", WEXITSTATUS(ret));
+				if (WIFSIGNALED(ret))
+					os_syslog(OS_LVL_CRITICAL, "signal:%d", WTERMSIG(ret));
+			}
 		}
 	}
 #endif
 
-	printf("Please report this error to the SnapRAID Issues:\n");
-	printf("https://github.com/amadvance/snapraid/issues\n");
+	os_syslog(OS_LVL_CRITICAL, "Please report this error to the SnapRAID Issues:");
+	os_syslog(OS_LVL_CRITICAL, "https://github.com/amadvance/snapraid/issues");
 
 	abort();
 }
