@@ -9,6 +9,8 @@
 /****************************************************************************/
 /* web */
 
+#define WEB_PAGE_SIZE_MAX (16 * 1024 * 1024)
+
 /**
  * Initialize WEB server and load assets from web root.
  * @param state Current snapraid state

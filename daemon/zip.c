@@ -7,6 +7,7 @@
 #include "support.h"
 #include "log.h"
 #include "zip.h"
+#include "web.h"
 
 /* ZIP Compression Methods */
 #define ZIP_METHOD_STORE 0 /**< No compression; data is stored as-is */
@@ -74,15 +75,13 @@ static inline time_t dos_to_time_t(uint16_t dos_date, uint16_t dos_time)
 	return mktime(&tm_struct);
 }
 
-#define ZIP_PAGE_SIZE_MAX (50 * 1024 * 1024)
-
 static void plain_content(tommy_list* page_list, const char* file, void* uncompressed_data, size_t uncompressed_size, time_t datetime)
 {
 	char root[PATH_MAX];
 
 	(void)datetime;
 
-	if (uncompressed_size > ZIP_PAGE_SIZE_MAX) {
+	if (uncompressed_size > WEB_PAGE_SIZE_MAX) {
 		log_msg(LVL_WARNING, "crawler ignore file exceeding size limit %s", file);
 		return;
 	}
@@ -110,7 +109,7 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 	size_t uncompressed_size, int compression_method,
 	time_t datetime, uint32_t crc32)
 {
-	if (uncompressed_size > ZIP_PAGE_SIZE_MAX) {
+	if (uncompressed_size > WEB_PAGE_SIZE_MAX) {
 		log_msg(LVL_ERROR, "crawler zip %s file %s exceeds maximum size limit (%zu)", path, file, uncompressed_size);
 		return -1;
 	}

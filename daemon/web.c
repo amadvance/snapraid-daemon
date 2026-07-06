@@ -366,6 +366,14 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 				continue;
 			}
 
+			if ((size_t)st.st_size > WEB_PAGE_SIZE_MAX) {
+				log_msg(LVL_WARNING, "crawler ignore file exceeding size limit %s", path);
+#ifndef _WIN32
+				close(fd);
+#endif
+				continue;
+			}
+
 			struct snapraid_page* page = page_alloc(relative, st.st_size);
 
 #ifdef _WIN32
