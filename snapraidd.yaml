@@ -280,6 +280,9 @@ paths:
         the signal has been successfully sent. However, the actual termination
         of the SnapRAID CLI process may take a few seconds to complete gracefully.
 
+        If the task is cancelled before starting (e.g. during pre-hook execution),
+        the returned pid is 0.
+
         Note that the hook_script is never terminated.
       responses:
         '202':
@@ -794,7 +797,8 @@ components:
                 type: integer
                 example: 12345
                 description: >
-                  Process ID of the task stopped.
+                  Process ID of the task stopped. If the task is cancelled before
+                  the CLI process is spawned, this value is 0.
 
   schemas:
     ValueHistory:

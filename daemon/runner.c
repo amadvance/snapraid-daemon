@@ -941,7 +941,13 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 		/* store the pid to allow stop actions */
 		state_lock();
 		task->pid = pid;
+		int post_spawn_canceled = task->canceled || !state->daemon_running;
 		state_unlock();
+
+		if (post_spawn_canceled) {
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), (uint64_t)pid);
+			os_term(pid);
+		}
 
 		parse_log(state, f, 0, log_f, log_path);
 
@@ -1330,9 +1336,12 @@ void runner_done(struct snapraid_state* state)
 	state_lock(); /* locking makes helgrind happy in the signal */
 
 	struct snapraid_task* task = state->runner.latest;
-	if (task && task->running && task->pid > 0) {
-		log_msg(LVL_INFO, "terminating helper process pid %" PRIu64 " due to daemon shutdown", (uint64_t)task->pid);
-		os_term(task->pid);
+	if (task && task->running) {
+		task->canceled = 1;
+		if (task->pid > 0) {
+			log_msg(LVL_INFO, "terminating helper process pid %" PRIu64 " due to daemon shutdown", (uint64_t)task->pid);
+			os_term(task->pid);
+		}
 	}
 
 	/* signal the condition to allow the thread to stop */
@@ -1569,13 +1578,14 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pulse(state, PULSE_ACTIVITY);
 
 	struct snapraid_task* task = state->runner.latest;
-	if (!task || !task->running || task->pid <= 0) {
+	if (!task || !task->running) {
 		sncpy(msg, msg_size, "No task running");
 		*status = 409;
 		state_unlock();
 		return -1;
 	}
 
+	task->canceled = 1;
 	pid = task->pid;
 	number = task->number;
 
