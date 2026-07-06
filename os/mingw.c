@@ -2971,12 +2971,41 @@ struct env_item {
 	WCHAR str[1];
 };
 
+static size_t env_key_len(const WCHAR* s)
+{
+	size_t i = 0;
+	if (s[0] == '=')
+		i = 1;
+	while (s[i] != 0 && s[i] != '=')
+		++i;
+	return i;
+}
+
+/**
+ * Case-insensitive comparison of environment variable names (keys only).
+ *
+ * Compares two environment strings up to the '=' character separating the key from the value.
+ * Returns negative if a < b, positive if a > b, or 0 if key names match.
+ */
 static int env_item_compare(const void* void_a, const void* void_b)
 {
 	const struct env_item* a = void_a;
 	const struct env_item* b = void_b;
 
-	return _wcsicmp(a->str, b->str);
+	size_t len_a = env_key_len(a->str);
+	size_t len_b = env_key_len(b->str);
+	size_t min_len = len_a < len_b ? len_a : len_b;
+
+	int cmp = _wcsnicmp(a->str, b->str, min_len);
+	if (cmp != 0)
+		return cmp;
+
+	if (len_a < len_b)
+		return -1;
+	if (len_a > len_b)
+		return 1;
+
+	return 0;
 }
 
 /**
@@ -3024,6 +3053,15 @@ static WCHAR* env_combine(const WCHAR* base_env, char** envp)
 		}
 	}
 
+	if (total_len == 0) {
+		WCHAR* empty_env = malloc(2 * sizeof(WCHAR));
+		if (empty_env) {
+			empty_env[0] = 0;
+			empty_env[1] = 0;
+		}
+		return empty_env;
+	}
+
 	tommy_list_sort(&list, env_item_compare);
 
 	new_env = malloc((total_len + 1) * sizeof(WCHAR));
@@ -3031,6 +3069,14 @@ static WCHAR* env_combine(const WCHAR* base_env, char** envp)
 		WCHAR* dst = new_env;
 		for (tommy_node* node = tommy_list_head(&list); node; node = node->next) {
 			struct env_item* item = node->data;
+			if (node->next) {
+				struct env_item* next_item = node->next->data;
+
+				/* skip earlier duplicates so only the latest value is kept */
+				if (env_item_compare(item, next_item) == 0)
+					continue;
+			}
+
 			size_t len = wcslen(item->str);
 			memcpy(dst, item->str, (len + 1) * sizeof(WCHAR));
 			dst += len + 1;
