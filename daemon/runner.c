@@ -1355,15 +1355,10 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	if (lock)
-		state_lock();
-
 	const char* snapraid = app_find_engine(state->config.sys_engine);
 	if (!snapraid) {
-		if (lock)
-			state_unlock();
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		*status = 500;
@@ -1413,8 +1408,6 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	if (!state->daemon_running) {
-		if (lock)
-			state_unlock();
 		task_free(task);
 		log_msg(LVL_ERROR, "failed to start runner %s because daemon is terminating", command_name(cmd));
 		sncpy(msg, msg_size, "Daemon is terminating");
@@ -1430,21 +1423,17 @@ static int runner_with_lock(struct snapraid_state* state, int lock, int high_cmd
 	/* signal the runner thread that there is a task to execute */
 	thread_cond_signal(&state->runner.cond);
 
-	if (lock)
-		state_unlock();
-
 	*status = 202;
 	return 0;
 }
 
-int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
-{
-	return runner_with_lock(state, 0, high_cmd, cmd, now, arg_list, msg, msg_size, status);
-}
-
 int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
-	return runner_with_lock(state, 1, high_cmd, cmd, now, arg_list, msg, msg_size, status);
+	state_lock();
+	int ret = runner_locked(state, high_cmd, cmd, now, arg_list, msg, msg_size, status);
+	state_unlock();
+
+	return ret;
 }
 
 /**

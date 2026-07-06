@@ -59,8 +59,9 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	 *
 	 * Note: runner_locked() only enqueues tasks for asynchronous execution
 	 * and reports queuing status via the 'status' and 'msg' parameters.
-	 * (void) is explicitly used on optional or report/cleanup tasks (e.g. CMD_SCRUB, CMD_REPORT)
-	 * to ensure they are enqueued even if a preceding step fails to enqueue.
+	 *
+	 * (void)ret is explicitly used to ignore the result of the latest task to
+	 * keep the same coding pattern.
 	 */
 	int ret = 0;
 	if (ret == 0)
