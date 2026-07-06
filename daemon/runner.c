@@ -1540,12 +1540,14 @@ int runner_delete_old_history_locked(struct snapraid_state* state, char* msg, si
 		tommy_node* i_next = i->next;
 
 		if (task->unix_start_time < cutoff_seconds || count >= HISTORY_TASKS_MAX) {
+			/* stop if the latest is reached */
+			if (state->runner.latest == task)
+				break;
+
 			/* remove and free, but only if it's not the latest */
-			if (state->runner.latest != task) {
-				tommy_list_remove_existing(&state->runner.history_list, &task->node);
-				task_free(task);
-				--count;
-			}
+			tommy_list_remove_existing(&state->runner.history_list, &task->node);
+			task_free(task);
+			--count;
 		}
 
 		i = i_next;
