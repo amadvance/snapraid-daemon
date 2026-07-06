@@ -451,6 +451,10 @@ void* scheduler_thread(void* arg)
 				break;
 			}
 
+			/* early exit on shutdown */
+			if (!state->daemon_running)
+				break;
+
 			int64_t mono_now_secs = os_tick_sec();
 
 			/* check for new version every 12 hours */
@@ -462,8 +466,6 @@ void* scheduler_thread(void* arg)
 				version_check(state);
 
 				state_lock();
-				if (!state->daemon_running)
-					break;
 				/* continue with other tasks */
 			}
 
@@ -473,22 +475,24 @@ void* scheduler_thread(void* arg)
 				&& mono_now_secs - last_delete_ts >= 3600) {
 				last_delete_ts = mono_now_secs;
 				(void)runner_delete_old_log_locked_yield(state, msg, sizeof(msg), &status); /* error already logged */
-
-				if (!state->daemon_running)
-					break;
 				/* continue with other tasks */
 			}
+
+			/* early exit on shutdown */
+			if (!state->daemon_running)
+				break;
 
 			/* clean history every 10 minutes */
 			if (mono_now_secs - last_history_ts >= 10 * 60) {
 				last_history_ts = mono_now_secs;
 
 				(void)runner_delete_old_history_locked(state, msg, sizeof(msg), &status); /* error already logged */
-
-				if (!state->daemon_running)
-					break;
 				/* continue with other tasks */
 			}
+
+			/* early exit on shutdown */
+			if (!state->daemon_running)
+				break;
 
 			/* skip following actions if something other is running */
 			if (state->runner.latest && state->runner.latest->running)
@@ -518,6 +522,7 @@ void* scheduler_thread(void* arg)
 			break; /* nothing to execute */
 		}
 
+		/* early exit on shutdown */
 		if (state->daemon_running == DAEMON_QUIT)
 			break;
 
