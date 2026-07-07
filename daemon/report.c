@@ -966,6 +966,9 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	print_separator(ss);
 	ss_prints(ss, "\n");
 
+	if (state->instance[0] != 0)
+		ss_printf(ss, "INSTANCE: %s\n", state->instance);
+
 	if (state->system.hostname[0] != 0)
 		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
 
@@ -1076,6 +1079,9 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 {
 	(void)latest_fix;
 	(void)diff_stat;
+
+	if (state->instance[0] != 0)
+		ss_printf(ss, "INSTANCE: %s\n", state->instance);
 
 	if (state->system.hostname[0] != 0)
 		ss_printf(ss, "HOSTNAME: %s\n", state->system.hostname);
