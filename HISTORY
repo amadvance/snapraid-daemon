@@ -1,8 +1,8 @@
 SnapRAID-Daemon HISTORY
 =======================
 
-2.0 WIP
-=======
+2.0 (Work in Progress)
+======================
  * Schedule a report notification on raw value changes of counting/critical
    SMART attributes and on normalized value changes of prefail attributes.
    Historical tracking for normalized values (with highest/worst baselines
