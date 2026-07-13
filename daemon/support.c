@@ -1001,61 +1001,6 @@ int pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out
 }
 
 /****************************************************************************/
-/* memory */
-
-void* malloc_nofail(size_t size)
-{
-	void* ptr = malloc(size ? size : 1);
-
-	if (!ptr) {
-		/* LCOV_EXCL_START */
-		os_abort();
-		/* LCOV_EXCL_STOP */
-	}
-
-	return ptr;
-}
-
-void* calloc_nofail(size_t count, size_t size)
-{
-	void* ptr = calloc(count, size);
-
-	if (!ptr) {
-		/* LCOV_EXCL_START */
-		os_abort();
-		/* LCOV_EXCL_STOP */
-	}
-
-	return ptr;
-}
-
-void* realloc_nofail(void* ptr, size_t size)
-{
-	ptr = realloc(ptr, size);
-
-	if (!ptr) {
-		/* LCOV_EXCL_START */
-		os_abort();
-		/* LCOV_EXCL_STOP */
-	}
-
-	return ptr;
-}
-
-char* strdup_nofail(const char* str)
-{
-	char* ptr = strdup(str);
-
-	if (!ptr) {
-		/* LCOV_EXCL_START */
-		os_abort();
-		/* LCOV_EXCL_STOP */
-	}
-
-	return ptr;
-}
-
-/****************************************************************************/
 /* thread */
 
 void thread_mutex_init(thread_mutex_t* mutex)
