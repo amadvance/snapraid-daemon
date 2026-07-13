@@ -86,6 +86,7 @@ snapraidd_SOURCES = \
 	daemon/scheduler.c \
 	daemon/version.c \
 	daemon/support.c \
+	daemon/str.c \
 	daemon/rest.c \
 	daemon/web.c \
 	daemon/zip.c \
@@ -132,6 +133,7 @@ noinst_HEADERS = \
 	daemon/parser.h \
 	daemon/scheduler.h \
 	daemon/support.h \
+	daemon/str.h \
 	daemon/rest.h \
 	daemon/web.h \
 	daemon/zip.h \
@@ -371,6 +373,7 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/smart.h \
 	$(srcdir)/daemon/state.h \
 	$(srcdir)/daemon/support.h \
+	$(srcdir)/daemon/str.h \
 	$(srcdir)/daemon/version.h \
 	$(srcdir)/daemon/web.h \
 	$(srcdir)/daemon/zip.h \
@@ -395,6 +398,7 @@ $(DAEMON_PREFIX)scheduler.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)version.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)smart.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)state.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)str.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)support.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)unix.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)web.$(OBJEXT): $(DAEMON_INCLUDES)

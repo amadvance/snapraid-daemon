@@ -11,6 +11,7 @@
 #include "scheduler.h"
 #include "version.h"
 #include "notify.h"
+#include "conf.h"
 
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, int automated, char* msg, size_t msg_size, int* status)
 {
