@@ -11,6 +11,25 @@
 #include "elem.h"
 #include "conf.h"
 
+int config_shutdown_on(const char* sys_shutdown_on, const char* event)
+{
+	if (!sys_shutdown_on || !sys_shutdown_on[0])
+		return 0;
+
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), sys_shutdown_on);
+
+	char* tokens[16];
+	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n");
+
+	for (unsigned i = 0; i < n; ++i) {
+		if (strcmp(tokens[i], event) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
 struct snapraid_config_line* config_line_alloc(void)
 {
 	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));

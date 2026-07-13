@@ -19,7 +19,7 @@
 /* jsmn */
 
 #define JSMN_STRICT
-#include "../jsmn/jsmn.h"
+#include "jsmn/jsmn.h"
 
 /**
  * Max number of JSON tokens

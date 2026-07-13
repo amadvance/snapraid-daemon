@@ -12,6 +12,7 @@
 #include "report.h"
 #include "smart.h"
 #include "notify.h"
+#include "conf.h"
 #include "runner.h"
 
 /****************************************************************************/

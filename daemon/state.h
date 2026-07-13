@@ -4,12 +4,9 @@
 #ifndef __STATE_H
 #define __STATE_H
 
-#include "../tommyds/tommylist.h"
-#include "../civetweb/civetweb.h"
-#include "../monocypher/monocypher.h"
-
-/* string list typedef for string lists */
-typedef tommy_list sl_t;
+#include "civetweb/civetweb.h"
+#include "monocypher/monocypher.h"
+#include "str.h"
 
 /**
  * Exit code of the engine if differences are detected

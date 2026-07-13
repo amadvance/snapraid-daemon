@@ -10,7 +10,7 @@
 #include "version.h"
 
 #define JSMN_HEADER
-#include "../jsmn/jsmn.h"
+#include "jsmn/jsmn.h"
 
 static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, size_t tag_out_size)
 {

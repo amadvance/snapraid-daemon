@@ -115,5 +115,10 @@ int config_reload_locked(struct snapraid_state* state);
  */
 int config_save_locked(struct snapraid_state* state);
 
+/**
+ * Check if the specified event is present in the comma-separated shutdown list.
+ */
+int config_shutdown_on(const char* sys_shutdown_on, const char* event);
+
 #endif
 
