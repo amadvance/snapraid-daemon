@@ -940,7 +940,7 @@ int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const ch
 		return 0;
 	pulse(state, mask);
 	*out = val;
-	return 0;
+	return 1;
 }
 
 int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, const char* src)
@@ -952,7 +952,7 @@ int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, co
 		return 0;
 	pulse(state, mask);
 	*out = val;
-	return 0;
+	return 1;
 }
 
 int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, const char* src)
@@ -964,7 +964,7 @@ int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, cons
 		return 0;
 	pulse(state, mask);
 	*out = val;
-	return 0;
+	return 1;
 }
 
 int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src)
@@ -976,7 +976,7 @@ int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, con
 		return 0;
 	pulse(state, mask);
 	*out = val;
-	return 0;
+	return 1;
 }
 
 int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const char* src)
@@ -988,15 +988,16 @@ int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const
 		return 0;
 	pulse(state, mask);
 	*out = val;
-	return 0;
+	return 1;
 }
 
-void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src)
+int pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src)
 {
 	if (strcmp(out, src) == 0)
-		return;
+		return 0;
 	pulse(state, mask);
 	sncpy(out, out_size, src);
+	return 1;
 }
 
 /****************************************************************************/

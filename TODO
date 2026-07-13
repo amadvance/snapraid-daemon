@@ -4,14 +4,6 @@ SnapRAID Daemon TODO
 2.x Releases
 ============
 
-- For every change (pulse) detected while running commands, emit a message
-  shown in the task messages. Like:
-  Disk d2 changed path from xxx to yyyy
-  Disk d3 changed UUID from xxx to yyyy
-  Device /dev/sda changed serial from xxx to yyyy
-  Device /dev/sda changed power from standby to active
-  Device /dev/sda changed smart attribute XXXX from xxx to yyy
-
 - Count data data/io error happened in the past (monotonic increasing, never resetting to 0).
   Show this counter in yellow.
   > past_error_data
@@ -21,6 +13,9 @@ SnapRAID Daemon TODO
 
 - In manual maintenance allow to enable/disable sync and select how much to scrub.
   Use as default the settings.
+
+Future Releases
+===============
 
 - Unprivileged execution mode
   - Starts as 'root' (Unix) or 'SYSTEM' (Windows) to parse config and open raw
@@ -41,9 +36,6 @@ SnapRAID Daemon TODO
   - Windows: Maps natively by spawning a restricted worker token via 
     CreateProcessAsUser().
    
-Future Releases
-===============
-
 - Even with the disk spundown, snapraid probe triggers disk activity on
   the disk (but not the partitions). This means that if the disk has a
   filesystem without any partition it will never spun down.

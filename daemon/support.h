@@ -552,33 +552,39 @@ void pulse(struct snapraid_state* state, unsigned mask);
 
 /**
  * Convert string to integer and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_strint(struct snapraid_state* state, unsigned mask, int* out, const char* src);
 
 /**
  * Convert string to unsigned integer and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_struint(struct snapraid_state* state, unsigned mask, unsigned* out, const char* src);
 
 /**
  * Convert string to 64-bit integer and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_stri64(struct snapraid_state* state, unsigned mask, int64_t* out, const char* src);
 
 /**
  * Convert string to 64-bit unsigned integer and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_stru64(struct snapraid_state* state, unsigned mask, uint64_t* out, const char* src);
 
 /**
  * Convert string to double and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const char* src);
 
 /**
  * Update string and trigger pulse if changed.
+ * \return -1 on error, 0 if equal, 1 if changed
  */
-void pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src);
+int pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src);
 
 /****************************************************************************/
 /* memory */
