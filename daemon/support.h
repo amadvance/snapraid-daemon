@@ -5,6 +5,7 @@
 #define __SUPPORT_H
 
 #include "state.h"
+#include "memory.h"
 
 /****************************************************************************/
 /* mime */
@@ -585,33 +586,6 @@ int pulse_double(struct snapraid_state* state, unsigned mask, double* out, const
  * \return -1 on error, 0 if equal, 1 if changed
  */
 int pulse_str(struct snapraid_state* state, unsigned mask, char* out, size_t out_size, const char* src);
-
-/****************************************************************************/
-/* memory */
-
-/**
- * Safe malloc.
- * If no memory is available, it aborts.
- */
-void* malloc_nofail(size_t size);
-
-/**
- * Safe calloc.
- * If no memory is available, it aborts.
- */
-void* calloc_nofail(size_t count, size_t size);
-
-/**
- * Safe recalloc.
- * If no memory is available, it aborts.
- */
-void* realloc_nofail(void* ptr, size_t size);
-
-/**
- * Safe strdup.
- * If no memory is available, it aborts.
- */
-char* strdup_nofail(const char* str);
 
 /****************************************************************************/
 /* thread */

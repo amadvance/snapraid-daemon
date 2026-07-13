@@ -79,6 +79,7 @@ endif
 
 snapraidd_SOURCES = \
 	daemon/daemon.c \
+	daemon/memory.c \
 	daemon/state.c \
 	daemon/runner.c \
 	daemon/parser.c \
@@ -125,6 +126,7 @@ noinst_HEADERS = \
 	os/mingw.h \
 	os/os.h \
 	daemon/app.h \
+	daemon/memory.h \
 	daemon/state.h \
 	daemon/runner.h \
 	daemon/parser.h \
@@ -359,6 +361,7 @@ DAEMON_INCLUDES = \
 	$(srcdir)/daemon/app.h \
 	$(srcdir)/daemon/elem.h \
 	$(srcdir)/daemon/log.h \
+	$(srcdir)/daemon/memory.h \
 	$(srcdir)/daemon/notify.h \
 	$(srcdir)/daemon/parser.h \
 	$(srcdir)/daemon/report.h \
@@ -379,6 +382,7 @@ DAEMON_INCLUDES = \
 
 $(DAEMON_PREFIX)conf.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)daemon.$(OBJEXT): $(DAEMON_INCLUDES)
+$(DAEMON_PREFIX)memory.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)elem.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)log.$(OBJEXT): $(DAEMON_INCLUDES)
 $(DAEMON_PREFIX)mingw.$(OBJEXT): $(DAEMON_INCLUDES)
