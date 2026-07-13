@@ -118,6 +118,8 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
  */
 static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_association* association)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
+
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 
@@ -126,8 +128,8 @@ static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_a
 
 			if (parser_device_has_id(device, association->id)) {
 				if (strcmp(device->file, association->file) != 0) {
-					if (state->daemon_running != DAEMON_LOADING)
-						log_task(LVL_WARNING, "remapping device with id '%s' to %s (was %s)", association->id, association->file, device->file);
+					if (runtime)
+						log_task(LVL_WARNING, "remapping id '%s' to device '%s' (was '%s')", association->id, association->file, device->file);
 					pulse(state, PULSE_DISKS);
 					sncpy(device->file, sizeof(device->file), association->file);
 				}
@@ -141,6 +143,8 @@ static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_a
  */
 static void parser_mapping_add(struct snapraid_state* state, struct snapraid_association* association)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
+
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
 
@@ -151,6 +155,8 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
 				/* insert only if missing */
 				if (!parser_device_has_id(device, association->id)) {
 					pulse(state, PULSE_DISKS);
+					if (runtime)
+						log_task(LVL_INFO, "associating id '%s' to device '%s'", association->id, association->file);
 					sl_insert_str(&device->id_list, association->id);
 				}
 			}
@@ -163,6 +169,8 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
  */
 static void parser_mapping_process_locked(struct snapraid_state* state)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
+
 	/*
 	 * Remap devices using the listed association
 	 *
@@ -172,11 +180,11 @@ static void parser_mapping_process_locked(struct snapraid_state* state)
 		struct snapraid_association* association = i->data;
 
 		if (parser_association_is_duplicate(state, association->id)) {
-			if (state->daemon_running != DAEMON_LOADING)
-				log_task(LVL_WARNING, "ignore duplicate association id '%s' to %s", association->id, association->file);
+			if (runtime)
+				log_task(LVL_WARNING, "ignoring duplicate association of id '%s' to device '%s'", association->id, association->file);
 		} else if (parser_device_is_duplicate(state, association->id)) {
-			if (state->daemon_running != DAEMON_LOADING)
-				log_task(LVL_WARNING, "ignore duplicate device id '%s' to %s", association->id, association->file);
+			if (runtime)
+				log_task(LVL_WARNING, "ignoring duplicate device with id '%s' for device '%s'", association->id, association->file);
 		} else {
 			parser_mapping_apply(state, association);
 		}
@@ -231,6 +239,8 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
  */
 static void remove_disappeared_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
+
 	/*
 	 * For simplicity process only on PROBE that access both snapraid.conf and all devices
 	 *
@@ -255,6 +265,8 @@ static void remove_disappeared_disks(struct snapraid_state* state, struct snapra
 		tommy_node* i_next = i->next;
 
 		if (disk->last_update_at_number < task->number) {
+			if (runtime)
+				log_task(LVL_INFO, "removing disappeared disk '%s'", disk->name);
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
@@ -265,6 +277,8 @@ static void remove_disappeared_disks(struct snapraid_state* state, struct snapra
 				tommy_node* j_next = j->next;
 
 				if (device->last_update_at_number < task->number) {
+					if (runtime)
+						log_task(LVL_INFO, "removing disappeared device '%s'", device->file);
 					pulse(state, PULSE_DISKS);
 					tommy_list_remove_existing(&disk->device_list, &device->node);
 					device_free(device);
@@ -460,7 +474,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, int num
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, number, name, DISK_UNDEFINED);
 	if (!disk) {
-		log_task(LVL_WARNING, "unknown disk %s", name);
+		log_task(LVL_WARNING, "unknown disk '%s'", name);
 		return 0;
 	}
 
@@ -483,7 +497,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_UNDEFINED);
 	if (!disk) {
-		log_task(LVL_WARNING, "unknown disk %s", name);
+		log_task(LVL_WARNING, "unknown disk '%s'", name);
 		return;
 	}
 
@@ -510,44 +524,91 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_data(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 4)
 		return;
 
 	const char* name = map[1];
-	const char* dir = map[2];
+	const char* path = map[2];
 	const char* uuid = map[3];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA);
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
-	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), dir);
-	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
-		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	char old_path[PATH_MAX];
+	if (runtime)
+		sncpy(old_path, sizeof(old_path), split->path);
+	if (pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path) > 0) {
+		if (runtime) {
+			if (old_path[0])
+				log_task(LVL_WARNING, "remapping disk '%s' to dir '%s' (was '%s')", disk->name, split->path, old_path);
+			else
+				log_task(LVL_INFO, "associating disk '%s' to dir '%s'", disk->name, split->path);
+		}
+	}
+
+	if (*uuid != 0) { /* commands like READ/DIFF don't probe the UUID */
+		char old_uuid[UUID_MAX];
+		if (runtime)
+			sncpy(old_uuid, sizeof(old_uuid), split->uuid);
+		if (pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid) > 0) {
+			if (runtime) {
+				if (old_uuid[0])
+					log_task(LVL_WARNING, "remapping disk '%s' to uuid '%s' (was '%s')", disk->name, split->uuid, old_uuid);
+				else
+					log_task(LVL_INFO, "associating disk '%s' to uuid '%s'", disk->name, split->uuid);
+			}
+		}
+	}
 }
 
 static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 4)
 		return;
 
 	const char* name = map[1];
-	const char* dir = map[2];
+	const char* path = map[2];
 	const char* uuid = map[3];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_EXTRA);
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* extra disks never have the split index */
 
-	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), dir);
-	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
-		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	char old_path[PATH_MAX];
+	if (runtime)
+		sncpy(old_path, sizeof(old_path), split->path);
+	if (pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path) > 0) {
+		if (runtime) {
+			if (old_path[0])
+				log_task(LVL_WARNING, "remapping disk '%s' to dir '%s' (was '%s')", disk->name, split->path, old_path);
+			else
+				log_task(LVL_INFO, "associating disk '%s' to dir '%s'", disk->name, split->path);
+		}
+	}
+
+	if (*uuid != 0) { /* commands like READ/DIFF don't probe the UUID */
+		char old_uuid[UUID_MAX];
+		if (runtime)
+			sncpy(old_uuid, sizeof(old_uuid), split->uuid);
+		if (pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid) > 0) {
+			if (runtime) {
+				if (old_uuid[0])
+					log_task(LVL_WARNING, "remapping disk '%s' to uuid '%s' (was '%s')", disk->name, split->uuid, old_uuid);
+				else
+					log_task(LVL_INFO, "associating disk '%s' to uuid '%s'", disk->name, split->uuid);
+			}
+		}
+	}
 }
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -564,9 +625,30 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
-	if (*uuid != 0) /* commands like READ/DIFF don't probe the UUID */
-		pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid);
+	char old_path[PATH_MAX];
+	if (runtime)
+		sncpy(old_path, sizeof(old_path), split->path);
+	if (pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path) > 0) {
+		if (runtime) {
+			if (old_path[0])
+				log_task(LVL_WARNING, "remapping parity '%s/%d' to path '%s' (was '%s')", disk->name, split->index, split->path, old_path);
+			else
+				log_task(LVL_INFO, "associating parity '%s/%d' to path '%s'", disk->name, split->index, split->path);
+		}
+	}
+	if (*uuid != 0) { /* commands like READ/DIFF don't probe the UUID */
+		char old_uuid[UUID_MAX];
+		if (runtime)
+			sncpy(old_uuid, sizeof(old_uuid), split->uuid);
+		if (pulse_str(state, PULSE_DISKS, split->uuid, sizeof(split->uuid), uuid) > 0) {
+			if (runtime) {
+				if (old_uuid[0])
+					log_task(LVL_WARNING, "remapping parity '%s/%d' to uuid '%s' (was '%s')", disk->name, split->index, split->uuid, old_uuid);
+				else
+					log_task(LVL_INFO, "associating parity '%s/%d' to uuid '%s'", disk->name, split->index, split->uuid);
+			}
+		}
+	}
 }
 
 static void process_content_data(struct snapraid_state* state, char** map, size_t mac)
@@ -607,6 +689,7 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 
 static void process_content_data_split(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 3)
@@ -618,11 +701,22 @@ static void process_content_data_split(struct snapraid_state* state, char** map,
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA);
 	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
 
-	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid);
+	char old_uuid[UUID_MAX];
+	if (runtime)
+		sncpy(old_uuid, sizeof(old_uuid), split->content_uuid);
+	if (pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid) > 0) {
+		if (runtime) {
+			if (old_uuid[0])
+				log_task(LVL_WARNING, "remapping disk '%s' to content uuid '%s' (was '%s')", disk->name, split->content_uuid, old_uuid);
+			else
+				log_task(LVL_INFO, "associating disk '%s' to content uuid '%s'", disk->name, split->content_uuid);
+		}
+	}
 }
 
 static void process_content_parity_split(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -640,8 +734,29 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY);
 	struct snapraid_split* split = find_split(&disk->split_list, index);
 
-	pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path);
-	pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid);
+	char old_path[PATH_MAX];
+	if (runtime)
+		sncpy(old_path, sizeof(old_path), split->path);
+	if (pulse_str(state, PULSE_DISKS, split->path, sizeof(split->path), path) > 0) {
+		if (runtime) {
+			if (old_path[0])
+				log_task(LVL_WARNING, "remapping parity '%s/%d' to path '%s' (was '%s')", disk->name, split->index, split->path, old_path);
+			else
+				log_task(LVL_INFO, "associating parity '%s/%d' to path '%s'", disk->name, split->index, split->path);
+		}
+	}
+
+	char old_uuid[UUID_MAX];
+	if (runtime)
+		sncpy(old_uuid, sizeof(old_uuid), split->content_uuid);
+	if (pulse_str(state, PULSE_DISKS, split->content_uuid, sizeof(split->content_uuid), uuid) > 0) {
+		if (runtime) {
+			if (old_uuid[0])
+				log_task(LVL_WARNING, "remapping parity '%s/%d' to content uuid '%s' (was '%s')", disk->name, split->index, split->content_uuid, old_uuid);
+			else
+				log_task(LVL_INFO, "associating parity '%s/%d' to content uuid '%s'", disk->name, split->index, split->content_uuid);
+		}
+	}
 	pulse_stru64(state, PULSE_DISKS, &split->content_size, size);
 }
 
@@ -734,6 +849,7 @@ static void process_fsinfo_parity(struct snapraid_state* state, char** map, size
 
 static void process_fsinfo_data_split(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 6)
@@ -750,12 +866,35 @@ static void process_fsinfo_data_split(struct snapraid_state* state, char** map, 
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
 	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
-	pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type);
-	pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label);
+
+	char old_fstype[FSINFO_MAX];
+	if (runtime)
+		sncpy(old_fstype, sizeof(old_fstype), split->fstype);
+	if (pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type) > 0) {
+		if (runtime) {
+			if (old_fstype[0])
+				log_task(LVL_WARNING, "remapping disk '%s' to fstype '%s' (was '%s')", disk->name, split->fstype, old_fstype);
+			else
+				log_task(LVL_INFO, "associating disk '%s' to fstype '%s'", disk->name, split->fstype);
+		}
+	}
+
+	char old_fslabel[FSINFO_MAX];
+	if (runtime)
+		sncpy(old_fslabel, sizeof(old_fslabel), split->fslabel);
+	if (pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label) > 0) {
+		if (runtime) {
+			if (old_fslabel[0])
+				log_task(LVL_WARNING, "remapping disk '%s' to fslabel '%s' (was '%s')", disk->name, split->fslabel, old_fslabel);
+			else
+				log_task(LVL_INFO, "associating disk '%s' to fslabel '%s'", disk->name, split->fslabel);
+		}
+	}
 }
 
 static void process_fsinfo_parity_split(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -776,8 +915,30 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
 	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
-	pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type);
-	pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label);
+
+	char old_fstype[FSINFO_MAX];
+	if (runtime)
+		sncpy(old_fstype, sizeof(old_fstype), split->fstype);
+	if (pulse_str(state, PULSE_DISKS, split->fstype, sizeof(split->fstype), type) > 0) {
+		if (runtime) {
+			if (old_fstype[0])
+				log_task(LVL_WARNING, "remapping parity '%s/%d' to fstype '%s' (was '%s')", disk->name, split->index, split->fstype, old_fstype);
+			else
+				log_task(LVL_INFO, "associating parity '%s/%d' to fstype '%s'", disk->name, split->index, split->fstype);
+		}
+	}
+
+	char old_fslabel[FSINFO_MAX];
+	if (runtime)
+		sncpy(old_fslabel, sizeof(old_fslabel), split->fslabel);
+	if (pulse_str(state, PULSE_DISKS, split->fslabel, sizeof(split->fslabel), label) > 0) {
+		if (runtime) {
+			if (old_fslabel[0])
+				log_task(LVL_WARNING, "remapping parity '%s/%d' to fslabel '%s' (was '%s')", disk->name, split->index, split->fslabel, old_fslabel);
+			else
+				log_task(LVL_INFO, "associating parity '%s/%d' to fslabel '%s'", disk->name, split->index, split->fslabel);
+		}
+	}
 }
 
 static void report_attribute_change(struct snapraid_state* state, const char* disk,
@@ -789,14 +950,17 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 
 	int ignored = smartignore_match(disk, attr_index, attr_name, &state->config.smartignore_list);
 	if (!ignored) {
-		const char* changed;
+		int worse;
 		if (is_higher_worse) {
-			changed = cv_old < cv_val ? "degraded" : "improved";
+			worse = cv_old < cv_val;
 		} else {
-			changed = cv_old > cv_val ? "degraded" : "improved";
+			worse = cv_old > cv_val;
 		}
 
-		log_task(LVL_WARNING, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
+		const char* changed = worse ? "degraded" : "improved";
+		int level = worse ? LVL_WARNING : LVL_INFO;
+
+		log_task(level, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
 			attr_type, attr_name, disk, changed, cv_old, cv_val);
 
 		/* if there isn't already a report scheduled, schedule a new one */
@@ -810,6 +974,7 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = state->daemon_running != DAEMON_LOADING;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 5)
@@ -852,28 +1017,28 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		 * For now just pulse if the temperature changes, but this means that the graph
 		 * won't show new points until something triggers an update.
 		 */
-		if (pulse_strint(state, PULSE_DISKS_UI, &device->temperature, val) == 0) {
+		if (pulse_strint(state, PULSE_DISKS_UI, &device->temperature, val) >= 0) {
 			struct snapraid_temp* temp = temperature_alloc(device->temperature, state->array.last_time);
 			temperature_insert(device, temp);
 		}
 	} else if (strcmp(tag, "error_protocol") == 0) {
 		uint64_t old = device->error_protocol.value;
-		if (pulse_stru64(state, PULSE_DISKS, &device->error_protocol.value, val) == 0) {
+		if (pulse_stru64(state, PULSE_DISKS, &device->error_protocol.value, val) >= 0) {
 			tracked_update(&device->error_protocol, old, 0, state->array.last_time);
 
 			if (old != SMART_UNASSIGNED
-				&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+				&& runtime /* do not report on loading past logs */
 			) {
 				report_attribute_change(state, disk, 0, "error_protocol", "raw", 1, old, device->error_protocol.value);
 			}
 		}
 	} else if (strcmp(tag, "error_medium") == 0) {
 		uint64_t old = device->error_medium.value;
-		if (pulse_stru64(state, PULSE_DISKS, &device->error_medium.value, val) == 0) {
+		if (pulse_stru64(state, PULSE_DISKS, &device->error_medium.value, val) >= 0) {
 			tracked_update(&device->error_medium, old, 0, state->array.last_time);
 
 			if (old != SMART_UNASSIGNED
-				&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+				&& runtime /* do not report on loading past logs */
 			) {
 				report_attribute_change(state, disk, 0, "error_medium", "raw", 1, old, device->error_medium.value);
 			}
@@ -928,6 +1093,12 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			}
 
 			if (device->health != health || device->flags != flags) {
+				if (runtime && device->health != health) {
+					if (device->health != HEALTH_PENDING || health != HEALTH_PASSED) {
+						int level = (health == HEALTH_PASSED) ? LVL_INFO : LVL_WARNING;
+						log_task(level, "SMART health of disk '%s' changed from %s to %s", disk, health_name(device->health), health_name(health));
+					}
+				}
 				pulse(state, PULSE_DISKS);
 				device->health = health;
 				sncpy(device->health_reason, sizeof(device->health_reason), health_reason);
@@ -999,11 +1170,11 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			}
 
 			/* track history only for CRITICAL and COUNT attributes */
-			if (got_raw == 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
+			if (got_raw >= 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
 				tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
 
 				if (old_raw != SMART_UNASSIGNED
-					&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+					&& runtime /* do not report on loading past logs */
 				) {
 					uint64_t cv_old = smart_conv(old_raw, kind);
 					uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
@@ -1012,11 +1183,11 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			}
 
 			/* track history for all PREFAIL attributes' norm values */
-			if (got_norm == 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
+			if (got_norm >= 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
 				tracked_update(&device->smart[index].norm, old_norm, SMART_KIND_NORM, state->array.last_time);
 
 				if (old_norm != SMART_UNASSIGNED
-					&& state->daemon_running != DAEMON_LOADING /* do not report on loading past logs */
+					&& runtime /* do not report on loading past logs */
 				) {
 					uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
 					uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
