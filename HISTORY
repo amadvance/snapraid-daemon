@@ -1,6 +1,10 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.14 2026/07
+============
+ * Updated NSIS package for Windows with SnapRAID 14.9.
+
 1.13 2026/06
 ============
  * Make the light theme the default in the web dashboard (Commander) and
