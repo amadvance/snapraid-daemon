@@ -109,7 +109,7 @@ int replace_argument(const char* cmdline, const char* placeholder[], const char*
 	return 0;
 }
 
-static int result_locked(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
+static int result_locked_yield(struct snapraid_state* state, int high_cmd, int report_level, int exit_code, const char* report_text)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -234,7 +234,7 @@ bail:
 	return -1;
 }
 
-static int heartbeat_locked(struct snapraid_state* state)
+static int heartbeat_locked_yield(struct snapraid_state* state)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -266,7 +266,7 @@ bail:
 	return -1;
 }
 
-static int start_locked(struct snapraid_state* state, int high_cmd)
+static int start_locked_yield(struct snapraid_state* state, int high_cmd)
 {
 	char cmd[1024];
 	char template[CONFIG_MAX];
@@ -361,7 +361,7 @@ int notify_start_locked_yield(struct snapraid_state* state, int high_cmd)
 		high_cmd = CMD_REPORT;
 
 	if (state->config.notify_start[0] != 0) {
-		if (start_locked(state, high_cmd) != 0)
+		if (start_locked_yield(state, high_cmd) != 0)
 			ret = -1;
 	}
 
@@ -378,7 +378,7 @@ int notify_result_locked_yield(struct snapraid_state* state, int high_cmd, int r
 	/* result is notified on ALL reports */
 	if (state->config.notify_result[0] != 0
 		&& report_level <= state->config.notify_result_level) {
-		if (result_locked(state, high_cmd, report_level, exit_code, report_text) != 0)
+		if (result_locked_yield(state, high_cmd, report_level, exit_code, report_text) != 0)
 			ret = -1;
 	}
 
@@ -386,7 +386,7 @@ int notify_result_locked_yield(struct snapraid_state* state, int high_cmd, int r
 	if (state->config.notify_heartbeat[0] != 0
 		&& high_cmd == CMD_MAINTENANCE
 		&& report_level >= LVL_WARNING) {
-		if (heartbeat_locked(state) != 0)
+		if (heartbeat_locked_yield(state) != 0)
 			ret = -1;
 	}
 
