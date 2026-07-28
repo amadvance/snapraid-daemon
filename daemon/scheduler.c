@@ -436,6 +436,9 @@ void* scheduler_thread(void* arg)
 			break; /* nothing to execute */
 		}
 
+		if (state->daemon_running == DAEMON_QUIT)
+			break;
+
 		thread_cond_wait(&state->scheduler.cond, &state->state_lock);
 	}
 
