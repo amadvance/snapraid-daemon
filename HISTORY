@@ -1,6 +1,11 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+1.15 2026/08
+============
+ * Fixed diff summary counters being reset to zero after rescan operations
+   (such as Undelete fix --gui-rescan-after).
+
 1.14 2026/07
 ============
  * Updated NSIS package for Windows with SnapRAID 14.9.

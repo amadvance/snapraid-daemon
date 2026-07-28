@@ -1489,25 +1489,23 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	const char* val = map[2];
 
 	/* diff */
-	if (task->cmd == CMD_DIFF || task->cmd == CMD_SYNC) {
-		/* do not pulse because this is temporary storage for parsing */
-		if (strcmp(tag, "equal") == 0)
-			stri64(&state->global.diff_parse.diff_equal, val);
-		else if (strcmp(tag, "added") == 0)
-			stri64(&state->global.diff_parse.diff_added, val);
-		else if (strcmp(tag, "removed") == 0)
-			stri64(&state->global.diff_parse.diff_removed, val);
-		else if (strcmp(tag, "updated") == 0)
-			stri64(&state->global.diff_parse.diff_updated, val);
-		else if (strcmp(tag, "moved") == 0)
-			stri64(&state->global.diff_parse.diff_moved, val);
-		else if (strcmp(tag, "copied") == 0)
-			stri64(&state->global.diff_parse.diff_copied, val);
-		else if (strcmp(tag, "relocated") == 0)
-			stri64(&state->global.diff_parse.diff_relocated, val);
-		else if (strcmp(tag, "restored") == 0)
-			stri64(&state->global.diff_parse.diff_restored, val);
-	}
+	/* do not pulse because this is temporary storage for parsing */
+	if (strcmp(tag, "equal") == 0)
+		stri64(&state->global.diff_parse.diff_equal, val);
+	else if (strcmp(tag, "added") == 0)
+		stri64(&state->global.diff_parse.diff_added, val);
+	else if (strcmp(tag, "removed") == 0)
+		stri64(&state->global.diff_parse.diff_removed, val);
+	else if (strcmp(tag, "updated") == 0)
+		stri64(&state->global.diff_parse.diff_updated, val);
+	else if (strcmp(tag, "moved") == 0)
+		stri64(&state->global.diff_parse.diff_moved, val);
+	else if (strcmp(tag, "copied") == 0)
+		stri64(&state->global.diff_parse.diff_copied, val);
+	else if (strcmp(tag, "relocated") == 0)
+		stri64(&state->global.diff_parse.diff_relocated, val);
+	else if (strcmp(tag, "restored") == 0)
+		stri64(&state->global.diff_parse.diff_restored, val);
 
 	/*
 	 * Note that the summary is not printed on fatal errors, so the
