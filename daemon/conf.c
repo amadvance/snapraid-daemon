@@ -152,6 +152,8 @@ void config_schedule_str(struct snapraid_config* config, char* buf, size_t size)
 			return;
 
 		len += ret;
+
+		/* if snprintf is truncated, len >= size terminates immediately before next iteration */
 		if (len >= size)
 			return;
 	}
