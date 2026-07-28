@@ -1568,7 +1568,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pulse(state, PULSE_ACTIVITY);
 
 	struct snapraid_task* task = state->runner.latest;
-	if (!task || !task->running) {
+	if (!task || !task->running || task->pid <= 0) {
 		sncpy(msg, msg_size, "No task running");
 		*status = 409;
 		state_unlock();
@@ -1586,22 +1586,20 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	*stop_pid = pid;
 	*stop_number = number;
 
-	if (pid > 0) {
-		/*
-		 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
-		 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
-		 * In practice, PID recycling across the OS requires tens of thousands of process spawns
-		 * and wrap-around, making this an accepted non-issue.
-		 */
-		if (os_term(pid) != 0) {
-			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
-			sncpy(msg, msg_size, "Failed to stop task");
-			*status = 500;
-			return -1;
-		}
-
-		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+	/*
+	 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
+	 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
+	 * In practice, PID recycling across the OS requires tens of thousands of process spawns
+	 * and wrap-around, making this an accepted non-issue.
+	 */
+	if (os_term(pid) != 0) {
+		log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
+		sncpy(msg, msg_size, "Failed to stop task");
+		*status = 500;
+		return -1;
 	}
+
+	log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
 
 	sncpy(msg, msg_size, "Signal sent");
 	*status = 202;
