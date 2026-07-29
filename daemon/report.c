@@ -635,10 +635,10 @@ static void print_disk_list_wide(struct snapraid_state* state, tommy_list* disk_
 		}
 
 		/* print error counters if not zero */
-		if (disk->error_io != 0 || disk->error_data != 0) {
+		if (disk->transient_error_io != 0 || disk->transient_error_data != 0) {
 			ss_printc(ss, ' ', sp->tab_len + sp->name_len);
 			ss_printf(ss, "!! I/O Errors: %" PRIu64 ", Data Errors: %" PRIu64 "\n",
-				disk->error_io, disk->error_data);
+				disk->transient_error_io, disk->transient_error_data);
 		}
 	}
 }
@@ -668,9 +668,9 @@ static void print_disk_list_narrow(struct snapraid_state* state, tommy_list* dis
 		}
 
 		/* print error counters if not zero */
-		if (disk->error_io != 0 || disk->error_data != 0) {
-			ss_printf(ss, "!! I/O Errors: %" PRIu64 "\n", disk->error_io);
-			ss_printf(ss, "!! Data Errors: %" PRIu64 "\n", disk->error_data);
+		if (disk->transient_error_io != 0 || disk->transient_error_data != 0) {
+			ss_printf(ss, "!! I/O Errors: %" PRIu64 "\n", disk->transient_error_io);
+			ss_printf(ss, "!! Data Errors: %" PRIu64 "\n", disk->transient_error_data);
 		}
 	}
 }
@@ -685,11 +685,14 @@ static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const cha
 {
 	if (!sh->header_printed) {
 		print_line_separator(ss);
-		ss_prints(ss, "SMART CHANGES:\n\n");
+		ss_prints(ss, "ATTRIBUTES CHANGES:\n\n");
 		sh->header_printed = 1;
 	}
 	if (!sh->disk_printed) {
-		ss_printf(ss, "Disk %s (serial: %s):\n", disk_name, dev_serial);
+		if (dev_serial)
+			ss_printf(ss, "Disk %s (serial: %s):\n", disk_name, dev_serial);
+		else
+			ss_printf(ss, "Disk %s:\n", disk_name);
 		sh->disk_printed = 1;
 	}
 	if (!sh->attr_printed) {
@@ -701,7 +704,7 @@ static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const cha
 static void print_smart_header_narrow(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* attr_name, int is_ignored)
 {
 	if (!sh->header_printed) {
-		ss_prints(ss, "SMART CHANGES\n");
+		ss_prints(ss, "ATTRIBUTES CHANGES\n");
 		sh->header_printed = 1;
 	}
 	if (!sh->disk_printed) {
@@ -721,9 +724,53 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
+
+		sh.disk_printed = 0;
+
+		/* error_io change */
+		sh.attr_printed = 0;
+		if (disk->error_io.value != SMART_UNASSIGNED
+			&& disk->error_io.prev != SMART_UNASSIGNED
+			&& disk->error_io.value != disk->error_io.prev
+			&& disk->error_io.prev_last >= queue_time
+		) {
+			uint64_t cv_val = disk->error_io.value;
+			uint64_t cv_old = disk->error_io.prev;
+
+			if (cv_val != cv_old) {
+				int ignored = smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list);
+				print_smart_header_wide(ss, &sh, disk->name, 0, "Input_Output_Errors", ignored);
+
+				const char* changed = cv_old < cv_val ? "degraded" : "improved";
+				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+				ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
+			}
+		}
+
+		/* error_data change */
+		sh.attr_printed = 0;
+		if (disk->error_data.value != SMART_UNASSIGNED
+			&& disk->error_data.prev != SMART_UNASSIGNED
+			&& disk->error_data.value != disk->error_data.prev
+			&& disk->error_data.prev_last >= queue_time
+		) {
+			uint64_t cv_val = disk->error_data.value;
+			uint64_t cv_old = disk->error_data.prev;
+
+			if (cv_val != cv_old) {
+				int ignored = smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list);
+				print_smart_header_wide(ss, &sh, disk->name, 0, "Silent_Errors", ignored);
+
+				const char* changed = cv_old < cv_val ? "degraded" : "improved";
+				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+				ss_printf(ss, "raw %s from %" PRIu64 " to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_old, cv_val, delta);
+			}
+		}
+
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
 			struct snapraid_device* dev = j->data;
-			sh.disk_printed = 0;
+
+			sh.disk_printed = 0; /* it prints the serial, so reset it for each devices */
 
 			for (int k = 0; k < SMART_COUNT; ++k) {
 				struct smart_attr* attr = &dev->smart[k];
@@ -795,7 +842,7 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 
 				if (cv_val != cv_old) {
 					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
-					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Error_Protocol", ignored);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Protocol_Errors", ignored);
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -815,7 +862,7 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 
 				if (cv_val != cv_old) {
 					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
-					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Error_Medium", ignored);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Medium_Errors", ignored);
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -838,6 +885,46 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 		struct snapraid_disk* disk = i->data;
 
 		sh.disk_printed = 0; /* it doesn't print the serial, so all devices goes in the same disk section */
+
+		/* error_io change */
+		sh.attr_printed = 0;
+		if (disk->error_io.value != SMART_UNASSIGNED
+			&& disk->error_io.prev != SMART_UNASSIGNED
+			&& disk->error_io.value != disk->error_io.prev
+			&& disk->error_io.prev_last >= queue_time
+		) {
+			uint64_t cv_val = disk->error_io.value;
+			uint64_t cv_old = disk->error_io.prev;
+
+			if (cv_val != cv_old) {
+				int ignored = smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list);
+				print_smart_header_narrow(ss, &sh, disk->name, "Input_Output_Errors", ignored);
+
+				const char* changed = cv_old < cv_val ? "degraded" : "improved";
+				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+				ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+			}
+		}
+
+		/* error_data change */
+		sh.attr_printed = 0;
+		if (disk->error_data.value != SMART_UNASSIGNED
+			&& disk->error_data.prev != SMART_UNASSIGNED
+			&& disk->error_data.value != disk->error_data.prev
+			&& disk->error_data.prev_last >= queue_time
+		) {
+			uint64_t cv_val = disk->error_data.value;
+			uint64_t cv_old = disk->error_data.prev;
+
+			if (cv_val != cv_old) {
+				int ignored = smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list);
+				print_smart_header_narrow(ss, &sh, disk->name, "Silent_Errors", ignored);
+
+				const char* changed = cv_old < cv_val ? "degraded" : "improved";
+				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
+				ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+			}
+		}
 
 		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
 			struct snapraid_device* dev = j->data;
@@ -910,7 +997,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 				if (cv_val != cv_old) {
 					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
-					print_smart_header_narrow(ss, &sh, disk->name, "Error_Protocol", ignored);
+					print_smart_header_narrow(ss, &sh, disk->name, "Protocol_Errors", ignored);
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -930,7 +1017,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 				if (cv_val != cv_old) {
 					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
-					print_smart_header_narrow(ss, &sh, disk->name, "Error_Medium", ignored);
+					print_smart_header_narrow(ss, &sh, disk->name, "Medium_Errors", ignored);
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;

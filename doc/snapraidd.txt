@@ -1063,14 +1063,14 @@ and the timestamp of the last successful maintenance.
 Example:
     curl -s http://localhost:7627/snapraid/v1/array | jq
 
----- 7.2.2 /snapraid/v1/disks ----
+---- 7.2.2 /snapraid/v2/disks ----
 Returns a comprehensive inventory of every physical disk associated
 with the SnapRAID configuration. It reports real-time hardware
 metrics including SMART health status, temperature, and the current
 power state (Active/Spin-up vs. Standby/Spin-down).
 
 Example:
-    curl -s http://localhost:7627/snapraid/v1/disks | jq
+    curl -s http://localhost:7627/snapraid/v2/disks | jq
 
 7.3 Runtime Configuration
 -------------------------
@@ -1078,7 +1078,7 @@ Example:
 Provides a programmatic interface to retrieve and modify the
 operational parameters of the daemon in real-time.
 
----- 7.3.1 /snapraid/v1/config ----
+---- 7.3.1 /snapraid/v2/config ----
 Retrieves and updates the current runtime configuration parameters of
 the snapraidd service. Changes are applied instantly to memory and
 persisted to the configuration file.
@@ -1086,8 +1086,8 @@ Note that certain networking and security settings are read-only and
 require a manual edit and SIGHUP.
 
 Example:
-    curl -X GET http://localhost:7627/snapraid/v1/config | jq
-    curl -X PATCH http://localhost:7627/snapraid/v1/config \
+    curl -X GET http://localhost:7627/snapraid/v2/config | jq
+    curl -X PATCH http://localhost:7627/snapraid/v2/config \
     	-d '{ "probe_interval_minutes": 10 }'
 
 7.4 Activity Control

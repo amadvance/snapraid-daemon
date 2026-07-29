@@ -1684,7 +1684,7 @@ static void json_device_list(struct snapraid_state* state, ss_t* s, int level, c
 	}
 }
 
-static void json_disk_list(struct snapraid_state* state, ss_t* s, int level, tommy_list* list, int kind, int64_t reference)
+static void json_disk_list(struct snapraid_state* state, ss_t* s, int level, tommy_list* list, int kind, int64_t reference, int is_v2)
 {
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -1704,8 +1704,21 @@ static void json_disk_list(struct snapraid_state* state, ss_t* s, int level, tom
 			ss_json_pair_iso8601(s, level, "access_count_initial_time", disk->access_count_initial_time);
 			ss_json_i64(s, level, "access_count_idle_duration", disk->access_count_latest_time - disk->access_count_initial_time);
 		}
-		ss_json_i64(s, level, "error_io", disk->error_io);
-		ss_json_i64(s, level, "error_data", disk->error_data);
+		if (is_v2) {
+			ss_json_i64(s, level, "transient_error_io", disk->transient_error_io);
+			ss_json_i64(s, level, "transient_error_data", disk->transient_error_data);
+			json_tracked(s, level, "error_io", &disk->error_io, 0);
+			if (smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)) {
+				ss_json_bool(s, level, "error_io_ignored", 1);
+			}
+			json_tracked(s, level, "error_data", &disk->error_data, 0);
+			if (smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)) {
+				ss_json_bool(s, level, "error_data_ignored", 1);
+			}
+		} else {
+			ss_json_i64(s, level, "error_io", disk->transient_error_io);
+			ss_json_i64(s, level, "error_data", disk->transient_error_data);
+		}
 
 		ss_json_array_open(s, &level, "splits");
 		for (tommy_node* j = tommy_list_head(&disk->split_list); j; j = j->next) {
@@ -1760,6 +1773,7 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
 	int level = 0;
 	ss_t s;
 
@@ -1776,13 +1790,13 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_open(&s, &level);
 	json_pulse(&s, level, &state->pulse);
 	ss_json_array_open(&s, &level, "data_disks");
-	json_disk_list(state, &s, level, &state->array.disk_list, DISK_DATA, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_DATA, state->array.last_time, is_v2);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "parity_disks");
-	json_disk_list(state, &s, level, &state->array.disk_list, DISK_PARITY, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_PARITY, state->array.last_time, is_v2);
 	ss_json_array_close(&s, &level);
 	ss_json_array_open(&s, &level, "extra_disks");
-	json_disk_list(state, &s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time);
+	json_disk_list(state, &s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time, is_v2);
 	ss_json_array_close(&s, &level);
 	ss_json_close(&s, &level);
 
@@ -2529,21 +2543,21 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	ss_prints(&s, "\n");
 
 	/* per-disk I/O error counters */
-	ss_prints(&s, "# HELP snapraid_disk_error Session errors per disk (cleared after clean scrub)\n");
-	ss_prints(&s, "# TYPE snapraid_disk_error gauge\n");
+	ss_prints(&s, "# HELP snapraid_disk_transient_error Session errors per disk (cleared after clean scrub)\n");
+	ss_prints(&s, "# TYPE snapraid_disk_transient_error gauge\n");
 	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
 		for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 			struct snapraid_disk* disk = i->data;
 			if (disk->kind != METRICS_DISK_ROLES[r].kind)
 				continue;
-			ss_prints(&s, "snapraid_disk_error{disk=\"");
+			ss_prints(&s, "snapraid_disk_transient_error{disk=\"");
 			ss_prints_prometheus_escaped(&s, disk->name);
 			ss_printf(&s, "\",role=\"%s\",kind=\"io\"} %" PRIu64 "\n",
-				METRICS_DISK_ROLES[r].role, disk->error_io);
-			ss_prints(&s, "snapraid_disk_error{disk=\"");
+				METRICS_DISK_ROLES[r].role, disk->transient_error_io);
+			ss_prints(&s, "snapraid_disk_transient_error{disk=\"");
 			ss_prints_prometheus_escaped(&s, disk->name);
 			ss_printf(&s, "\",role=\"%s\",kind=\"data\"} %" PRIu64 "\n",
-				METRICS_DISK_ROLES[r].role, disk->error_data);
+				METRICS_DISK_ROLES[r].role, disk->transient_error_data);
 		}
 	}
 	ss_prints(&s, "\n");
@@ -3017,6 +3031,7 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop", handler_stop, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/report", handler_report, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks", handler_disks, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v2/disks", handler_disks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity", handler_activity, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state); /* deprecated but kept for compatibility */

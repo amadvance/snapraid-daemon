@@ -153,6 +153,7 @@
     --smart-clickable-hover: var(--c-slate-800);
     --text-grey: var(--c-slate-400);
     --text-sky: var(--c-sky-400);
+    --text-red: var(--c-red-400);
     --log-window-background: #000;
     --log-window-text: var(--c-slate-200);
     --status-next: var(--c-slate-400);
@@ -189,6 +190,7 @@
     --smart-clickable-hover: var(--c-slate-200);
     --text-grey: var(--c-slate-500);
     --text-sky: var(--c-sky-500);
+    --text-red: var(--c-red-600);
     --log-window-background: var(--c-slate-50);
     --log-window-text: var(--c-slate-700);
     --status-next: var(--c-slate-600);
@@ -1275,7 +1277,7 @@ a.badge:hover {
 }
 
 .text-red {
-    color: var(--c-red-500);
+    color: var(--text-red);
 }
 
 .text-yellow {
@@ -1690,10 +1692,10 @@ input[type=number]:focus {
 .smart-status[data-status="pending"],
 .smart-status[data-status="prefail-logged"],
 .smart-status[data-status="error-logged"],
+.smart-status[data-status="error-recorded"],
 .smart-status[data-status="selftest-error-logged"] {
     color: var(--text-grey);
 }
-
 
 .modal-container.large {
     max-width: 850px;

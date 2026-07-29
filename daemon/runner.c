@@ -240,6 +240,29 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (queue_time != 0) {
 		for (tommy_node* disk_node = tommy_list_head(&state->array.disk_list); disk_node != 0; disk_node = disk_node->next) {
 			struct snapraid_disk* disk = disk_node->data;
+
+			if (!smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)) {
+				if (disk->error_io.value != SMART_UNASSIGNED
+					&& disk->error_io.prev != SMART_UNASSIGNED
+					&& disk->error_io.value > disk->error_io.prev /* only if increased */
+					&& disk->error_io.prev_last >= queue_time
+				) {
+					has_warning_smart_changes = 1;
+					break;
+				}
+			}
+
+			if (!smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)) {
+				if (disk->error_data.value != SMART_UNASSIGNED
+					&& disk->error_data.prev != SMART_UNASSIGNED
+					&& disk->error_data.value > disk->error_data.prev /* only if increased */
+					&& disk->error_data.prev_last >= queue_time
+				) {
+					has_warning_smart_changes = 1;
+					break;
+				}
+			}
+
 			for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
 				struct snapraid_device* dev = dev_node->data;
 

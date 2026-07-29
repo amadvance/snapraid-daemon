@@ -28,7 +28,7 @@ const char* command_name(int cmd);
 /**
  * Allocate a disk entry
  */
-struct snapraid_disk* disk_alloc(const char* name, int kind);
+struct snapraid_disk* disk_alloc(const char* name, int kind, int64_t last_time);
 
 /**
  * Free a disk entry and its associated device and split lists.
@@ -417,6 +417,13 @@ int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time);
  * @param tracked Metric to initialize
  */
 void tracked_init(struct snapraid_tracked* tracked);
+
+/**
+ * Initialize a tracked metric to a specific value.
+ * @param tracked Metric to initialize
+ * @value value Value to set
+ */
+void tracked_set(struct snapraid_tracked* tracked, uint64_t value, int64_t last_time);
 
 /**
  * Update a tracked metric with new value.

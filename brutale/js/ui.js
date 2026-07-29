@@ -712,19 +712,6 @@ export const renderDifferences = (arrayInfo) => {
 const renderDiskCard = (disk, type, pulseAt) => {
     const borderClass = type === 'parity' ? 'card-border-purple' : type === 'data' ? 'card-border-blue' : 'card-border-grey';
 
-    const errorBadges = [];
-    let errorStatus = null;
-    if (disk.error_data > 0)
-        errorStatus = '<span class="badge badge-purple">DATA CORRUPT</span>';
-    if (disk.error_io > 0)
-        errorStatus = '<span class="badge badge-yellow">DATA PREFAIL</span>'; /* overwrite CORRUPT */
-    if (errorStatus != null)
-        errorBadges.push(errorStatus);
-    if (disk.error_io > 0)
-        errorBadges.push(`<div class="text-xs text-red">input_output_errors: ${disk.error_io}</div>`);
-    if (disk.error_data > 0)
-        errorBadges.push(`<div class="text-xs text-red">silent_data_errors: ${disk.error_data}</div>`);
-
     const hasUsage = disk.total_space_bytes != null && disk.free_space_bytes != null;
     const totalSpace = disk.total_space_bytes || 0;
     const freeSpace = disk.free_space_bytes || 0;
@@ -733,12 +720,18 @@ const renderDiskCard = (disk, type, pulseAt) => {
 
     const devicesHtml = disk.devices.map(dev => {
         const smartIssues = [];
-        if (dev.error_medium > 0 && !dev.error_medium_ignored) {
+        if (disk.transient_error_io > 0)
+            smartIssues.push(`transient_input_output_errors: ${disk.transient_error_io}`);
+        if (disk.transient_error_data > 0)
+            smartIssues.push(`transient_silent_errors: ${disk.transient_error_data}`);
+        if (disk.error_io > 0 && !disk.error_io_ignored)
+            smartIssues.push(`input_output_errors: ${disk.error_io} ${formatHistory(disk.error_io, disk.error_io_history, pulseAt)}`);
+        if (disk.error_data > 0 && !disk.error_data_ignored)
+            smartIssues.push(`silent_errors: ${disk.error_data} ${formatHistory(disk.error_data, disk.error_data_history, pulseAt)}`);
+        if (dev.error_medium > 0 && !dev.error_medium_ignored)
             smartIssues.push(`medium_errors: ${dev.error_medium} ${formatHistory(dev.error_medium, dev.error_medium_history, pulseAt)}`);
-        }
-        if (dev.error_protocol > 0 && !dev.error_protocol_ignored) {
+        if (dev.error_protocol > 0 && !dev.error_protocol_ignored)
             smartIssues.push(`protocol_errors: ${dev.error_protocol} ${formatHistory(dev.error_protocol, dev.error_protocol_history, pulseAt)}`);
-        }
         if (dev.smart) {
             if (dev.smart.attributes) {
                 dev.smart.attributes.forEach(attr => {
@@ -777,6 +770,9 @@ const renderDiskCard = (disk, type, pulseAt) => {
         } else if (dev.smart?.selftest_error_logged) {
             smartStatusText = 'SMART PASSED (but SELFTEST error)';
             smartStatusKey = 'selftest-error-logged';
+        } else if (disk.error_io > 0 || disk.error_data > 0 || dev.error_medium > 0 || dev.error_protocol > 0) {
+            smartStatusText = 'SMART PASSED (but ERROR recorded)';
+            smartStatusKey = 'error-recorded';
         }
 
         let smartStatus = `<span class="smart-status" data-status="${smartStatusKey}">${smartStatusText}</span>`;
@@ -853,7 +849,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 <h4 class="font-bold text-lg">${disk.name}</h4>
                 ${healthBadge(disk.health)}
             </div>
-           
+
             <div class="mb-1 flex justify-between text-xs">
                 <span class="text-muted">Storage Usage</span>
                 ${hasUsage ? `
@@ -866,8 +862,6 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 <span>${healthBadge('pending')}</span>
             </div>
                 `}
-
-            ${errorBadges.join('')}
 
             ${devicesHtml}
         </div>
