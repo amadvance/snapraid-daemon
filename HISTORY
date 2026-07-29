@@ -5,6 +5,10 @@ SnapRAID-Daemon HISTORY
 ============
  * Fixed diff summary counters being reset to zero after rescan operations
    (such as Undelete fix --gui-rescan-after).
+ * Do not treat SnapRAID CLI warning messages as errors. For example,
+   the "Your CPU doesn't have a fast implementation..." or the
+   "For 10 disks, it's recommended to use two parity levels"
+   This change has effect only with SnapRAID CLI 14.10.
 
 1.14 2026/07
 ============
