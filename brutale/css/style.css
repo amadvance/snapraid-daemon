@@ -92,6 +92,7 @@
     --text-grey: #555555;
     --text-sky: #0277BD; /* More readable shade of Sky Blue for text */
     --text-emerald: #1E824C; /* More readable shade of Soft Green for text */
+    --text-red: #D32F2F; /* Darker red for text in light theme */
     --log-window-background: #FFFFFF;
     --log-window-text: var(--c-black);
     --status-next: #3D3D3D;
@@ -137,6 +138,7 @@
     --text-grey: #AAAAAA;
     --text-sky: var(--c-neo-cyan);
     --text-emerald: var(--c-neo-green);
+    --text-red: var(--c-neo-pink);
     --log-window-background: #121212;
     --log-window-text: var(--c-white);
     --status-next: #BBBBBB;
@@ -1169,7 +1171,7 @@ a.badge:hover {
 .text-emerald { color: var(--text-emerald); }
 .text-purple { color: var(--c-neo-purple); }
 .text-grey { color: var(--text-grey); }
-.text-red { color: var(--c-neo-pink); }
+.text-red { color: var(--text-red); }
 .text-yellow { color: var(--c-neo-amber); }
 .text-orange { color: var(--c-neo-orange); }
 .text-amber { color: var(--c-neo-amber); }

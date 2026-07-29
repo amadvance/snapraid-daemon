@@ -44,7 +44,7 @@ export const API = {
         return request(`/array${query ? `?${query}` : ''}`);
     },
     getState: () => request('/state'),
-    getDisks: () => request('/disks'),
+    getDisks: () => request('/disks', { version: 'v2' }),
     getActivity: (params = {}) => {
         const query = new URLSearchParams(params).toString();
         return request(`/activity${query ? `?${query}` : ''}`);

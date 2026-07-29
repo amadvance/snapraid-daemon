@@ -825,9 +825,13 @@ const app = {
         if (!app.state.disks) return;
 
         let device = null;
+        let parentDisk = null;
         [...app.state.disks.parity_disks, ...app.state.disks.data_disks, ...app.state.disks.extra_disks].forEach(disk => {
             disk.devices.forEach(dev => {
-                if (dev.node === deviceNode) device = dev;
+                if (dev.node === deviceNode) {
+                    device = dev;
+                    parentDisk = disk;
+                }
             });
         });
 
@@ -841,7 +845,34 @@ const app = {
         const statusRows = [];
         const otherRows = [];
 
-        // Add protocol and medium errors manually to critical metrics
+        if (parentDisk && parentDisk.error_io != null) {
+            const rowClass = parentDisk.error_io > 0 ? 'text-amber' : 'text-emerald';
+            const label = parentDisk.error_io_ignored ? 'INPUT OUTPUT ERRORS (ignored)' : 'INPUT OUTPUT ERRORS';
+            criticalRows.push(`
+                <tr>
+                    <td class="font-bold text-xs">${label}</td>
+                    <td class="${rowClass} font-mono text-xs font-bold">${parentDisk.error_io}</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs font-bold uppercase">-</td>
+                </tr>
+            `);
+        }
+        if (parentDisk && parentDisk.error_data != null) {
+            const rowClass = parentDisk.error_data > 0 ? 'text-amber' : 'text-emerald';
+            const label = parentDisk.error_data_ignored ? 'SILENT ERRORS (ignored)' : 'SILENT ERRORS';
+            criticalRows.push(`
+                <tr>
+                    <td class="font-bold text-xs">${label}</td>
+                    <td class="${rowClass} font-mono text-xs font-bold">${parentDisk.error_data}</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs">-</td>
+                    <td class="${rowClass} font-mono text-xs font-bold uppercase">-</td>
+                </tr>
+            `);
+        }
         if (device.error_protocol != null) {
             const rowClass = device.error_protocol > 0 ? 'text-amber' : 'text-emerald';
             const label = device.error_protocol_ignored ? 'PROTOCOL ERRORS (ignored)' : 'PROTOCOL ERRORS';

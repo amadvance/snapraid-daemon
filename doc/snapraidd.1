@@ -1301,7 +1301,7 @@ curl \-s http://localhost:7627/snapraid/v1/array | jq
 .PD 0
 .PD
 .RE
-.SS /snapraid/v1/disks 
+.SS /snapraid/v2/disks 
 Returns a comprehensive inventory of every physical disk associated
 with the SnapRAID configuration. It reports real\-time hardware
 metrics including SMART health status, temperature, and the current
@@ -1310,14 +1310,14 @@ power state (Active/Spin\-up vs. Standby/Spin\-down).
 Example:
 .PP
 .RS 4
-curl \-s http://localhost:7627/snapraid/v1/disks | jq
+curl \-s http://localhost:7627/snapraid/v2/disks | jq
 .PD 0
 .PD
 .RE
 .SS Runtime Configuration 
 Provides a programmatic interface to retrieve and modify the
 operational parameters of the daemon in real\-time.
-.SS /snapraid/v1/config 
+.SS /snapraid/v2/config 
 Retrieves and updates the current runtime configuration parameters of
 the snapraidd service. Changes are applied instantly to memory and
 persisted to the configuration file.
@@ -1327,11 +1327,11 @@ require a manual edit and SIGHUP.
 Example:
 .PP
 .RS 4
-curl \-X GET http://localhost:7627/snapraid/v1/config | jq
+curl \-X GET http://localhost:7627/snapraid/v2/config | jq
 .PD 0
 .PP
 .PD
-curl \-X PATCH http://localhost:7627/snapraid/v1/config \\
+curl \-X PATCH http://localhost:7627/snapraid/v2/config \\
 .PD 0
 .PP
 .PD

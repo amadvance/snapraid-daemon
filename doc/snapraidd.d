@@ -1025,20 +1025,20 @@ REST API
 	Example:
 		:curl -s http://localhost:7627/snapraid/v1/array | jq
 
-    /snapraid/v1/disks
+    /snapraid/v2/disks
 	Returns a comprehensive inventory of every physical disk associated
 	with the SnapRAID configuration. It reports real-time hardware
 	metrics including SMART health status, temperature, and the current
 	power state (Active/Spin-up vs. Standby/Spin-down).
 
 	Example:
-		:curl -s http://localhost:7627/snapraid/v1/disks | jq
+		:curl -s http://localhost:7627/snapraid/v2/disks | jq
 
   Runtime Configuration
 	Provides a programmatic interface to retrieve and modify the
 	operational parameters of the daemon in real-time.
 
-    /snapraid/v1/config
+    /snapraid/v2/config
 	Retrieves and updates the current runtime configuration parameters of
 	the snapraidd service. Changes are applied instantly to memory and
 	persisted to the configuration file.
@@ -1046,8 +1046,8 @@ REST API
 	require a manual edit and SIGHUP.
 
 	Example:
-		:curl -X GET http://localhost:7627/snapraid/v1/config | jq
-		:curl -X PATCH http://localhost:7627/snapraid/v1/config \
+		:curl -X GET http://localhost:7627/snapraid/v2/config | jq
+		:curl -X PATCH http://localhost:7627/snapraid/v2/config \
 		:	-d '{ "probe_interval_minutes": 10 }'
 
   Activity Control

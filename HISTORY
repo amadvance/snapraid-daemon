@@ -31,6 +31,15 @@ SnapRAID-Daemon HISTORY
    the spindown configuration is returned and set as a string, while
    retaining backward compatibility with the legacy "/snapraid/v1/config"
    endpoint (which only returns the data disk timeout as an integer).
+ * Added non-resetting lifetime tracking for I/O and silent data errors
+   on disks using snapraid_tracked structures ("error_io" and "error_data"),
+   which include historical baselines and timestamps.
+   This introduces the new REST API "/snapraid/v2/disks" endpoint where
+   lifetime tracked error counters ("error_io" and "error_data") and active
+   session counters ("transient_error_io" and "transient_error_data") are exported,
+   while preserving backward compatibility with the "/snapraid/v1/disks"
+   endpoint (which continues to export transient session errors under
+   "error_io" and "error_data").
  * Added support for saving task log files in gzip (.gz) format, controlled
    by the "sys_log_compression" configuration option.
  * Added a "notify_start" configuration option to trigger a notification

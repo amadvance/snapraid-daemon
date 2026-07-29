@@ -4,15 +4,7 @@ SnapRAID Daemon TODO
 2.x Releases
 ============
 
-- Count data data/io error happened in the past (monotonic increasing, never resetting to 0).
-  Show this counter in yellow.
-  > past_error_data
-  > past_error_io
-
-- Allow to disable scheduled sync but keep scrub. A check flag to enable/disable.
-
-- In manual maintenance allow to enable/disable sync and select how much to scrub.
-  Use as default the settings.
+All done ?
 
 Future Releases
 ===============

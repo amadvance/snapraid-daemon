@@ -78,13 +78,15 @@ int disk_count(tommy_list* list, int kind)
 	return count;
 }
 
-struct snapraid_disk* disk_alloc(const char* name, int kind)
+struct snapraid_disk* disk_alloc(const char* name, int kind, int64_t last_time)
 {
 	struct snapraid_disk* disk = calloc_nofail(1, sizeof(struct snapraid_disk));
 	disk->kind = kind;
 	disk->total_space_bytes = SMART_UNASSIGNED;
 	disk->free_space_bytes = SMART_UNASSIGNED;
 	disk->access_count = SMART_UNASSIGNED;
+	tracked_set(&disk->error_io, 0, last_time);
+	tracked_set(&disk->error_data, 0, last_time);
 	sncpy(disk->name, sizeof(disk->name), name);
 
 	return disk;
@@ -217,6 +219,16 @@ int smartignore_match(const char* disk_name, int attr_index, const char* attr_na
 			}
 		}
 	}
+
+	/* retry with UI interfaces names */
+	if (strcmp(attr_name, "error_io") == 0)
+		return smartignore_match(disk_name, attr_index, "input_output_errors", smartignore_list);
+	if (strcmp(attr_name, "error_data") == 0)
+		return smartignore_match(disk_name, attr_index, "silent_errors", smartignore_list);
+	if (strcmp(attr_name, "error_protocol") == 0)
+		return smartignore_match(disk_name, attr_index, "protocol_errors", smartignore_list);
+	if (strcmp(attr_name, "error_medium") == 0)
+		return smartignore_match(disk_name, attr_index, "medium_errors", smartignore_list);
 
 	return 0;
 }
@@ -763,13 +775,13 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
 
-	if (disk->error_data != 0) {
-		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " silent data errors", disk->name, disk->error_data);
+	if (disk->transient_error_data != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " new silent data %s since the last clean sync/scrub (run a manual scrub reporting 0 bad blocks to reset health status)", disk->name, disk->transient_error_data, disk->transient_error_data == 1 ? "error" : "errors");
 		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
 	}
 
-	if (disk->error_io != 0) {
-		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " input/output errors", disk->name, disk->error_io);
+	if (disk->transient_error_io != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has %" PRIu64 " new input/output %s since the last clean sync/scrub (run a manual scrub reporting 0 bad blocks to reset health status)", disk->name, disk->transient_error_io, disk->transient_error_io == 1 ? "error" : "errors");
 		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
 	}
 
@@ -960,6 +972,17 @@ void tracked_init(struct snapraid_tracked* tracked)
 	tracked->prev_last = 0;
 	tracked->lowest_last = 0;
 	tracked->highest_last = 0;
+}
+
+void tracked_set(struct snapraid_tracked* tracked, uint64_t value, int64_t last_time)
+{
+	tracked->value = value;
+	tracked->prev = SMART_UNASSIGNED;
+	tracked->lowest = value;
+	tracked->highest = value;
+	tracked->prev_last = 0;
+	tracked->lowest_last = last_time;
+	tracked->highest_last = last_time;
 }
 
 void tracked_update(struct snapraid_tracked* tracked, uint64_t old, int kind, int64_t last_time)

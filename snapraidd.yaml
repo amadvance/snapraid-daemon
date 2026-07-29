@@ -426,12 +426,12 @@ paths:
           description: Invalid method.
           $ref: '#/components/responses/CommandResult'
 
-  /snapraid/v1/disks:
+  /snapraid/v2/disks:
     get:
       summary: Get cached disk inventory and status
       description: >
-        Returns a comprehensive report of all data and parity disks managed
-        by the daemon.
+        Returns a comprehensive report of all data, parity, and extra disks managed
+        by the daemon, including lifetime tracked errors and transient session errors.
 
         This is a passive operation that retrieves the most recent
         information stored in memory. Calling this endpoint will NOT trigger
@@ -1197,8 +1197,8 @@ components:
           example: 0
           description: >
             The count of non-fatal logical errors encountered in the task.
-            This tracks transient issues that do not indicate hardware or
-            media failure, such as files being modified or removed.
+            This tracks soft errors that do not indicate hardware or
+            media failure, such as files being modified or removed during the scan.
             This field is available only on the `sync`, `scrub` and `fix` command.
         error_io:
           type: integer
@@ -1705,28 +1705,60 @@ components:
             increased. This value measures continuous inactivity and is
             used to determine if the disk is a candidate for spin-down
             to save power.
+        transient_error_io:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of physical Input/Output errors encountered since the disk
+            was last verified error-free. This transient counter is cleared after
+            a `scrub` command reports that no blocks are bad.
+            This counter is never ignored and always affects the disk health status.
+        transient_error_data:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of silent data integrity errors encountered since the disk
+            was last verified error-free. This transient counter is cleared after
+            a `scrub` command reports that no blocks are bad.
+            This counter is never ignored and always affects the disk health status.
         error_io:
           type: integer
           format: int64
           example: 0
           description: >
-            The accumulated count of physical Input/Output errors encountered
-            since the daemon started. This tracks hardware-level failures
-            (disk, cable, or controller) recorded across all tasks executed
-            during the current session uptime.
-            This accumulated counter is cleared after a `scrub` command
-            reports that no blocks are bad.
+            The cumulative count of physical Input/Output errors encountered across
+            all task executions.
+            This counter is tracked and never resets.
+        error_io_history:
+          $ref: '#/components/schemas/ValueHistory'
+        error_io_ignored:
+          type: boolean
+          description: >
+            Indicates if the error_io attribute is explicitly ignored
+            by the user configuration. If true, increases in the lifetime
+            error count are suppressed from the report output and the UI.
+            Warning notifications are still triggered via transient_error_io,
+            which is never ignored.
         error_data:
           type: integer
           format: int64
           example: 0
           description: >
-            The accumulated count of data integrity errors encountered since
-            the daemon started. This tracks 'silent' errors where a read
-            was physically successful, but the data failed checksum
-            verification, across all tasks in the current session.
-            This accumulated counter is cleared after a `scrub` command
-            reports that no blocks are bad.
+            The cumulative count of data integrity errors encountered across
+            all task executions.
+            This counter is tracked and never resets.
+        error_data_history:
+          $ref: '#/components/schemas/ValueHistory'
+        error_data_ignored:
+          type: boolean
+          description: >
+            Indicates if the error_data attribute is explicitly ignored
+            by the user configuration. If true, increases in the lifetime
+            error count are suppressed from the report output and the UI.
+            Warning notifications are still triggered via transient_error_data,
+            which is never ignored.
         splits:
           type: array
           items:
