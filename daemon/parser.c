@@ -345,6 +345,7 @@ static int is_split_parity(char* s, int* index)
 			return 1;
 	}
 
+	*index = 0;
 	return 0;
 }
 
