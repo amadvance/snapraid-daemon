@@ -7439,11 +7439,6 @@ set_throttle(const char *spec, const union usa *rsa, const char *uri)
 	return throttle;
 }
 
-
-/* The mg_upload function is superseded by mg_handle_form_request. */
-#include "handle_form.inl"
-
-
 static int
 get_first_ssl_listener_index(const struct mg_context *ctx)
 {
