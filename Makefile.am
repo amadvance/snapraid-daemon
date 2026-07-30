@@ -117,7 +117,6 @@ noinst_HEADERS = \
 	civetweb/civetweb.h \
 	civetweb/external_log_access.inl \
 	civetweb/external_mg_cry_internal_impl.inl \
-	civetweb/handle_form.inl \
 	civetweb/match.inl \
 	civetweb/md5.inl \
 	civetweb/response.inl \
