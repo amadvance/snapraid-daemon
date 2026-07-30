@@ -645,6 +645,7 @@ void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
 			tommy_list_remove_existing(&fix_dest->file_list, i);
 			file_free(unr);
 			i = i_next;
+			j = j->next;
 		}
 	}
 

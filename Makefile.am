@@ -246,6 +246,7 @@ clean-local:
 	rm -f valgrind.log callgrind.log cachegrind.log
 	rm -f commander.zip brutale.zip
 	rm -f makeslackware.sh makeslackdist.sh pkg/snapraid-daemon.SlackBuild pkg/snapraid-daemon.info makedeb.sh pkg/control makerpm.sh pkg/spec
+	rm -fr *.plist
 
 maintainer-clean-local:
 	rm -f $(LIST_MAN)
