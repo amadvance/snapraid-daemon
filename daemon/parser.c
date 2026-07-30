@@ -326,7 +326,8 @@ static void clear_access_accumulator(struct snapraid_state* state)
  */
 static int is_parity(const char* s)
 {
-	if (isdigit((unsigned char)s[0]) && s[1] == '-')
+	/* s[0] != 0 silence the clang static analyzer (it's not necessary as isdigit also returns 0) */
+	if (s[0] != 0 && isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
 	return strcmp(s, "parity") == 0;
