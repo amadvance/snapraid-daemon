@@ -885,7 +885,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
     const pulseAt = data.pulse?.current_at;
 
     const filteredHistory = hidePeriodic
-        ? history.filter(t => t.command !== 'probe')
+        ? history.filter(t => t.high_command !== 'suspend_idle')
         : history;
 
     const queueRows = pending.length ? pending.map(t => `
@@ -1024,7 +1024,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
                         <input type="checkbox" data-action="toggle-periodic" ${hidePeriodic ? 'checked' : ''}>
                         <span class="slider"></span>
                     </label>
-                    Hide automatic probes
+                    Hide system tasks
                 </label>
             </div>
              <div class="overflow-x-auto">
