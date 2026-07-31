@@ -18,6 +18,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
+	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_MAINTENANCE);
 
@@ -66,26 +67,26 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_UP, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SYNC, now, &sync_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SYNC, now, group, &sync_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && do_scrub)
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SCRUB, now, group, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown) {
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_PROBE, now, group, 0, msg, msg_size, status);
 
 		if (ret == 0)
-			ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, 0, msg, msg_size, status);
+			ret = runner_locked(state, CMD_MAINTENANCE, CMD_DOWN, now, group, 0, msg, msg_size, status);
 	}
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_REPORT, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0 && automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance"))
-		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SHUTDOWN, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_MAINTENANCE, CMD_SHUTDOWN, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
 
@@ -106,6 +107,8 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	time_t now = time(0);
 
 	state_lock();
+
+	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_HEAL);
 
@@ -133,23 +136,23 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_HEAL, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_UP, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_HEAL, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_FIX, now, group, &fix_arg_list, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_HEAL, CMD_SCRUB, now, &scrub_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_SCRUB, now, group, &scrub_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown) {
-		ret = runner_locked(state, CMD_HEAL, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_PROBE, now, group, 0, msg, msg_size, status);
 
 		if (ret == 0)
-			ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, 0, msg, msg_size, status);
+			ret = runner_locked(state, CMD_HEAL, CMD_DOWN, now, group, 0, msg, msg_size, status);
 	}
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_HEAL, CMD_REPORT, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_HEAL, CMD_REPORT, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
 
@@ -164,6 +167,8 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	time_t now = time(0);
 
 	state_lock();
+
+	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_UNDELETE);
 
@@ -189,20 +194,20 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	 */
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UNDELETE, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_UP, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UNDELETE, CMD_FIX, now, &fix_arg_list, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_FIX, now, group, &fix_arg_list, msg, msg_size, status);
 
 	if (ret == 0 && spindown) {
-		ret = runner_locked(state, CMD_UNDELETE, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_PROBE, now, group, 0, msg, msg_size, status);
 
 		if (ret == 0)
-			ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, 0, msg, msg_size, status);
+			ret = runner_locked(state, CMD_UNDELETE, CMD_DOWN, now, group, 0, msg, msg_size, status);
 	}
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_UNDELETE, CMD_REPORT, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
 
@@ -225,12 +230,14 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	int spindown_data = state->config.spindown_idle_minutes_data;
 	int spindown_parity = state->config.spindown_idle_minutes_parity;
 
+	int group = ++state->runner.group_allocator;
+
 	int ret = 0;
 	if (ret == 0)
-		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_PROBE, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0 && (spindown_data > 0 || spindown_parity > 0))
-		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
 }
@@ -238,8 +245,11 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
+
 	state_lock();
+
 	schedule_suspend_idle_locked(state, now, msg, msg_size, status);
+
 	state_unlock();
 }
 
@@ -248,6 +258,8 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	time_t now = time(0);
 
 	state_lock();
+
+	int group = ++state->runner.group_allocator;
 
 	/*
 	 * Schedule all the actions, note that they are just scheduled,
@@ -262,13 +274,13 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	 * because the subsequent read command avoids accessing the disks directly.
 	 */
 	if (ret == 0)
-		ret = runner_locked(state, CMD_REFRESH, CMD_UP, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_REFRESH, CMD_UP, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_REFRESH, CMD_READ, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_REFRESH, CMD_READ, now, group, 0, msg, msg_size, status);
 
 	if (ret == 0)
-		ret = runner_locked(state, CMD_REFRESH, CMD_REPORT, now, 0, msg, msg_size, status);
+		ret = runner_locked(state, CMD_REFRESH, CMD_REPORT, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
 
@@ -280,6 +292,8 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 	time_t now = time(0);
 
 	state_lock();
+
+	int group = ++state->runner.group_allocator;
 
 	/*
 	 * Schedule all the actions, note that they are just scheduled,
@@ -297,7 +311,7 @@ void schedule_commands(struct snapraid_state* state, tommy_list* scheds, char* m
 	for (tommy_node* i = tommy_list_head(scheds); i != 0; i = i->next) {
 		struct snapraid_schedule* sched = i->data;
 		if (ret == 0)
-			ret = runner_locked(state, 0 /* sequence of commands */, sched->cmd, now, &sched->args, msg, msg_size, status);
+			ret = runner_locked(state, 0 /* sequence of commands */, sched->cmd, now, group, &sched->args, msg, msg_size, status);
 	}
 
 	(void)ret;

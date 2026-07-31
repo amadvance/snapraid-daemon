@@ -968,7 +968,7 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 		if (!runner_has_cmd_locked(state, CMD_REPORT)) {
 			char msg[MSG_MAX];
 			int status;
-			runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, msg, sizeof(msg), &status);
+			runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, 0, msg, sizeof(msg), &status);
 		}
 	}
 }

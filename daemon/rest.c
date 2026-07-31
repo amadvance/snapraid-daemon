@@ -1429,7 +1429,7 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	runner(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+	runner(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
 
 	if (status >= 200 && status <= 299)
 		return send_json_success(conn, status);
