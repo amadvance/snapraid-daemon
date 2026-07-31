@@ -902,7 +902,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
-				ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+				ss_printf(ss, "raw %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 			}
 		}
 
@@ -922,7 +922,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
-				ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+				ss_printf(ss, "raw %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 			}
 		}
 
@@ -954,7 +954,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
-						ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+						ss_printf(ss, "raw %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 					}
 				}
 
@@ -978,7 +978,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* lower is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
 
-						ss_printf(ss, "norm %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+						ss_printf(ss, "norm %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 						if (attr->worst != SMART_UNASSIGNED && attr->thresh != SMART_UNASSIGNED)
 							ss_printf(ss, "worst %" PRIu64 " thresh %" PRIu64 "\n", attr->worst, attr->thresh);
 					}
@@ -1001,7 +1001,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
-					ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+					ss_printf(ss, "raw %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 				}
 			}
 
@@ -1021,7 +1021,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
-					ss_printf(ss, "raw %s to %" PRIu64 " %+" PRId64 "\n", changed, cv_val, delta);
+					ss_printf(ss, "raw %s to %" PRIu64 " (%+" PRId64 ")\n", changed, cv_val, delta);
 				}
 			}
 		}
