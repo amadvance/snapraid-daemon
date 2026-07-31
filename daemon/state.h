@@ -277,6 +277,7 @@ struct snapraid_task {
 	int cmd; /**< The command running */
 	int high_cmd; /**< The high command generating this tasks. 0 if none. */
 	int number; /**< Number of the task. It's an increasing number. */
+	int group; /**< Group of the task. */
 	int running; /**< If the command is running or finished */
 	int state; /**< one of PROCESS_STATE_* */
 	int64_t unix_queue_time; /**< Unix time of when the task was queued */
@@ -333,6 +334,7 @@ struct snapraid_schedule {
 struct snapraid_runner {
 	thread_cond_t cond;
 	thread_id_t thread_id;
+	int group_allocator; /**< Allocator of group of tasks */
 	int number_allocator; /**< Allocator of number of tasks */
 	int64_t last_start_time; /**< Latest start time used */
 	struct snapraid_task* latest; /**< Task running, or latest one finished */

@@ -297,7 +297,7 @@ int daemon_init(struct snapraid_state* state)
 	/*
 	 * Trigger initial probe to load info into the state
 	 */
-	if (runner(state, CMD_STARTUP, CMD_PROBE, 0, 0, msg, sizeof(msg), &status) != 0) {
+	if (runner(state, CMD_STARTUP, CMD_PROBE, 0, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the startup probe command");
 		/* continue anyway to provide an interface */
 	}

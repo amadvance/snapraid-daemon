@@ -289,7 +289,7 @@ int task_success(struct snapraid_task* task)
 
 int task_same_group(const struct snapraid_task* task1, const struct snapraid_task* task2)
 {
-	return task1->unix_queue_time == task2->unix_queue_time;
+	return task1->group == task2->group;
 }
 
 static void task_cancel(struct snapraid_state* state, struct snapraid_task* task, const char* msg, time_t now)

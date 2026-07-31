@@ -57,7 +57,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 			if (!runner_has_cmd_locked(state, CMD_REPORT)) {
 				char msg[MSG_MAX];
 				int status;
-				runner_locked(state, 0, CMD_REPORT, 0, 0, msg, sizeof(msg), &status);
+				runner_locked(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
 			}
 
 			/* check if we should trigger a shutdown based on the new health status */
@@ -71,7 +71,7 @@ static int runner_health_check_locked(struct snapraid_state* state)
 				if (!runner_has_cmd_locked(state, CMD_SHUTDOWN)) {
 					char msg[MSG_MAX];
 					int status;
-					runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, msg, sizeof(msg), &status);
+					runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, 0, msg, sizeof(msg), &status);
 				}
 			}
 		}
@@ -237,85 +237,83 @@ static int runner_report_locked(struct snapraid_state* state)
 	 */
 	int has_warning_smart_changes = 0;
 	time_t queue_time = report_task->unix_queue_time;
-	if (queue_time != 0) {
-		for (tommy_node* disk_node = tommy_list_head(&state->array.disk_list); disk_node != 0; disk_node = disk_node->next) {
-			struct snapraid_disk* disk = disk_node->data;
+	for (tommy_node* disk_node = tommy_list_head(&state->array.disk_list); disk_node != 0; disk_node = disk_node->next) {
+		struct snapraid_disk* disk = disk_node->data;
 
-			if (!smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)) {
-				if (disk->error_io.value != SMART_UNASSIGNED
-					&& disk->error_io.prev != SMART_UNASSIGNED
-					&& disk->error_io.value > disk->error_io.prev /* only if increased */
-					&& disk->error_io.prev_last >= queue_time
+		if (!smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)) {
+			if (disk->error_io.value != SMART_UNASSIGNED
+				&& disk->error_io.prev != SMART_UNASSIGNED
+				&& disk->error_io.value > disk->error_io.prev /* only if increased */
+				&& disk->error_io.prev_last >= queue_time
+			) {
+				has_warning_smart_changes = 1;
+				break;
+			}
+		}
+
+		if (!smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)) {
+			if (disk->error_data.value != SMART_UNASSIGNED
+				&& disk->error_data.prev != SMART_UNASSIGNED
+				&& disk->error_data.value > disk->error_data.prev /* only if increased */
+				&& disk->error_data.prev_last >= queue_time
+			) {
+				has_warning_smart_changes = 1;
+				break;
+			}
+		}
+
+		for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
+			struct snapraid_device* dev = dev_node->data;
+
+			if (!smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)) {
+				if (dev->error_protocol.value != SMART_UNASSIGNED
+					&& dev->error_protocol.prev != SMART_UNASSIGNED
+					&& dev->error_protocol.value > dev->error_protocol.prev /* only if increased */
+					&& dev->error_protocol.prev_last >= queue_time
 				) {
 					has_warning_smart_changes = 1;
 					break;
 				}
 			}
 
-			if (!smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)) {
-				if (disk->error_data.value != SMART_UNASSIGNED
-					&& disk->error_data.prev != SMART_UNASSIGNED
-					&& disk->error_data.value > disk->error_data.prev /* only if increased */
-					&& disk->error_data.prev_last >= queue_time
+			if (!smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list)) {
+				if (dev->error_medium.value != SMART_UNASSIGNED
+					&& dev->error_medium.prev != SMART_UNASSIGNED
+					&& dev->error_medium.value > dev->error_medium.prev /* only if increased */
+					&& dev->error_medium.prev_last >= queue_time
 				) {
 					has_warning_smart_changes = 1;
 					break;
 				}
 			}
 
-			for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
-				struct snapraid_device* dev = dev_node->data;
+			for (int k = 0; k < SMART_COUNT; ++k) {
+				struct smart_attr* attr = &dev->smart[k];
+				if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
+					continue;
 
-				if (!smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)) {
-					if (dev->error_protocol.value != SMART_UNASSIGNED
-						&& dev->error_protocol.prev != SMART_UNASSIGNED
-						&& dev->error_protocol.value > dev->error_protocol.prev /* only if increased */
-						&& dev->error_protocol.prev_last >= queue_time
-					) {
-						has_warning_smart_changes = 1;
-						break;
-					}
-				}
-
-				if (!smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list)) {
-					if (dev->error_medium.value != SMART_UNASSIGNED
-						&& dev->error_medium.prev != SMART_UNASSIGNED
-						&& dev->error_medium.value > dev->error_medium.prev /* only if increased */
-						&& dev->error_medium.prev_last >= queue_time
-					) {
-						has_warning_smart_changes = 1;
-						break;
-					}
-				}
-
-				for (int k = 0; k < SMART_COUNT; ++k) {
-					struct smart_attr* attr = &dev->smart[k];
-					if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
-						continue;
-
-					if (attr->raw.value != SMART_UNASSIGNED
-						&& attr->raw.prev != SMART_UNASSIGNED
-						&& attr->raw.value > attr->raw.prev /* only if increased */
-						&& attr->raw.prev_last >= queue_time
-					) {
-						has_warning_smart_changes = 1;
-						break;
-					}
-					if (attr->norm.value != SMART_UNASSIGNED
-						&& attr->norm.prev != SMART_UNASSIGNED
-						&& attr->norm.value < attr->norm.prev /* only if decreased */
-						&& attr->norm.prev_last >= queue_time
-					) {
-						has_warning_smart_changes = 1;
-						break;
-					}
-				}
-				if (has_warning_smart_changes)
+				if (attr->raw.value != SMART_UNASSIGNED
+					&& attr->raw.prev != SMART_UNASSIGNED
+					&& attr->raw.value > attr->raw.prev /* only if increased */
+					&& attr->raw.prev_last >= queue_time
+				) {
+					has_warning_smart_changes = 1;
 					break;
+				}
+				if (attr->norm.value != SMART_UNASSIGNED
+					&& attr->norm.prev != SMART_UNASSIGNED
+					&& attr->norm.value < attr->norm.prev /* only if decreased */
+					&& attr->norm.prev_last >= queue_time
+				) {
+					has_warning_smart_changes = 1;
+					break;
+				}
 			}
 			if (has_warning_smart_changes)
 				break;
 		}
+		if (has_warning_smart_changes)
+			break;
 	}
 	if (has_warning_smart_changes)
 		report_level = level_mix(report_level, LVL_WARNING);
@@ -1183,7 +1181,7 @@ static void runner_postcondition_locked(struct snapraid_state* state)
 		        /* the content file was modified from command line */
 			|| (state->array.content_last_unixtime != 0 && state->array.content_probe_unixtime > state->array.content_last_unixtime)
 		) {
-			if (runner_locked(state, CMD_STARTUP, CMD_READ, 0, 0, msg, sizeof(msg), &status) != 0) {
+			if (runner_locked(state, CMD_STARTUP, CMD_READ, 0, 0, 0, msg, sizeof(msg), &status) != 0) {
 				log_msg(LVL_ERROR, "failed to run the startup read command");
 				/* continue anyway to provide an interface */
 			}
@@ -1380,7 +1378,7 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, int group, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	const char* snapraid = app_find_engine(state->config.sys_engine);
 	if (!snapraid) {
@@ -1394,6 +1392,8 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 
 	if (now == 0)
 		now = time(0);
+	if (group == 0)
+		group = ++state->runner.group_allocator;
 
 	/*
 	 * Cancel any pending spindown tasks so disks are not put to sleep right before shutdown
@@ -1407,6 +1407,7 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 	task->cmd = cmd;
 	task->high_cmd = high_cmd;
 	task->unix_queue_time = now;
+	task->group = group;
 
 	/* translate some commands */
 	int cmd_translate = cmd;
@@ -1452,10 +1453,10 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 	return 0;
 }
 
-int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+int runner(struct snapraid_state* state, int high_cmd, int cmd, time_t now, int group, sl_t* arg_list, char* msg, size_t msg_size, int* status)
 {
 	state_lock();
-	int ret = runner_locked(state, high_cmd, cmd, now, arg_list, msg, msg_size, status);
+	int ret = runner_locked(state, high_cmd, cmd, now, group, arg_list, msg, msg_size, status);
 	state_unlock();
 
 	return ret;
