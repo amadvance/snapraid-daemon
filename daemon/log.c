@@ -82,6 +82,10 @@ void vlog_msg(int level, const char* fmt, va_list ap)
 	int termlog;
 	int verboselog;
 
+	/*
+	 * Access fields of state->log requiring only log_lock (state_lock is not required).
+	 * state_ptr() merely returns the global struct pointer without acquiring state_lock.
+	 */
 	log_lock();
 	struct snapraid_state* state = state_ptr();
 	syslog = state->log.syslog && level <= state->log.syslog_level;
@@ -111,6 +115,10 @@ void vlog_task(int level, const char* fmt, va_list ap)
 	int termlog;
 	int verboselog;
 
+	/*
+	 * Access fields of state->log requiring only log_lock (state_lock is not required).
+	 * state_ptr() merely returns the global struct pointer without acquiring state_lock.
+	 */
 	log_lock();
 	struct snapraid_state* state = state_ptr();
 	syslog = state->log.syslog && level <= state->log.syslog_level;
