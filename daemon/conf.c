@@ -498,7 +498,7 @@ int config_load_locked(struct snapraid_state* state)
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
-			} else if (strcmp(key, "smartignore") == 0) {
+			} else if (strcmp(key, "sys_smartignore") == 0) {
 				if (config_parse_smart_ignore(val, config) == 0) {
 				} else {
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);

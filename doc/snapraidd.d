@@ -359,6 +359,32 @@ Configuration
 	remote shutdown exploits, and requires a manual configuration edit
 	and daemon reload (SIGHUP) to change.
 
+    sys_smartignore
+	Allows you to ignore specific SMART attributes for one or more disks.
+	If ignored, the attribute will not generate a warning notification when it
+	degrades, and it will be marked as ignored in the REST API. Typical
+	attributes to ignore are Spin_Up_Time and Raw_Read_Error_Rate.
+	You can also use `Error_Protocol` and `Error_Medium` to ignore device-level
+	protocol or medium errors.
+
+	Note that sys_smartignore only suppresses warning notifications for attribute
+	value changes. It does not affect the evaluation of the health of the array
+	if an attribute goes below its threshold. If an attribute fails (reaches
+	its threshold), it will still trigger a critical notification and degrade
+	the array health.
+
+	The option is a sequence of words separated by spaces.
+	The first word is a disk name or '*' for all disks.
+	The subsequent words are attribute numbers or names (case-insensitive).
+
+	Examples:
+		:sys_smartignore=parity 188 Command_Timeout
+		:sys_smartignore=d1 Error_Protocol
+		:sys_smartignore=* Spin_Up_Time Raw_Read_Error_Rate
+
+	This option cannot be modified via the REST API and requires a manual
+	configuration edit and daemon reload (SIGHUP) to change.
+
   Network & REST API
 	These settings control the network interface. These options are not
 	visible from the REST API. They require a manual edit of the
@@ -638,29 +664,6 @@ Configuration
 
 	If set to 0 or left blank, the daemon will not manage disk power
 	states, relying instead on the OS or hardware controllers.
-
-    smartignore
-	Allows you to ignore specific SMART attributes for one or more disks.
-	If ignored, the attribute will not generate a warning notification when it
-	degrades, and it will be marked as ignored in the REST API. Typical
-	attributes to ignore are Spin_Up_Time and Raw_Read_Error_Rate.
-	You can also use `Error_Protocol` and `Error_Medium` to ignore device-level
-	protocol or medium errors.
-
-	Note that smartignore only suppresses warning notifications for attribute
-	value changes. It does not affect the evaluation of the health of the array
-	if an attribute goes below its threshold. If an attribute fails (reaches
-	its threshold), it will still trigger a critical notification and degrade
-	the array health.
-
-	The option is a sequence of words separated by spaces.
-	The first word is a disk name or '*' for all disks.
-	The subsequent words are attribute numbers or names (case-insensitive).
-
-	Examples:
-		:smartignore=parity 188 Command_Timeout
-		:smartignore=d1 Error_Protocol
-		:smartignore=* Spin_Up_Time Raw_Read_Error_Rate
 
     hook_script
 	Defines an absolute path to an executable script to be triggered by
