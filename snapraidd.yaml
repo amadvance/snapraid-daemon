@@ -47,6 +47,9 @@ paths:
         '405':
           description: Invalid method.
           $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
+          $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.
           $ref: '#/components/responses/CommandResult'
@@ -118,6 +121,9 @@ paths:
         '405':
           description: Invalid method.
           $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
+          $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.
           $ref: '#/components/responses/CommandResult'
@@ -156,6 +162,9 @@ paths:
         '405':
           description: Invalid method.
           $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
+          $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.
           $ref: '#/components/responses/CommandResult'
@@ -180,6 +189,9 @@ paths:
       responses:
         '202':
           description: Task scheduled.
+          $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
           $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.
@@ -218,6 +230,9 @@ paths:
           $ref: '#/components/responses/CommandResult'
         '405':
           description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
           $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.
@@ -264,6 +279,9 @@ paths:
           $ref: '#/components/responses/CommandResult'
         '405':
           description: Invalid method.
+          $ref: '#/components/responses/CommandResult'
+        '409':
+          description: Command already running or scheduled.
           $ref: '#/components/responses/CommandResult'
         '500':
           description: Engine not found.

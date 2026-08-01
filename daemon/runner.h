@@ -67,6 +67,14 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 int runner_has_cmd_locked(struct snapraid_state* state, int cmd);
 
 /**
+ * Check if the specified high-level command is currently running or scheduled in the queue.
+ * @param state Current snapraid state
+ * @param high_cmd High-level command ID
+ * @return 1 if running/scheduled, 0 otherwise
+ */
+int runner_has_high_cmd_locked(struct snapraid_state* state, int high_cmd);
+
+/**
  * Delete old log files.
  * @param state Current snapraid state
  * @param msg Buffer for error message

@@ -18,6 +18,13 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 	sl_t sync_arg_list;
 	sl_t scrub_arg_list;
 	int do_scrub = 0;
+
+	if (runner_has_high_cmd_locked(state, CMD_MAINTENANCE)) {
+		sncpy(msg, msg_size, "Maintenance already running or scheduled");
+		*status = 409;
+		return;
+	}
+
 	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_MAINTENANCE);
@@ -108,6 +115,13 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	state_lock();
 
+	if (runner_has_high_cmd_locked(state, CMD_HEAL)) {
+		sncpy(msg, msg_size, "Heal already running or scheduled");
+		*status = 409;
+		state_unlock();
+		return;
+	}
+
 	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_HEAL);
@@ -168,6 +182,13 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	state_lock();
 
+	if (runner_has_high_cmd_locked(state, CMD_UNDELETE)) {
+		sncpy(msg, msg_size, "Undelete already running or scheduled");
+		*status = 409;
+		state_unlock();
+		return;
+	}
+
 	int group = ++state->runner.group_allocator;
 
 	notify_start_locked_yield(state, CMD_UNDELETE);
@@ -227,10 +248,16 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 	 * (void)ret is explicitly used to ignore the result of the latest task to
 	 * keep the same coding pattern.
 	 */
-	int spindown_data = state->config.spindown_idle_minutes_data;
-	int spindown_parity = state->config.spindown_idle_minutes_parity;
+	if (runner_has_high_cmd_locked(state, CMD_SUSPEND_IDLE)) {
+		sncpy(msg, msg_size, "Suspend idle already running or scheduled");
+		*status = 409;
+		return;
+	}
 
 	int group = ++state->runner.group_allocator;
+
+	int spindown_data = state->config.spindown_idle_minutes_data;
+	int spindown_parity = state->config.spindown_idle_minutes_parity;
 
 	int ret = 0;
 	if (ret == 0)
@@ -258,6 +285,13 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	time_t now = time(0);
 
 	state_lock();
+
+	if (runner_has_high_cmd_locked(state, CMD_REFRESH)) {
+		sncpy(msg, msg_size, "Refresh already running or scheduled");
+		*status = 409;
+		state_unlock();
+		return;
+	}
 
 	int group = ++state->runner.group_allocator;
 
