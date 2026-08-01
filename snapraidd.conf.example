@@ -54,6 +54,28 @@ sys_log_retention_days = 120
 # Default: empty (disabled)
 #sys_shutdown_on = maintenance, prefail, failing
 
+# The sys_smartignore option allows you to ignore specific SMART attributes
+# for one or more disks. If ignored, the attribute will not generate a
+# warning notification when it degrades, and it will be marked as ignored
+# in the REST API. Typical attributes to ignore are Spin_Up_Time and
+# Raw_Read_Error_Rate. You can also use Error_Protocol and Error_Medium
+# to ignore device-level protocol or medium errors.
+#
+# Note that sys_smartignore only suppresses warning notifications for attribute
+# value changes. It does not affect the evaluation of the health of the array
+# if an attribute goes below its threshold. If an attribute fails (reaches
+# its threshold), it will still trigger a critical notification and degrade
+# the array health.
+#
+# The option is a sequence of words separated by spaces.
+# The first word is a disk name or '*' for all disks.
+# The subsequent words are attribute numbers or names (case-insensitive).
+#
+# Examples:
+#   sys_smartignore = parity 188 Command_Timeout
+#   sys_smartignore = * Spin_Up_Time Raw_Read_Error_Rate
+#sys_smartignore = * Spin_Up_Time Raw_Read_Error_Rate
+
 ### Network & REST API
 # The net_enabled switch acts as the master toggle for the HTTP interface.
 # If this is set to 0 or left blank, the daemon operates in a secure,
@@ -346,28 +368,6 @@ probe_interval_minutes = 3
 # If this is set to 0 or left blank, the daemon will not manage disk power
 # states.
 spindown_idle_minutes = 15
-
-# The smartignore option allows you to ignore specific SMART attributes
-# for one or more disks. If ignored, the attribute will not generate a
-# warning notification when it degrades, and it will be marked as ignored
-# in the REST API. Typical attributes to ignore are Spin_Up_Time and
-# Raw_Read_Error_Rate. You can also use Error_Protocol and Error_Medium
-# to ignore device-level protocol or medium errors.
-#
-# Note that smartignore only suppresses warning notifications for attribute
-# value changes. It does not affect the evaluation of the health of the array
-# if an attribute goes below its threshold. If an attribute fails (reaches
-# its threshold), it will still trigger a critical notification and degrade
-# the array health.
-#
-# The option is a sequence of words separated by spaces.
-# The first word is a disk name or '*' for all disks.
-# The subsequent words are attribute numbers or names (case-insensitive).
-#
-# Examples:
-#   smartignore = parity 188 Command_Timeout
-#   smartignore = * Spin_Up_Time Raw_Read_Error_Rate
-#smartignore = * Spin_Up_Time Raw_Read_Error_Rate
 
 # Specify an absolute path for 'hook_script' to trigger custom logic for various
 # daemon events.

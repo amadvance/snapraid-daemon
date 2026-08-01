@@ -380,6 +380,32 @@ This option cannot be modified via the REST API to prevent potential
 remote shutdown exploits, and requires a manual configuration edit
 and daemon reload (SIGHUP) to change.
 
+---- 6.1.5 sys_smartignore ----
+Allows you to ignore specific SMART attributes for one or more disks.
+If ignored, the attribute will not generate a warning notification when it
+degrades, and it will be marked as ignored in the REST API. Typical
+attributes to ignore are Spin_Up_Time and Raw_Read_Error_Rate.
+You can also use `Error_Protocol` and `Error_Medium` to ignore device-level
+protocol or medium errors.
+
+Note that sys_smartignore only suppresses warning notifications for attribute
+value changes. It does not affect the evaluation of the health of the array
+if an attribute goes below its threshold. If an attribute fails (reaches
+its threshold), it will still trigger a critical notification and degrade
+the array health.
+
+The option is a sequence of words separated by spaces.
+The first word is a disk name or '*' for all disks.
+The subsequent words are attribute numbers or names (case-insensitive).
+
+Examples:
+    sys_smartignore=parity 188 Command_Timeout
+    sys_smartignore=d1 Error_Protocol
+    sys_smartignore=* Spin_Up_Time Raw_Read_Error_Rate
+
+This option cannot be modified via the REST API and requires a manual
+configuration edit and daemon reload (SIGHUP) to change.
+
 6.2 Network & REST API
 ----------------------
 
@@ -666,30 +692,7 @@ service, or system process accesses the disk, the idle timer is reset.
 If set to 0 or left blank, the daemon will not manage disk power
 states, relying instead on the OS or hardware controllers.
 
----- 6.4.3 smartignore ----
-Allows you to ignore specific SMART attributes for one or more disks.
-If ignored, the attribute will not generate a warning notification when it
-degrades, and it will be marked as ignored in the REST API. Typical
-attributes to ignore are Spin_Up_Time and Raw_Read_Error_Rate.
-You can also use `Error_Protocol` and `Error_Medium` to ignore device-level
-protocol or medium errors.
-
-Note that smartignore only suppresses warning notifications for attribute
-value changes. It does not affect the evaluation of the health of the array
-if an attribute goes below its threshold. If an attribute fails (reaches
-its threshold), it will still trigger a critical notification and degrade
-the array health.
-
-The option is a sequence of words separated by spaces.
-The first word is a disk name or '*' for all disks.
-The subsequent words are attribute numbers or names (case-insensitive).
-
-Examples:
-    smartignore=parity 188 Command_Timeout
-    smartignore=d1 Error_Protocol
-    smartignore=* Spin_Up_Time Raw_Read_Error_Rate
-
----- 6.4.4 hook_script ----
+---- 6.4.3 hook_script ----
 Defines an absolute path to an executable script to be triggered by
 daemon events.
 
@@ -772,14 +775,14 @@ the exact reason.
 
 This remains inactive if no path is defined.
 
----- 6.4.5 hook_docker_pause ----
+---- 6.4.4 hook_docker_pause ----
 Specifies a comma-separated list of Docker containers to pause during
 tasks that access the array (e.g., plex, transmission).
 
 The containers are paused immediately before running the task (or the
 pre hook script) and unpaused immediately afterward.
 
----- 6.4.6 hook_run_as_user ----
+---- 6.4.5 hook_run_as_user ----
 Specifies the user account used to execute the hook_script.
 If this is missing or blank, the script is executed with the
 same privileges as the daemon process.
