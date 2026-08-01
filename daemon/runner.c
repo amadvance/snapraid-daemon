@@ -946,9 +946,23 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 		hook_flags = pre_hook_flags;
 	}
 
-	os_privileges_acquire();
-	pid = os_spawn(argv, NULL, &f, NULL);
-	os_privileges_release();
+	state_lock();
+	int spawn_canceled = task->canceled || !state->daemon_running;
+	if (!spawn_canceled) {
+		os_privileges_acquire();
+		pid = os_spawn(argv, NULL, &f, NULL);
+		os_privileges_release();
+		if (pid > 0)
+			task->pid = pid;
+	}
+	state_unlock();
+
+	if (spawn_canceled) {
+		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s was canceled before process spawn", command_name(cmd));
+		pid_ret = -1;
+		goto bail;
+	}
+
 	if (pid < 0) {
 		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);
@@ -959,17 +973,6 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), (uint64_t)pid, log_path);
 		else
 			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
-
-		/* store the pid to allow stop actions */
-		state_lock();
-		task->pid = pid;
-		int post_spawn_canceled = task->canceled || !state->daemon_running;
-		state_unlock();
-
-		if (post_spawn_canceled) {
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), (uint64_t)pid);
-			os_term(pid);
-		}
 
 		parse_log(state, f, 0, log_f, log_path);
 
@@ -1593,7 +1596,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pulse(state, PULSE_ACTIVITY);
 
 	struct snapraid_task* task = state->runner.latest;
-	if (!task || !task->running || task->pid <= 0) {
+	if (!task || !task->running) {
 		sncpy(msg, msg_size, "No task running");
 		*status = 409;
 		state_unlock();
@@ -1611,20 +1614,24 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	*stop_pid = pid;
 	*stop_number = number;
 
-	/*
-	 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
-	 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
-	 * In practice, PID recycling across the OS requires tens of thousands of process spawns
-	 * and wrap-around, making this an accepted non-issue.
-	 */
-	if (os_term(pid) != 0) {
-		log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
-		sncpy(msg, msg_size, "Failed to stop task");
-		*status = 500;
-		return -1;
-	}
+	if (pid > 0) {
+		/*
+		 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
+		 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
+		 * In practice, PID recycling across the OS requires tens of thousands of process spawns
+		 * and wrap-around, making this an accepted non-issue.
+		 */
+		if (os_term(pid) != 0) {
+			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
+			sncpy(msg, msg_size, "Failed to stop task");
+			*status = 500;
+			return -1;
+		}
 
-	log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+	} else {
+		log_msg(LVL_INFO, "task %d canceled during startup phase", number);
+	}
 
 	sncpy(msg, msg_size, "Signal sent");
 	*status = 202;
