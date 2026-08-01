@@ -334,6 +334,7 @@ file installed.
 
 These settings control the core execution environment and the
 underlying daemon.
+
 These options are not visible or modifiable via the REST API.
 They require a manual edit of the configuration file and a
 configuration reload (SIGHUP) or daemon restart to apply.
@@ -376,10 +377,6 @@ failing - Shuts down the host immediately after sending reports if
 
 Spaces around commas are ignored.
 
-This option cannot be modified via the REST API to prevent potential
-remote shutdown exploits, and requires a manual configuration edit
-and daemon reload (SIGHUP) to change.
-
 ---- 6.1.5 sys_smartignore ----
 Allows you to ignore specific SMART attributes for one or more disks.
 If ignored, the attribute will not generate a warning notification when it
@@ -403,15 +400,14 @@ Examples:
     sys_smartignore=d1 Error_Protocol
     sys_smartignore=* Spin_Up_Time Raw_Read_Error_Rate
 
-This option cannot be modified via the REST API and requires a manual
-configuration edit and daemon reload (SIGHUP) to change.
-
 6.2 Network & REST API
 ----------------------
 
-These settings control the network interface. These options are not
-visible from the REST API. They require a manual edit of the
-configuration file and a configuration reload (SIGHUP) to apply.
+These settings control the network interface.
+
+These options are not visible or modifiable via the REST API.
+They require a manual edit of the configuration file and a
+configuration reload (SIGHUP) or daemon restart to apply.
 
 ---- 6.2.1 net_enabled ----
 Acts as the master toggle for the network interface. When set to 1,
@@ -660,7 +656,7 @@ file blocks.
 6.4 Disk Monitoring & Power
 ---------------------------
 
-The following settings manage how the daemon interacts with physical
+These settings manage how the daemon interacts with physical
 hardware to monitor disk health and optimize energy consumption
 
 ---- 6.4.1 probe_interval_minutes ----

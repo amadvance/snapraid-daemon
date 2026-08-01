@@ -375,6 +375,7 @@ file installed.
 .SS System 
 These settings control the core execution environment and the
 underlying daemon.
+.PP
 These options are not visible or modifiable via the REST API.
 They require a manual edit of the configuration file and a
 configuration reload (SIGHUP) or daemon restart to apply.
@@ -421,10 +422,6 @@ array health transitions to failing.
 .RE
 .PP
 Spaces around commas are ignored.
-.PP
-This option cannot be modified via the REST API to prevent potential
-remote shutdown exploits, and requires a manual configuration edit
-and daemon reload (SIGHUP) to change.
 .SS sys_smartignore 
 Allows you to ignore specific SMART attributes for one or more disks.
 If ignored, the attribute will not generate a warning notification when it
@@ -458,13 +455,12 @@ sys_smartignore=* Spin_Up_Time Raw_Read_Error_Rate
 .PD 0
 .PD
 .RE
-.PP
-This option cannot be modified via the REST API and requires a manual
-configuration edit and daemon reload (SIGHUP) to change.
 .SS Network & REST API 
-These settings control the network interface. These options are not
-visible from the REST API. They require a manual edit of the
-configuration file and a configuration reload (SIGHUP) to apply.
+These settings control the network interface.
+.PP
+These options are not visible or modifiable via the REST API.
+They require a manual edit of the configuration file and a
+configuration reload (SIGHUP) or daemon restart to apply.
 .SS net_enabled 
 Acts as the master toggle for the network interface. When set to 1,
 the daemon enables the REST API and prepares to serve the web dashboard.
@@ -768,7 +764,7 @@ ensures high\-resolution tracking is available to correctly
 identify relocated data without re\-processing the underlying
 file blocks.
 .SS Disk Monitoring & Power 
-The following settings manage how the daemon interacts with physical
+These settings manage how the daemon interacts with physical
 hardware to monitor disk health and optimize energy consumption
 .SS probe_interval_minutes 
 Controls the frequency at which the daemon checks disk SMART attributes.

@@ -11,6 +11,13 @@
 #
 
 ### System
+# These settings control the core execution environment and the
+# underlying daemon.
+#
+# These options are not visible or modifiable via the REST API.
+# They require a manual edit of the configuration file and a
+# configuration reload (SIGHUP) or daemon restart to apply.
+
 # The sys_log_directory defines where the output of individual SnapRAID
 # commands is stored. If left unset, the daemon defaults to
 # /var/log/snapraid in Linux and /log in the installation directory in
@@ -77,6 +84,12 @@ sys_log_retention_days = 120
 #sys_smartignore = * Spin_Up_Time Raw_Read_Error_Rate
 
 ### Network & REST API
+# These settings control the network interface.
+#
+# These options are not visible or modifiable via the REST API.
+# They require a manual edit of the configuration file and a
+# configuration reload (SIGHUP) or daemon restart to apply.
+
 # The net_enabled switch acts as the master toggle for the HTTP interface.
 # If this is set to 0 or left blank, the daemon operates in a secure,
 # local-only mode and will not open any network ports.
@@ -253,6 +266,12 @@ net_web_root = commander.zip
 #net_auth_credential =
 
 ### Automation & Maintenance
+# These settings control the automation and maintenance tasks run by
+# the SnapRAID Daemon.
+#
+# For security reasons, some of them can be set via the REST API only if the
+# net_config_full_access option is enabled.
+
 # The check_updates flag controls whether the daemon periodically
 # queries the GitHub API (via curl) to check if new versions of SnapRAID
 # Daemon and SnapRAID engine are available.
@@ -341,6 +360,9 @@ scrub_older_than = 10
 touch_zero_subseconds = 1
 
 ### Disk Monitoring & Power
+# These settings manage how the daemon interacts with physical
+# hardware to monitor disk health and optimize energy consumption
+
 # The probe_interval_minutes setting controls how often the daemon checks
 # SMART attributes, provided the disks are already spinning.
 # If this is set to 0 or left blank, SMART monitoring is disabled.
@@ -428,7 +450,9 @@ spindown_idle_minutes = 15
 #hook_run_as_user = nobody
 
 ### Notifications
-# --- System Log (syslog/journald) ---
+# These settings control the notification operations performed by the
+# daemon.
+
 # When notify_syslog_enabled is set to 1, daemon activity is sent to the
 # OS system log. While lifecycle events like starting and stopping are
 # always captured, task-related messages are filtered by the level below.
