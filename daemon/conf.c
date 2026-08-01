@@ -755,6 +755,13 @@ static void config_set_double(struct snapraid_config* config, const char* key, d
 
 int config_save_locked(struct snapraid_state* state)
 {
+	/*
+	 * To avoid TOCTOU race conditions where concurrent config updates write out of order,
+	 * the entire file write, fsync(), and rename() are performed inside state_lock().
+	 *
+	 * Out-of-order writes could be avoided with an dedicated new config lock, but it is not worth
+	 * the complexity given that the fsync() wait duration for small config files is minimal.
+	 */
 	struct snapraid_config* config = &state->config;
 	char conf_tmp[PATH_MAX + 4];
 	ss_t ss;
