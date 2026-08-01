@@ -35,6 +35,23 @@ int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
 }
 
 /**
+ * Check if the specified high-level command is currently running or scheduled in the queue.
+ */
+int runner_has_high_cmd_locked(struct snapraid_state* state, int high_cmd)
+{
+	if (state->runner.latest != 0 && state->runner.latest->running && state->runner.latest->high_cmd == high_cmd)
+		return 1;
+
+	for (tommy_node* i = tommy_list_head(&state->runner.waiting_list); i != 0; i = i->next) {
+		struct snapraid_task* task = i->data;
+		if (task->high_cmd == high_cmd)
+			return 1;
+	}
+
+	return 0;
+}
+
+/**
  * Update the health state of the array
  * If there is a change in health, schedule a report task if not yet present
  */
