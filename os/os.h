@@ -134,14 +134,15 @@ pid_t os_spawn(char** argv, int* stdout_read_fd, int* stderr_read_fd, const char
 pid_t os_wait(pid_t pid, int* status);
 
 /**
- * Terminate gracefully a process.
+ * Terminate gracefully a process. Intended for daemon/service processes controlling child processes.
+ * The caller must subsequently call os_wait() to reap process resources and close handles.
  * \param pid Process ID of the process to terminate.
  * \return 0 on success, -1 on failure.
  */
 int os_term(pid_t pid);
 
 /**
- * Forcibly terminate a process.
+ * Forcibly terminate a process and release its handle/process resources.
  * \param pid Process ID of the process to kill.
  * \return 0 on success, -1 on failure.
  */
