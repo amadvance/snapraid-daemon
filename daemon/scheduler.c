@@ -27,6 +27,8 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	int group = ++state->runner.group_allocator;
 
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_MAINTENANCE);
+
 	notify_start_locked_yield(state, CMD_MAINTENANCE);
 
 	sl_init(&scrub_arg_list);
@@ -99,6 +101,8 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	sl_free(&sync_arg_list);
 	sl_free(&scrub_arg_list);
+
+	state->runner.task_pending &= ~CMD_HIGH_BIT(CMD_MAINTENANCE);
 }
 
 void schedule_maintenance(struct snapraid_state* state, int spindown, int threshold, char* msg, size_t msg_size, int* status)
@@ -123,6 +127,8 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	}
 
 	int group = ++state->runner.group_allocator;
+
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_HEAL);
 
 	notify_start_locked_yield(state, CMD_HEAL);
 
@@ -173,6 +179,8 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	sl_free(&fix_arg_list);
 	sl_free(&scrub_arg_list);
 
+	state->runner.task_pending &= ~CMD_HIGH_BIT(CMD_HEAL);
+
 	state_unlock();
 }
 
@@ -190,6 +198,8 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 	}
 
 	int group = ++state->runner.group_allocator;
+
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_UNDELETE);
 
 	notify_start_locked_yield(state, CMD_UNDELETE);
 
@@ -234,6 +244,8 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	sl_free(&fix_arg_list);
 
+	state->runner.task_pending &= ~CMD_HIGH_BIT(CMD_UNDELETE);
+
 	state_unlock();
 }
 
@@ -256,6 +268,8 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 
 	int group = ++state->runner.group_allocator;
 
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_SUSPEND_IDLE);
+
 	int spindown_data = state->config.spindown_idle_minutes_data;
 	int spindown_parity = state->config.spindown_idle_minutes_parity;
 
@@ -267,6 +281,8 @@ static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t no
 		ret = runner_locked(state, CMD_SUSPEND_IDLE, CMD_DOWN_IDLE, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
+
+	state->runner.task_pending &= ~CMD_HIGH_BIT(CMD_SUSPEND_IDLE);
 }
 
 void schedule_suspend_idle(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
@@ -295,6 +311,8 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 
 	int group = ++state->runner.group_allocator;
 
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_REFRESH);
+
 	/*
 	 * Schedule all the actions, note that they are just scheduled,
 	 * the eventual failure won't be detected here.
@@ -317,6 +335,8 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 		ret = runner_locked(state, CMD_REFRESH, CMD_REPORT, now, group, 0, msg, msg_size, status);
 
 	(void)ret;
+
+	state->runner.task_pending &= ~CMD_HIGH_BIT(CMD_REFRESH);
 
 	state_unlock();
 }

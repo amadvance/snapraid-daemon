@@ -39,6 +39,9 @@ int runner_has_cmd_locked(struct snapraid_state* state, int cmd)
  */
 int runner_has_high_cmd_locked(struct snapraid_state* state, int high_cmd)
 {
+	if ((state->runner.task_pending & CMD_HIGH_BIT(high_cmd)) != 0)
+		return 1;
+
 	if (state->runner.latest != 0 && state->runner.latest->running && state->runner.latest->high_cmd == high_cmd)
 		return 1;
 

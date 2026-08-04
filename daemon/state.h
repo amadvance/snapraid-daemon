@@ -233,12 +233,15 @@ struct snapraid_disk {
 #define CMD_REPORT 101 /**< Additional command that generates a report */
 #define CMD_DOWN_IDLE 102 /**< Additional command that spin down inactive disks */
 #define CMD_SHUTDOWN 103 /**< Additional command that shuts down the system */
+
 #define CMD_MAINTENANCE 201 /**< High level command. Never enter the queue. */
 #define CMD_HEAL 202 /**< High level command. Never enter the queue. */
 #define CMD_UNDELETE 203 /**< High level command. Never enter the queue. */
 #define CMD_SUSPEND_IDLE 204 /**< High level command. Never enter the queue. */
 #define CMD_REFRESH 205  /**< High level command. Never enter the queue. */
 #define CMD_STARTUP 206  /**< High level command. Never enter the queue. */
+
+#define CMD_HIGH_BIT(cmd) (cmd >= CMD_MAINTENANCE && cmd <= CMD_STARTUP ? (1U << (cmd - CMD_MAINTENANCE)) : 0) /**< Bit mask for high commands */
 
 #define PROCESS_STATE_QUEUE 0 /**< The process is queued */
 #define PROCESS_STATE_START 1 /**< The process is starting */
@@ -342,6 +345,7 @@ struct snapraid_runner {
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
 	tommy_list history_list; /**< List of snapraid_task already executed */
 	int hold_off; /**< Hold off the next maintenance */
+	uint32_t task_pending; /**< Bit mask of pending high-level commands being initialized before enqueuing */
 };
 
 struct snapraid_scheduler {
