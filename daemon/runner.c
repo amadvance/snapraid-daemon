@@ -964,6 +964,12 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 	}
 
 	state_lock();
+
+	/*
+	 * Executing os_spawn() under state_lock is a deliberate tradeoff: it guarantees
+	 * atomic cancellation checking and PID assignment without releasing and re-acquiring
+	 * the lock. Process spawn is fast enough that holding the lock here does not impact responsiveness.
+	 */
 	int spawn_canceled = task->canceled || !state->daemon_running;
 	if (!spawn_canceled) {
 		os_privileges_acquire();
@@ -972,6 +978,7 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 		if (pid > 0)
 			task->pid = pid;
 	}
+
 	state_unlock();
 
 	if (spawn_canceled) {
