@@ -20,10 +20,7 @@ static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, si
 	if (jc < 0) {
 		return -1;
 	}
-	jsmntok_t* jv = malloc(jc * sizeof(jsmntok_t));
-	if (!jv) {
-		return -1;
-	}
+	jsmntok_t* jv = malloc_nofail(jc * sizeof(jsmntok_t));
 	jsmn_init(&jp);
 	int parse_res = jsmn_parse(&jp, js, jl, jv, jc);
 	if (parse_res < 0) {
