@@ -964,8 +964,8 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 		log_task(level, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
 			attr_type, attr_name, disk, changed, cv_old, cv_val);
 
-		/* if there isn't already a report scheduled, schedule a new one */
-		if (!runner_has_cmd_locked(state, CMD_REPORT)) {
+		/* if the attribute degraded and there isn't already a report scheduled, schedule a new one */
+		if (worse && !runner_has_cmd_locked(state, CMD_REPORT)) {
 			char msg[MSG_MAX];
 			int status;
 			runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, 0, msg, sizeof(msg), &status);
