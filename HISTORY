@@ -3,54 +3,13 @@ SnapRAID-Daemon HISTORY
 
 2.0 (Work in Progress)
 ======================
- * Schedule a report notification on raw value changes of counting/critical
-   SMART attributes and on normalized value changes of prefail attributes.
-   Historical tracking for normalized values (with highest/worst baselines
-   and threshold values) is exported via REST API/YAML and integrated
-   into status reports.
- * Added a "smartignore" configuration option to allow ignoring specific
-   SMART attributes (e.g., Spin_Up_Time, Raw_Read_Error_Rate) for one or
-   more disks to avoid generating report notifications when they change.
-   Ignored attributes are marked as ignored in status reports and in the REST API.
- * Export temperature warning/critical thresholds and status fields in the
-   REST API, and integrate them into the web dashboards to automatically
-   color-code drives (supporting higher limits for SSD, NVMe devices).
- * Added support for managing multiple independent SnapRAID arrays:
-   - On Linux/systemd, daemon instances can be managed individually using
-     the template unit `snapraidd@.service`.
-   - On Windows, multiple service instances can be registered and managed using
-     the `--service-install` option with the `-i` flag.
- * Introduced "Brutale", an alternative high-contrast Neo-Brutalist WebUI.
-   Proceed with caution: this interface is loud, unapologetic, and might
-   cause spontaneous desires to build raw concrete structures
-   (see https://en.wikipedia.org/wiki/Brutalist_architecture).
- * Allow separate spindown idle timeouts for data and parity disks by
-   specifying two comma-separated values in "spindown_idle_minutes"
-   (e.g., 15, 30). If only one value is specified, it applies to both.
-   This introduces the new REST API "/snapraid/v2/config" endpoint where
-   the spindown configuration is returned and set as a string, while
-   retaining backward compatibility with the legacy "/snapraid/v1/config"
-   endpoint (which only returns the data disk timeout as an integer).
- * Added non-resetting lifetime tracking for I/O and silent data errors
-   on disks using snapraid_tracked structures ("error_io" and "error_data"),
-   which include historical baselines and timestamps.
-   This introduces the new REST API "/snapraid/v2/disks" endpoint where
-   lifetime tracked error counters ("error_io" and "error_data") and active
-   session counters ("transient_error_io" and "transient_error_data") are exported,
-   while preserving backward compatibility with the "/snapraid/v1/disks"
-   endpoint (which continues to export transient session errors under
-   "error_io" and "error_data").
- * Added support for saving task log files in gzip (.gz) format, controlled
-   by the "sys_log_compression" configuration option.
- * Added a "notify_start" configuration option to trigger a notification
-   command at the start of high-level tasks like maintenance.
- * Added %h (high-level task name) and %c (exit code of the task) placeholder
-   tags to result notifications.
- * Sort diff and fix lists by change type to prioritize the most relevant
-   entries first.
- * Added a "sys_shutdown_on" option to automatically trigger a system
-   shutdown based on a comma-separated list of events ("maintenance",
-   "prefail", or "failing").
+ * Added a "check_updates" option to periodically check for new daemon
+   releases on GitHub. The WebUI now displays the update status under
+   the Configuration card on the Dashboard and shows a dedicated
+   "NEW VERSION AVAILABLE" badge in the System Idle header when a new
+   version is available.
+ * Introduced "Brutale", a high-contrast Neo-Brutalist WebUI. Loud,
+   blocky, and completely unapologetic—sunglasses not included.
  * Added a "net_auth_credential" option to protect the REST API and
    web dashboard via HTTP Basic Authentication. The credentials are
    securely verified using Argon2id ($m=65536, t=3, p=1$).
@@ -60,33 +19,77 @@ SnapRAID-Daemon HISTORY
    (Base64), it is not secure over unencrypted HTTP. Users must deploy
    an HTTPS encryption layer or restrict access to a trusted, secure
    network.
+ * Added support for managing multiple independent SnapRAID arrays:
+   - On Linux/systemd, daemon instances can be managed individually
+     using the template unit `snapraidd@.service`.
+   - On Windows, multiple service instances can be registered and
+     managed using the `--service-install` option with the `-i` flag.
+ * Schedule a report notification on raw value changes of
+   counting/critical SMART attributes and on normalized value changes of
+   prefail attributes.
+   Historical tracking for normalized values (with highest/worst
+   baselines and threshold values) is exported via REST API/YAML and
+   integrated into status reports.
+ * Implemented a bracketed privileges system on Linux to run the daemon
+   as an unprivileged user (e.g., "nobody") by default and temporarily
+   escalate to root only when performing administrative operations.
+ * Added a "hook_docker_pause" option to specify a comma-separated list
+   of Docker containers to pause during tasks that access the array.
+   Containers are paused immediately before running the task (or the
+   pre hook script) and unpaused immediately afterward.
+ * Added a "notify_start" configuration option to trigger a notification
+   command at the start of high-level tasks like maintenance.
+ * Added a "sys_shutdown_on" option to automatically trigger a system
+   shutdown based on a comma-separated list of events ("maintenance",
+   "prefail", or "failing").
+ * Added a "smartignore" configuration option to allow ignoring specific
+   SMART attributes (e.g., Spin_Up_Time, Raw_Read_Error_Rate) for one or
+   more disks to avoid generating report notifications when they change.
+   Ignored attributes are marked as ignored in status reports and in the
+   REST API.
+ * Export temperature warning/critical thresholds and status fields in
+   the REST API, and integrate them into the web dashboards to
+   automatically color-code drives (supporting higher limits for SSD,
+   NVMe devices).
+ * Allow separate spindown idle timeouts for data and parity disks by
+   specifying two comma-separated values in "spindown_idle_minutes"
+   (e.g., 15, 30). If only one value is specified, it applies to both.
+   This introduces the new REST API "/snapraid/v2/config" endpoint where
+   the spindown configuration is returned and set as a string, while
+   retaining backward compatibility with the legacy
+   "/snapraid/v1/config" endpoint (which only returns the data disk
+   timeout as an integer).
+ * Added non-resetting lifetime tracking for I/O and silent data errors
+   on disks using snapraid_tracked structures ("error_io" and
+   "error_data"), which include historical baselines and timestamps.
+   This introduces the new REST API "/snapraid/v2/disks" endpoint where
+   lifetime tracked error counters ("error_io" and "error_data") and
+   active session counters ("transient_error_io" and
+   "transient_error_data") are exported, while preserving backward
+   compatibility with the "/snapraid/v1/disks" endpoint (which continues
+   to export transient session errors under
+   "error_io" and "error_data").
+ * Added support for saving task log files in gzip (.gz) format,
+   controlled by the "sys_log_compression" configuration option.
+ * Added %h (high-level task name) and %c (exit code of the task)
+   placeholder tags to result notifications.
  * Added environment variables to the hook script executions, exposing
    execution details (such as command name, task number, log file,
    config paths) for the `task-begin` event, and adding exit codes,
    signals, duration, error counters, array health, and diff statistics
    for the `task-end` and `task-error` events.
- * Added a "check_updates" option to periodically check for new daemon
-   releases on GitHub. The WebUI now displays the update status under
-   the Configuration card on the Dashboard and shows a dedicated
-   "NEW VERSION AVAILABLE" badge in the System Idle header when a new
-   version is available.
- * Added a "hook_docker_pause" option to specify a comma-separated list
-   of Docker containers to pause during tasks that access the array.
-   Containers are paused immediately before running the task (or the
-   pre hook script) and unpaused immediately afterward.
- * Include the system hostname at the beginning of the status report
-   before the health status.
- * Deprecated the "sys_engine" configuration option.
- * Added new "./configure --with-snapraid=PATH" option to allow
-   hardcoding the utility path at build time.
+ * Deprecated the "sys_engine" configuration option and replaced it with
+   the new "./configure --with-snapraid=PATH" option to allow hardcoding
+   the utility path at build time.
    Similarly added new "--with-docker=PATH" and "--with-curl=PATH"
    options to allow hardcoding the curl and docker utility paths at
    build time. The default runtime discovery behavior remains unchanged
    if these options are omitted.
    Primarily intended for NixOS and other non-FHS systems.
- * Implemented a bracketed privileges system on Linux to run the daemon
-   as an unprivileged user (e.g., "nobody") by default and temporarily
-   escalate to root only when performing administrative operations.
+ * Sort diff and fix lists by change type to prioritize the most
+   relevant entries first.
+ * Include the system hostname at the beginning of the status report
+   before the health status.
 
 1.15 2026/08
 ============
