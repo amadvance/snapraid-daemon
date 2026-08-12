@@ -120,7 +120,7 @@ size_t zwrite(const void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 	}
 }
 
-#define ZPRINTF_MAX (128 + PATH_MAX)
+#define ZPRINTF_MAX 8192
 
 int zprintf(ZFILE* stream, const char* format, ...)
 {
