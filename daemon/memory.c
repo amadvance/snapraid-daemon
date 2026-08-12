@@ -24,7 +24,7 @@ void* malloc_nofail(size_t size)
 
 void* calloc_nofail(size_t count, size_t size)
 {
-	void* ptr = calloc(count, size);
+	void* ptr = calloc(count ? count : 1, size ? size : 1);
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
@@ -37,7 +37,7 @@ void* calloc_nofail(size_t count, size_t size)
 
 void* realloc_nofail(void* ptr, size_t size)
 {
-	ptr = realloc(ptr, size);
+	ptr = realloc(ptr, size ? size : 1);
 
 	if (!ptr) {
 		/* LCOV_EXCL_START */
