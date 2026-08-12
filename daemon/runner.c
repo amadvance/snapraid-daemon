@@ -125,13 +125,18 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	/* copy containers to a mutable string to tokenize in-place */
 	char* copy = strdup_nofail(containers);
 
-	/* split the string using strsplit up to CONTAINERS_MAX tokens */
-	char* tokens[CONTAINERS_MAX];
-	unsigned n = strsplit(tokens, CONTAINERS_MAX, copy, ",", " \t");
+	/* split the string using strsplit up to CONTAINERS_MAX + 1 tokens to detect truncation */
+	char* tokens[CONTAINERS_MAX + 1];
+	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t");
 
 	if (n == 0) {
 		free(copy);
 		return 0;
+	}
+
+	if (n > CONTAINERS_MAX) {
+		log_task(LVL_WARNING, "docker container list truncated to maximum %u containers", CONTAINERS_MAX);
+		n = CONTAINERS_MAX;
 	}
 
 	/*
