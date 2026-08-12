@@ -429,16 +429,16 @@ rc.snapraidd: rc.snapraidd.in
 # Rules for documentation
 if HAVE_ADVD2
 %.1 : %.d
-	advd2 man < $(srcdir)/$< > $@
+	advd2 man < $< > $@
 
 %.txt : %.d
-	advd2 txt < $(srcdir)/$< | todos > $@
+	advd2 txt < $< | todos > $@
 
 %.html : %.d
-	advd2 html < $(srcdir)/$< > $@
+	advd2 html < $< > $@
 
 %.xml : %.d
-	advd2 xml < $(srcdir)/$< > $@
+	advd2 xml < $< > $@
 endif
 
 MANUAL=./snapraidd -f -N -i manual

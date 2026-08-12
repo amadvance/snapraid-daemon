@@ -1,8 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_PREREQ([2.65])
+AC_PREREQ([2.70])
 dnl Get version number from git
 m4_define([git_revision], m4_esyscmd_s([./autover.sh]))
-AC_INIT([SnapRAID Daemon], [git_revision], [], [snapraid-daemon], [https://www.snapraid.it])
+AC_INIT([SnapRAID Daemon],[git_revision],[],[snapraid-daemon],[https://www.snapraid.it])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 AC_CANONICAL_TARGET
@@ -117,9 +117,8 @@ AC_C_BIGENDIAN
 
 dnl Checks for header files.
 AC_HEADER_ASSERT
-AC_HEADER_DIRENT
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([stdint.h inttypes.h unistd.h math.h execinfo.h strings.h getopt.h syslog.h grp.h pwd.h io.h alloca.h])
+AC_CHECK_HEADERS([dirent.h stdint.h inttypes.h unistd.h math.h execinfo.h strings.h getopt.h syslog.h grp.h pwd.h io.h alloca.h])
 AC_CHECK_HEADERS([sys/file.h sys/sysctl.h sys/ioctl.h sys/time.h sys/types.h sys/mkdev.h sys/sysmacros.h sys/stat.h sys/prctl.h sys/sysinfo.h sys/utsname.h])
 AC_CHECK_HEADERS([linux/fs.h linux/btrfs.h linux/fiemap.h mach/mach_time.h])
 
@@ -144,7 +143,6 @@ AC_COMPILE_IFELSE([
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_C_INLINE
 AC_C_RESTRICT
 AC_C_VOLATILE
