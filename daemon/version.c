@@ -24,6 +24,30 @@ static int jsmn_skip(const jsmntok_t* jv, int jc, int i)
 	return i;
 }
 
+/**
+ * Sanitize and truncate a string in-place for log output.
+ * Replaces control and non-printable characters with spaces, and truncates to 80 characters
+ * adding "..." suffix if truncated.
+ */
+static void curl_sanitize_inplace(char* str)
+{
+	const size_t max_len = 80;
+	size_t i = 0;
+	while (str[i] != 0 && i < max_len) {
+		unsigned char c = (unsigned char)str[i];
+		if (c < 32 || c == 127)
+			str[i] = ' ';
+		++i;
+	}
+
+	if (str[i] != 0) {
+		str[max_len - 3] = '.';
+		str[max_len - 2] = '.';
+		str[max_len - 1] = '.';
+		str[max_len] = 0;
+	}
+}
+
 static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, size_t tag_out_size)
 {
 	jsmn_parser jp;
@@ -125,6 +149,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		char* output = ss_extract(&ss);
+		curl_sanitize_inplace(output);
 		if (output[0] != 0) {
 			if (WIFEXITED(status)) {
 				log_msg(LVL_ERROR, "failed to check updates for %s: curl exited with code %d, output: %s", repo, WEXITSTATUS(status), output);
@@ -145,6 +170,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	char* js = ss_extract(&ss);
 	char tag[64];
 	if (parse_github_release_tag(js, ss_len(&ss), tag, sizeof(tag)) != 0) {
+		curl_sanitize_inplace(js);
 		if (js[0] != 0) {
 			log_msg(LVL_ERROR, "failed to check updates for %s: parse failed, response: %s", repo, js);
 		} else {
