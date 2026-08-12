@@ -452,7 +452,7 @@ struct snapraid_array {
 #define AUTH_NB_BLOCKS 65536 /**< Argon2id memory size parameter (64 MiB in 1 KiB blocks) */
 #define AUTH_NB_PASSES 3 /**< Argon2id iterations parameter */
 #define AUTH_NB_LANES 1 /**< Argon2id lanes (parallelism) parameter */
-#define AUTH_DELAY_SECONDS 1 /**< Rate-limiting delay threshold between authentication attempts */
+#define AUTH_DELAY_SECONDS 1 /**< Global pre-Argon2 authentication attempt interval */
 
 struct snapraid_run {
 	int hour; /**< Hour for scheduled maintenance */

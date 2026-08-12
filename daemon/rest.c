@@ -2808,6 +2808,18 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 	uint64_t now = os_tick_sec();
 	int too_fast = 0;
 
+	/*
+	 * This is deliberately a global pre-verification limit, rather than per IP.
+	 *
+	 * Credential verification uses Argon2id with 64 MiB of memory, so allowing
+	 * one expensive attempt per source would let many remote sources exhaust
+	 * daemon CPU and memory. The global limit bounds this work to one uncached
+	 * verification per AUTH_DELAY_SECONDS for the whole daemon.
+	 *
+	 * Consequently, a burst of uncached authentication attempts can temporarily
+	 * reject other new clients. Previously accepted Authorization headers bypass
+	 * this limiter through rest_auth_cache.
+	 */
 	state_lock();
 	if (state->rest_latest_auth != 0 && now - state->rest_latest_auth < AUTH_DELAY_SECONDS) {
 		too_fast = 1;
