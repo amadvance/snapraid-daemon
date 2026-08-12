@@ -12,8 +12,25 @@
 
 set -euo pipefail
 
-CLI_VERSION="15.0rc1"
-CLI_TARBALL="snapraid-${CLI_VERSION}.tar.gz"
+# Auto-detect SnapRAID CLI source tarball in current directory (matching snapraid-*.tar.gz but excluding snapraid-daemon*).
+CLI_TARBALLS=()
+for f in snapraid-*.tar.gz; do
+  if [[ -f "$f" && "$f" != snapraid-daemon* ]]; then
+    CLI_TARBALLS+=("$f")
+  fi
+done
+
+if [[ ${#CLI_TARBALLS[@]} -eq 0 ]]; then
+  echo "Error: SnapRAID CLI source tarball (snapraid-*.tar.gz) not found in the current directory."
+  exit 1
+elif [[ ${#CLI_TARBALLS[@]} -gt 1 ]]; then
+  echo "Error: Multiple matching SnapRAID CLI tarballs found: ${CLI_TARBALLS[*]}"
+  exit 1
+fi
+
+CLI_TARBALL="${CLI_TARBALLS[0]}"
+CLI_VERSION="${CLI_TARBALL#snapraid-}"
+CLI_VERSION="${CLI_VERSION%.tar.gz}"
 CLI_PKG_NAME="snapraid"
 
 DAEMON_VERSION="@PACKAGE_VERSION@"
@@ -21,11 +38,6 @@ DAEMON_TARBALL="@PACKAGE@-${DAEMON_VERSION}.tar.gz"
 DAEMON_PKG_NAME="@PACKAGE@"
 
 NSIS_PKG_ROOT="@PACKAGE@-${DAEMON_VERSION}-nsis"
-
-if [[ ! -f "${CLI_TARBALL}" ]]; then
-  echo "Error: ${CLI_TARBALL} not found in the current directory."
-  exit 1
-fi
 
 if [[ ! -f "${DAEMON_TARBALL}" ]]; then
   echo "Error: ${DAEMON_TARBALL} not found in the current directory."
