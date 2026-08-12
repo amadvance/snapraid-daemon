@@ -12,11 +12,23 @@
 #define JSMN_HEADER
 #include "jsmn/jsmn.h"
 
+/**
+ * Advance iterator past the current JSMN token and all its child nodes.
+ */
+static int jsmn_skip(const jsmntok_t* jv, int jc, int i)
+{
+	int end = jv[i].end;
+	do {
+		++i;
+	} while (i < jc && jv[i].start < end);
+	return i;
+}
+
 static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, size_t tag_out_size)
 {
 	jsmn_parser jp;
 	jsmn_init(&jp);
-	int jc = jsmn_parse(&jp, js, jl, NULL, 0);
+	int jc = jsmn_parse(&jp, js, jl, 0, 0);
 	if (jc < 0) {
 		return -1;
 	}
@@ -32,7 +44,8 @@ static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, si
 		return -1;
 	}
 	int found = 0;
-	for (int i = 1; i < jc; i += 1 + jv[i].size) {
+	int i = 1;
+	while (i < jc) {
 		if (jv[i].type == JSMN_STRING) {
 			size_t len = jv[i].end - jv[i].start;
 			if (len == 8 && strncmp(js + jv[i].start, "tag_name", 8) == 0) {
@@ -50,6 +63,13 @@ static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, si
 				}
 			}
 		}
+
+		/* advance past the key string token */
+		++i;
+
+		/* skip top-level value token and its sub-nodes */
+		if (i < jc)
+			i = jsmn_skip(jv, jc, i);
 	}
 	free(jv);
 	return found ? 0 : -1;
