@@ -14,29 +14,22 @@ set -euo pipefail
 
 CLI_VERSION="15.0rc1"
 CLI_TARBALL="snapraid-${CLI_VERSION}.tar.gz"
-CLI_SOURCE_URL="https://github.com/amadvance/snapraid/releases/download/v${CLI_VERSION}/${CLI_TARBALL}"
 CLI_PKG_NAME="snapraid"
 
 DAEMON_VERSION="@PACKAGE_VERSION@"
 DAEMON_TARBALL="@PACKAGE@-${DAEMON_VERSION}.tar.gz"
-DAEMON_SOURCE_URL="https://github.com/amadvance/@PACKAGE@/releases/download/v${DAEMON_VERSION}/${DAEMON_TARBALL}"
 DAEMON_PKG_NAME="@PACKAGE@"
 
 NSIS_PKG_ROOT="@PACKAGE@-${DAEMON_VERSION}-nsis"
 
-# Prefer local tarball
-if [[ -f "./${CLI_TARBALL}" ]]; then
-  echo "Using local ${CLI_TARBALL}"
-else
-  echo "Downloading ${CLI_TARBALL}..."
-  curl -L -O "$CLI_SOURCE_URL"
+if [[ ! -f "${CLI_TARBALL}" ]]; then
+  echo "Error: ${CLI_TARBALL} not found in the current directory."
+  exit 1
 fi
 
-if [[ -f "./${DAEMON_TARBALL}" ]]; then
-  echo "Using local ${DAEMON_TARBALL}"
-else
-  echo "Downloading ${DAEMON_TARBALL}..."
-  curl -L -O "$DAEMON_SOURCE_URL"
+if [[ ! -f "${DAEMON_TARBALL}" ]]; then
+  echo "Error: ${DAEMON_TARBALL} not found in the current directory."
+  exit 1
 fi
 
 # Clean previous builds
