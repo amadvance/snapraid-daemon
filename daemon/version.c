@@ -104,10 +104,19 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	}
 
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		if (WIFEXITED(status)) {
-			log_msg(LVL_ERROR, "failed to check updates for %s: curl exited with code %d", repo, WEXITSTATUS(status));
+		char* output = ss_extract(&ss);
+		if (output[0] != 0) {
+			if (WIFEXITED(status)) {
+				log_msg(LVL_ERROR, "failed to check updates for %s: curl exited with code %d, output: %s", repo, WEXITSTATUS(status), output);
+			} else {
+				log_msg(LVL_ERROR, "failed to check updates for %s: curl terminated abnormally, output: %s", repo, output);
+			}
 		} else {
-			log_msg(LVL_ERROR, "failed to check updates for %s: curl terminated abnormally", repo);
+			if (WIFEXITED(status)) {
+				log_msg(LVL_ERROR, "failed to check updates for %s: curl exited with code %d", repo, WEXITSTATUS(status));
+			} else {
+				log_msg(LVL_ERROR, "failed to check updates for %s: curl terminated abnormally", repo);
+			}
 		}
 		ss_done(&ss);
 		return;
@@ -116,7 +125,11 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	char* js = ss_extract(&ss);
 	char tag[64];
 	if (parse_github_release_tag(js, ss_len(&ss), tag, sizeof(tag)) != 0) {
-		log_msg(LVL_ERROR, "failed to check updates for %s: parse failed", repo);
+		if (js[0] != 0) {
+			log_msg(LVL_ERROR, "failed to check updates for %s: parse failed, response: %s", repo, js);
+		} else {
+			log_msg(LVL_ERROR, "failed to check updates for %s: parse failed", repo);
+		}
 		ss_done(&ss);
 		return;
 	}
