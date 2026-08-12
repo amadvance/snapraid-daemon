@@ -753,6 +753,103 @@ static void config_set_double(struct snapraid_config* config, const char* key, d
 	}
 }
 
+#ifndef _WIN32
+/*
+ * Create a temporary configuration file in the same trusted directory as the
+ * configuration file. The directory descriptor pins the parent directory, and
+ * O_EXCL prevents following an existing attacker-controlled temporary file.
+ */
+static int config_temp_open(const char* conf_path, int* dir_fd, char* temp_name, size_t temp_name_size)
+{
+	char dir_path[PATH_MAX];
+	const char* slash = strrchr(conf_path, '/');
+	const char* file_name;
+
+	if (slash == 0) {
+		sncpy(dir_path, sizeof(dir_path), ".");
+		file_name = conf_path;
+	} else {
+		size_t dir_len = slash - conf_path;
+		if (dir_len == 0) {
+			sncpy(dir_path, sizeof(dir_path), "/");
+		} else {
+			if (dir_len >= sizeof(dir_path)) {
+				errno = ENAMETOOLONG;
+				return -1;
+			}
+			memcpy(dir_path, conf_path, dir_len);
+			dir_path[dir_len] = 0;
+		}
+		file_name = slash + 1;
+	}
+
+	if (file_name[0] == 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	*dir_fd = open(dir_path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+	if (*dir_fd == -1)
+		return -1;
+
+	struct stat st;
+	if (fstat(*dir_fd, &st) != 0) {
+		close(*dir_fd);
+		*dir_fd = -1;
+		return -1;
+	}
+
+	/* writing a privileged config in a directory writable by other users is unsafe */
+	if ((st.st_mode & (S_IWGRP | S_IWOTH)) != 0 || (st.st_uid != 0 && st.st_uid != getuid())) {
+		close(*dir_fd);
+		*dir_fd = -1;
+		errno = EPERM;
+		return -1;
+	}
+
+	unsigned char random[16];
+	if (os_randomize(random, sizeof(random)) != 0) {
+		close(*dir_fd);
+		*dir_fd = -1;
+		errno = EIO;
+		return -1;
+	}
+
+	int len = snprintf(temp_name, temp_name_size, ".%s.tmp.", file_name);
+	if (len < 0 || (size_t)len + sizeof(random) * 2 >= temp_name_size) {
+		close(*dir_fd);
+		*dir_fd = -1;
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	static const char hex[] = "0123456789abcdef";
+	for (size_t i = 0; i < sizeof(random); ++i) {
+		temp_name[len++] = hex[random[i] >> 4];
+		temp_name[len++] = hex[random[i] & 0xf];
+	}
+	temp_name[len] = 0;
+
+	int f = openat(*dir_fd, temp_name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0644);
+	if (f == -1) {
+		close(*dir_fd);
+		*dir_fd = -1;
+		return -1;
+	}
+
+	/* apply the requested configuration file mode independently of umask */
+	if (fchmod(f, 0644) != 0) {
+		close(f);
+		unlinkat(*dir_fd, temp_name, 0);
+		close(*dir_fd);
+		*dir_fd = -1;
+		return -1;
+	}
+
+	return f;
+}
+#endif
+
 int config_save_locked(struct snapraid_state* state)
 {
 	/*
@@ -763,7 +860,12 @@ int config_save_locked(struct snapraid_state* state)
 	 * the complexity given that the fsync() wait duration for small config files is minimal.
 	 */
 	struct snapraid_config* config = &state->config;
+#ifdef _WIN32
 	char conf_tmp[PATH_MAX + 4];
+#else
+	char conf_tmp[PATH_MAX];
+	int conf_dir_fd = -1;
+#endif
 	ss_t ss;
 
 	ss_init(&ss, 48 * 1024);
@@ -780,13 +882,20 @@ int config_save_locked(struct snapraid_state* state)
 		i = i->next;
 	}
 
-	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
-
 	os_privileges_acquire();
+#ifdef _WIN32
+	snprintf(conf_tmp, sizeof(conf_tmp), "%s.tmp", config->conf);
 	int f = open(conf_tmp, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_CLOEXEC, 0644);
+#else
+	int f = config_temp_open(config->conf, &conf_dir_fd, conf_tmp, sizeof(conf_tmp));
+#endif
 	if (f == -1) {
 		os_privileges_release();
+#ifdef _WIN32
 		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
+#else
+		log_msg(LVL_ERROR, "failed to save config in open, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
+#endif
 		ss_done(&ss);
 		return -1;
 	}
@@ -796,9 +905,7 @@ int config_save_locked(struct snapraid_state* state)
 		log_msg(LVL_ERROR, "failed to save config in write, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		close(f);
 		ss_done(&ss);
-		remove(conf_tmp);
-		os_privileges_release();
-		return -1;
+		goto bail;
 	}
 
 	ss_done(&ss);
@@ -807,31 +914,45 @@ int config_save_locked(struct snapraid_state* state)
 	if (fsync(f) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in fsync, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
 		close(f);
-		remove(conf_tmp);
-		os_privileges_release();
-		return -1;
+		goto bail;
 	}
 #endif
 
 	if (close(f) != 0) {
 		log_msg(LVL_ERROR, "failed to save config in close, path=%s, errno=%s(%d)", conf_tmp, strerror(errno), errno);
-		remove(conf_tmp);
-		os_privileges_release();
-		return -1;
+		goto bail;
 	}
 
+#ifdef _WIN32
 	if (rename(conf_tmp, config->conf) != 0) {
+#else
+	const char* slash = strrchr(config->conf, '/');
+	const char* file_name = slash ? slash + 1 : config->conf;
+	if (renameat(conf_dir_fd, conf_tmp, conf_dir_fd, file_name) != 0) {
+#endif
 		log_msg(LVL_ERROR, "failed to save config in rename, path=%s, errno=%s(%d)", config->conf, strerror(errno), errno);
-		remove(conf_tmp);
-		os_privileges_release();
-		return -1;
+		goto bail;
 	}
 
+#ifndef _WIN32
+	close(conf_dir_fd);
+#endif
 	os_privileges_release();
 
 	log_msg(LVL_INFO, "config saved successfully");
 
 	return 0;
+
+bail:
+#ifdef _WIN32
+	remove(conf_tmp);
+#else
+	unlinkat(conf_dir_fd, conf_tmp, 0);
+	close(conf_dir_fd);
+#endif
+	os_privileges_release();
+
+	return -1;
 }
 
 void config_default_locked(struct snapraid_state* state)
