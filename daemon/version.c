@@ -107,6 +107,8 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	char* argv[] = {
 		(char*)curl_path,
 		"-s",
+		"--max-filesize",
+		"131072",
 		"-m",
 		"10",
 		url,
