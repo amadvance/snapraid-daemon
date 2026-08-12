@@ -904,9 +904,14 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 
 	config_free(&transient);
 
-	(void)config_save_locked(state); /* error logged inside */
-
 	pulse(state, PULSE_CONFIG);
+
+	if (config_save_locked(state) != 0) {
+		state_unlock();
+
+		free(js);
+		return send_json_error(conn, 500, "Failed to save the configuration");
+	}
 
 	state_unlock();
 
