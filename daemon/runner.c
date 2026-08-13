@@ -389,6 +389,36 @@ static int runner_report_locked(struct snapraid_state* state)
 	return 0;
 }
 
+static int runner_start_locked(struct snapraid_state* state)
+{
+	struct snapraid_task* start_task = state->runner.latest;
+
+	log_task_reset();
+
+	/* notify the start */
+	if (notify_start_locked_yield(state, start_task->high_cmd) != 0) {
+		char msg[MSG_MAX];
+		start_task->exit_code = -1;
+		log_task_push(&start_task->message_list);
+		snprintf(msg, sizeof(msg), "Notification failed (check " SYSLOG " for details)");
+		message_insert(&start_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+	} else {
+		start_task->exit_code = 0;
+		log_task_push(&start_task->message_list);
+	}
+
+	start_task->running = 0;
+	start_task->state = PROCESS_STATE_TERM;
+	start_task->unix_end_time = start_task->unix_start_time;
+
+	/* insert in the done list */
+	tommy_list_insert_tail(&state->runner.history_list, &start_task->node, start_task);
+
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
+
+	return 0;
+}
+
 static int runner_shutdown_locked(struct snapraid_state* state)
 {
 	log_task_reset();
@@ -1304,7 +1334,11 @@ static void* runner_thread(void* arg)
 			/* set in the latest */
 			state->runner.latest = task;
 
-			if (task->cmd == CMD_REPORT) {
+			if (task->cmd == CMD_START) {
+				task->running = 1;
+				task->state = PROCESS_STATE_START;
+				runner_start_locked(state);
+			} else if (task->cmd == CMD_REPORT) {
 				task->running = 1;
 				task->state = PROCESS_STATE_START;
 				runner_report_locked(state);

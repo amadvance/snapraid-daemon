@@ -29,8 +29,6 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	state->runner.task_pending |= CMD_HIGH_BIT(CMD_MAINTENANCE);
 
-	notify_start_locked_yield(state, CMD_MAINTENANCE);
-
 	sl_init(&scrub_arg_list);
 	sl_init(&sync_arg_list);
 	if (state->config.sync_prehash) {
@@ -67,6 +65,8 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
+		if (state->config.notify_start[0] != 0)
+			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SYNC, now, group, &sync_arg_list);
 		if (do_scrub)
@@ -112,8 +112,6 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	state->runner.task_pending |= CMD_HIGH_BIT(CMD_HEAL);
 
-	notify_start_locked_yield(state, CMD_HEAL);
-
 	sl_t fix_arg_list;
 	sl_t scrub_arg_list;
 	sl_init(&fix_arg_list);
@@ -129,6 +127,8 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
+		if (state->config.notify_start[0] != 0)
+			runner_step_locked(state, snapraid, CMD_HEAL, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_FIX, now, group, &fix_arg_list);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_SCRUB, now, group, &scrub_arg_list);
@@ -165,8 +165,6 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	state->runner.task_pending |= CMD_HIGH_BIT(CMD_UNDELETE);
 
-	notify_start_locked_yield(state, CMD_UNDELETE);
-
 	sl_t fix_arg_list;
 	sl_init(&fix_arg_list);
 
@@ -180,6 +178,8 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
+		if (state->config.notify_start[0] != 0)
+			runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_FIX, now, group, &fix_arg_list);
 		if (spindown) {

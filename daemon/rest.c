@@ -1061,6 +1061,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		cmd = command_parse(path + 13);
 	switch (cmd) {
 	case 0 :
+	case CMD_START :
 		return send_json_error(conn, 404, "Resource not found");
 	case CMD_MAINTENANCE :
 		has_threshold = 1;
