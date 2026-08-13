@@ -85,6 +85,10 @@ The daemon uses a multi-threaded architecture:
 
 All access to shared state is protected by `state_lock()` / `state_unlock()`.
 
+#### Design Simplicity
+
+- Always prefer the simplest and cleanest implementation that fully satisfies the demonstrated requirements. Do not introduce extra state, abstractions, conditions, or defensive handling unless a concrete requirement or verified failure mode needs them. When replacing existing logic, preserve its narrow established semantics instead of broadening it through inferred state from unrelated subsystems.
+
 ### API Architecture (`snapraidd.yaml`)
 
 The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This file serves as the **primary functional documentation** for the daemon, providing detailed descriptions of endpoint behaviors, asynchronous task flows, and safety mechanisms (like the `maintenance` and `heal` sequences).
