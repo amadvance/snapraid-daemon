@@ -453,7 +453,7 @@ void* scheduler_thread(void* arg)
 
 	state_lock();
 
-	while (state->daemon_running != DAEMON_QUIT) {
+	while (state->daemon_running) {
 		int schedule = 0;
 		time_t now = time(0);
 
@@ -598,7 +598,7 @@ void* scheduler_thread(void* arg)
 		}
 
 		/* early exit on shutdown */
-		if (state->daemon_running == DAEMON_QUIT)
+		if (!state->daemon_running)
 			break;
 
 		thread_cond_wait(&state->scheduler.cond, &state->state_lock);

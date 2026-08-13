@@ -292,7 +292,7 @@ int daemon_init(struct snapraid_state* state)
 	/**
 	 * Log loaded
 	 */
-	state->daemon_running = DAEMON_STARTING;
+	state->daemon_loading = 0;
 
 	/*
 	 * Trigger initial probe to load info into the state
@@ -327,15 +327,18 @@ int daemon_init(struct snapraid_state* state)
 
 void daemon_run(struct snapraid_state* state)
 {
-	log_msg(LVL_INFO, "daemon ready");
-
 	state_lock();
 
-	state->daemon_running = DAEMON_RUNNING;
+	if (state->daemon_running)
+		log_msg(LVL_INFO, "daemon ready");
 
 	while (state->daemon_running) { /* stopped by signals */
-		if (state->daemon_running == DAEMON_RELOAD) {
-			state->daemon_running = DAEMON_RUNNING;
+		if (state->daemon_reloading) {
+			/*
+			 * Clear before reloading. A SIGHUP received while reloading sets
+			 * the flag again and requests one additional pass.
+			 */
+			state->daemon_reloading = 0;
 
 			log_msg(LVL_INFO, "reload requested");
 
@@ -359,19 +362,22 @@ void daemon_run(struct snapraid_state* state)
 
 			state_unlock();
 
-			if (reload_rest) {
+			if (state->daemon_running && reload_rest) {
 				if (rest_reload(state, prev_net_enabled, net_enabled, net_port, net_acl) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web server");
 					os_exit();
 				}
 			}
 
-			if (web_reload(state, net_web_root) != 0) {
+			if (state->daemon_running && web_reload(state, net_web_root) != 0) {
 				log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
 				os_exit();
 			}
 
 			state_lock();
+
+			if (!state->daemon_running)
+				break;
 		}
 
 		scheduler_pulse(state);

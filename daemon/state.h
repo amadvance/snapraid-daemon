@@ -561,12 +561,6 @@ struct snapraid_system {
 	int is_ecc; /**< True if Error Correction Code (ECC) memory is detected and active */
 };
 
-#define DAEMON_QUIT 0
-#define DAEMON_LOADING 1 /**< Loading past logs */
-#define DAEMON_STARTING 2 /**< Starting components */
-#define DAEMON_RUNNING 3
-#define DAEMON_RELOAD 4
-
 struct snapraid_log {
 	int foreground; /**< Daemon running in foreground */
 	int verbose; /**< Verbose output */
@@ -588,7 +582,14 @@ struct snapraid_association {
 };
 
 struct snapraid_state {
-	volatile sig_atomic_t daemon_running; /**< If the daemon is running or terminating */
+	/*
+	 * These flags are written by signal/control handlers and read by all daemon
+	 * threads. daemon_running is set once during state initialization and is
+	 * never set again: a termination request is therefore absorbing.
+	 */
+	volatile sig_atomic_t daemon_loading; /**< Initialization is in progress. */
+	volatile sig_atomic_t daemon_running; /**< The daemon has not received a termination request. */
+	volatile sig_atomic_t daemon_reloading; /**< A configuration reload is requested. */
 	volatile sig_atomic_t daemon_sig; /**< Signal received by the daemon that made it stopping */
 	time_t daemon_start_time; /**< Time the daemon started */
 

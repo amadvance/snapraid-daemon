@@ -118,7 +118,7 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
  */
 static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_association* association)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -143,7 +143,7 @@ static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_a
  */
 static void parser_mapping_add(struct snapraid_state* state, struct snapraid_association* association)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
 		struct snapraid_disk* disk = i->data;
@@ -169,7 +169,7 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
  */
 static void parser_mapping_process_locked(struct snapraid_state* state)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 
 	/*
 	 * Remap devices using the listed association
@@ -239,7 +239,7 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
  */
 static void remove_disappeared_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 
 	/*
 	 * For simplicity process only on PROBE that access both snapraid.conf and all devices
@@ -525,7 +525,7 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_data(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 4)
@@ -567,7 +567,7 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 4)
@@ -609,7 +609,7 @@ static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -690,7 +690,7 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 
 static void process_content_data_split(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 3)
@@ -717,7 +717,7 @@ static void process_content_data_split(struct snapraid_state* state, char** map,
 
 static void process_content_parity_split(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -850,7 +850,7 @@ static void process_fsinfo_parity(struct snapraid_state* state, char** map, size
 
 static void process_fsinfo_data_split(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 6)
@@ -895,7 +895,7 @@ static void process_fsinfo_data_split(struct snapraid_state* state, char** map, 
 
 static void process_fsinfo_parity_split(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 	int index;
 
@@ -975,7 +975,7 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
-	int runtime = state->daemon_running != DAEMON_LOADING;
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 
 	if (mac < 5)

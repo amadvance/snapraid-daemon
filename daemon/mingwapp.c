@@ -22,7 +22,7 @@ static char path_data[PATH_MAX];
 
 int os_signal_interrupt(void)
 {
-	return state_ptr()->daemon_running == DAEMON_QUIT;
+	return !state_ptr()->daemon_running;
 }
 
 /****************************************************************************/
@@ -882,8 +882,8 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		 * will receive these events automatically because it's attached
 		 * to the same console, so we don't need to forward them.
 		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
 		state_ptr()->daemon_sig = SIGINT;
+		state_ptr()->daemon_running = 0;
 		return TRUE; /* signal handled, don't terminate parent */
 	case CTRL_CLOSE_EVENT :
 	case CTRL_LOGOFF_EVENT :
@@ -895,8 +895,8 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		 * of returning TRUE: ~5 seconds for CLOSE_EVENT and LOGOFF_EVENT,
 		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
 		 */
-		state_ptr()->daemon_running = DAEMON_QUIT;
 		state_ptr()->daemon_sig = SIGTERM;
+		state_ptr()->daemon_running = 0;
 		return TRUE; /* signal handled, but Windows will kill us after timeout */
 	default :
 		return FALSE;
@@ -941,8 +941,8 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 	case SERVICE_CONTROL_SHUTDOWN :
 		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
 			/* signal the runner to stop */
-			state_ptr()->daemon_running = DAEMON_QUIT;
 			state_ptr()->daemon_sig = SIGTERM;
+			state_ptr()->daemon_running = 0;
 
 			/* tell the OS we are trying to stop */
 			report_progress(SERVICE_STOP_PENDING, NO_ERROR, 5000);
