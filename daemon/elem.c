@@ -35,6 +35,7 @@ struct {
 	{ CMD_REPORT, "report" },
 	{ CMD_DOWN_IDLE, "down_idle" },
 	{ CMD_SHUTDOWN, "shutdown" },
+	{ CMD_START, "start" },
 	{ CMD_MAINTENANCE, "maintenance" },
 	{ CMD_HEAL, "heal" },
 	{ CMD_UNDELETE, "undelete" },

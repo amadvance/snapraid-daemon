@@ -358,7 +358,7 @@ int notify_start_locked_yield(struct snapraid_state* state, int high_cmd)
 	int ret = 0;
 
 	if (!high_cmd)
-		high_cmd = CMD_REPORT;
+		high_cmd = CMD_START;
 
 	if (state->config.notify_start[0] != 0) {
 		if (start_locked_yield(state, high_cmd) != 0)

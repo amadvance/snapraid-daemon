@@ -408,13 +408,13 @@ paths:
                       This field is omitted if the health is 'passed'.
                   active_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
                   next_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
                     description: >
                       The next command scheduled in the current execution sequence.
                       This field is present when the daemon is running an automated
@@ -899,7 +899,7 @@ components:
       properties:
         command:
           type: string
-          description: 'The SnapRAID CLI action to perform.'
+          description: 'The daemon action to perform.'
           oneOf:
             - const: probe
               description: >
@@ -932,6 +932,10 @@ components:
             - const: report
               description: >
                 Generates a full summary of last operations and statistics.
+            - const: start
+              description: >
+                Sends the configured start notification for the scheduled command
+                sequence. Does nothing if no start notification is configured.
             - const: down_idle
               description: >
                 Executes a conditional spindown operation of the disks that
@@ -1056,7 +1060,7 @@ components:
             when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
           description: >
             The command executed.
         high_command:

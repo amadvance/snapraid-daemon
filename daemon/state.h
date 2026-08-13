@@ -233,6 +233,7 @@ struct snapraid_disk {
 #define CMD_REPORT 101 /**< Additional command that generates a report */
 #define CMD_DOWN_IDLE 102 /**< Additional command that spin down inactive disks */
 #define CMD_SHUTDOWN 103 /**< Additional command that shuts down the system */
+#define CMD_START 104 /**< Additional command that sends a start notification */
 
 #define CMD_MAINTENANCE 201 /**< High level command. Never enter the queue. */
 #define CMD_HEAL 202 /**< High level command. Never enter the queue. */
