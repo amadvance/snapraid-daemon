@@ -330,6 +330,7 @@ int config_load_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
 	int f;
+	unsigned error_count = 0;
 
 	os_privileges_acquire();
 	f = open(config->conf, O_RDONLY | O_BINARY | O_CLOEXEC);
@@ -454,6 +455,7 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "sys_log_retention_days") == 0) {
 				if (parse_int(val, 0, 10000, &config->sys_log_retention_days) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sys_log_compression") == 0) {
@@ -462,21 +464,25 @@ int config_load_locked(struct snapraid_state* state)
 				} else if (parse_int(val, 0, 1, &config->sys_log_compression) == 0) {
 #ifndef HAVE_ZLIB
 					if (config->sys_log_compression == 1) {
+						++error_count;
 						log_msg(LVL_ERROR, "invalid config option %s=%s, gzip compression is not supported by this build", key, val);
 						config->sys_log_compression = 0;
 					}
 #endif
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sys_shutdown_on") == 0) {
 				if (parse_shutdown_on(val, config->sys_shutdown_on, sizeof(config->sys_shutdown_on)) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->net_enabled) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_port") == 0) {
@@ -486,6 +492,7 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "net_security_headers") == 0) {
 				if (parse_int(val, 0, 1, &config->net_security_headers) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_allowed_origin") == 0) {
@@ -493,6 +500,7 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "net_config_full_access") == 0) {
 				if (parse_int(val, 0, 1, &config->net_config_full_access) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_web_root") == 0) {
@@ -505,61 +513,73 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "check_updates") == 0) {
 				if (parse_int(val, 0, 1, &config->check_updates) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "maintenance_schedule") == 0) {
 				if (config_parse_maintenance_schedule(val, config) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sys_smartignore") == 0) {
 				if (config_parse_smart_ignore(val, config) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "probe_interval_minutes") == 0) {
 				if (parse_int(val, 0, 1440, &config->probe_interval_minutes) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "spindown_idle_minutes") == 0) {
 				if (config_parse_spindown_idle_minutes(val, &config->spindown_idle_minutes_data, &config->spindown_idle_minutes_parity) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sync_threshold_deletes") == 0) {
 				if (parse_int(val, 0, 10000, &config->sync_threshold_deletes) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sync_threshold_updates") == 0) {
 				if (parse_int(val, 0, 10000, &config->sync_threshold_updates) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sync_prehash") == 0) {
 				if (parse_int(val, 0, 1, &config->sync_prehash) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "sync_prevent_truncations") == 0) {
 				if (parse_int(val, 0, 1, &config->sync_prevent_truncations) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
 				if (parse_double(val, 0, 100, &config->scrub_percentage) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "scrub_older_than") == 0) {
 				if (parse_int(val, 0, 1000, &config->scrub_older_than) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "touch_zero_subseconds") == 0) {
 				if (parse_int(val, 0, 1, &config->touch_zero_subseconds) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "hook_run_as_user") == 0) {
@@ -571,11 +591,13 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->notify_syslog) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_syslog_level") == 0) {
 				if (config_parse_level(val, &config->notify_syslog_level) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_run_as_user") == 0) {
@@ -589,17 +611,21 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "notify_result_level") == 0) {
 				if (config_parse_level(val, &config->notify_result_level) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_differences") == 0) {
 				if (parse_int(val, 0, 1, &config->notify_differences) == 0) {
 				} else {
+					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else {
+				++error_count;
 				log_msg(LVL_ERROR, "unknown config option %s=%s", key, val);
 			}
 		} else {
+			++error_count;
 			log_msg(LVL_ERROR, "unrecognized config line '%s'", begin);
 		}
 	}
@@ -608,7 +634,10 @@ int config_load_locked(struct snapraid_state* state)
 
 	free(buffer);
 
-	log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
+	if (error_count == 0)
+		log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
+	else
+		log_msg(LVL_WARNING, "config loaded from %s with %u invalid entries", config->conf, error_count);
 
 	return 0;
 }
