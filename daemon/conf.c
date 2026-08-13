@@ -978,6 +978,12 @@ int config_save_locked(struct snapraid_state* state)
 	}
 
 #ifndef _WIN32
+#if HAVE_FSYNC
+	if (fsync(conf_dir_fd) != 0) {
+		log_msg(LVL_WARNING, "failed to fsync config directory %s, errno=%s(%d)", config->conf, strerror(errno), errno);
+	}
+#endif
+
 	close(conf_dir_fd);
 #endif
 	os_privileges_release();
