@@ -285,7 +285,9 @@ int daemon_init(struct snapraid_state* state)
 	runner_init(state);
 
 	/**
-	 * Parse existing log files
+	 * Parse existing log files before starting the REST and web servers.
+	 * This reconstructs the history available at startup and is complete
+	 * before the daemon accepts network requests.
 	 */
 	parse_past_log(state);
 
@@ -294,8 +296,12 @@ int daemon_init(struct snapraid_state* state)
 	 */
 	state->daemon_loading = 0;
 
-	/*
-	 * Trigger initial probe to load info into the state
+	/**
+	 * Trigger the initial probe asynchronously through the normal runner queue.
+	 * It runs ahead of work subsequently submitted to the queue, but does not
+	 * define daemon readiness: the control plane must remain usable with a
+	 * degraded array or incomplete disk information. Idle disks can
+	 * legitimately have no current telemetry even after a successful probe.
 	 */
 	if (runner(state, CMD_STARTUP, CMD_PROBE, 0, 0, 0, msg, sizeof(msg), &status) != 0) {
 		log_msg(LVL_ERROR, "failed to run the startup probe command");
