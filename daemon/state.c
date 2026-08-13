@@ -18,7 +18,8 @@ struct snapraid_state* state_init(void)
 	thread_mutex_init(&state->state_lock);
 	thread_mutex_init(&state->log_lock);
 	thread_rwlock_init(&state->web_lock);
-	state->daemon_running = DAEMON_LOADING;
+	state->daemon_loading = 1;
+	state->daemon_running = 1;
 	state->daemon_start_time = time(0);
 	state->array.health = health_array_locked(state, state->array.health_reason, sizeof(state->array.health_reason));
 

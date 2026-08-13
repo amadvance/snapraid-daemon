@@ -16,14 +16,18 @@
 
 static void app_signal_handler_term(int sig)
 {
-	state_ptr()->daemon_running = DAEMON_QUIT;
-	state_ptr()->daemon_sig = sig;
+	struct snapraid_state* state = state_ptr();
+
+	state->daemon_sig = sig;
+	state->daemon_running = 0;
 }
 
 static void app_signal_handler_hup(int sig)
 {
 	(void)sig;
-	state_ptr()->daemon_running = DAEMON_RELOAD;
+
+	if (state_ptr()->daemon_running)
+		state_ptr()->daemon_reloading = 1;
 }
 
 /****************************************************************************/
