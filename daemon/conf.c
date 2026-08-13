@@ -369,7 +369,21 @@ int config_load_locked(struct snapraid_state* state)
 	tommy_list_foreach(&config->line_list, config_line_free);
 	tommy_list_init(&config->line_list);
 
-	/* restore the configuration to the default state */
+	/*
+	 * A configuration reload has the same semantics as stopping and starting
+	 * the daemon: rebuild the complete runtime configuration from defaults and
+	 * then apply every valid option in the file.
+	 *
+	 * Invalid, unknown, and unrecognized entries are logged and ignored. They
+	 * do not make the load fail, because a single bad entry must not prevent
+	 * the daemon from starting or reloading the remaining valid configuration.
+	 * Consequently, an invalid or omitted option retains its default value;
+	 * it must not retain the value from the previous runtime configuration.
+	 *
+	 * Return failure from this function only for errors that prevent reading
+	 * the configuration file. Keep this behavior aligned for initial load and
+	 * reload.
+	 */
 	config_default_locked(state);
 
 	pulse(state, PULSE_CONFIG);
