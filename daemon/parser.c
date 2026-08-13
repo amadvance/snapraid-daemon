@@ -1724,10 +1724,12 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 		task->high_cmd = command_parse(val);
 	} else if (strcmp(tag, "term") == 0) {
 		task->state = PROCESS_STATE_TERM;
-		strint(&task->exit_code, val);
+		if (strint(&task->exit_code, val) != 0)
+			task->exit_code = -1;
 	} else if (strcmp(tag, "signal") == 0) {
 		task->state = PROCESS_STATE_SIGNAL;
-		strint(&task->exit_sig, val);
+		if (strint(&task->exit_sig, val) != 0)
+			task->exit_sig = -1;
 	}
 }
 
@@ -2278,11 +2280,22 @@ int parse_past_log(struct snapraid_state* state)
 
 		parse_end_locked(state, task);
 
+		/*
+		 * If the log does not contain termination tags, the process was interrupted.
+		 * Replicate a forced termination: exit code 1 on Windows and SIGKILL on Unix.
+		 */
+		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM) {
+#ifdef _WIN32
+			task->state = PROCESS_STATE_TERM;
+			task->exit_code = 1;
+#else
+			task->state = PROCESS_STATE_SIGNAL;
+			task->exit_sig = SIGKILL;
+#endif
+		}
+
 		/* compute the task health */
 		task->health = health_task(task, 0, 0);
-
-		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM)
-			task->state = PROCESS_STATE_TERM;
 
 		state->runner.latest = 0;
 
