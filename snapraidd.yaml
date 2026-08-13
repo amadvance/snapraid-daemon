@@ -650,18 +650,16 @@ paths:
             Invalid configuration. One or more values failed validation (e.g.,
             unsupported log level or out-of-range scrub frequency).
 
-            Updates are processed sequentially. All configuration options provided
-            before the one that caused the issue are successfully set. All options
-            appearing after the failing field are not processed and remain unchanged.
+            The update is atomic: no configuration changes are applied or persisted
+            when validation of any provided option fails.
           $ref: '#/components/responses/CommandResult'
         '403':
           description: >
             The server understood the request but refuses to authorize the
             modification of the specified configuration parameters.
 
-            Updates are processed sequentially. All configuration options provided
-            before the one that caused the issue are successfully set. All options
-            appearing after the failing field are not processed and remain unchanged.
+            The update is atomic: no configuration changes are applied or persisted
+            when any provided option is forbidden.
           $ref: '#/components/responses/CommandResult'
         '405':
           description: Invalid method.
