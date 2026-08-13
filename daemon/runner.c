@@ -1413,18 +1413,29 @@ void runner_done(struct snapraid_state* state)
 	thread_cond_destroy(&state->runner.cond);
 }
 
-int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, int group, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+const char* runner_begin_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status)
 {
 	const char* snapraid = app_find_engine(state->config.sys_engine);
 	if (!snapraid) {
 		log_msg(LVL_ERROR, "snapraid executable not found");
 		sncpy(msg, msg_size, "SnapRAID executable not found");
 		*status = 500;
-		return -1;
+		return 0;
+	}
+
+	if (!state->daemon_running) {
+		log_msg(LVL_ERROR, "failed to start runner because daemon is terminating");
+		sncpy(msg, msg_size, "Daemon is terminating");
+		*status = 503;
+		return 0;
 	}
 
 	sncpy(msg, msg_size, "");
+	return snapraid;
+}
 
+void runner_step_locked(struct snapraid_state* state, const char* snapraid, int high_cmd, int cmd, time_t now, int group, sl_t* arg_list)
+{
 	if (now == 0)
 		now = time(0);
 	if (group == 0)
@@ -1468,14 +1479,6 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
-	if (!state->daemon_running) {
-		task_free(task);
-		log_msg(LVL_ERROR, "failed to start runner %s because daemon is terminating", command_name(cmd));
-		sncpy(msg, msg_size, "Daemon is terminating");
-		*status = 503;
-		return -1;
-	}
-
 	task->number = ++state->runner.number_allocator;
 
 	/* insert the task in the queue */
@@ -1484,6 +1487,16 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
 	/* signal the runner thread that there is a task to execute */
 	thread_cond_signal(&state->runner.cond);
 
+}
+
+int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t now, int group, sl_t* arg_list, char* msg, size_t msg_size, int* status)
+{
+	const char* snapraid;
+	snapraid = runner_begin_locked(state, msg, msg_size, status);
+	if (!snapraid)
+		return -1;
+
+	runner_step_locked(state, snapraid, high_cmd, cmd, now, group, arg_list);
 	*status = 202;
 	return 0;
 }
