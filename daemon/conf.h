@@ -87,7 +87,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* con
 /**
  * Import a configuration to the state
  */
-int config_apply_locked(struct snapraid_state* state, struct snapraid_config* config);
+void config_apply_locked(struct snapraid_state* state, struct snapraid_config* config);
 
 /**
  * Destroy a not imported configuration

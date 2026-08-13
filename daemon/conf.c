@@ -1109,7 +1109,7 @@ void config_free(struct snapraid_config* config)
 	tommy_list_foreach(&config->smartignore_list, smartignore_free);
 }
 
-int config_apply_locked(struct snapraid_state* state, struct snapraid_config* transient)
+void config_apply_locked(struct snapraid_state* state, struct snapraid_config* transient)
 {
 	struct snapraid_config* config = &state->config;
 
@@ -1197,8 +1197,6 @@ int config_apply_locked(struct snapraid_state* state, struct snapraid_config* tr
 	config_set_int(config, "notify_differences", config->notify_differences);
 
 	config_refresh_locked(state);
-
-	return 0;
 }
 
 void config_init(struct snapraid_state* state)

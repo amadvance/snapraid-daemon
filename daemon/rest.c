@@ -640,6 +640,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	char* js;
 	int jc;
 	struct snapraid_config transient;
+	struct snapraid_config rollback;
 
 	status = json_read(conn, &js, &jl, msg, sizeof(msg));
 	if (status != 200)
@@ -897,21 +898,23 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	if (config_apply_locked(state, &transient) != 0) {
-		snprintf(msg, sizeof(msg), "Failed to apply the configuration");
-		goto bad;
-	}
+	config_dup_locked(state, &rollback);
+	config_apply_locked(state, &transient);
 
 	config_free(&transient);
 
-	pulse(state, PULSE_CONFIG);
-
 	if (config_save_locked(state) != 0) {
+		config_apply_locked(state, &rollback);
+		config_free(&rollback);
 		state_unlock();
 
 		free(js);
 		return send_json_error(conn, 500, "Failed to save the configuration");
 	}
+
+	config_free(&rollback);
+
+	pulse(state, PULSE_CONFIG);
 
 	state_unlock();
 
