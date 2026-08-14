@@ -14,6 +14,11 @@
 /****************************************************************************/
 /* signal */
 
+int os_signal_interrupt(void)
+{
+	return !state_ptr()->daemon_running;
+}
+
 static void app_signal_handler_term(int sig)
 {
 	struct snapraid_state* state = state_ptr();
