@@ -990,6 +990,8 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	struct snapraid_device* device = find_device(state, task->number, disk, file);
+	if (!device)
+		return;
 
 	if (strcmp(tag, "serial") == 0)
 		pulse_str(state, PULSE_DISKS, device->serial, sizeof(device->serial), val);
