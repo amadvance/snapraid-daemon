@@ -1791,7 +1791,7 @@ void parse_log(struct snapraid_state* state, int f, FILE* log_f, const char* log
 						case '\\' : plain[plain_len++] = '\\'; break;
 						case 'n' :  plain[plain_len++] = '\n'; break;
 						case 'd' : plain[plain_len++] = ':'; break;
-						default : /* ignore if unknown */
+						default : break; /* ignore if unknown */
 						}
 					}
 					escape = 0;
