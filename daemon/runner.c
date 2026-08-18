@@ -1079,6 +1079,8 @@ bail:
 
 	state_lock();
 
+	/* process terminated and reaped, clear pid before post-hook */
+	task->pid = 0;
 	task->unix_end_time = unix_end_time;
 
 	task->health = health_task(task, 0, 0);
@@ -1686,7 +1688,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pid = task->pid;
 	number = task->number;
 
-	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Sent SIGTERM signal from STOP command");
+	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Stop requested");
 
 	state_unlock();
 
@@ -1708,11 +1710,12 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 		}
 
 		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+		sncpy(msg, msg_size, "Signal sent");
 	} else {
-		log_msg(LVL_INFO, "task %d canceled during startup phase", number);
+		log_msg(LVL_INFO, "stop requested for task %d with no running process", number);
+		sncpy(msg, msg_size, "Stop requested");
 	}
 
-	sncpy(msg, msg_size, "Signal sent");
 	*status = 202;
 	return 0;
 }
