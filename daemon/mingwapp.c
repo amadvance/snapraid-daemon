@@ -51,34 +51,44 @@ const char* app_find_curl(void)
 {
 	static char path_curl_resolved[PATH_MAX];
 	wchar_t path_buf[PATH_MAX];
+	DWORD ret;
 
 	if (windows_is_wine()) {
 		return "/usr/bin/curl";
 	}
 
-	if (SearchPathW(0, L"curl.exe", 0, PATH_MAX, path_buf, 0) != 0) {
-		u16tou8(path_curl_resolved, path_buf);
-		return path_curl_resolved;
+	ret = SearchPathW(0, L"curl.exe", 0, PATH_MAX, path_buf, 0);
+	if (ret == 0) {
+		return 0;
+	}
+	if (ret >= PATH_MAX) {
+		return 0;
 	}
 
-	return 0;
+	u16tou8(path_curl_resolved, path_buf);
+	return path_curl_resolved;
 }
 
 const char* app_find_docker(void)
 {
 	static char path_docker[PATH_MAX];
 	wchar_t path_buf[PATH_MAX];
+	DWORD ret;
 
 	if (windows_is_wine()) {
 		return "/usr/bin/docker";
 	}
 
-	if (SearchPathW(0, L"docker.exe", 0, PATH_MAX, path_buf, 0) != 0) {
-		u16tou8(path_docker, path_buf);
-		return path_docker;
+	ret = SearchPathW(0, L"docker.exe", 0, PATH_MAX, path_buf, 0);
+	if (ret == 0) {
+		return 0;
+	}
+	if (ret >= PATH_MAX) {
+		return 0;
 	}
 
-	return 0;
+	u16tou8(path_docker, path_buf);
+	return path_docker;
 }
 
 const char* app_find_poweroff(void)
@@ -605,8 +615,19 @@ static int do_service_install(const struct snapraid_state* state)
 	SC_HANDLE schSCManager;
 	SC_HANDLE schService;
 	HKEY hk;
+	DWORD path_len;
 
-	GetModuleFileNameW(0, wpath, PATH_MAX);
+	path_len = GetModuleFileNameW(0, wpath, PATH_MAX);
+	if (path_len == 0) {
+		fprintf(stderr, "Failed to get executable path (%lu)\n", (unsigned long)GetLastError());
+		return -1;
+	}
+	if (path_len >= PATH_MAX) {
+		errno = ENAMETOOLONG;
+		fprintf(stderr, "Executable path is too long\n");
+		return -1;
+	}
+
 	u16tou8(path, wpath);
 
 	if (state->config.conf[0]) {
