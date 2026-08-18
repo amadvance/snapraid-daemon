@@ -376,7 +376,7 @@ static int do_service_start_all(void)
 
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
-		char name[128];
+		char name[CONV_MAX];
 		u16tou8(name, wname);
 		if (is_our_service(name)) {
 			printf("Starting service %s...\n", name);
@@ -425,7 +425,7 @@ static int do_service_stop_all(void)
 
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
-		char name[128];
+		char name[CONV_MAX];
 		u16tou8(name, wname);
 		if (is_our_service(name)) {
 			printf("Stopping service %s...\n", name);
@@ -480,7 +480,7 @@ static int do_service_remove_all(void)
 
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
-		char name[128];
+		char name[CONV_MAX];
 		u16tou8(name, wname);
 		if (is_our_service(name)) {
 			printf("Removing service %s...\n", name);
@@ -504,7 +504,8 @@ static int do_service_remove_all(void)
 
 				char reg_path[PATH_MAX];
 				wchar_t wreg_path[PATH_MAX];
-				snprintf(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", name);
+				sncpy(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\");
+				sncat(reg_path, sizeof(reg_path), name);
 				if (u8tou16_mayfail(wreg_path, sizeof(wreg_path) / sizeof(wreg_path[0]), reg_path, strlen(reg_path) + 1, 0))
 					RegDeleteKeyW(HKEY_LOCAL_MACHINE, wreg_path);
 			} else {
@@ -543,10 +544,10 @@ static int do_service_list(void)
 
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
-		char name[128];
+		char name[CONV_MAX];
 		u16tou8(name, wname);
 		if (is_our_service(name)) {
-			char display[128];
+			char display[CONV_MAX];
 			u16tou8(display, services[i].lpDisplayName);
 			const char* status_str;
 			switch (services[i].ServiceStatusProcess.dwCurrentState) {
@@ -853,7 +854,8 @@ void windows_eventlog(int level, const char* msg)
 		break;
 	}
 
-	u8tou16(wservice_name, service_name);
+	if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0))
+		return;
 	h = RegisterEventSourceW(0, wservice_name);
 	if (!h)
 		return;
