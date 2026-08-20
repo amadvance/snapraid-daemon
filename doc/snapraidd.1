@@ -1053,6 +1053,9 @@ exit code of the task (\-1 if signaled or canceled).
 .PD
 .RE
 .PP
+The report contents are not available as a placeholder. They are passed
+to the command through standard input (stdin).
+.PP
 If the command contains \-\-mail\-from or \-\-mail\-rcpt, the daemon
 automatically prepends standard email headers (From, To, Subject)
 followed by a blank line to the report text. This ensures
