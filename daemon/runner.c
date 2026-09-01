@@ -115,7 +115,7 @@ static int runner_need_hook(int cmd)
 
 #define CONTAINERS_MAX 128
 
-static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, const char* run_as_user, ZFILE* log_f, const char* log_prefix)
+static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, ZFILE* log_f, const char* log_prefix)
 {
 	if (log_f != 0) {
 		zprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
@@ -157,7 +157,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 
 	int ret = -1;
 	os_privileges_acquire();
-	pid_t pid = os_spawn(argv, NULL, NULL, run_as_user);
+	pid_t pid = os_spawn(argv, NULL, NULL, NULL);
 	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn docker %s, errno=%s(%d)", action, strerror(errno), errno);
@@ -646,7 +646,7 @@ static int runner_hook_begin(const struct snapraid_hook* hook, ZFILE* log_f, cha
 		*out_hook_flags |= HOOK_FLAG_DOCKER;
 
 		log_task(LVL_INFO, "task %d pausing docker containers: %s", number, hook->config.hook_docker_pause);
-		if (run_docker_cmd(docker_path, "pause", hook->config.hook_docker_pause, hook->config.hook_run_as_user, log_f, "pre_docker") != 0) {
+		if (run_docker_cmd(docker_path, "pause", hook->config.hook_docker_pause, log_f, "pre_docker") != 0) {
 			if (exit_neg_msg)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to pause docker containers");
 			return -1;
@@ -870,7 +870,7 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 		const char* docker_path = app_find_docker();
 		if (docker_path) {
 			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook->config.hook_docker_pause);
-			(void)run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_pause, hook->config.hook_run_as_user, log_f, "post_docker");
+			(void)run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_pause, log_f, "post_docker");
 		} else {
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_docker_fail\n");
