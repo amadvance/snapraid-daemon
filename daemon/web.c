@@ -267,6 +267,12 @@ static ssize_t read_file(const char* path, char** body)
 		return -1;
 	}
 
+	if (fst.st_size > WEB_PAGE_SIZE_MAX) {
+		log_msg(LVL_ERROR, "crawler ignore file exceeding size limit %s", path);
+		close(f);
+		return -1;
+	}
+
 	*body = malloc_nofail(fst.st_size);
 
 	if (read_fd(f, *body, fst.st_size) != fst.st_size) {
