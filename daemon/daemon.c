@@ -280,7 +280,7 @@ int daemon_init(struct snapraid_state* state)
 	app_system_info(&state->system);
 
 	/**
-	 * Create runner worker threads while signals are still BLOCKED
+	 * Initialize runner while signals are still BLOCKED
 	 */
 	runner_init(state);
 
@@ -322,6 +322,12 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	os_privileges_drop();
+
+	/**
+	 * Start runner worker thread after dropping privileges.
+	 * Signals are still BLOCKED and will be inherited by the new thread.
+	 */
+	runner_start(state);
 
 	/**
 	 * Create REST worker threads after dropping privileges.
