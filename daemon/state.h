@@ -25,6 +25,8 @@
  **/
 #define MSG_MAX 256
 
+#define CONFIG_MAX 512 /**< Max length of a configuration option */
+
 /**
  * Max UUID length.
  */
@@ -335,6 +337,15 @@ struct snapraid_schedule {
 	tommy_node node;
 };
 
+struct snapraid_hook_config {
+	char hook_script[CONFIG_MAX];
+	char hook_docker_pause[CONFIG_MAX];
+	char hook_run_as_user[CONFIG_MAX];
+	char conf[PATH_MAX];
+	char engine_conf[PATH_MAX];
+	char instance[64];
+};
+
 struct snapraid_runner {
 	thread_cond_t cond;
 	thread_id_t thread_id;
@@ -343,6 +354,7 @@ struct snapraid_runner {
 	int64_t last_start_time; /**< Latest start time used */
 	struct snapraid_task* latest; /**< Task running, or latest one finished */
 	int hook_flags; /**< Active hook flags postponed to the next task */
+	struct snapraid_hook_config hook_config; /**< Configuration of the postponed hook */
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
 	tommy_list history_list; /**< List of snapraid_task already executed */
 	int hold_off; /**< Hold off the next maintenance */
@@ -447,8 +459,6 @@ struct snapraid_array {
 	tommy_list bucket_list; /**< Latest bucket list */
 	tommy_list bucket_parse_list; /**< Working bucket list while parsing */
 };
-
-#define CONFIG_MAX 512 /**< Max length of a configuration option */
 
 #define AUTH_NB_BLOCKS 65536 /**< Argon2id memory size parameter (64 MiB in 1 KiB blocks) */
 #define AUTH_NB_PASSES 3 /**< Argon2id iterations parameter */
