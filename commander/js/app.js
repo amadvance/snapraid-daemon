@@ -775,8 +775,8 @@ const app = {
                 // Check if it should be a number
                 if (['sync_threshold_deletes', 'sync_threshold_updates',
                     'scrub_older_than', 'probe_interval_minutes'].includes(key)) {
-                    const parsed = parseInt(value, 10);
-                    if (isNaN(parsed) || isNaN(Number(value)) || value.includes('.')) {
+                    const parsed = Number(value);
+                    if (value.trim() === '' || !Number.isInteger(parsed)) {
                         const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
                         showToast(`Failed to save: Invalid value ${displayVal} for ${key}`, 'error');
                         return;
@@ -795,8 +795,8 @@ const app = {
                         return;
                     }
                 } else if (key === 'scrub_percentage') {
-                    const parsed = parseFloat(value);
-                    if (isNaN(parsed) || isNaN(Number(value))) {
+                    const parsed = Number(value);
+                    if (value.trim() === '' || !Number.isFinite(parsed)) {
                         const displayVal = value.trim() === '' ? 'empty' : `"${value}"`;
                         showToast(`Failed to save: Invalid value ${displayVal} for ${key}`, 'error');
                         return;
