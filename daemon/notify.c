@@ -284,13 +284,15 @@ static int start_locked_yield(struct snapraid_state* state, int high_cmd)
 	sncpy(template, sizeof(template), state->config.notify_start);
 	snprintf(subject, sizeof(subject), "[START] SnapRAID %s", command);
 
-#define START_PLACEHOLDERS 6
+#define START_PLACEHOLDERS 8
 	const char* placeholders[START_PLACEHOLDERS] = {
 		"%s",
 		"%l",
 		"%n",
 		"%t",
 		"%h",
+		"--wide",
+		"--narrow",
 		0
 	};
 	const char* values[START_PLACEHOLDERS] = {
@@ -299,6 +301,8 @@ static int start_locked_yield(struct snapraid_state* state, int high_cmd)
 		"low",
 		"play_or_pause_button",
 		command_name(high_cmd),
+		"", /* --wide */
+		"", /* --narrow */
 		0
 	};
 
