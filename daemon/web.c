@@ -688,13 +688,22 @@ int web_init(struct snapraid_state* state)
 	if (!state->web.page_nocache) {
 		if (web_reload(state, state->config.net_web_root) != 0)
 			return -1;
+	}
+
+	return 0;
+}
+
+void web_start(struct snapraid_state* state)
+{
+	if (!state->rest_context)
+		return;
+
+	if (!state->web.page_nocache) {
 		mg_set_request_handler(state->rest_context, "**", handler_virtual_file, state);
 	} else {
 		log_msg(LVL_INFO, "serving web root %s", state->config.net_web_root);
 		mg_set_request_handler(state->rest_context, "**", handler_real_file, state);
 	}
-
-	return 0;
 }
 
 void web_done(struct snapraid_state* state)

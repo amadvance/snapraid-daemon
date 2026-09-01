@@ -314,7 +314,18 @@ int daemon_init(struct snapraid_state* state)
 	scheduler_init(state);
 
 	/**
-	 * Create REST worker threads while signals are still BLOCKED
+	 * Initialize web resources before dropping privileges
+	 */
+	if (web_init(state) != 0) {
+		log_msg(LVL_ERROR, "failed to initialize the web server");
+		return -1;
+	}
+
+	os_privileges_drop();
+
+	/**
+	 * Create REST worker threads after dropping privileges.
+	 * Signals are still BLOCKED and will be inherited by the new threads.
 	 */
 	if (rest_init(state, state->config.net_enabled, state->config.net_port, state->config.net_acl) != 0) {
 		log_msg(LVL_ERROR, "failed to start the rest api");
@@ -322,14 +333,9 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	/**
-	 * Create web worker threads while signals are still BLOCKED
+	 * Register web request handler
 	 */
-	if (web_init(state) != 0) {
-		log_msg(LVL_ERROR, "failed to start the web server");
-		return -1;
-	}
-
-	os_privileges_drop();
+	web_start(state);
 
 	/**
 	 * Start scheduler worker thread after dropping privileges.
@@ -382,6 +388,7 @@ void daemon_run(struct snapraid_state* state)
 					log_msg(LVL_CRITICAL, "failed to reload web server");
 					os_exit();
 				}
+				web_start(state);
 			}
 
 			if (state->daemon_running && web_reload(state, net_web_root) != 0) {

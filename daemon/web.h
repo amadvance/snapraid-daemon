@@ -19,6 +19,12 @@
 int web_init(struct snapraid_state* state);
 
 /**
+ * Register WEB request handler.
+ * @param state Current snapraid state
+ */
+void web_start(struct snapraid_state* state);
+
+/**
  * Cleanup WEB server and free asset cache.
  * @param state Current snapraid state
  */
