@@ -12,6 +12,8 @@
 #define JSMN_HEADER
 #include "jsmn/jsmn.h"
 
+#define VERSION_RESPONSE_MAX 131072
+
 /**
  * Advance iterator past the current JSMN token and all its child nodes.
  */
@@ -126,6 +128,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	ss_t ss;
 	ss_init(&ss, 8192);
 
+	int response_too_large = 0;
 	char read_buf[512];
 	while (1) {
 		ssize_t r = read(stdout_fd, read_buf, sizeof(read_buf));
@@ -136,7 +139,11 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 		}
 		if (r == 0)
 			break;
-		ss_write(&ss, read_buf, r);
+
+		if (ss_len(&ss) + r < VERSION_RESPONSE_MAX)
+			ss_write(&ss, read_buf, r);
+		else
+			response_too_large = 1;
 	}
 	close(stdout_fd);
 
@@ -164,6 +171,12 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 				log_msg(LVL_ERROR, "failed to check updates for %s: curl terminated abnormally", repo);
 			}
 		}
+		ss_done(&ss);
+		return;
+	}
+
+	if (response_too_large) {
+		log_msg(LVL_ERROR, "failed to check updates for %s: response exceeds %d bytes", repo, VERSION_RESPONSE_MAX);
 		ss_done(&ss);
 		return;
 	}
