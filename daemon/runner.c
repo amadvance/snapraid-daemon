@@ -195,6 +195,22 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	return ret;
 }
 
+static int tracked_is_worse(const struct snapraid_tracked* tracked, int kind, int higher_is_worse, time_t queue_time)
+{
+	if (tracked->value == SMART_UNASSIGNED
+		|| tracked->prev == SMART_UNASSIGNED
+		|| tracked->prev_last < queue_time)
+		return 0;
+
+	uint64_t value = smart_conv(tracked->value, kind);
+	uint64_t prev = smart_conv(tracked->prev, kind);
+
+	if (higher_is_worse)
+		return value > prev;
+
+	return value < prev;
+}
+
 static int runner_report_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* report_task = state->runner.latest;
@@ -317,18 +333,9 @@ static int runner_report_locked(struct snapraid_state* state)
 				if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
 					continue;
 
-				if (attr->raw.value != SMART_UNASSIGNED
-					&& attr->raw.prev != SMART_UNASSIGNED
-					&& attr->raw.value > attr->raw.prev /* only if increased */
-					&& attr->raw.prev_last >= queue_time
-				) {
-					has_warning_smart_changes = 1;
-					break;
-				}
-				if (attr->norm.value != SMART_UNASSIGNED
-					&& attr->norm.prev != SMART_UNASSIGNED
-					&& attr->norm.value < attr->norm.prev /* only if decreased */
-					&& attr->norm.prev_last >= queue_time
+				int kind = smart_kind(k, attr->name);
+				if (tracked_is_worse(&attr->raw, kind, 1, queue_time)
+					|| tracked_is_worse(&attr->norm, SMART_KIND_NORM, 0, queue_time)
 				) {
 					has_warning_smart_changes = 1;
 					break;
