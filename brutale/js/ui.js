@@ -9,7 +9,11 @@ const badge = (text, color) => `<span class="badge badge-${color}">${text}</span
 export const esc = (str) => str.replace(/'/g, "\\'");
 const escAttr = (str) => {
     if (str == null) return '';
-    return String(str).replace(/"/g, '&quot;');
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 };
 
 /**
@@ -630,8 +634,8 @@ export const renderDifferences = (arrayInfo) => {
                 <td class="text-xs font-mono">${d.disk}</td>
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
-                        <span>${d.path}</span>
-                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-path="${esc(d.path)}">Undelete</button>` : ''}
+                        <span>${escAttr(d.path)}</span>
+                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-path="${escAttr(d.path)}">Undelete</button>` : ''}
                     </div>
                 </td>
             </tr>
