@@ -258,6 +258,8 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 	 */
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
+		if (state->config.notify_start[0] != 0)
+			runner_step_locked(state, snapraid, CMD_REFRESH, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_READ, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_REPORT, now, group, 0);
