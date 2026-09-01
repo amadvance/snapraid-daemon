@@ -408,7 +408,19 @@ static int runner_start_locked(struct snapraid_state* state)
 	}
 
 	start_task->running = 0;
-	start_task->state = PROCESS_STATE_TERM;
+
+	if (start_task->canceled) {
+		char msg[MSG_MAX];
+
+		start_task->state = PROCESS_STATE_CANCEL;
+
+		snprintf(msg, sizeof(msg), "The %s operation was canceled during start notification", command_name(start_task->high_cmd));
+		sncpy(start_task->exit_msg, sizeof(start_task->exit_msg), msg);
+		task_list_cancel_in_group(state, start_task, msg);
+	} else {
+		start_task->state = PROCESS_STATE_TERM;
+	}
+
 	start_task->unix_end_time = start_task->unix_start_time;
 
 	/* insert in the done list */
