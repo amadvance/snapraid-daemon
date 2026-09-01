@@ -4,12 +4,12 @@ set -e
 # Reload systemd, enable and start the service
 if [ -d /run/systemd/system ]; then
     systemctl daemon-reload >/dev/null || true
-    systemctl enable snapraidd.service >/dev/null || true
     if [ -z "$2" ]; then
-        # Fresh install: start the default service
+        # Fresh install: enable and start the default service
+        systemctl enable snapraidd.service >/dev/null || true
         systemctl start snapraidd.service >/dev/null || true
     else
-        # Upgrade: restart default and any active template services
+        # Upgrade: preserve enablement state and restart running services
         systemctl try-restart snapraidd.service 'snapraidd@*.service' >/dev/null || true
     fi
 fi
