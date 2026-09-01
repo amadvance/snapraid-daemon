@@ -329,13 +329,17 @@ uninstall-hook:
 	done
 # Uninstall service/rc.d
 if INSTALL_SYSTEMD
-	@echo ""
-	@echo "=================================================================="
-	@echo "Stopping and disabling systemd service..."
-	systemctl disable --now snapraidd 2>/dev/null || true
-	systemctl daemon-reload 2>/dev/null || true
-	@echo "Cleaning up runtime files..."
-	rm -f /run/snapraidd.pid
+	@if test -z "$(DESTDIR)"; then \
+		echo ""; \
+		echo "=================================================================="; \
+		echo "Stopping and disabling systemd service..."; \
+		systemctl disable --now snapraidd.service 2>/dev/null || true; \
+		systemctl disable snapraidd@.service 2>/dev/null || true; \
+		systemctl stop 'snapraidd@*.service' 2>/dev/null || true; \
+		systemctl daemon-reload 2>/dev/null || true; \
+		echo "Cleaning up runtime files..."; \
+		rm -f /run/snapraidd.pid /run/snapraidd-*.pid; \
+	fi
 endif
 if INSTALL_BSD_INIT
 	@echo ""
