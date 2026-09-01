@@ -471,9 +471,9 @@ notify_syslog_level = info
 # is set to 1. Otherwise, it remains read-only for security reasons.
 #notify_heartbeat = curl -f --max-time 30 --retry 3 https://hc-ping.com/your_private_uuid
 
-# The notify_start command is triggered at the start of a high-level task
-# like maintenance. The daemon pipes a simple plain-text start message
-# directly into the command's stdin.
+# The notify_start command is triggered at the start of maintenance, heal,
+# undelete, and refresh tasks. The daemon pipes a simple plain-text start
+# message directly into the command's stdin.
 #
 # Available Placeholders:
 # %s : Replaced with the subject string (e.g., "[START] SnapRAID Maintenance").
