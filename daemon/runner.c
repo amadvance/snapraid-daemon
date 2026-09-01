@@ -1459,7 +1459,10 @@ void runner_init(struct snapraid_state* state)
 	}
 
 	thread_cond_init(&state->runner.cond);
+}
 
+void runner_start(struct snapraid_state* state)
+{
 	/* start the runner thread */
 	thread_create(&state->runner.thread_id, runner_thread, state);
 }

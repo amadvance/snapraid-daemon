@@ -16,6 +16,12 @@
 void runner_init(struct snapraid_state* state);
 
 /**
+ * Start the runner worker thread.
+ * @param state Current snapraid state
+ */
+void runner_start(struct snapraid_state* state);
+
+/**
  * Cleanup the runner system.
  * @param state Current snapraid state
  */
