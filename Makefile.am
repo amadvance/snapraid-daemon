@@ -49,7 +49,8 @@ BRUTALE_DIST = \
 	css/fonts/DMSans-Medium.woff2 \
 	css/fonts/DMSans-Bold.woff2 \
 	css/fonts/JetBrainsMono-Regular.woff2 \
-	css/fonts/JetBrainsMono-Bold.woff2
+	css/fonts/JetBrainsMono-Bold.woff2 \
+	css/fonts/OFL
 
 data_DATA = commander.zip brutale.zip
 
@@ -162,7 +163,7 @@ LIST_XML = doc/snapraidd.xml $(patsubst %, doc/snapraidd-%.xml, $(LANG_CODES))
 EXTRA_DIST = \
 	autogen.sh autover.sh \
 	README HISTORY INSTALL AUTHORS BLUEBOX \
-	COPYING LICENSES/GPL-3.0 LICENSES/BSD-2-Clause LICENSES/MIT \
+	COPYING LICENSES/GPL-3.0 LICENSES/BSD-2-Clause LICENSES/MIT LICENSES/OFL \
 	$(LIST_D) \
 	$(LIST_MAN) \
 	$(LIST_TXT) \
@@ -234,7 +235,8 @@ EXTRA_DIST = \
 	brutale/css/fonts/DMSans-Medium.woff2 \
 	brutale/css/fonts/DMSans-Bold.woff2 \
 	brutale/css/fonts/JetBrainsMono-Regular.woff2 \
-	brutale/css/fonts/JetBrainsMono-Bold.woff2
+	brutale/css/fonts/JetBrainsMono-Bold.woff2 \
+	brutale/css/fonts/OFL
 
 man1_MANS = doc/snapraidd.1
 
