@@ -116,9 +116,8 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	};
 
 	int stdout_fd = -1;
-	os_privileges_acquire();
+	/* run curl with the daemon's current unprivileged credentials; update checks do not require root privileges */
 	pid_t pid = os_spawn(argv, &stdout_fd, NULL, NULL);
-	os_privileges_release();
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: spawn failed, errno=%s(%d)", repo, strerror(errno), errno);
 		return;
