@@ -361,6 +361,7 @@ void* scheduler_thread(void* arg)
 	int64_t last_delete_ts;
 	int64_t last_history_ts;
 	int64_t last_version_check_ts;
+	int64_t version_check_interval_secs;
 
 	last = state->scheduler.start_time;
 	localtime_r(&last, &last_tm);
@@ -368,6 +369,7 @@ void* scheduler_thread(void* arg)
 	last_delete_ts = last_probe_and_spindown_ts;
 	last_history_ts = last_probe_and_spindown_ts;
 	last_version_check_ts = 0;
+	version_check_interval_secs = 0;
 
 	state_lock();
 
@@ -454,15 +456,18 @@ void* scheduler_thread(void* arg)
 
 			int64_t mono_now_secs = os_tick_sec();
 
-			/* check for new version every 12 hours */
+			/* check for new version every 12 hours, retry failures after 5 minutes */
 			if (state->config.check_updates
-				&& (last_version_check_ts == 0 || mono_now_secs - last_version_check_ts >= 12 * 3600)) {
+				&& (last_version_check_ts == 0 || mono_now_secs - last_version_check_ts >= version_check_interval_secs)) {
 				state_unlock();
 
-				last_version_check_ts = mono_now_secs;
-				version_check(state);
+				int version_check_ret = version_check(state);
 
 				state_lock();
+
+				last_version_check_ts = os_tick_sec();
+				version_check_interval_secs = version_check_ret == 0 ? 12 * 3600 : 5 * 60;
+
 				/* continue with other tasks */
 			}
 

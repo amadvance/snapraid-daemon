@@ -101,7 +101,7 @@ static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, si
 	return found ? 0 : -1;
 }
 
-static void check_repo_version(struct snapraid_state* state, const char* curl_path, const char* repo, char* version_out, size_t version_out_size)
+static int check_repo_version(struct snapraid_state* state, const char* curl_path, const char* repo, char* version_out, size_t version_out_size)
 {
 	char url[256];
 	snprintf(url, sizeof(url), "https://api.github.com/repos/%s/releases/latest", repo);
@@ -122,7 +122,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	pid_t pid = os_spawn(argv, &stdout_fd, NULL, NULL);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: spawn failed, errno=%s(%d)", repo, strerror(errno), errno);
-		return;
+		return -1;
 	}
 
 	ss_t ss;
@@ -152,7 +152,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: wait failed, errno=%s(%d)", repo, strerror(errno), errno);
 		ss_done(&ss);
-		return;
+		return -1;
 	}
 
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
@@ -172,13 +172,13 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 			}
 		}
 		ss_done(&ss);
-		return;
+		return -1;
 	}
 
 	if (response_too_large) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: response exceeds %d bytes", repo, VERSION_RESPONSE_MAX);
 		ss_done(&ss);
-		return;
+		return -1;
 	}
 
 	char* js = ss_extract(&ss);
@@ -191,7 +191,7 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 			log_msg(LVL_ERROR, "failed to check updates for %s: parse failed", repo);
 		}
 		ss_done(&ss);
-		return;
+		return -1;
 	}
 	ss_done(&ss);
 
@@ -199,17 +199,26 @@ static void check_repo_version(struct snapraid_state* state, const char* curl_pa
 	sncpy(version_out, version_out_size, tag);
 	pulse(state, PULSE_ARRAY);
 	state_unlock();
+
+	return 0;
 }
 
-void version_check(struct snapraid_state* state)
+int version_check(struct snapraid_state* state)
 {
 	const char* curl_path = app_find_curl();
 	if (!curl_path) {
 		log_msg(LVL_ERROR, "failed to check updates: curl executable not found");
-		return;
+		return -1;
 	}
 
-	check_repo_version(state, curl_path, "amadvance/snapraid-daemon", state->latest_daemon_version, sizeof(state->latest_daemon_version));
-	check_repo_version(state, curl_path, "amadvance/snapraid", state->latest_engine_version, sizeof(state->latest_engine_version));
+	int ret = 0;
+
+	if (check_repo_version(state, curl_path, "amadvance/snapraid-daemon", state->latest_daemon_version, sizeof(state->latest_daemon_version)) != 0)
+		ret = -1;
+
+	if (check_repo_version(state, curl_path, "amadvance/snapraid", state->latest_engine_version, sizeof(state->latest_engine_version)) != 0)
+		ret = -1;
+
+	return ret;
 }
 
