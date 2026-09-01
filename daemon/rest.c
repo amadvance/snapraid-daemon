@@ -2782,8 +2782,12 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 
 	const char* auth_hdr = mg_get_header(conn, "Authorization");
 	const char* b64_payload = 0;
-	if (auth_hdr != 0 && strncmp(auth_hdr, "Basic ", 6) == 0) {
-		b64_payload = auth_hdr + 6;
+	if (auth_hdr != 0 && strncasecmp(auth_hdr, "Basic", 5) == 0 && auth_hdr[5] == ' ') {
+		b64_payload = auth_hdr + 5;
+		while (*b64_payload == ' ')
+			++b64_payload;
+		if (*b64_payload == 0)
+			b64_payload = 0;
 	}
 
 	char net_auth_credential[CONFIG_MAX];
