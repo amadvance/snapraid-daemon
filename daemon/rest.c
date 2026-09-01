@@ -2778,36 +2778,44 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 		return 1;
 	}
 
-	char net_auth_credential[CONFIG_MAX];
-	char rest_auth_cache[CONFIG_MAX];
-	state_lock();
-	sncpy(net_auth_credential, sizeof(net_auth_credential), state->config.net_auth_credential);
-	sncpy(rest_auth_cache, sizeof(rest_auth_cache), state->rest_auth_cache);
-	state_unlock();
-
-	/* if credential is not configured, bypass authentication */
-	if (net_auth_credential[0] == 0) {
-		return 1;
-	}
-
 	const char* remote_addr = ri->remote_addr[0] ? ri->remote_addr : "unknown";
 
 	const char* auth_hdr = mg_get_header(conn, "Authorization");
+	const char* b64_payload = 0;
+	if (auth_hdr != 0 && strncmp(auth_hdr, "Basic ", 6) == 0) {
+		b64_payload = auth_hdr + 6;
+	}
+
+	char net_auth_credential[CONFIG_MAX];
+	char net_auth_credential_parse[CONFIG_MAX];
+
+	state_lock();
+	sncpy(net_auth_credential, sizeof(net_auth_credential), state->config.net_auth_credential);
+
+	/* if credential is not configured, bypass authentication */
+	if (net_auth_credential[0] == 0) {
+		state_unlock();
+		return 1;
+	}
+
+	/* check if the token is already in the cache */
+	if (b64_payload != 0 && state->rest_auth_cache[0] != 0 && strcmp(state->rest_auth_cache, b64_payload) == 0) {
+		state_unlock();
+		return 1;
+	}
+	state_unlock();
+
 	if (auth_hdr == 0) {
 		log_msg(LVL_DEBUG, "authentication info: missing Authorization header from IP %s", remote_addr);
 		goto bail;
 	}
-	if (strncmp(auth_hdr, "Basic ", 6) != 0) {
+	if (b64_payload == 0) {
 		log_msg(LVL_WARNING, "authentication failed (invalid authorization scheme) from IP %s", remote_addr);
 		goto bail;
 	}
 
-	const char* b64_payload = auth_hdr + 6;
-
-	/* check if the token is already in the cache */
-	if (rest_auth_cache[0] != 0 && strcmp(rest_auth_cache, b64_payload) == 0) {
-		return 1;
-	}
+	/* keep the original credential unchanged to detect reloads during verification */
+	sncpy(net_auth_credential_parse, sizeof(net_auth_credential_parse), net_auth_credential);
 
 	uint64_t now = os_tick_sec();
 	int too_fast = 0;
@@ -2872,14 +2880,14 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 	}
 
 	/* parse config credential: username:$argon2id$v=19$m=65536,t=3,p=1$salt_base64$hash_base64 */
-	char* config_colon = strchr(net_auth_credential, ':');
+	char* config_colon = strchr(net_auth_credential_parse, ':');
 	if (config_colon == 0) {
 		log_msg(LVL_ERROR, "authentication config error: 'net_auth_credential' is not in USER:HASH format");
 		goto bail;
 	}
 
 	*config_colon = 0;
-	char* config_user = net_auth_credential;
+	char* config_user = net_auth_credential_parse;
 	char* hash_str = config_colon + 1;
 
 	if (strcmp(inbound_user, config_user) != 0) {
@@ -2966,16 +2974,28 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 		goto bail;
 	}
 
+	/*
+	 * Ensure that the credential verified above is still the configured one.
+	 * A configuration reload may have changed it while Argon2 was running.
+	 */
+	int credential_changed;
+	int cacheable = strlen(b64_payload) < CONFIG_MAX;
+
+	state_lock();
+	credential_changed = strcmp(state->config.net_auth_credential, net_auth_credential) != 0;
+	if (!credential_changed && cacheable) {
+		sncpy(state->rest_auth_cache, sizeof(state->rest_auth_cache), b64_payload);
+	}
+	state_unlock();
+
+	if (credential_changed) {
+		log_msg(LVL_WARNING, "authentication failed (credential changed during verification) from IP %s", remote_addr);
+		goto bail;
+	}
+
 	/* clean up sensitive buffers */
 	crypto_wipe(decoded, decoded_len);
 	free(decoded);
-
-	/* store the successfully verified token in the cache */
-	if (strlen(b64_payload) < CONFIG_MAX) {
-		state_lock();
-		sncpy(state->rest_auth_cache, sizeof(state->rest_auth_cache), b64_payload);
-		state_unlock();
-	}
 
 	return 1;
 
