@@ -81,11 +81,6 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 
 	(void)datetime;
 
-	if (uncompressed_size > WEB_PAGE_SIZE_MAX) {
-		log_msg(LVL_WARNING, "crawler ignore file exceeding size limit %s", file);
-		return;
-	}
-
 	snprintf(root, sizeof(root), "/%s", file);
 
 	int is_static = 0;
@@ -110,8 +105,8 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 	time_t datetime, uint32_t crc32)
 {
 	if (uncompressed_size > WEB_PAGE_SIZE_MAX) {
-		log_msg(LVL_ERROR, "crawler zip %s file %s exceeds maximum size limit (%zu)", path, file, uncompressed_size);
-		return -1;
+		log_msg(LVL_WARNING, "crawler zip %s ignore file exceeding size limit %s", path, file);
+		return 0;
 	}
 
 	if (compression_method == ZIP_METHOD_STORE) {
