@@ -309,10 +309,13 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	/**
-	 * Create scheduler worker threads while signals are still BLOCKED
+	 * Initialize scheduler while signals are still BLOCKED
 	 */
 	scheduler_init(state);
 
+	/**
+	 * Create REST worker threads while signals are still BLOCKED
+	 */
 	if (rest_init(state, state->config.net_enabled, state->config.net_port, state->config.net_acl) != 0) {
 		log_msg(LVL_ERROR, "failed to start the rest api");
 		return -1;
@@ -327,6 +330,12 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	os_privileges_drop();
+
+	/**
+	 * Start scheduler worker thread after dropping privileges.
+	 * Signals are still BLOCKED and will be inherited by the new thread.
+	 */
+	scheduler_start(state);
 
 	return 0;
 }

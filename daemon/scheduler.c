@@ -362,7 +362,7 @@ void* scheduler_thread(void* arg)
 	int64_t last_history_ts;
 	int64_t last_version_check_ts;
 
-	last = time(0);
+	last = state->scheduler.start_time;
 	localtime_r(&last, &last_tm);
 	last_probe_and_spindown_ts = os_tick_sec();
 	last_delete_ts = last_probe_and_spindown_ts;
@@ -529,8 +529,12 @@ void* scheduler_thread(void* arg)
 
 void scheduler_init(struct snapraid_state* state)
 {
+	state->scheduler.start_time = time(0);
 	thread_cond_init(&state->scheduler.cond);
+}
 
+void scheduler_start(struct snapraid_state* state)
+{
 	/* start the scheduler thread */
 	thread_create(&state->scheduler.thread_id, scheduler_thread, state);
 }

@@ -16,6 +16,12 @@
 void scheduler_init(struct snapraid_state* state);
 
 /**
+ * Start the scheduler thread.
+ * @param state Current snapraid state
+ */
+void scheduler_start(struct snapraid_state* state);
+
+/**
  * Cleanup the scheduler system.
  * @param state Current snapraid state
  */

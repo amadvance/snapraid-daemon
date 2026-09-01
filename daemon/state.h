@@ -364,6 +364,7 @@ struct snapraid_runner {
 struct snapraid_scheduler {
 	thread_cond_t cond;
 	thread_id_t thread_id;
+	time_t start_time; /**< Time baseline captured before delayed scheduler startup */
 };
 
 /**
