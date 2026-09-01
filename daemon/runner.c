@@ -746,9 +746,10 @@ static int runner_hook_begin(const struct snapraid_hook* hook, ZFILE* log_f, cha
 	return 0;
 }
 
-static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
+static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
 {
 	int number = hook->number;
+	int ret = 0;
 
 	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook->config.hook_script[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		char* hook_argv[3];
@@ -840,6 +841,7 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 		}
 
 		if (script_ret < 0) {
+			ret = -1;
 			log_task(LVL_INFO, "task %d end %s failed start (check " SYSLOG " for details), errno=%s(%d)", number, hook->config.hook_script, strerror(errno), errno);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_fail\n");
@@ -850,12 +852,14 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_term:0\n");
 		} else if (script_ret < 128) {
+			ret = -1;
 			log_task(LVL_INFO, "task %d end %s exit code %d", number, hook->config.hook_script, script_ret);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_term:%d\n", script_ret);
 			if (exit_neg_msg && exit_neg_msg[0] == 0)
 				snprintf(exit_neg_msg, exit_neg_msg_size, "The post_run_script terminated with exit code %d", script_ret);
 		} else {
+			ret = -1;
 			log_task(LVL_INFO, "task %d end %s signal %s(%d)", number, hook->config.hook_script, os_signal_name(script_ret - 128), script_ret - 128);
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_signal:%d\n", script_ret - 128);
@@ -870,14 +874,23 @@ static void runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char
 		const char* docker_path = app_find_docker();
 		if (docker_path) {
 			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook->config.hook_docker_pause);
-			(void)run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_pause, log_f, "post_docker");
+			if (run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_pause, log_f, "post_docker") != 0) {
+				ret = -1;
+				if (exit_neg_msg && exit_neg_msg[0] == 0)
+					snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to unpause docker containers");
+			}
 		} else {
+			ret = -1;
+			log_task(LVL_ERROR, "docker executable not found while unpausing containers");
 			if (log_f != 0)
 				zprintf(log_f, "daemon:post_docker_fail\n");
+			if (exit_neg_msg && exit_neg_msg[0] == 0)
+				snprintf(exit_neg_msg, exit_neg_msg_size, "The docker executable was not found while unpausing containers");
 		}
 		if (log_f)
 			zflush(log_f);
 	}
+	return ret;
 }
 
 static void runner_go_locked_yield(struct snapraid_state* state)
@@ -1117,10 +1130,8 @@ bail:
 	state_unlock();
 
 	if (post_skip == 0) {
-		runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags);
-		if (exit_neg_msg[0] != 0) {
+		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0)
 			pid_ret = -1;
-		}
 	}
 
 	if (log_f != 0) {
@@ -1397,7 +1408,7 @@ static void* runner_thread(void* arg)
 					hook.config = postponed_config;
 
 					state_unlock();
-					runner_hook_end(&hook, NULL, NULL, 0, 0, postponed_flags);
+					(void)runner_hook_end(&hook, NULL, NULL, 0, 0, postponed_flags);
 					state_lock();
 				}
 			}
@@ -1420,7 +1431,7 @@ static void* runner_thread(void* arg)
 		hook.config = postponed_config;
 
 		state_unlock();
-		runner_hook_end(&hook, NULL, NULL, 0, 0, postponed_flags);
+		(void)runner_hook_end(&hook, NULL, NULL, 0, 0, postponed_flags);
 		state_lock();
 
 	}
