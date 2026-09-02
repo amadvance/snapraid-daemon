@@ -322,7 +322,6 @@ static void clear_access_accumulator(struct snapraid_state* state)
 
 /**
  * Check if the passed name is a parity
- * Split parities are NOT recognized.
  */
 static int is_parity(const char* s)
 {
@@ -330,16 +329,31 @@ static int is_parity(const char* s)
 	if (s[0] != 0 && isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
-	return strcmp(s, "parity") == 0;
+	if (strncmp(s, "parity", 6) != 0)
+		return 0;
+
+	s += 6;
+
+	if (s[0] == 0)
+		return 1;
+
+	if (s[0] == '/') {
+		int index;
+		if (strint(&index, s + 1) == 0)
+			return 1;
+	}
+
+	return 0;
 }
 
 /**
- * Check if the passed name is a parity, and extract the split index
+ * Parse a parity name and extract the split index
  * The name is truncated to remove the split index.
  */
-static int is_split_parity(char* s, int* index)
+static int parse_parity_split(char* s, int* index)
 {
-	if (isdigit((unsigned char)s[0]) && s[1] == '-')
+	/* s[0] != 0 silence the clang static analyzer (it's not necessary as isdigit also returns 0) */
+	if (s[0] != 0 && isdigit((unsigned char)s[0]) && s[1] == '-')
 		s += 2;
 
 	if (strncmp(s, "parity", 6) != 0) {
@@ -471,7 +485,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, int num
 {
 	int index;
 
-	is_split_parity(name, &index);
+	parse_parity_split(name, &index);
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, number, name, DISK_UNDEFINED, 0);
 	if (!disk) {
@@ -620,7 +634,7 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[1];
 	const char* uuid = map[2];
 
-	if (!is_split_parity(name, &index))
+	if (!parse_parity_split(name, &index))
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
@@ -729,7 +743,7 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	const char* path = map[3];
 	const char* size = map[4];
 
-	if (!is_split_parity(name, &index))
+	if (!parse_parity_split(name, &index))
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
@@ -908,7 +922,7 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 	const char* type = map[4];
 	const char* label = map[5];
 
-	if (!is_split_parity(name, &index))
+	if (!parse_parity_split(name, &index))
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
