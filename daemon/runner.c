@@ -1129,6 +1129,21 @@ bail:
 	if (post_skip == 0) {
 		hook_context_acquire_locked(state, task, &post_hook);
 		post_hook.config = hook_config;
+
+		/*
+		 * Override the hook snapshot with the final process status while keeping the
+		 * global task state unchanged until the post-hook completes.
+		 */
+		if (pid_ret == -1) {
+			post_hook.exit_code = -1;
+			post_hook.task_state = PROCESS_STATE_TERM;
+		} else if (WIFEXITED(status)) {
+			post_hook.exit_code = WEXITSTATUS(status);
+			post_hook.task_state = PROCESS_STATE_TERM;
+		} else if (WIFSIGNALED(status)) {
+			post_hook.exit_sig = WTERMSIG(status);
+			post_hook.task_state = PROCESS_STATE_SIGNAL;
+		}
 	} else {
 		state->runner.hook_flags = hook_flags; /* store the skipped flags */
 		state->runner.hook_config = hook_config;
