@@ -1103,7 +1103,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		json_error_parse(msg, sizeof(msg), jc);
 		goto bad;
 	} else if (jc == 0) {
-		/* accept an empty request */
+		/* accept an application/json request with an empty body */
 	} else {
 		int j = 0;
 		if (jv[j].type != JSMN_OBJECT) {
