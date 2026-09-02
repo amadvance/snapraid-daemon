@@ -31,6 +31,7 @@
 #define OFF_EOCD_TOTAL_ENTRIES 10
 #define OFF_EOCD_CD_SIZE 12
 #define OFF_EOCD_CD_OFFSET 16
+#define OFF_EOCD_COMMENT_LEN 20
 
 /* Offsets into Central Directory (CD) Header */
 #define OFF_CD_SIGNATURE 0
@@ -211,12 +212,15 @@ int crawl_zip(tommy_list* page_list, const char* path)
 	size_t eocd_pos = 0;
 	int found = 0;
 
-	for (size_t i = EOCD_FIXED_SIZE; i <= scan_limit; i++) {
+	for (size_t i = EOCD_FIXED_SIZE; i <= scan_limit; ++i) {
 		size_t pos = buf_size - i;
 		if (read32(buffer + pos) == EOCD_SIGNATURE) {
-			eocd_pos = pos;
-			found = 1;
-			break;
+			size_t comment_len = read16(buffer + pos + OFF_EOCD_COMMENT_LEN);
+			if (pos + EOCD_FIXED_SIZE + comment_len == buf_size) {
+				eocd_pos = pos;
+				found = 1;
+				break;
+			}
 		}
 	}
 
