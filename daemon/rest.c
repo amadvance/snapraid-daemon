@@ -1799,14 +1799,16 @@ static int limit_parse(const struct mg_request_info* ri, const char* name, int d
 		return def;
 
 	int ret = mg_get_var(ri->query_string, strlen(ri->query_string), name, buf, sizeof(buf));
-	if (ret <= 0)
+	if (ret == -1)
 		return def;
+	if (ret <= 0)
+		return -1;
 
 	int v;
 	if (strint(&v, buf) != 0)
-		return def;
+		return -1;
 	if (v < 0)
-		return def;
+		return -1;
 
 	return v;
 }
@@ -2024,6 +2026,8 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
 		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
 	int limit_messages = limit_parse(ri, "limit_messages", INT_MAX);
+	if (limit_messages < 0)
+		return send_json_error(conn, 400, "Invalid limit parameter");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
@@ -2065,6 +2069,8 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
 
 	int limit_history = limit_parse(ri, "limit_history", INT_MAX);
 	int limit_messages = limit_parse(ri, "limit_messages", INT_MAX);
+	if (limit_history < 0 || limit_messages < 0)
+		return send_json_error(conn, 400, "Invalid limit parameter");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
@@ -2134,6 +2140,8 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 
 	int limit_diffs = limit_parse(ri, "limit_diffs", INT_MAX);
 	int limit_fixes = limit_parse(ri, "limit_fixes", INT_MAX);
+	if (limit_diffs < 0 || limit_fixes < 0)
+		return send_json_error(conn, 400, "Invalid limit parameter");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
