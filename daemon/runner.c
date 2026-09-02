@@ -232,8 +232,6 @@ static int runner_report_locked(struct snapraid_state* state)
 	int report_high_cmd = report_task->high_cmd;
 	ss_t ss;
 
-	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
-
 	/* find the latest sync and scrub tasks from history */
 	tommy_node* i = tommy_list_tail(&state->runner.history_list);
 	while (i != 0) {
@@ -368,18 +366,6 @@ static int runner_report_locked(struct snapraid_state* state)
 	/* store the report (dup to shrink the allocation) */
 	report_task->text_report = ss_dup(&ss);
 
-	report_task->running = 0;
-	report_task->state = PROCESS_STATE_TERM;
-	report_task->exit_code = 0;
-	report_task->unix_end_time = report_task->unix_start_time;
-
-	/* insert the task in the done list */
-	tommy_list_insert_tail(&state->runner.history_list, &report_task->node, report_task);
-
-	/* set the latest pointer to the real executed task and not to the report */
-	if (latest_not_canceled_task != 0)
-		state->runner.latest = latest_not_canceled_task;
-
 	int exit_code = EXIT_EXEC_FAILED;
 	if (latest_not_canceled_task != 0) {
 		if (latest_not_canceled_task->state == PROCESS_STATE_TERM) {
@@ -398,7 +384,38 @@ static int runner_report_locked(struct snapraid_state* state)
 		log_task_push(&report_task->message_list);
 		snprintf(exit_msg, sizeof(exit_msg), "Notification failed (check " SYSLOG " for details)");
 		message_insert(&report_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_msg);
+	} else {
+		report_task->exit_code = 0;
+		log_task_push(&report_task->message_list);
 	}
+
+	report_task->running = 0;
+
+	if (report_task->canceled) {
+		char msg[MSG_MAX];
+
+		report_task->state = PROCESS_STATE_CANCEL;
+
+		snprintf(msg, sizeof(msg), "The %s operation was canceled during report notification", command_name(report_task->high_cmd));
+		sncpy(report_task->exit_msg, sizeof(report_task->exit_msg), msg);
+		task_list_cancel_in_group(state, report_task, msg);
+	} else {
+		report_task->state = PROCESS_STATE_TERM;
+	}
+
+	time_t unix_end_time = time(0);
+	if (unix_end_time < report_task->unix_start_time)
+		unix_end_time = report_task->unix_start_time;
+	report_task->unix_end_time = unix_end_time;
+
+	/* insert the task in the done list */
+	tommy_list_insert_tail(&state->runner.history_list, &report_task->node, report_task);
+
+	/* set the latest pointer to the real executed task and not to the report */
+	if (latest_not_canceled_task != 0)
+		state->runner.latest = latest_not_canceled_task;
+
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	ss_done(&ss);
 
@@ -437,7 +454,10 @@ static int runner_start_locked(struct snapraid_state* state)
 		start_task->state = PROCESS_STATE_TERM;
 	}
 
-	start_task->unix_end_time = start_task->unix_start_time;
+	time_t unix_end_time = time(0);
+	if (unix_end_time < start_task->unix_start_time)
+		unix_end_time = start_task->unix_start_time;
+	start_task->unix_end_time = unix_end_time;
 
 	/* insert in the done list */
 	tommy_list_insert_tail(&state->runner.history_list, &start_task->node, start_task);
@@ -470,7 +490,11 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 	shutdown_task->running = 0;
 	shutdown_task->state = PROCESS_STATE_TERM;
 	shutdown_task->exit_code = 0;
-	shutdown_task->unix_end_time = time(0);
+
+	time_t unix_end_time = time(0);
+	if (unix_end_time < shutdown_task->unix_start_time)
+		unix_end_time = shutdown_task->unix_start_time;
+	shutdown_task->unix_end_time = unix_end_time;
 
 	if (ret != 0) {
 		log_task(LVL_CRITICAL, "system shutdown failed");
