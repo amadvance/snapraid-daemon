@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
+export const escHtml = (str) => {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
 export const formatFullTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
         return '-';
@@ -167,47 +177,47 @@ export const formatHistory = (value, history, pulseAt) => {
 }
 
 export const formatAttr = (attr) => {
-    let valStr = attr.raw;
+    let raw = escHtml(attr.raw);
+    let valStr = raw;
     if (attr.measure == 'time') {
         if (attr.unit == 0.001) {
             if (attr.avg)
-                valStr = `${attr.raw} ms (avg ${attr.avg})`;
+                valStr = `${raw} ms (avg ${escHtml(attr.avg)})`;
             else
-                valStr = `${attr.raw} ms`;
+                valStr = `${raw} ms`;
         } else {
             const seconds = attr.raw * attr.unit;
             if (seconds < 60) {
-                valStr = `${attr.raw} (${seconds} seconds)`;
+                valStr = `${raw} (${seconds} seconds)`;
             } else {
-                valStr = `${attr.raw} (${formatElapsedTime(seconds)})`;
+                valStr = `${raw} (${formatElapsedTime(seconds)})`;
             }
         }
     }
     if (attr.measure == 'size') {
         const bytes = attr.raw * attr.unit;
-        valStr = `${attr.raw} (${formatDiskSize(bytes)})`;
+        valStr = `${raw} (${formatDiskSize(bytes)})`;
     }
     if (attr.measure == 'temperature') {
-        valStr = `${attr.raw} °C`;
+        valStr = `${raw} °C`;
         if (attr.min != null && attr.max != null) {
-            valStr += ` (min ${attr.min}, max ${attr.max})`;
+            valStr += ` (min ${escHtml(attr.min)}, max ${escHtml(attr.max)})`;
         }
     }
     if (attr.measure == 'count') {
-        const bytes = attr.raw * attr.unit;
-        valStr = `${attr.raw}`;
+        valStr = `${raw}`;
     }
     if (attr.measure == 'use_ratio') {
-        valStr = `${attr.raw}% &uarr;`;
+        valStr = `${raw}% &uarr;`;
     }
     if (attr.measure == 'life_ratio') {
-        valStr = `${attr.raw}% &darr;`;
+        valStr = `${raw}% &darr;`;
     }
     if (attr.measure == 'vendor') {
-        valStr = `(${attr.raw})`;
+        valStr = `(${raw})`;
     }
     return valStr;
-}
+};
 
 // SVG Icons (Strings)
 export const Icons = {
@@ -242,7 +252,7 @@ export const showToast = (message, type = 'info') => {
         <div class="flex items-center gap-2">
             <span class="toast-icon">${icon}</span>
             <div>
-                <span class="font-bold">${type.toUpperCase()}:</span> ${message}
+                <span class="font-bold">${type.toUpperCase()}:</span> ${escHtml(message)}
             </div>
         </div>
     `;
@@ -256,8 +266,8 @@ export const showConfirm = (message, title = 'Confirmation Required') => {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-container">
-                <div class="modal-title">${title}</div>
-                <div class="modal-body">${message}</div>
+                <div class="modal-title">${escHtml(title)}</div>
+                <div class="modal-body">${escHtml(message)}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
                     <button class="btn btn-primary" id="modal-confirm">Confirm</button>
@@ -295,8 +305,8 @@ export const showConfirmDown = (message, title = 'Confirmation Required') => {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-container">
-                <div class="modal-title">${title}</div>
-                <div class="modal-body">${message}</div>
+                <div class="modal-title">${escHtml(title)}</div>
+                <div class="modal-body">${escHtml(message)}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
                     <button class="btn btn-primary" id="modal-confirm">Run</button>
@@ -336,9 +346,9 @@ export const showConfirmDownThreshold = (message, title = 'Confirmation Required
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-container">
-                <div class="modal-title">${title}</div>
+                <div class="modal-title">${escHtml(title)}</div>
                 <div class="modal-body">
-                    ${message}
+                    ${escHtml(message)}
                     <div class="mt-4 flex items-center gap-2">
                         <label class="switch switch-sm">
                             <input type="checkbox" id="modal-ignore-thresholds">
@@ -388,7 +398,7 @@ export const showModal = (title, content, large = false) => {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-container ${large ? 'large' : ''}">
-                <div class="modal-title">${title}</div>
+                <div class="modal-title">${escHtml(title)}</div>
                 <div class="modal-body">${content}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="modal-close">Close</button>
