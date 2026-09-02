@@ -933,7 +933,7 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 	return ret;
 }
 
-static void runner_go_locked_yield(struct snapraid_state* state)
+static int runner_go_locked_yield(struct snapraid_state* state)
 {
 	char msg[MSG_MAX];
 	char exit_neg_msg[MSG_MAX];
@@ -947,6 +947,7 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 	int status;
 	pid_t pid_ret;
 	int success = 0;
+	int spawn_canceled = 0;
 	char** argv;
 	int argc;
 	tommy_node* j;
@@ -1078,7 +1079,7 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 	 * atomic cancellation checking and PID assignment without releasing and re-acquiring
 	 * the lock. Process spawn is fast enough that holding the lock here does not impact responsiveness.
 	 */
-	int spawn_canceled = task->canceled || !state->daemon_running;
+	spawn_canceled = task->canceled || !state->daemon_running;
 	int spawn_shutdown = 0;
 	if (!spawn_canceled) {
 		os_privileges_acquire();
@@ -1155,6 +1156,10 @@ bail:
 
 	state_lock();
 
+	/* if the task was canceled, do not postpone hooks because the following tasks will be canceled */
+	if (task->canceled)
+		post_skip = 0;
+
 	/* process terminated and reaped, clear pid before post-hook */
 	task->pid = 0;
 	task->unix_end_time = unix_end_time;
@@ -1166,6 +1171,7 @@ bail:
 
 	struct snapraid_hook post_hook;
 	if (post_skip == 0) {
+		state->runner.hook_flags = 0;
 		hook_context_acquire_locked(state, task, &post_hook);
 		post_hook.config = hook_config;
 
@@ -1173,7 +1179,9 @@ bail:
 		 * Override the hook snapshot with the final process status while keeping the
 		 * global task state unchanged until the post-hook completes.
 		 */
-		if (pid_ret < 0) {
+		if (spawn_canceled) {
+			post_hook.task_state = PROCESS_STATE_CANCEL;
+		} else if (pid_ret < 0) {
 			post_hook.exit_code = pid_ret;
 			post_hook.task_state = PROCESS_STATE_TERM;
 		} else if (WIFEXITED(status)) {
@@ -1183,18 +1191,16 @@ bail:
 			post_hook.exit_sig = WTERMSIG(status);
 			post_hook.task_state = PROCESS_STATE_SIGNAL;
 		}
-	} else {
-		state->runner.hook_flags = hook_flags; /* store the skipped flags */
-		state->runner.hook_config = hook_config;
-	}
+		state_unlock();
 
-	state_unlock();
-
-	if (post_skip == 0) {
 		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0) {
 			if (pid_ret >= 0)
 				pid_ret = EXIT_POST_HOOK_FAILED;
 		}
+	} else {
+		state->runner.hook_flags = hook_flags; /* store the skipped flags */
+		state->runner.hook_config = hook_config;
+		state_unlock();
 	}
 
 	if (log_f != 0) {
@@ -1219,6 +1225,17 @@ bail:
 
 	state_lock();
 
+	int stop_pending = 0;
+	if (task->canceled && post_skip != 0) {
+		/*
+		 * The task succeeded and postponed its hook, but was canceled while closing logs.
+		 * Let this task commit normally and propagate cancellation to the next task,
+		 * which will consume the postponed hook and cancel the group.
+		 */
+		stop_pending = 1;
+		task->canceled = 0;
+	}
+
 	log_task_push(&task->message_list);
 
 	/* the task is not running anymore */
@@ -1228,7 +1245,8 @@ bail:
 	task->pulse = pulse_rev(state, &pulse_before);
 
 	/* if task completed succesfully */
-	if (pid_ret >= 0
+	if (!task->canceled
+		&& pid_ret >= 0
 		&& WIFEXITED(status)
 		&& WEXITSTATUS(status) == 0
 	) {
@@ -1254,51 +1272,68 @@ bail:
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 
-	if (pid_ret < 0) {
+	if (spawn_canceled) {
+		task->state = PROCESS_STATE_CANCEL;
+		if (task->exit_msg[0] == 0)
+			sncpy(task->exit_msg, sizeof(task->exit_msg), exit_neg_msg);
+
+		/* cancel queued tasks */
+		snprintf(msg, sizeof(msg), "The preceding %s operation was canceled", command_name(cmd));
+		task_list_cancel_in_group(state, task, msg);
+	} else if (pid_ret < 0) {
 		task->exit_code = pid_ret;
 		task->state = PROCESS_STATE_TERM;
 
 		message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_neg_msg);
 
 		/* cancel queued tasks */
-		if (pid_ret == EXIT_PRE_HOOK_FAILED)
+		if (task->canceled)
+			snprintf(msg, sizeof(msg), "The preceding %s operation was canceled", command_name(cmd));
+		else if (pid_ret == EXIT_PRE_HOOK_FAILED)
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed during the pre-hook", command_name(cmd));
 		else if (pid_ret == EXIT_POST_HOOK_FAILED)
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed during the post-hook", command_name(cmd));
 		else
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed to execute", command_name(cmd));
 		task_list_cancel_in_group(state, task, msg);
-	} else {
-		if (WIFEXITED(status)) {
-			/* child's exit(code) or return from main */
-			task->exit_code = WEXITSTATUS(status);
-			task->state = PROCESS_STATE_TERM;
+	} else if (WIFEXITED(status)) {
+		/* child's exit(code) or return from main */
+		task->exit_code = WEXITSTATUS(status);
+		task->state = PROCESS_STATE_TERM;
 
-			parse_end_locked(state, task);
+		parse_end_locked(state, task);
 
-			if (!task_success(task)) {
-				/* cancel all queued tasks on failure */
-				snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
-				task_list_cancel_in_group(state, task, msg);
-			}
-		} else if (WIFSIGNALED(status)) {
-			/* child died from a signal */
-			task->exit_sig = WTERMSIG(status);
-			task->state = PROCESS_STATE_SIGNAL;
-
-			/* cancel queued tasks */
-			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), os_signal_name(task->exit_sig), task->exit_sig);
+		if (task->canceled) {
+			/* cancel queued tasks on user stop */
+			snprintf(msg, sizeof(msg), "The preceding %s operation was canceled", command_name(cmd));
 			task_list_cancel_in_group(state, task, msg);
-		} else {
-			/* it should never happen */
-			task->exit_code = EXIT_EXEC_FAILED;
-			task->state = PROCESS_STATE_TERM;
-
-			/* cancel queued tasks */
+		} else if (!task_success(task)) {
+			/* cancel all queued tasks on failure */
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
 			task_list_cancel_in_group(state, task, msg);
 		}
+	} else if (WIFSIGNALED(status)) {
+		/* child died from a signal */
+		task->exit_sig = WTERMSIG(status);
+		task->state = PROCESS_STATE_SIGNAL;
+
+		/* cancel queued tasks */
+		if (task->canceled)
+			snprintf(msg, sizeof(msg), "The preceding %s operation was canceled", command_name(cmd));
+		else
+			snprintf(msg, sizeof(msg), "The preceding %s operation was signaled with signal %s(%d)", command_name(cmd), os_signal_name(task->exit_sig), task->exit_sig);
+		task_list_cancel_in_group(state, task, msg);
+	} else {
+		/* it should never happen */
+		task->exit_code = EXIT_EXEC_FAILED;
+		task->state = PROCESS_STATE_TERM;
+
+		/* cancel queued tasks */
+		snprintf(msg, sizeof(msg), "The preceding %s operation failed with exit code %d", command_name(cmd), task->exit_code);
+		task_list_cancel_in_group(state, task, msg);
 	}
+
+	return stop_pending;
 }
 
 static int runner_precondition_locked(struct snapraid_state* state)
@@ -1422,6 +1457,7 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 static void* runner_thread(void* arg)
 {
 	struct snapraid_state* state = arg;
+	int stop_pending = 0;
 
 	state_lock();
 
@@ -1437,6 +1473,11 @@ static void* runner_thread(void* arg)
 			/* setup a new task to run */
 			struct snapraid_task* task = tommy_list_remove_existing(&state->runner.waiting_list, tommy_list_head(&state->runner.waiting_list));
 			task_set_unique_start_time_locked(state, task, now);
+
+			if (stop_pending) {
+				task->canceled = 1;
+				stop_pending = 0;
+			}
 
 			/* set in the latest */
 			state->runner.latest = task;
@@ -1459,7 +1500,7 @@ static void* runner_thread(void* arg)
 				if (task->cmd == CMD_DOWN_IDLE) {
 					runner_spindown_inactive_locked(state);
 				} else {
-					runner_go_locked_yield(state);
+					stop_pending = runner_go_locked_yield(state);
 					runner_postcondition_locked(state);
 				}
 			} else {
