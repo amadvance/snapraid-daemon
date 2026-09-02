@@ -24,7 +24,7 @@
 /**
  * Max number of JSON tokens
  */
-#define JSMN_TOKEN_MAX 128
+#define JSMN_TOKEN_MAX 512
 
 /**
  * Initial size for building JSON text
