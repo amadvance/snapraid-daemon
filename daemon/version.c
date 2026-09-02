@@ -101,7 +101,7 @@ static int parse_github_release_tag(const char* js, size_t jl, char* tag_out, si
 	return found ? 0 : -1;
 }
 
-static int check_repo_version(struct snapraid_state* state, const char* curl_path, const char* repo, char* version_out, size_t version_out_size)
+static int check_repo_version(const char* curl_path, const char* repo, char* version_out, size_t version_out_size)
 {
 	char url[256];
 	snprintf(url, sizeof(url), "https://api.github.com/repos/%s/releases/latest", repo);
@@ -114,12 +114,12 @@ static int check_repo_version(struct snapraid_state* state, const char* curl_pat
 		"-m",
 		"10",
 		url,
-		NULL
+		0
 	};
 
 	int stdout_fd = -1;
 	/* run curl with the daemon's current unprivileged credentials; update checks do not require root privileges */
-	pid_t pid = os_spawn(argv, &stdout_fd, NULL, NULL);
+	pid_t pid = os_spawn(argv, &stdout_fd, 0, 0);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: spawn failed, errno=%s(%d)", repo, strerror(errno), errno);
 		return -1;
@@ -195,29 +195,45 @@ static int check_repo_version(struct snapraid_state* state, const char* curl_pat
 	}
 	ss_done(&ss);
 
-	state_lock();
 	sncpy(version_out, version_out_size, tag);
-	pulse(state, PULSE_ARRAY);
-	state_unlock();
 
 	return 0;
 }
 
-int version_check(struct snapraid_state* state)
+int version_check_locked_yield(struct snapraid_state* state)
 {
+	char daemon_version[64];
+	char engine_version[64];
+	daemon_version[0] = 0;
+	engine_version[0] = 0;
+
+	state_unlock();
+
 	const char* curl_path = app_find_curl();
 	if (!curl_path) {
 		log_msg(LVL_ERROR, "failed to check updates: curl executable not found");
+		state_lock();
 		return -1;
 	}
 
 	int ret = 0;
 
-	if (check_repo_version(state, curl_path, "amadvance/snapraid-daemon", state->latest_daemon_version, sizeof(state->latest_daemon_version)) != 0)
+	if (check_repo_version(curl_path, "amadvance/snapraid-daemon", daemon_version, sizeof(daemon_version)) != 0)
 		ret = -1;
 
-	if (check_repo_version(state, curl_path, "amadvance/snapraid", state->latest_engine_version, sizeof(state->latest_engine_version)) != 0)
+	if (check_repo_version(curl_path, "amadvance/snapraid", engine_version, sizeof(engine_version)) != 0)
 		ret = -1;
+
+	state_lock();
+
+	if (daemon_version[0] != 0)
+		sncpy(state->latest_daemon_version, sizeof(state->latest_daemon_version), daemon_version);
+
+	if (engine_version[0] != 0)
+		sncpy(state->latest_engine_version, sizeof(state->latest_engine_version), engine_version);
+
+	if (daemon_version[0] != 0 || engine_version[0] != 0)
+		pulse(state, PULSE_ARRAY);
 
 	return ret;
 }
