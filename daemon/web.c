@@ -178,12 +178,13 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 		ss_printf(s, "Date: %s\r\n", date_buf);
 
 	/**
-	 * Cache-Control: public, max-age=604800
-	 * Encourages the browser to cache static files for 7 days. This significantly
-	 * reduces the load on the daemon and speeds up UI rendering. We specifically
-	 * omit 'no-store' and 'no-cache' here to allow persistent disk caching.
+	 * Cache-Control: public, no-cache
+	 * Allows the browser to store static files, but requires revalidation before
+	 * reuse. This ensures that assets are refreshed immediately after a web reload
+	 * while still allowing conditional requests to avoid retransmitting unchanged
+	 * content.
 	 */
-	ss_prints(s, "Cache-Control: public, max-age=604800\r\n");
+	ss_prints(s, "Cache-Control: public, no-cache\r\n");
 
 	/* Conditional serving: allows browsers to skip download if the file hasn't changed */
 	if (last_modified != 0) {
@@ -489,6 +490,23 @@ static int send_error(struct mg_connection* conn, int status)
 	return status;
 }
 
+static int send_not_modified(struct mg_connection* conn, time_t last_modified, int is_static)
+{
+	ss_t s;
+	ss_init(&s, HTTP_HEADERS_MAX);
+
+	ss_prints(&s, "HTTP/1.1 304 Not Modified\r\n");
+	send_headers(conn, &s, last_modified, is_static);
+	ss_prints(&s, "Connection: close\r\n");
+	ss_prints(&s, "\r\n");
+
+	mg_write(conn, ss_ptr(&s), ss_len(&s));
+
+	ss_done(&s);
+
+	return 304;
+}
+
 static int send_file(struct mg_connection* conn, time_t page_time, const char* body, size_t body_len, const char* mime, int is_static)
 {
 	ss_t s;
@@ -595,8 +613,9 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 
 			/* check if browser already has the latest version */
 			if (is_not_modified(conn, page_time)) {
+				int is_static = page->is_static;
 				web_unlock();
-				return send_error(conn, 304);
+				return send_not_modified(conn, page_time, is_static);
 			}
 
 			/* duplicate before unlocking */
@@ -674,7 +693,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 
 	/* check if browser already has the latest version */
 	if (is_not_modified(conn, st.st_mtime))
-		return send_error(conn, 304);
+		return send_not_modified(conn, st.st_mtime, is_static);
 
 	char* body = 0;
 	ssize_t body_len = read_file(resolved_path, &body);
