@@ -88,7 +88,11 @@ static int plain_content(tommy_list* page_list, const char* path, const char* fi
 		return -1;
 	}
 
-	snprintf(root, sizeof(root), "/%s", file);
+	int ret = snprintf(root, sizeof(root), "/%s", file);
+	if (ret < 0 || (size_t)ret >= sizeof(root)) {
+		log_msg(LVL_WARNING, "crawler zip %s ignore filename exceeding path limit %s", path, file);
+		return 0;
+	}
 
 	int is_static = 0;
 	const char* mime_type = get_mime_type(file, &is_static);
@@ -262,10 +266,22 @@ int crawl_zip(tommy_list* page_list, const char* path)
 		}
 
 		/* extract filename */
-		char name_buf[512];
-		size_t copy_len = (name_len < sizeof(name_buf) - 1) ? name_len : sizeof(name_buf) - 1;
-		memcpy(name_buf, cd_ptr + CD_FIXED_SIZE, copy_len);
-		name_buf[copy_len] = 0;
+		char name_buf[PATH_MAX];
+
+		/*
+		 * Reserve one byte for the leading '/' added by plain_content()
+		 * and one for the terminating NUL. Never truncate ZIP filenames,
+		 * as doing so would change their identity.
+		 */
+		if (name_len > sizeof(name_buf) - 2
+			|| memchr(cd_ptr + CD_FIXED_SIZE, 0, name_len) != 0) {
+			log_msg(LVL_WARNING, "crawler zip %s ignore invalid filename", path);
+			current_cd_pos = next_cd_pos;
+			continue;
+		}
+
+		memcpy(name_buf, cd_ptr + CD_FIXED_SIZE, name_len);
+		name_buf[name_len] = 0;
 
 		/* extract metadata */
 		uint32_t crc32 = read32(cd_ptr + OFF_CD_CRC32);
