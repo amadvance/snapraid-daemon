@@ -406,6 +406,9 @@ spindown_idle_minutes = 15
 #    - 'task-end':   Triggered after the array access concludes successfully.
 #    - 'task-error': Triggered if the array access is interrupted or fails.
 #
+# If 'task-begin' fails, 'task-error' is not invoked. The 'task-begin' handler
+# is responsible for reverting any partial changes before returning an error.
+#
 # SECURITY REQUIREMENTS:
 # - The script path MUST be absolute (must start with /).
 # - The script AND the directory containing the script MUST be owned by

@@ -709,8 +709,12 @@ task-begin - Triggered immediately before the daemon begins a
     (e.g., sync, scrub, or maintenance).
 task-end - Triggered after the entire sequence of actions has
     concluded successfully.
-task-error: Triggered if the task sequence is aborted, interrupted,
+task-error - Triggered if the task sequence is aborted, interrupted,
     or encounters an operational failure.
+
+If `task-begin` fails, `task-error` is not invoked. The `task-begin`
+handler is responsible for reverting any partial changes before
+returning an error.
 
 Note that 'task-end' reflects only whether the task finished its
 execution cycle. It does not necessarily reflect hardware or data
