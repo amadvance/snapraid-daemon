@@ -10,7 +10,7 @@
  * Check if a new SnapRAID Daemon version is available upstream.
  * Queries the GitHub API, parses the release tag, and updates global state.
  */
-int version_check(struct snapraid_state* state);
+int version_check_locked_yield(struct snapraid_state* state);
 
 #endif
 

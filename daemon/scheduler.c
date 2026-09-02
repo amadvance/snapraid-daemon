@@ -459,16 +459,16 @@ void* scheduler_thread(void* arg)
 			/* check for new version every 12 hours, retry failures after 5 minutes */
 			if (state->config.check_updates
 				&& (last_version_check_ts == 0 || mono_now_secs - last_version_check_ts >= version_check_interval_secs)) {
-				state_unlock();
-
-				int version_check_ret = version_check(state);
-
-				state_lock();
+				int version_check_ret = version_check_locked_yield(state);
 
 				last_version_check_ts = os_tick_sec();
 				version_check_interval_secs = version_check_ret == 0 ? 12 * 3600 : 5 * 60;
 
-				/* continue with other tasks */
+				/*
+				 * State may have changed while state_lock was released.
+				 * Restart scheduling and revalidate all predicates.
+				 */
+				break;
 			}
 
 			/* delete old log every hour */
@@ -477,7 +477,12 @@ void* scheduler_thread(void* arg)
 				&& mono_now_secs - last_delete_ts >= 3600) {
 				last_delete_ts = mono_now_secs;
 				(void)runner_delete_old_log_locked_yield(state, msg, sizeof(msg), &status); /* error already logged */
-				/* continue with other tasks */
+
+				/*
+				 * State may have changed while state_lock was released.
+				 * Restart scheduling and revalidate all predicates.
+				 */
+				break;
 			}
 
 			/* early exit on shutdown */
