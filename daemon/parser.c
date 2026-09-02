@@ -2112,6 +2112,7 @@ void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, con
 						switch (c) {
 						case '\\' : plain[plain_len++] = '\\'; break;
 						case 'n' :  plain[plain_len++] = '\n'; break;
+						case 'r' :  plain[plain_len++] = '\r'; break;
 						case 'd' : plain[plain_len++] = ':'; break;
 						default : break; /* ignore if unknown */
 						}
