@@ -1750,6 +1750,7 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 		stri64(&task->unix_start_time, val);
 	} else if (strcmp(tag, "end") == 0) {
 		stri64(&task->unix_end_time, val);
+		state->parser_has_end = 1;
 	} else if (strcmp(tag, "scheduled") == 0) {
 		stri64(&task->unix_queue_time, val);
 	} else if (strcmp(tag, "command") == 0) {
@@ -2054,6 +2055,7 @@ void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, con
 	/* clear the engine version */
 	state->parser_version_major = 0;
 	state->parser_version_minor = 0;
+	state->parser_has_end = 0;
 
 	while (1) {
 		ssize_t n;
@@ -2208,6 +2210,8 @@ void parse_begin_locked(struct snapraid_state* state)
 {
 	/* clear the association mapping */
 	parser_mapping_start(state);
+
+	state->parser_has_end = 0;
 }
 
 void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task)
@@ -2312,7 +2316,8 @@ int parse_past_log(struct snapraid_state* state)
 
 		log_task_push(&task->message_list);
 
-		parse_end_locked(state, task);
+		if (state->parser_has_end)
+			parse_end_locked(state, task);
 
 		/*
 		 * If the log does not contain termination tags, the process was interrupted.
