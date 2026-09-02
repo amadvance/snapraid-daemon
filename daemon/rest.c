@@ -1929,11 +1929,11 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 			ss_json_uint(s, level, "speed_mbs", task->speed_mbs);
 			ss_json_uint(s, level, "cpu_usage", task->cpu_usage);
 			ss_json_uint(s, level, "elapsed_seconds", task->elapsed_seconds);
-			ss_json_uint(s, level, "block_begin", task->block_begin);
-			ss_json_uint(s, level, "block_end", task->block_end);
-			ss_json_uint(s, level, "blocks_count", task->block_count);
-			ss_json_uint(s, level, "block_idx", task->block_idx);
-			ss_json_uint(s, level, "blocks_done", task->block_done);
+			ss_json_u64(s, level, "block_begin", task->block_begin);
+			ss_json_u64(s, level, "block_end", task->block_end);
+			ss_json_u64(s, level, "blocks_count", task->block_count);
+			ss_json_u64(s, level, "block_idx", task->block_idx);
+			ss_json_u64(s, level, "blocks_done", task->block_done);
 			ss_json_u64(s, level, "size_done_bytes", task->size_done);
 			break;
 		}
