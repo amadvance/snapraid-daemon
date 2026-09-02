@@ -1176,6 +1176,27 @@ bad:
 	return send_json_error(conn, 400, "Unrecognized json");
 }
 
+static int command_schedule_allowed(int cmd)
+{
+	switch (cmd) {
+	case CMD_PROBE :
+	case CMD_UP :
+	case CMD_DOWN :
+	case CMD_SMART :
+	case CMD_DIFF :
+	case CMD_SYNC :
+	case CMD_SCRUB :
+	case CMD_CHECK :
+	case CMD_FIX :
+	case CMD_REPORT :
+	case CMD_START :
+	case CMD_DOWN_IDLE :
+		return 1;
+	default :
+		return 0;
+	}
+}
+
 /**
  * POST /snapraid/v1/schedule
  */
@@ -1239,11 +1260,7 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 							if (json_string(js, &jv[j], cmd, sizeof(cmd)) == 0) {
 								sched->cmd = command_parse(cmd);
 
-								/*
-								 * Reject unrecognized commands and explicitly reject CMD_SHUTDOWN
-								 * to prevent remote shutdown exploits via scheduled API tasks.
-								 */
-								if (!sched->cmd || sched->cmd == CMD_SHUTDOWN) {
+								if (!command_schedule_allowed(sched->cmd)) {
 									json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 									schedule_free(sched);
 									goto bad;
@@ -1279,6 +1296,11 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 							schedule_free(sched);
 							goto bad;
 						}
+					}
+					if (!sched->cmd) {
+						snprintf(msg, sizeof(msg), "Missing required argument 'command'");
+						schedule_free(sched);
+						goto bad;
 					}
 					tommy_list_insert_tail(&scheds, &sched->node, sched);
 				}
