@@ -2013,6 +2013,12 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
 		ss_json_i64(s, level, "error_data", task->error_data);
 		break;
 	case CMD_FIX :
+		ss_json_i64(s, level, "error_recovered", task->error_recovered);
+		ss_json_i64(s, level, "error_unrecoverable", task->error_unrecoverable);
+		ss_json_i64(s, level, "error_soft", task->error_soft);
+		ss_json_i64(s, level, "error_io", task->error_io);
+		ss_json_i64(s, level, "error_data", task->error_data);
+		break;
 	case CMD_CHECK :
 		ss_json_i64(s, level, "error_unrecoverable", task->error_unrecoverable);
 		ss_json_i64(s, level, "error_soft", task->error_soft);
@@ -2776,6 +2782,17 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 					cmd_str, task->error_data);
 				break;
 			case CMD_FIX :
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"recovered\"} %" PRIu64 "\n",
+					cmd_str, task->error_recovered);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"unrecoverable\"} %" PRIu64 "\n",
+					cmd_str, task->error_unrecoverable);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"soft\"} %" PRIu64 "\n",
+					cmd_str, task->error_soft);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"io\"} %" PRIu64 "\n",
+					cmd_str, task->error_io);
+				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"data\"} %" PRIu64 "\n",
+					cmd_str, task->error_data);
+				break;
 			case CMD_CHECK :
 				ss_printf(&s, "snapraid_task_last_errors{command=\"%s\",kind=\"unrecoverable\"} %" PRIu64 "\n",
 					cmd_str, task->error_unrecoverable);

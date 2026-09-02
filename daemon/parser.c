@@ -1508,19 +1508,33 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
-		++task->error_recovered;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_RECOVERED, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ACTIVITY);
-		++task->error_unrecoverable;
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	}
+}
+
+static void process_error_recovered(struct snapraid_state* state)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	pulse(state, PULSE_ACTIVITY);
+	++task->error_recovered;
+}
+
+static void process_error_unrecoverable(struct snapraid_state* state)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	pulse(state, PULSE_ACTIVITY);
+	++task->error_unrecoverable;
 }
 
 static void process_error_soft(struct snapraid_state* state, char** map, size_t mac)
@@ -1986,6 +2000,21 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(cmd, "summary") == 0) {
 		state_lock();
 		process_summary(state, map, mac);
+		state_unlock();
+	} else if (
+		strcmp(cmd, "fixed") == 0
+		|| strcmp(cmd, "parity_fixed") == 0
+		|| strcmp(cmd, "empty_fixed") == 0
+		|| strcmp(cmd, "hardlink_fixed") == 0
+		|| strcmp(cmd, "symlink_fixed") == 0
+		|| strcmp(cmd, "dir_fixed") == 0
+	) {
+		state_lock();
+		process_error_recovered(state);
+		state_unlock();
+	} else if (strcmp(cmd, "unrecoverable") == 0) {
+		state_lock();
+		process_error_unrecoverable(state);
 		state_unlock();
 	} else if (
 		strcmp(cmd, "error") == 0

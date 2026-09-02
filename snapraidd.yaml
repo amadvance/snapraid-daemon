@@ -1236,6 +1236,13 @@ components:
             This tracks 'silent' errors where a read was physically successful,
             but the data failed checksum verification, across the task execution.
             This field is available only on the `sync`, `scrub` and `fix` command.
+        error_recovered:
+          type: integer
+          format: int64
+          example: 0
+          description: >
+            The count of errors that the `fix` command was able to recover.
+            This field is available only on the `fix` command.
         error_unrecoverable:
           type: integer
           format: int64
