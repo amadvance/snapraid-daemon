@@ -55,6 +55,12 @@ sys_log_retention_days = 120
 #     array health transitions to failing
 # Spaces around commas are ignored.
 #
+# Health-based shutdowns ('prefail' and 'failing') trigger strictly on a
+# state transition from an established health state. If the array is already
+# in a prefail or failing state when the daemon starts, shutdown is not
+# triggered. This allows you to start the machine and perform manual
+# maintenance or recovery without triggering an immediate shutdown.
+#
 # This option cannot be modified via the REST API to prevent potential
 # remote shutdown exploits, and requires a manual configuration edit
 # and daemon reload (SIGHUP) to change.

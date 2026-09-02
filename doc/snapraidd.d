@@ -356,6 +356,13 @@ Configuration
 
 	Spaces around commas are ignored.
 
+	Health-based shutdowns (prefail and failing) trigger strictly on a
+	state transition from an established health state. If the array is
+	already in a prefail or failing state when the daemon starts,
+	shutdown is not triggered. This allows you to start the machine and
+	perform manual maintenance or recovery without triggering an
+	immediate shutdown.
+
     sys_smartignore
 	Allows you to ignore specific SMART attributes for one or more disks.
 	If ignored, the attribute will not generate a warning notification when it

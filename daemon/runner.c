@@ -71,7 +71,16 @@ static int runner_health_check_locked(struct snapraid_state* state)
 		pulse(state, PULSE_ARRAY);
 		state->array.health = new_health;
 
-		/* send a report, but not if it's a change from PENDING */
+		/*
+		 * Only transitions from an established health state are actionable. Ignore
+		 * the initial PENDING -> PASSED/PREFAIL/FAILING transition so a machine that
+		 * boots already degraded is not immediately shut down again, allowing
+		 * recovery and maintenance after reboot.
+		 *
+		 * Once initialized, every health change is handled normally. For example,
+		 * PASSED -> PREFAIL may trigger the "prefail" shutdown policy, while
+		 * PREFAIL -> FAILING may trigger the "failing" shutdown policy.
+		 */
 		if (old_health != HEALTH_PENDING) {
 			/* check if the current task is a report or if there is a scheduled one */
 			if (!runner_has_cmd_locked(state, CMD_REPORT)) {
