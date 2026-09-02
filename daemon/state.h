@@ -614,6 +614,7 @@ struct snapraid_state {
 	int parser_version_minor; /**< Minor version number */
 	tommy_list parser_association; /**< Associations of device<->id */
 	int parser_previous_was_association; /**< If the previous entry was an association */
+	int parser_has_end; /**< If the daemon:end record was read */
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */
