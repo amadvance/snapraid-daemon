@@ -186,6 +186,17 @@ static int json_string(const char* js, jsmntok_t* jv, char* out, size_t out_size
 	return 0;
 }
 
+static int json_config_string(const char* js, jsmntok_t* jv, char* out, size_t out_size)
+{
+	if (json_string(js, jv, out, out_size) != 0)
+		return -1;
+
+	if (strchr(out, '\n') != 0 || strchr(out, '\r') != 0)
+		return -1;
+
+	return 0;
+}
+
 static void json_error_parse(char* str, size_t str_size, int jc)
 {
 	switch (jc) {
@@ -775,7 +786,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.hook_run_as_user, sizeof(transient.hook_run_as_user)) == 0) {
+				if (json_config_string(js, &jv[j], transient.hook_run_as_user, sizeof(transient.hook_run_as_user)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -787,7 +798,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.hook_script, sizeof(transient.hook_script)) == 0) {
+				if (json_config_string(js, &jv[j], transient.hook_script, sizeof(transient.hook_script)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -799,7 +810,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.hook_docker_pause, sizeof(transient.hook_docker_pause)) == 0) {
+				if (json_config_string(js, &jv[j], transient.hook_docker_pause, sizeof(transient.hook_docker_pause)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -828,7 +839,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.notify_run_as_user, sizeof(transient.notify_run_as_user)) == 0) {
+				if (json_config_string(js, &jv[j], transient.notify_run_as_user, sizeof(transient.notify_run_as_user)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -840,7 +851,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.notify_heartbeat, sizeof(transient.notify_heartbeat)) == 0) {
+				if (json_config_string(js, &jv[j], transient.notify_heartbeat, sizeof(transient.notify_heartbeat)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -852,7 +863,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.notify_start, sizeof(transient.notify_start)) == 0) {
+				if (json_config_string(js, &jv[j], transient.notify_start, sizeof(transient.notify_start)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -864,7 +875,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_string(js, &jv[j], transient.notify_result, sizeof(transient.notify_result)) == 0) {
+				if (json_config_string(js, &jv[j], transient.notify_result, sizeof(transient.notify_result)) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
