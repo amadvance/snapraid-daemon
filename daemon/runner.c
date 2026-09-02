@@ -1079,12 +1079,15 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 	 * the lock. Process spawn is fast enough that holding the lock here does not impact responsiveness.
 	 */
 	int spawn_canceled = task->canceled || !state->daemon_running;
+	int spawn_shutdown = 0;
 	if (!spawn_canceled) {
 		os_privileges_acquire();
 		pid = os_spawn(argv, NULL, &f, NULL);
 		os_privileges_release();
-		if (pid > 0)
+		if (pid > 0) {
 			task->pid = pid;
+			spawn_shutdown = !state->daemon_running;
+		}
 	}
 
 	state_unlock();
@@ -1105,6 +1108,11 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), (uint64_t)pid, log_path);
 		else
 			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
+
+		if (spawn_shutdown) {
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), (uint64_t)pid);
+			os_term(pid);
+		}
 
 		parse_log(state, f, 0, log_f, log_path);
 
