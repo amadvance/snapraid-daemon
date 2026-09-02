@@ -371,12 +371,12 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (latest_not_canceled_task != 0)
 		state->runner.latest = latest_not_canceled_task;
 
-	int exit_code = -1;
+	int exit_code = EXIT_EXEC_FAILED;
 	if (latest_not_canceled_task != 0) {
 		if (latest_not_canceled_task->state == PROCESS_STATE_TERM) {
 			exit_code = latest_not_canceled_task->exit_code;
 		} else {
-			exit_code = -1;
+			exit_code = EXIT_EXEC_FAILED;
 		}
 	}
 
@@ -385,7 +385,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	/* notify the report */
 	if (notify_result_locked_yield(state, report_high_cmd, report_level, exit_code, ss_extract(&ss)) != 0) {
 		char exit_msg[MSG_MAX];
-		report_task->exit_code = -1;
+		report_task->exit_code = EXIT_EXEC_FAILED;
 		log_task_push(&report_task->message_list);
 		snprintf(exit_msg, sizeof(exit_msg), "Notification failed (check " SYSLOG " for details)");
 		message_insert(&report_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_msg);
@@ -405,7 +405,7 @@ static int runner_start_locked(struct snapraid_state* state)
 	/* notify the start */
 	if (notify_start_locked_yield(state, start_task->high_cmd) != 0) {
 		char msg[MSG_MAX];
-		start_task->exit_code = -1;
+		start_task->exit_code = EXIT_EXEC_FAILED;
 		log_task_push(&start_task->message_list);
 		snprintf(msg, sizeof(msg), "Notification failed (check " SYSLOG " for details)");
 		message_insert(&start_task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
@@ -465,7 +465,7 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 
 	if (ret != 0) {
 		log_task(LVL_CRITICAL, "system shutdown failed");
-		shutdown_task->exit_code = -1;
+		shutdown_task->exit_code = EXIT_EXEC_FAILED;
 	}
 
 	log_task_push(&shutdown_task->message_list);
@@ -1030,7 +1030,7 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 	int hook_flags = 0;
 	if (pre_hook_flags == 0) {
 		if (runner_hook_begin(&pre_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), &hook_flags) < 0) {
-			pid_ret = -1;
+			pid_ret = EXIT_PRE_HOOK_FAILED;
 			goto bail;
 		}
 	} else {
@@ -1058,14 +1058,14 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 
 	if (spawn_canceled) {
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s was canceled before process spawn", command_name(cmd));
-		pid_ret = -1;
+		pid_ret = EXIT_EXEC_FAILED;
 		goto bail;
 	}
 
 	if (pid < 0) {
 		log_task(LVL_ERROR, "task %d run %s failed spawn, errno=%s(%d)", number, command_name(cmd), strerror(errno), errno);
 		snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to spawn (check " SYSLOG " for details), errno=%s(%d)", command_name(cmd), strerror(errno), errno);
-		pid_ret = -1;
+		pid_ret = EXIT_EXEC_FAILED;
 		/* continue to run the hook_script */
 	} else {
 		if (log_f != 0)
@@ -1081,8 +1081,6 @@ static void runner_go_locked_yield(struct snapraid_state* state)
 		if (pid_ret == -1) {
 			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
-			if (log_f != 0)
-				zprintf(log_f, "daemon:fail\n");
 		} else {
 			if (WIFEXITED(status)) {
 				if (WEXITSTATUS(status) == 0) {
@@ -1134,8 +1132,8 @@ bail:
 		 * Override the hook snapshot with the final process status while keeping the
 		 * global task state unchanged until the post-hook completes.
 		 */
-		if (pid_ret == -1) {
-			post_hook.exit_code = -1;
+		if (pid_ret < 0) {
+			post_hook.exit_code = pid_ret;
 			post_hook.task_state = PROCESS_STATE_TERM;
 		} else if (WIFEXITED(status)) {
 			post_hook.exit_code = WEXITSTATUS(status);
@@ -1152,11 +1150,19 @@ bail:
 	state_unlock();
 
 	if (post_skip == 0) {
-		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0)
-			pid_ret = -1;
+		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0) {
+			if (pid_ret >= 0)
+				pid_ret = EXIT_POST_HOOK_FAILED;
+		}
 	}
 
 	if (log_f != 0) {
+		if (pid_ret == EXIT_EXEC_FAILED)
+			zprintf(log_f, "daemon:fail\n");
+		else if (pid_ret == EXIT_PRE_HOOK_FAILED)
+			zprintf(log_f, "daemon:pre_hook_fail\n");
+		else if (pid_ret == EXIT_POST_HOOK_FAILED)
+			zprintf(log_f, "daemon:post_hook_fail\n");
 		zprintf(log_f, "daemon:end:%" PRIi64 "\n", unix_end_time);
 		if (zclose(log_f) != 0) {
 			log_task(LVL_WARNING, "failed to close log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
@@ -1181,7 +1187,7 @@ bail:
 	task->pulse = pulse_rev(state, &pulse_before);
 
 	/* if task completed succesfully */
-	if (pid_ret != -1
+	if (pid_ret >= 0
 		&& WIFEXITED(status)
 		&& WEXITSTATUS(status) == 0
 	) {
@@ -1207,14 +1213,19 @@ bail:
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 
-	if (pid_ret == -1) {
-		task->exit_code = -1;
+	if (pid_ret < 0) {
+		task->exit_code = pid_ret;
 		task->state = PROCESS_STATE_TERM;
 
 		message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, exit_neg_msg);
 
 		/* cancel queued tasks */
-		snprintf(msg, sizeof(msg), "The preceding %s operation failed to start", command_name(cmd));
+		if (pid_ret == EXIT_PRE_HOOK_FAILED)
+			snprintf(msg, sizeof(msg), "The preceding %s operation failed during the pre-hook", command_name(cmd));
+		else if (pid_ret == EXIT_POST_HOOK_FAILED)
+			snprintf(msg, sizeof(msg), "The preceding %s operation failed during the post-hook", command_name(cmd));
+		else
+			snprintf(msg, sizeof(msg), "The preceding %s operation failed to execute", command_name(cmd));
 		task_list_cancel_in_group(state, task, msg);
 	} else {
 		if (WIFEXITED(status)) {
@@ -1239,7 +1250,7 @@ bail:
 			task_list_cancel_in_group(state, task, msg);
 		} else {
 			/* it should never happen */
-			task->exit_code = -1;
+			task->exit_code = EXIT_EXEC_FAILED;
 			task->state = PROCESS_STATE_TERM;
 
 			/* cancel queued tasks */

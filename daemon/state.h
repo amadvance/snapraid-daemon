@@ -13,6 +13,10 @@
  **/
 #define EXIT_NEED_SYNC 2
 
+#define EXIT_EXEC_FAILED -1 /**< Task execution or daemon infrastructure failure */
+#define EXIT_PRE_HOOK_FAILED -2 /**< Pre-execution hook failure */
+#define EXIT_POST_HOOK_FAILED -3 /**< Post-execution hook failure */
+
 /**
  * Max keyword length
  *
