@@ -397,9 +397,11 @@ void daemon_run(struct snapraid_state* state)
 				web_start(state);
 			}
 
-			if (state->daemon_running && web_reload(state, net_web_root) != 0) {
-				log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
-				os_exit();
+			if (state->daemon_running && !state->web.page_nocache) {
+				if (web_reload(state, net_web_root) != 0) {
+					log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
+					os_exit();
+				}
 			}
 
 			state_lock();
