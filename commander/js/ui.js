@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, Icons } from './utils.js';
+import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, escHtml, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
 
+export { escHtml };
 export const esc = (str) => str.replace(/'/g, "\\'");
-const escAttr = (str) => {
-    if (str == null) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-};
+const escAttr = escHtml;
 
 /**
  * Calculates a numerical score for a version string to allow easy comparisons.
@@ -315,23 +309,23 @@ const renderSystemCard = (system) => {
                  </div>
                  <div class="property-row">
                     <div class="property-label">Hostname</div>
-                    <div class="property-value text-sm">${system.hostname}</div>
+                    <div class="property-value text-sm">${escHtml(system.hostname)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">OS</div>
-                    <div class="property-value text-sm">${system.os_distribution}</div>
+                    <div class="property-value text-sm">${escHtml(system.os_distribution)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Kernel</div>
-                    <div class="property-value text-sm font-mono">${system.os_kernel_version}</div>
+                    <div class="property-value text-sm font-mono">${escHtml(system.os_kernel_version)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">CPU</div>
-                    <div class="property-value text-xs">${system.cpu_model}</div>
+                    <div class="property-value text-xs">${escHtml(system.cpu_model)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Board</div>
-                    <div class="property-value text-xs">${system.motherboard || 'Unknown'}</div>
+                    <div class="property-value text-xs">${escHtml(system.motherboard) || 'Unknown'}</div>
                  </div>
             </div>
         </div>
@@ -355,7 +349,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             <div class="card glow">
                 <div class="flex justify-between items-center mb-4">
                     <div>
-                        <h3>ACTIVE: ${formatFullCommand(activity).toUpperCase()}</h3>
+                        <h3>ACTIVE: ${escHtml(formatFullCommand(activity).toUpperCase())}</h3>
                         <div class="text-sm text-muted">Started: ${formatFullTime(activity.started_at, pulseAt)}</div>
                     </div>
                     <div>${statusBadge(activity)}</div>
@@ -384,7 +378,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
             const isError = m.level === 'error' || m.level === 'fatal';
             const colorClass = isError ? 'text-red' : 'text-sky';
             const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
-            return `<div class="log-line ${colorClass}">${typeBadge} ${m.text}</div>`;
+            return `<div class="log-line ${colorClass}">${typeBadge} ${escHtml(m.text)}</div>`;
         }).join('')}
                 </div>
             </div>
@@ -423,7 +417,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <p class="text-muted text-sm mb-4">Last task finished execution.</p>
                 ${last ? `
                     <div class="flex flex-wrap items-center gap-4 text-sm">
-                        <span class="font-bold text-sky">${formatFullCommand(last).toUpperCase()}</span>
+                        <span class="font-bold text-sky">${escHtml(formatFullCommand(last).toUpperCase())}</span>
                         <span class="flex items-center gap-2">${healthBadge(last.health)}${statusBadge(last)}</span>
                         <span class="flex flex-wrap gap-4">
                             <span class="text-muted">${formatDuration(last.started_at, last.finished_at)} duration</span>
@@ -521,16 +515,16 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
 
     const formatVersionWithUpdate = (current, latest) => {
         if (!current) return healthBadge('pending');
-        if (!latest) return current;
+        if (!latest) return escHtml(current);
 
         const currentScore = getVersionScore(current);
         const latestScore = getVersionScore(latest);
 
         if (currentScore < latestScore) {
-            return `${current} <a href="https://www.snapraid.it/download" target="_blank" rel="noopener noreferrer" class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${latest}</a>`;
+            return `${escHtml(current)} <a href="https://www.snapraid.it/download" target="_blank" rel="noopener noreferrer" class="badge badge-yellow ml-2 whitespace-nowrap">NEW ${escHtml(latest)}</a>`;
         }
 
-        return `${current} <span class="text-emerald text-xs ml-2 whitespace-nowrap">up to date</span>`;
+        return `${escHtml(current)} <span class="text-emerald text-xs ml-2 whitespace-nowrap">up to date</span>`;
     };
 
     const configHtml = `
@@ -543,7 +537,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                  </div>
                  <div class="property-row">
                     <div class="property-label">Config</div>
-                    <div class="property-value font-mono text-xs">${arrayInfo.daemon_conf}</div>
+                    <div class="property-value font-mono text-xs">${escHtml(arrayInfo.daemon_conf)}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Engine</div>
@@ -551,11 +545,11 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                  </div>
                  <div class="property-row">
                     <div class="property-label">Config</div>
-                    <div class="property-value font-mono text-xs">${arrayInfo.engine_conf ? arrayInfo.engine_conf : healthBadge('pending')}</div>
+                    <div class="property-value font-mono text-xs">${arrayInfo.engine_conf ? escHtml(arrayInfo.engine_conf) : healthBadge('pending')}</div>
                  </div>
                  <div class="property-row">
                     <div class="property-label">Content</div>
-                    <div class="property-value font-mono text-xs">${arrayInfo.engine_content ? arrayInfo.engine_content : healthBadge('pending')}</div>
+                    <div class="property-value font-mono text-xs">${arrayInfo.engine_content ? escHtml(arrayInfo.engine_content) : healthBadge('pending')}</div>
                  </div>
             </div>
         </div>
@@ -630,8 +624,8 @@ export const renderDifferences = (arrayInfo) => {
         const isRemoved = d.change === 'removed';
         return `
             <tr>
-                <td class="text-xs font-bold ${colorClass}">${d.change.toUpperCase()}</td>
-                <td class="text-xs font-mono">${d.disk}</td>
+                <td class="text-xs font-bold ${colorClass}">${escHtml(d.change.toUpperCase())}</td>
+                <td class="text-xs font-mono">${escHtml(d.disk)}</td>
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
                         <span>${escAttr(d.path)}</span>
@@ -743,11 +737,11 @@ const renderDiskCard = (disk, type, pulseAt) => {
                 dev.smart.attributes.forEach(attr => {
                     if (attr.ignored && attr.when_failed !== 'now') return;
                     if (attr.critical && attr.measure === 'count' && attr.raw !== 0) {
-                        let label = `${attr.name.toLowerCase()}: raw ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
+                        let label = `${escHtml(attr.name.toLowerCase())}: raw ${attr.raw} ${formatHistory(attr.raw, attr.raw_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
                     if (attr.when_failed === 'now' || (attr.type === 'prefail' && attr.norm_history?.prev !== undefined && attr.norm_history?.prev !== null)) {
-                        let label = `${attr.name.toLowerCase()}: norm ${attr.norm} ${formatHistory(attr.norm, attr.norm_history, pulseAt)}`;
+                        let label = `${escHtml(attr.name.toLowerCase())}: norm ${attr.norm} ${formatHistory(attr.norm, attr.norm_history, pulseAt)}`;
                         smartIssues.push(label);
                     }
                 });
@@ -825,10 +819,10 @@ const renderDiskCard = (disk, type, pulseAt) => {
         return `
             <div class="mt-2 border text-sm">
                 <div class="flex justify-between items-center mb-1">
-                     <span class="font-mono text-sm font-bold text-sky truncate min-w-0">${dev.serial || 'Unknown serial'}</span>
+                     <span class="font-mono text-sm font-bold text-sky truncate min-w-0">${escHtml(dev.serial) || 'Unknown serial'}</span>
                      <div class="flex items-center gap-2 flex-shrink-0">${badge(dev.power === 'active' ? 'on' : 'off', dev.power === 'active' ? powerClass : 'blue')} ${healthBadge(dev.health)}</div>
                 </div>
-                <div class="text-xs text-muted mb-2">${interfaceString} ${modelString}${powerOnYears}</div>
+                <div class="text-xs text-muted mb-2">${escHtml(interfaceString)} ${escHtml(modelString)}${powerOnYears}</div>
                 
                 <div class="flex gap-4 mb-2 temp-sparkline-row items-center">
                     <div class="flex-shrink-0 whitespace-nowrap text-xs text-muted">
@@ -842,7 +836,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
                     </div>
                 </div>
 
-                <div class="smart-clickable mt-2" data-action="smart-details" data-node="${esc(dev.node)}">
+                <div class="smart-clickable mt-2" data-action="smart-details" data-node="${escHtml(dev.node)}">
                     ${smartStatus}
                 </div>
             </div>
@@ -852,7 +846,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
     return `
         <div class="card card-disk ${borderClass}">
             <div class="flex justify-between items-center mb-2">
-                <h4 class="font-bold text-lg">${disk.name}</h4>
+                <h4 class="font-bold text-lg">${escHtml(disk.name)}</h4>
                 ${healthBadge(disk.health)}
             </div>
 
@@ -897,7 +891,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
     const queueRows = pending.length ? pending.map(t => `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-sky">${formatFullCommand(t)}</td>
+            <td class="font-bold text-sky">${escHtml(formatFullCommand(t))}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted">${formatFullTime(t.scheduled_at, pulseAt)}</td>
         </tr>
@@ -910,7 +904,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
         return `
             <tr>
                 <td class="font-mono text-muted">#${t.number}</td>
-                <td class="font-bold text-sky">${formatFullCommand(t)}</td>
+                <td class="font-bold text-sky">${escHtml(formatFullCommand(t))}</td>
                 <td>${statusBadge(t)}</td>
                 <td class="text-muted">${formatFullTime(t.started_at, pulseAt)}</td>
                 <td class="text-muted">${duration}</td>
@@ -923,7 +917,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
         if (t.status === 'terminated' && t.exit_code !== 0) {
             exitStatus = `<div class="text-yellow mb-1">Exit Code: ${t.exit_code}</div>`;
         } else if (t.status === 'signaled') {
-            exitStatus = `<div class="text-red mb-1">Exit Signal: ${formatSignal(t.exit_sig)}</div>`;
+            exitStatus = `<div class="text-red mb-1">Exit Signal: ${escHtml(formatSignal(t.exit_sig))}</div>`;
         }
 
         let healthColor = 'text-muted';
@@ -942,7 +936,7 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
         return `
         <tr>
             <td class="font-mono text-muted">#${t.number}</td>
-            <td class="font-bold text-sky">${formatFullCommand(t)}</td>
+            <td class="font-bold text-sky">${escHtml(formatFullCommand(t))}</td>
             <td>${healthBadge(t.health)}</td>
             <td>${statusBadge(t)}</td>
             <td class="text-muted text-xs">${formatFullTime(t.started_at, pulseAt)}</td>
@@ -960,12 +954,12 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
                      ${exitStatus}
                      ${fatalMessages.map(m => {
                          const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
-                         return `<div class="text-red break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
+                         return `<div class="text-red break-all mb-1 font-mono">${typeBadge} ${escHtml(m.text)}</div>`;
                      }).join('')}
-                     ${t.health_reason ? `<div class="${healthColor} mb-1">${healthBadge(t.health)}: ${t.health_reason}</div>` : ''}
+                     ${t.health_reason ? `<div class="${healthColor} mb-1">${healthBadge(t.health)}: ${escHtml(t.health_reason)}</div>` : ''}
                       ${t.log_file && t.log_file !== 'N/A' ? `
                       <div class="text-muted mb-2">
-                         <span class="font-bold">Log File: ${t.log_file}</span>
+                         <span class="font-bold">Log File: ${escHtml(t.log_file)}</span>
                       </div>
                       ` : ''}
                      <div class="overflow-x-auto">
@@ -974,11 +968,11 @@ export const renderTasks = (data, hidePeriodic, openTaskNumbers = []) => {
                     const isError = m.level === 'error';
                     const colorClass = isError ? 'text-red' : m.level === 'verbose' ? 'text-muted' : 'text-sky';
                     const typeBadge = m.type === 'hardware' ? `<span class="badge badge-red text-[10px] mr-1">HARDWARE FAILURE</span>` : '';
-                    return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${m.text}</div>`;
+                    return `<div class="${colorClass} break-all mb-1 font-mono">${typeBadge} ${escHtml(m.text)}</div>`;
                 }).join('')
                 : (t.report_output ? '' : '<div class="text-sky">No logged messages.</div>')}
                         ${t.report_output ? `
-                        <div class="font-mono text-sky whitespace-pre-wrap">${t.report_output}</div>
+                        <div class="font-mono text-sky whitespace-pre-wrap">${escHtml(t.report_output)}</div>
                         ` : ''}
                      </div>
                 </div>
@@ -1175,9 +1169,9 @@ export const renderRecovery = (arrayInfo) => {
         const colorClass = isRecovered ? 'text-emerald' : 'text-red';
         return `
             <tr>
-                <td class="text-xs font-bold ${colorClass}">${result.toUpperCase()}</td>
-                <td class="text-xs font-mono">${(f && f.disk) || ''}</td>
-                <td class="text-xs break-all">${(f && f.path) || ''}</td>
+                <td class="text-xs font-bold ${colorClass}">${escHtml(result.toUpperCase())}</td>
+                <td class="text-xs font-mono">${escHtml(f?.disk)}</td>
+                <td class="text-xs break-all">${escHtml(f?.path)}</td>
             </tr>
         `;
     }).join('') : `<tr><td colspan="3" class="text-muted p-4">No recent recovery history</td></tr>`;
@@ -1286,8 +1280,8 @@ export const renderHealthBanner = (state) => {
                 ${title}
             </div>
             <div class="text-sm">
-                System health is currently <strong>${state.health.toUpperCase()}</strong>.
-                ${state.health_reason ? `<div class="health-banner-reason">${state.health_reason}</div>` : ''}
+                System health is currently <strong>${escHtml(state.health.toUpperCase())}</strong>.
+                ${state.health_reason ? `<div class="health-banner-reason">${escHtml(state.health_reason)}</div>` : ''}
             </div>
         </div>
     `;

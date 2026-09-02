@@ -3,7 +3,7 @@
 
 import { API } from './api.js';
 import { Icons, showToast, showConfirm, showConfirmDown, showConfirmDownThreshold, showModal, formatElapsedTime, formatDiskSize, formatSeconds, formatAttr } from './utils.js';
-import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner } from './ui.js';
+import { renderDashboard, renderDisks, renderTasks, renderDifferences, renderRecovery, renderSettings, renderTempSparkline, renderScrubHistory, renderHealthBanner, escHtml } from './ui.js';
 
 // Periodic refresh for pages that need to be updated even without a pulse.
 // Used by the Dashboard to update "memory usage" in the System card.
@@ -282,10 +282,10 @@ const app = {
                         <div class="status-title">
                             <span class="status-command flex items-center">
                                 <span class="status-icon icon-spin">${Icons.refresh}</span>
-                                ${state.active_command.toUpperCase()}
+                                ${escHtml(state.active_command.toUpperCase())}
                                 ${state.next_command ? `
                                     <span class="status-separator">${Icons.arrowRight}</span>
-                                    <span class="status-next">${state.next_command.toUpperCase()}</span>
+                                    <span class="status-next">${escHtml(state.next_command.toUpperCase())}</span>
                                 ` : ''}
                             </span>
                             ${hasProgress ? `<span>${state.progress}%</span>` : ''}
@@ -448,7 +448,7 @@ const app = {
                     view.innerHTML = '<p>Page Not Found</p>';
             }
         } catch (e) {
-            view.innerHTML = `<div class="card border-red"><h3 class="text-red">Error</h3><p>${e.message}</p></div>`;
+            view.innerHTML = `<div class="card border-red"><h3 class="text-red">Error</h3><p>${escHtml(e.message)}</p></div>`;
         }
     },
 
@@ -905,7 +905,7 @@ const app = {
         // 1. Process top-level boolean flags for statusRows
         Object.entries(s).forEach(([key, value]) => {
             if (key === 'attributes' || typeof value !== 'boolean') return;
-            const label = key.replace(/_/g, ' ').toUpperCase();
+            const label = escHtml(key.replace(/_/g, ' ').toUpperCase());
             const valStr = value ? 'YES' : 'NO';
             const valClass = value ? 'text-amber' : 'text-emerald';
             statusRows.push(`<tr><td class="font-bold text-xs">${label}</td><td class="font-mono font-bold text-xs ${valClass}">${valStr}</td></tr>`);
@@ -932,7 +932,7 @@ const app = {
         // 2. Process attributes array for criticalRows and otherRows
         if (s.attributes) {
             s.attributes.forEach(attr => {
-                let label = attr.name.replace(/_/g, ' ').toUpperCase();
+                let label = escHtml(attr.name.replace(/_/g, ' ').toUpperCase());
                 if (attr.ignored) {
                     label += ' (ignored)';
                 }
@@ -955,7 +955,7 @@ const app = {
                             <td class="${rowClass} font-mono text-xs">${attr.norm != null ? attr.norm : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.worst != null ? attr.worst : '-'}</td>
                             <td class="${rowClass} font-mono text-xs">${attr.thresh != null ? attr.thresh : '-'}</td>
-                            <td class="${rowClass} font-mono text-xs font-bold uppercase">${attr.when_failed != null ? attr.when_failed : '-'}</td>
+                            <td class="${rowClass} font-mono text-xs font-bold uppercase">${attr.when_failed != null ? escHtml(attr.when_failed) : '-'}</td>
                         </tr>
                     `);
                 } else {
