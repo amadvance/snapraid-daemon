@@ -1362,17 +1362,17 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 
 		/* keep the state as starting */
 		pulse(state, PULSE_ACTIVITY);
-		struint(&task->block_begin, map[2]);
-		struint(&task->block_end, map[3]);
-		struint(&task->block_count, map[4]);
+		stru64(&task->block_begin, map[2]);
+		stru64(&task->block_end, map[3]);
+		stru64(&task->block_count, map[4]);
 	} else if (strcmp(map[1], "pos") == 0) {
 		if (mac < 10)
 			return;
 
 		pulse(state, PULSE_ACTIVITY);
 		task->state = PROCESS_STATE_RUN;
-		struint(&task->block_idx, map[2]);
-		struint(&task->block_done, map[3]);
+		stru64(&task->block_idx, map[2]);
+		stru64(&task->block_done, map[3]);
 		stru64(&task->size_done, map[4]);
 		struint(&task->progress, map[5]);
 		struint(&task->eta_seconds, map[6]);
@@ -1402,7 +1402,7 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	pulse(state, PULSE_ACTIVITY);
 
 	task->state = PROCESS_STATE_SIGNAL;
-	struint(&task->block_idx, map[1]);
+	stru64(&task->block_idx, map[1]);
 }
 
 static int process_msg(struct snapraid_state* state, char** map, size_t mac)

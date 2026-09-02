@@ -298,11 +298,11 @@ struct snapraid_task {
 	unsigned speed_mbs; /**< Processing speed in MBytes/s */
 	unsigned cpu_usage; /**< CPU occupation in percentage, 0 <= cpu_usage <= 100. */
 	unsigned elapsed_seconds; /**< Number of seconds elapsed from the begin of the process. */
-	unsigned block_begin; /**< First block to be processed */
-	unsigned block_end; /**< Latest block +1 to be processed */
-	unsigned block_count; /**< Number of blocks to be processed, it may be less than end - begin */
-	unsigned block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
-	unsigned block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
+	uint64_t block_begin; /**< First block to be processed */
+	uint64_t block_end; /**< Latest block +1 to be processed */
+	uint64_t block_count; /**< Number of blocks to be processed, it may be less than end - begin */
+	uint64_t block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
+	uint64_t block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
 	pid_t pid; /**< Process ID of the running task */
 	int canceled; /**< Set to 1 if task stop/cancel was requested */
