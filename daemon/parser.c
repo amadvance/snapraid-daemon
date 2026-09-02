@@ -1699,14 +1699,32 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
 
-	if (mac < 3)
+	if (mac < 2)
 		return;
 
 	const char* tag = map[1];
-	const char* val = map[2];
 
 	/* these are always unique and always changing something */
 	pulse(state, PULSE_ACTIVITY);
+
+	if (strcmp(tag, "fail") == 0) {
+		task->state = PROCESS_STATE_TERM;
+		task->exit_code = EXIT_EXEC_FAILED;
+		return;
+	} else if (strcmp(tag, "pre_hook_fail") == 0) {
+		task->state = PROCESS_STATE_TERM;
+		task->exit_code = EXIT_PRE_HOOK_FAILED;
+		return;
+	} else if (strcmp(tag, "post_hook_fail") == 0) {
+		task->state = PROCESS_STATE_TERM;
+		task->exit_code = EXIT_POST_HOOK_FAILED;
+		return;
+	}
+
+	if (mac < 3)
+		return;
+
+	const char* val = map[2];
 
 	if (strcmp(tag, "number") == 0) {
 		if (strint(&task->number, val) == 0) {
