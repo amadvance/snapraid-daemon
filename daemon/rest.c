@@ -553,8 +553,15 @@ static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
 static int handler_state(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
 	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "GET") != 0)
+		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
@@ -603,9 +610,16 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
 static int handler_system(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
 	struct snapraid_system* system = &state->system;
 	int level = 0;
 	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "GET") != 0)
+		return send_json_error(conn, 405, "Only GET is allowed for this endpoint");
 
 	ss_init(&s, JSON_INITIAL_SIZE);
 
