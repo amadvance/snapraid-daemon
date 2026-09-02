@@ -292,11 +292,10 @@ paths:
       summary: Stop active task
       description: >
         Terminates the currently running SnapRAID CLI task (scrub, sync, etc.) by
-        sending a SIGTERM signal to the process.
+        requesting cancellation and sending a SIGTERM signal to the process if running.
 
-        This command is synchronous in the sense that it returns only after
-        the signal has been successfully sent. However, the actual termination
-        of the SnapRAID CLI process may take a few seconds to complete gracefully.
+        The actual termination of the SnapRAID CLI process may take a few seconds
+        to complete gracefully.
 
         If the task is cancelled before starting (e.g. during pre-hook execution),
         the returned pid is 0.
@@ -314,9 +313,6 @@ paths:
           $ref: '#/components/responses/CommandResult'
         '409':
           description: No task is currently running.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Failed to send termination signal to the process group.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/report:

@@ -1856,14 +1856,15 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 		 * and wrap-around, making this an accepted non-issue.
 		 */
 		if (os_term(pid) != 0) {
-			log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
-			sncpy(msg, msg_size, "Failed to stop task");
-			*status = 500;
-			return -1;
+			if (errno == ESRCH)
+				log_msg(LVL_INFO, "task %d (pid %" PRIu64 ") already terminated before SIGTERM", number, (uint64_t)pid);
+			else
+				log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
+			sncpy(msg, msg_size, "Stop requested");
+		} else {
+			log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+			sncpy(msg, msg_size, "Signal sent");
 		}
-
-		log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
-		sncpy(msg, msg_size, "Signal sent");
 	} else {
 		log_msg(LVL_INFO, "stop requested for task %d with no running process", number);
 		sncpy(msg, msg_size, "Stop requested");
