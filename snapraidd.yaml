@@ -69,6 +69,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [enabled]
               properties:
                 enabled:
                   type: boolean
@@ -206,8 +207,9 @@ paths:
         performed outside the daemon interface (e.g., replacing
         a failed disk, fixing UUID mismatches, or manually updating configuration).
 
-        The operation executes a 'read' task to load the current content file
-        data, followed by a 'report' task to evaluate and broadcast the
+        The operation executes an 'up' task to refresh filesystem information,
+        followed by a 'read' task to load the current content file data,
+        followed by a 'report' task to evaluate and broadcast the
         resulting array health.
 
         This is specifically useful for clearing 'FAILING' or 'PREFAIL' modes
