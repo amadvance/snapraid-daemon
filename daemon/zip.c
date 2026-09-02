@@ -75,11 +75,18 @@ static inline time_t dos_to_time_t(uint16_t dos_date, uint16_t dos_time)
 	return mktime(&tm_struct);
 }
 
-static void plain_content(tommy_list* page_list, const char* file, void* uncompressed_data, size_t uncompressed_size, time_t datetime)
+static int plain_content(tommy_list* page_list, const char* path, const char* file, void* uncompressed_data, size_t uncompressed_size, time_t datetime, uint32_t crc32)
 {
 	char root[PATH_MAX];
 
 	(void)datetime;
+
+	/* verify integrity with the CRC32 we extracted earlier */
+	uint32_t check = calculate_crc32(uncompressed_data, uncompressed_size);
+	if (crc32 != check) {
+		log_msg(LVL_ERROR, "crawler zip %s invalid crc for file %s", path, file);
+		return -1;
+	}
 
 	snprintf(root, sizeof(root), "/%s", file);
 
@@ -87,7 +94,7 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 	const char* mime_type = get_mime_type(file, &is_static);
 	if (mime_type == 0) {
 		log_msg(LVL_WARNING, "crawler ignore unknown file %s", file);
-		return;
+		return 0;
 	}
 
 	struct snapraid_page* page = page_alloc(root, uncompressed_size);
@@ -98,6 +105,8 @@ static void plain_content(tommy_list* page_list, const char* file, void* uncompr
 	page->is_static = is_static;
 
 	tommy_list_insert_tail(page_list, &page->node, page);
+
+	return 0;
 }
 
 static int unzip_content(tommy_list* page_list, const char* path, const char* file, void* compressed_data, size_t compressed_size,
@@ -115,7 +124,8 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 			log_msg(LVL_ERROR, "crawler zip %s invalid uncompressed data size for compression method %d for %s", path, compression_method, file);
 			return -1;
 		}
-		plain_content(page_list, file, compressed_data, compressed_size, datetime);
+		if (plain_content(page_list, path, file, compressed_data, compressed_size, datetime, crc32) != 0)
+			return -1;
 #if HAVE_ZLIB
 	} else if (compression_method == ZIP_METHOD_DEFLATE) {
 		void* out_buf = malloc_nofail(uncompressed_size);
@@ -138,15 +148,10 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 			inflateEnd(&strm);
 
 			if (ret == Z_STREAM_END) {
-				/* verify integrity with the CRC32 we extracted earlier */
-				uint32_t check = calculate_crc32(out_buf, uncompressed_size);
-				if (crc32 != check) {
-					log_msg(LVL_ERROR, "crawler zip %s invalid crc for file %s", path, file);
+				if (plain_content(page_list, path, file, out_buf, uncompressed_size, datetime, crc32) != 0) {
 					free(out_buf);
 					return -1;
 				}
-
-				plain_content(page_list, file, out_buf, uncompressed_size, datetime);
 			} else {
 				log_msg(LVL_ERROR, "crawler zip %s decompression failed for file %s", path, file);
 				free(out_buf);
@@ -159,8 +164,6 @@ static int unzip_content(tommy_list* page_list, const char* path, const char* fi
 		}
 
 		free(out_buf);
-#else
-		(void)crc32;
 #endif
 	} else {
 		log_msg(LVL_ERROR, "crawler zip %s unsupported compression method %d for %s", path, compression_method, file);
