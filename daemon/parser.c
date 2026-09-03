@@ -1383,7 +1383,9 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		/* if stopping, ignore the end, and it's reported anyway */
 		if (task->state != PROCESS_STATE_SIGNAL) {
 			pulse(state, PULSE_ACTIVITY);
-			task->state = PROCESS_STATE_TERM;
+			int runtime = !state->daemon_loading;
+			if (runtime)
+				task->state = PROCESS_STATE_TERM; /* trigger the finalizing state */
 			task->progress = 100;
 			task->eta_seconds = 0;
 			task->speed_mbs = 0;
@@ -1402,6 +1404,7 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	pulse(state, PULSE_ACTIVITY);
 
 	task->state = PROCESS_STATE_SIGNAL;
+	task->exit_sig = SIGINT;
 	stru64(&task->block_idx, map[1]);
 }
 
