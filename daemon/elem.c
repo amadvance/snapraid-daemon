@@ -89,6 +89,8 @@ struct snapraid_disk* disk_alloc(const char* name, int kind, int64_t last_time)
 	tracked_set(&disk->error_io, 0, last_time);
 	tracked_set(&disk->error_data, 0, last_time);
 	sncpy(disk->name, sizeof(disk->name), name);
+	tommy_list_init(&disk->device_pointer_list);
+	tommy_list_init(&disk->split_list);
 
 	return disk;
 }
@@ -98,9 +100,36 @@ void disk_free(void* void_disk)
 	struct snapraid_disk* disk = void_disk;
 	if (!disk)
 		return;
-	tommy_list_foreach(&disk->device_list, device_free);
+	tommy_list_foreach(&disk->device_pointer_list, device_pointer_free);
 	tommy_list_foreach(&disk->split_list, split_free);
 	free(disk);
+}
+
+struct snapraid_device_pointer* device_pointer_alloc(struct snapraid_device* device, int split_index, int number)
+{
+	struct snapraid_device_pointer* pointer = calloc_nofail(1, sizeof(struct snapraid_device_pointer));
+	pointer->device = device;
+	pointer->split_index = split_index;
+	pointer->last_update_at_number = number;
+	return pointer;
+}
+
+void device_pointer_free(void* void_pointer)
+{
+	free(void_pointer);
+}
+
+struct snapraid_device* device_catalog_find_by_file(struct snapraid_state* state, const char* file)
+{
+	if (strcmp(file, "disconnected") == 0)
+		return 0;
+
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
+		struct snapraid_device* device = i->data;
+		if (strcmp(device->file, file) == 0)
+			return device;
+	}
+	return 0;
 }
 
 void device_free(void* void_device)
@@ -736,13 +765,17 @@ static int health_worse(int current, int value, char* reason, size_t reason_size
 	return value;
 }
 
-static int health_device_list(tommy_list* list, char* reason, size_t reason_size)
+static int health_device_pointer_list(tommy_list* list, char* reason, size_t reason_size)
 {
 	int health = HEALTH_PASSED;
 
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
-		struct snapraid_device* device = i->data;
-		health = health_worse(health, device->health, reason, reason_size, device->health_reason);
+		struct snapraid_device_pointer* pointer = i->data;
+		struct snapraid_device* device = pointer->device;
+
+		if (device_is_connected(device)) {
+			health = health_worse(health, device->health, reason, reason_size, device->health_reason);
+		}
 	}
 
 	return health;
@@ -785,7 +818,7 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
 	}
 
-	int device_health = health_device_list(&disk->device_list, msg, sizeof(msg));
+	int device_health = health_device_pointer_list(&disk->device_pointer_list, msg, sizeof(msg));
 	health = health_worse(health, device_health, reason, reason_size, msg);
 
 	int split_health = health_split_list(disk->name, &disk->split_list, msg, sizeof(msg));
@@ -867,9 +900,11 @@ double afr_array_locked(struct snapraid_state* state)
 
 	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
 		struct snapraid_disk* disk = i->data;
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			afr += device->afr;
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* device = pointer->device;
+			if (device_is_connected(device))
+				afr += device->afr;
 		}
 	}
 
@@ -941,13 +976,10 @@ int temperature_cleanup_devices(struct snapraid_state* state, time_t last_time)
 {
 	int ret = 0;
 
-	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			if (temperature_cleanup(device, last_time))
-				ret = 1;
-		}
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i; i = i->next) {
+		struct snapraid_device* device = i->data;
+		if (temperature_cleanup(device, last_time))
+			ret = 1;
 	}
 
 	return ret;

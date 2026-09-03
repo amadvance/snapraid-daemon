@@ -175,13 +175,22 @@ struct snapraid_device {
 	uint64_t flags; /**< Smartctl flags. SMART_UNASSIGNED if not set. */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
-	int last_update_at_number; /**< The latest task number that updated the device */
+	int parser_mapping_recognized; /**< Device identity recognized by the current map */
 	int power; /**< POWER mode. POWER_PENDING if not set. */
 	int health; /**< HEALTH code. HEALTH_PENDING if not set. */
 	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
 	int temperature; /**< Latest measured temperature, 0 if none */
-	int split_index; /**< Index of the split */
 	tommy_list temp_list; /**< Temperature measures */
+	tommy_node node;
+};
+
+/**
+ * Disk device pointer entry.
+ */
+struct snapraid_device_pointer {
+	struct snapraid_device* device; /**< Physical device */
+	int split_index; /**< Parity split index (0 if not parity) */
+	int last_update_at_number; /**< The latest task number that updated the pointer */
 	tommy_node node;
 };
 
@@ -204,6 +213,9 @@ struct snapraid_split {
 #define DISK_PARITY 2
 #define DISK_EXTRA 3
 
+/**
+ * Disk info entry.
+ */
 struct snapraid_disk {
 	char name[KEYWORD_MAX]; /**< Name of the disk. */
 	uint64_t total_space_bytes; /**< Size of the disk stored in the content file. SMART_UNASSIGNED if not set. */
@@ -218,7 +230,7 @@ struct snapraid_disk {
 	int last_update_at_number; /**< The latest task number that updated the disk */
 	int kind; /**< Kind of the disk. One of DISK_* */
 
-	tommy_list device_list; /**< List of snapraid_device */
+	tommy_list device_pointer_list; /**< List of snapraid_device_pointer */
 	tommy_list split_list; /**< List of snapraid_split */
 	tommy_node node;
 };
@@ -618,6 +630,7 @@ struct snapraid_state {
 
 	/**< Data protected by the state lock */
 	thread_mutex_t state_lock; /**< Protection for the following data */
+	tommy_list device_catalog; /**< Catalog of all physical devices */
 	char engine_version[64]; /**< SnapRAID engine full version. */
 	char latest_daemon_version[64]; /**< Latest daemon version fetched from GitHub. */
 	char latest_engine_version[64]; /**< Latest engine version fetched from GitHub. */

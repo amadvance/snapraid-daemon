@@ -48,6 +48,30 @@ int disk_count(tommy_list* list, int kind);
 void device_free(void* void_device);
 
 /**
+ * Allocate a device pointer entry.
+ */
+struct snapraid_device_pointer* device_pointer_alloc(struct snapraid_device* device, int split_index, int number);
+
+/**
+ * Free a device pointer entry.
+ * @param void_pointer Pointer to the device pointer entry
+ */
+void device_pointer_free(void* void_pointer);
+
+/**
+ * Find a device in the catalog by its device node (file).
+ */
+struct snapraid_device* device_catalog_find_by_file(struct snapraid_state* state, const char* file);
+
+/**
+ * Check if a device is currently connected.
+ */
+static inline int device_is_connected(const struct snapraid_device* device)
+{
+	return device != 0 && strcmp(device->file, "disconnected") != 0;
+}
+
+/**
  * Free a split entry.
  * @param void_split Pointer to the split entry
  */
@@ -346,7 +370,7 @@ const char* health_name(int health);
 int health_task(struct snapraid_task* task, char* reason, size_t reason_size);
 
 /**
- * Analyze disk health and return health status.
+ * Analyze the health of a specific disk.
  * @param disk Disk to analyze
  * @param reason Buffer to store health reason
  * @param reason_size Size of reason buffer

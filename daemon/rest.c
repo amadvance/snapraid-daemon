@@ -1644,11 +1644,14 @@ static void json_device_list(struct snapraid_state* state, ss_t* s, int level, c
 {
 	++level;
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
-		struct snapraid_device* dev = i->data;
+		struct snapraid_device_pointer* pointer = i->data;
+		struct snapraid_device* dev = pointer->device;
+		if (!device_is_connected(dev))
+			continue;
 		ss_json_open(s, &level);
 		ss_json_str(s, level, "node", dev->file);
 		json_id_list(s, level, &dev->id_list);
-		ss_json_int(s, level, "split_index", dev->split_index);
+		ss_json_int(s, level, "split_index", pointer->split_index);
 		ss_json_str(s, level, "health", health_name(dev->health));
 		if (*dev->family)
 			ss_json_str(s, level, "family", dev->family);
@@ -1799,7 +1802,7 @@ static void json_disk_list(struct snapraid_state* state, ss_t* s, int level, tom
 		ss_json_array_close(s, &level);
 
 		ss_json_array_open(s, &level, "devices");
-		json_device_list(state, s, level, disk->name, &disk->device_list, reference);
+		json_device_list(state, s, level, disk->name, &disk->device_pointer_list, reference);
 		ss_json_array_close(s, &level);
 		ss_json_close(s, &level);
 	}

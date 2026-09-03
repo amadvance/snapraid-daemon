@@ -48,59 +48,6 @@ static int parser_association_is_present(struct snapraid_state* state, const cha
 	return 0;
 }
 
-/**
- * Check if there are multiple association for the same id
- *
- * This happens only if the system has broken devices reporting the same
- * identifier like the same serial number.
- */
-static int parser_association_is_duplicate(struct snapraid_state* state, const char* id)
-{
-	const char* file = 0;
-
-	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-
-		if (strcmp(association->id, id) == 0) {
-			if (file != 0 && strcmp(file, association->file) != 0)
-				return 1;
-			file = association->file;
-		}
-	}
-
-	return 0;
-}
-
-/**
- * Check if there are multiple device for the same id
- *
- * This happens only if the system has broken devices reporting the same
- * identifier like the same serial number.
- *
- * Note that the association duplicate check normally prevents this to
- * happen, but it can still happen with older versions, of if the devices
- * are connected/disconneted at different time.
- */
-static int parser_device_is_duplicate(struct snapraid_state* state, const char* id)
-{
-	const char* file = 0;
-
-	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* device = j->data;
-
-			if (parser_device_has_id(device, id)) {
-				if (file != 0 && strcmp(file, device->file) != 0)
-					return 1;
-				file = device->file;
-			}
-		}
-	}
-
-	return 0;
-}
 
 /**
  * Insert a new mapping entry
@@ -120,19 +67,17 @@ static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_a
 {
 	int runtime = !state->daemon_loading;
 
-	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
-		struct snapraid_disk* disk = i->data;
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
+		struct snapraid_device* device = i->data;
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* device = j->data;
+		if (parser_device_has_id(device, association->id)) {
+			device->parser_mapping_recognized = 1;
 
-			if (parser_device_has_id(device, association->id)) {
-				if (strcmp(device->file, association->file) != 0) {
-					if (runtime)
-						log_task(LVL_WARNING, "remapping id '%s' to device '%s' (was '%s')", association->id, association->file, device->file);
-					pulse(state, PULSE_DISKS);
-					sncpy(device->file, sizeof(device->file), association->file);
-				}
+			if (strcmp(device->file, association->file) != 0) {
+				if (runtime)
+					log_task(LVL_WARNING, "remapping id '%s' to device '%s' (was '%s')", association->id, association->file, device->file);
+				pulse(state, PULSE_DISKS);
+				sncpy(device->file, sizeof(device->file), association->file);
 			}
 		}
 	}
@@ -145,23 +90,42 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
 {
 	int runtime = !state->daemon_loading;
 
-	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
-		struct snapraid_disk* disk = i->data;
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
+		struct snapraid_device* device = i->data;
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* device = j->data;
-
-			if (strcmp(association->file, device->file) == 0) {
-				/* insert only if missing */
-				if (!parser_device_has_id(device, association->id)) {
-					pulse(state, PULSE_DISKS);
-					if (runtime)
-						log_task(LVL_INFO, "associating id '%s' to device '%s'", association->id, association->file);
-					sl_insert_str(&device->id_list, association->id);
-				}
+		if (strcmp(association->file, device->file) == 0) {
+			/* insert only if missing */
+			if (!parser_device_has_id(device, association->id)) {
+				pulse(state, PULSE_DISKS);
+				if (runtime)
+					log_task(LVL_INFO, "associating id '%s' to device '%s'", association->id, association->file);
+				sl_insert_str(&device->id_list, association->id);
 			}
 		}
 	}
+}
+
+/**
+ * Remove a device from all disks and the global catalog, freeing its memory.
+ */
+static void parser_device_remove(struct snapraid_state* state, struct snapraid_device* device)
+{
+	/* remove any disk pointer referencing this device */
+	for (tommy_node* d = tommy_list_head(&state->array.disk_list); d != 0; d = d->next) {
+		struct snapraid_disk* disk = d->data;
+		for (tommy_node* p = tommy_list_head(&disk->device_pointer_list); p != 0; ) {
+			struct snapraid_device_pointer* pointer = p->data;
+			tommy_node* p_next = p->next;
+			if (pointer->device == device) {
+				tommy_list_remove_existing(&disk->device_pointer_list, &pointer->node);
+				device_pointer_free(pointer);
+			}
+			p = p_next;
+		}
+	}
+
+	tommy_list_remove_existing(&state->device_catalog, &device->node);
+	device_free(device);
 }
 
 /**
@@ -171,43 +135,60 @@ static void parser_mapping_process_locked(struct snapraid_state* state)
 {
 	int runtime = !state->daemon_loading;
 
-	/*
-	 * Remap devices using the listed association
-	 *
-	 * Duplicated id in associations or devices are ignored
-	 */
-	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-
-		if (parser_association_is_duplicate(state, association->id)) {
-			if (runtime)
-				log_task(LVL_WARNING, "ignoring duplicate association of id '%s' to device '%s'", association->id, association->file);
-		} else if (parser_device_is_duplicate(state, association->id)) {
-			if (runtime)
-				log_task(LVL_WARNING, "ignoring duplicate device with id '%s' for device '%s'", association->id, association->file);
-		} else {
-			parser_mapping_apply(state, association);
-		}
+	/* Reset recognition state for all devices in the catalog. */
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
+		struct snapraid_device* device = i->data;
+		device->parser_mapping_recognized = 0;
 	}
 
 	/*
-	 * After remapping add new associations to all devices
-	 *
-	 * This is required in case new IDs are found after the device is created.
-	 * This may happen because the kernel or snapraid is updated, and can get new information.
-	 *
-	 * Duplicated id in associations or devices are ignored
+	 * Remap devices using the listed association
 	 */
 	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
 		struct snapraid_association* association = i->data;
 
-		if (parser_association_is_duplicate(state, association->id)) {
-			/* already reported */
-		} else if (parser_device_is_duplicate(state, association->id)) {
-			/* already reported */
-		} else {
-			parser_mapping_add(state, association);
+		parser_mapping_apply(state, association);
+	}
+
+	/*
+	 * Disconnect devices in catalog not recognized by the current complete mapping.
+	 *
+	 * If a physical device is disconnected, replaced, or missing from the
+	 * mapping, mark its device node as "disconnected".
+	 * Devices stay in device_catalog permanently in case they are reconnected.
+	 * Devices without unique IDs cannot be reconnected, so remove them completely.
+	 */
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
+		struct snapraid_device* device = i->data;
+		tommy_node* i_next = i->next;
+
+		if (!device->parser_mapping_recognized) {
+			if (tommy_list_empty(&device->id_list)) {
+				if (runtime)
+					log_task(LVL_INFO, "removing unrecognized device without ID on '%s'", device->file);
+				pulse(state, PULSE_DISKS);
+				parser_device_remove(state, device);
+			} else if (device_is_connected(device)) {
+				if (runtime)
+					log_task(LVL_INFO, "disconnecting unrecognized device with serial '%s', family '%s', model '%s'", device->serial, device->family, device->model);
+				pulse(state, PULSE_DISKS);
+				sncpy(device->file, sizeof(device->file), "disconnected");
+			}
 		}
+
+		i = i_next;
+	}
+
+	/*
+	 * After remapping add new associations to all devices in the catalog
+	 *
+	 * This is required in case new IDs are found after the device is created.
+	 * This may happen because the kernel or snapraid is updated, and can get new information.
+	 */
+	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
+		struct snapraid_association* association = i->data;
+
+		parser_mapping_add(state, association);
 	}
 }
 
@@ -220,16 +201,7 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
 		struct snapraid_association* association = i->data;
 
 		if (strcmp(association->file, device->file) == 0) {
-
-			/*
-			 * Do no insert duplicate associations
-			 *
-			 * Instead, insert duplicate devices, to allow to recognize
-			 * them as duplicate in following parsing of new commands.
-			 */
-			if (!parser_association_is_duplicate(state, association->id)) {
-				sl_insert_str(&device->id_list, association->id);
-			}
+			sl_insert_str(&device->id_list, association->id);
 		}
 	}
 }
@@ -271,17 +243,17 @@ static void remove_disappeared_disks(struct snapraid_state* state, struct snapra
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
 		} else {
-			/* remove any devices that is not referenced */
-			for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; ) {
-				struct snapraid_device* device = j->data;
+			/* remove any device pointer that is not referenced */
+			for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j != 0; ) {
+				struct snapraid_device_pointer* pointer = j->data;
 				tommy_node* j_next = j->next;
 
-				if (device->last_update_at_number < task->number) {
+				if (pointer->last_update_at_number < task->number) {
 					if (runtime)
-						log_task(LVL_INFO, "removing disappeared device '%s'", device->file);
+						log_task(LVL_INFO, "removing unreferenced device '%s' from disk '%s'", pointer->device->file, disk->name);
 					pulse(state, PULSE_DISKS);
-					tommy_list_remove_existing(&disk->device_list, &device->node);
-					device_free(device);
+					tommy_list_remove_existing(&disk->device_pointer_list, &pointer->node);
+					device_pointer_free(pointer);
 				}
 
 				j = j_next;
@@ -438,24 +410,14 @@ static struct snapraid_split* find_split(tommy_list* list, int index)
 	return split;
 }
 
-static struct snapraid_device* find_device_from_file(struct snapraid_state* state, tommy_list* list, int number, const char* file, int split_index)
+static struct snapraid_device* find_device(struct snapraid_state* state, const char* file)
 {
-	struct snapraid_device* device;
-	tommy_node* i;
-	int j;
-
-	i = tommy_list_head(list);
-	while (i) {
-		device = i->data;
-		if (strcmp(file, device->file) == 0) {
-			device->last_update_at_number = number;
-			return device;
-		}
-		i = i->next;
-	}
+	struct snapraid_device* device = device_catalog_find_by_file(state, file);
+	if (device)
+		return device;
 
 	device = calloc_nofail(1, sizeof(struct snapraid_device));
-	for (j = 0; j < SMART_COUNT; ++j) {
+	for (int j = 0; j < SMART_COUNT; ++j) {
 		tracked_init(&device->smart[j].raw);
 		tracked_init(&device->smart[j].norm);
 		device->smart[j].worst = SMART_UNASSIGNED;
@@ -471,29 +433,44 @@ static struct snapraid_device* find_device_from_file(struct snapraid_state* stat
 	device->power = POWER_PENDING;
 	device->health = HEALTH_PENDING;
 	sncpy(device->health_reason, sizeof(device->health_reason), "SMART telemetry not yet obtained because the device is in stand-by");
-	device->split_index = split_index;
 	sncpy(device->file, sizeof(device->file), file);
 	sl_init(&device->id_list);
 	parser_mapping_create(state, device);
-	device->last_update_at_number = number;
-	tommy_list_insert_tail(list, &device->node, device);
+	tommy_list_init(&device->temp_list);
+	tommy_list_insert_tail(&state->device_catalog, &device->node, device);
 
 	return device;
 }
 
-static struct snapraid_device* find_device(struct snapraid_state* state, int number, char* name, const char* file)
+static struct snapraid_device_pointer* find_device_pointer(struct snapraid_disk* disk, int number, struct snapraid_device* device, int split_index)
+{
+	for (tommy_node* i = tommy_list_head(&disk->device_pointer_list); i != 0; i = i->next) {
+		struct snapraid_device_pointer* pointer = i->data;
+		if (pointer->split_index == split_index && pointer->device == device) {
+			pointer->last_update_at_number = number;
+			return pointer;
+		}
+	}
+
+	struct snapraid_device_pointer* pointer = device_pointer_alloc(device, split_index, number);
+	tommy_list_insert_tail(&disk->device_pointer_list, &pointer->node, pointer);
+	return pointer;
+}
+
+static struct snapraid_device* find_disk_device(struct snapraid_state* state, int number, char* disk, const char* file)
 {
 	int index;
+	parse_parity_split(disk, &index);
 
-	parse_parity_split(name, &index);
-
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, number, name, DISK_UNDEFINED, 0);
-	if (!disk) {
-		log_task(LVL_WARNING, "unknown disk '%s'", name);
+	struct snapraid_disk* disk_elem = find_disk(&state->array.disk_list, number, disk, DISK_UNDEFINED, 0);
+	if (!disk_elem) {
+		log_task(LVL_WARNING, "unknown disk '%s'", disk);
 		return 0;
 	}
 
-	return find_device_from_file(state, &disk->device_list, number, file, index);
+	struct snapraid_device* device = find_device(state, file);
+	find_device_pointer(disk_elem, number, device, index);
+	return device;
 }
 
 static void process_stat(struct snapraid_state* state, char** map, size_t mac)
@@ -1000,7 +977,7 @@ static void process_info(struct snapraid_state* state, char** map, size_t mac)
 	if (disk[0] == 0) /* ignore devices not associated to any disk */
 		return;
 
-	find_device(state, task->number, disk, file);
+	find_disk_device(state, task->number, disk, file);
 }
 
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
@@ -1019,7 +996,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 	if (disk[0] == 0) /* ignore devices not associated to any disk */
 		return;
 
-	struct snapraid_device* device = find_device(state, task->number, disk, file);
+	struct snapraid_device* device = find_disk_device(state, task->number, disk, file);
 	if (!device)
 		return;
 

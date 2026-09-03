@@ -13,7 +13,15 @@
 
 static int disk_count_device(struct snapraid_disk* disk)
 {
-	return tommy_list_count(&disk->device_list);
+	int count = 0;
+
+	for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+		struct snapraid_device_pointer* pointer = j->data;
+		if (device_is_connected(pointer->device))
+			++count;
+	}
+
+	return count;
 }
 
 static const char* health_report_wide(int health)
@@ -514,8 +522,11 @@ static void spacing_disk_list(tommy_list* disk_list, struct disk_spacing* sp)
 		int len = strlen(disk->name);
 		if (sp->name_len < len)
 			sp->name_len = len;
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* device = pointer->device;
+			if (!device_is_connected(device))
+				continue;
 			len = strlen(device->model);
 			if (sp->model_len < len)
 				sp->model_len = len;
@@ -624,14 +635,17 @@ static void print_disk_list_wide(struct snapraid_state* state, tommy_list* disk_
 		ss_printl(ss, disk->name, sp->name_len);
 		ss_prints(ss, health_report_wide(disk_health));
 
-		int has_none = tommy_list_empty(&disk->device_list);
-		int has_many = disk_count_device(disk) > 1;
+		int device_count = disk_count_device(disk);
+		int has_none = device_count == 0;
+		int has_many = device_count > 1;
 		if (has_many || has_none)
 			ss_prints(ss, "\n");
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			print_device_wide(state, disk->name, device, ss, sp, has_many);
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* device = pointer->device;
+			if (device_is_connected(device))
+				print_device_wide(state, disk->name, device, ss, sp, has_many);
 		}
 
 		/* print error counters if not zero */
@@ -657,14 +671,17 @@ static void print_disk_list_narrow(struct snapraid_state* state, tommy_list* dis
 		ss_prints(ss, " ");
 		ss_prints(ss, health_report_narrow(disk_health));
 
-		int has_none = tommy_list_empty(&disk->device_list);
-		int has_many = disk_count_device(disk) > 1;
+		int device_count = disk_count_device(disk);
+		int has_none = device_count == 0;
+		int has_many = device_count > 1;
 		if (has_many || has_none)
 			ss_prints(ss, "\n");
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-			struct snapraid_device* device = j->data;
-			print_device_narrow(state, disk->name, device, ss, has_many);
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* device = pointer->device;
+			if (device_is_connected(device))
+				print_device_narrow(state, disk->name, device, ss, has_many);
 		}
 
 		/* print error counters if not zero */
@@ -767,8 +784,11 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 			}
 		}
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* dev = j->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j != 0; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* dev = pointer->device;
+			if (!device_is_connected(dev))
+				continue;
 
 			sh.disk_printed = 0; /* it prints the serial, so reset it for each devices */
 
@@ -926,8 +946,11 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 			}
 		}
 
-		for (tommy_node* j = tommy_list_head(&disk->device_list); j != 0; j = j->next) {
-			struct snapraid_device* dev = j->data;
+		for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j != 0; j = j->next) {
+			struct snapraid_device_pointer* pointer = j->data;
+			struct snapraid_device* dev = pointer->device;
+			if (!device_is_connected(dev))
+				continue;
 
 			for (int k = 0; k < SMART_COUNT; ++k) {
 				struct smart_attr* attr = &dev->smart[k];
