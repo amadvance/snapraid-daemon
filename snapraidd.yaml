@@ -487,6 +487,11 @@ paths:
                     description: 'Ordered list of extra disks (boot, data, ...)'
                     items:
                       $ref: '#/components/schemas/Disk'
+                  disconnected_devices:
+                    type: array
+                    description: 'List of physical devices previously part of the array that are currently disconnected'
+                    items:
+                      $ref: '#/components/schemas/Device'
         '400':
           description: Invalid request body.
           $ref: '#/components/responses/CommandResult'
@@ -1267,7 +1272,6 @@ components:
       required:
         - node
         - ids
-        - split_index
         - health
         - power
       properties:

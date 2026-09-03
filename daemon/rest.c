@@ -1640,6 +1640,107 @@ static void json_scrub_list(ss_t* s, int level, tommy_list* list, int64_t refere
 	ss_json_close(s, &level);
 }
 
+static void json_device(struct snapraid_state* state, ss_t* s, int level, const char* disk_name, struct snapraid_device* dev, int split_index, time_t reference)
+{
+	ss_json_open(s, &level);
+	ss_json_str(s, level, "node", dev->file);
+	json_id_list(s, level, &dev->id_list);
+	if (split_index >= 0)
+		ss_json_int(s, level, "split_index", split_index);
+	ss_json_str(s, level, "health", health_name(dev->health));
+	if (*dev->family)
+		ss_json_str(s, level, "family", dev->family);
+	if (*dev->model)
+		ss_json_str(s, level, "model", dev->model);
+	if (*dev->serial)
+		ss_json_str(s, level, "serial", dev->serial);
+	if (*dev->interf)
+		ss_json_str(s, level, "interface", dev->interf);
+	ss_json_str(s, level, "power", power_name(dev->power));
+	if (dev->size != SMART_UNASSIGNED)
+		ss_json_u64(s, level, "size_bytes", dev->size);
+	if (dev->rotational != SMART_UNASSIGNED)
+		ss_json_u64(s, level, "rotational", dev->rotational);
+	if (dev->error_protocol.value != SMART_UNASSIGNED) {
+		json_tracked(s, level, "error_protocol", &dev->error_protocol, 0);
+		if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
+			ss_json_bool(s, level, "error_protocol_ignored", 1);
+		}
+	}
+	if (dev->error_medium.value != SMART_UNASSIGNED) {
+		json_tracked(s, level, "error_medium", &dev->error_medium, 0);
+		if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
+			ss_json_bool(s, level, "error_medium_ignored", 1);
+		}
+	}
+	if (dev->wear_level != SMART_UNASSIGNED)
+		ss_json_u64(s, level, "wear_level", dev->wear_level);
+	if (dev->afr != 0)
+		ss_json_double(s, level, "annual_failure_rate", dev->afr);
+	if (dev->prob != 0)
+		ss_json_double(s, level, "failure_probability", dev->prob);
+	json_temp_list(s, level, &dev->temp_list, reference);
+	ss_json_object_open(s, &level, "smart");
+	if (dev->smart_time)
+		ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
+	/* low level attributes */
+	json_smart_list(state, disk_name, s, level, dev);
+	if (dev->smart[9].raw.value != SMART_UNASSIGNED)
+		ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw.value & 0xFFFFFF);
+	/* high level attributes */
+	uint64_t temp;
+	uint64_t temp_min;
+	uint64_t temp_max;
+	smart_temperature_range(dev, &temp, &temp_min, &temp_max);
+	if (temp != SMART_UNASSIGNED) {
+		ss_json_u64(s, level, "temperature_celsius", temp);
+		if (temp_min != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "temperature_min_celsius", temp_min);
+		if (temp_max != SMART_UNASSIGNED)
+			ss_json_u64(s, level, "temperature_max_celsius", temp_max);
+
+		int is_nand = 0;
+		if (dev->rotational == 0) {
+			is_nand = 1;
+		} else if (dev->interf[0] != 0) {
+			if (strcasecmp(dev->interf, "nvme") == 0
+				|| strcasecmp(dev->interf, "sd") == 0 /* Secure Digital cards */
+				|| strcasecmp(dev->interf, "mmc") == 0 /* Embedded MultiMediaCards (eMMC) */
+				|| strcasecmp(dev->interf, "scm") == 0 /* Storage Class Memory */
+				|| strcasecmp(dev->interf, "ufs") == 0) { /* Universal Flash Storage */
+				is_nand = 1;
+			}
+		}
+
+		uint64_t warning_threshold = is_nand ? 55 : 40;
+		uint64_t critical_threshold = is_nand ? 60 : 45;
+		uint64_t danger_threshold = is_nand ? 70 : 50;
+
+		ss_json_u64(s, level, "temperature_warning_celsius", warning_threshold);
+		ss_json_u64(s, level, "temperature_critical_celsius", critical_threshold);
+		ss_json_u64(s, level, "temperature_danger_celsius", danger_threshold);
+
+		const char* status = "normal";
+		if (temp >= danger_threshold) {
+			status = "danger";
+		} else if (temp >= critical_threshold) {
+			status = "critical";
+		} else if (temp >= warning_threshold) {
+			status = "warning";
+		}
+		ss_json_str(s, level, "temperature_status", status);
+	}
+	if (dev->flags != SMART_UNASSIGNED) {
+		ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);
+		ss_json_bool(s, level, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);
+		ss_json_bool(s, level, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED);
+		ss_json_bool(s, level, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED);
+		ss_json_bool(s, level, "selftest_error_logged", dev->flags & SMARTCTL_FLAG_SELFTEST_ERROR_LOGGED);
+	}
+	ss_json_close(s, &level);
+	ss_json_close(s, &level);
+}
+
 static void json_device_list(struct snapraid_state* state, ss_t* s, int level, const char* disk_name, tommy_list* list, time_t reference)
 {
 	++level;
@@ -1648,102 +1749,18 @@ static void json_device_list(struct snapraid_state* state, ss_t* s, int level, c
 		struct snapraid_device* dev = pointer->device;
 		if (!device_is_connected(dev))
 			continue;
-		ss_json_open(s, &level);
-		ss_json_str(s, level, "node", dev->file);
-		json_id_list(s, level, &dev->id_list);
-		ss_json_int(s, level, "split_index", pointer->split_index);
-		ss_json_str(s, level, "health", health_name(dev->health));
-		if (*dev->family)
-			ss_json_str(s, level, "family", dev->family);
-		if (*dev->model)
-			ss_json_str(s, level, "model", dev->model);
-		if (*dev->serial)
-			ss_json_str(s, level, "serial", dev->serial);
-		if (*dev->interf)
-			ss_json_str(s, level, "interface", dev->interf);
-		ss_json_str(s, level, "power", power_name(dev->power));
-		if (dev->size != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "size_bytes", dev->size);
-		if (dev->rotational != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "rotational", dev->rotational);
-		if (dev->error_protocol.value != SMART_UNASSIGNED) {
-			json_tracked(s, level, "error_protocol", &dev->error_protocol, 0);
-			if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
-				ss_json_bool(s, level, "error_protocol_ignored", 1);
-			}
-		}
-		if (dev->error_medium.value != SMART_UNASSIGNED) {
-			json_tracked(s, level, "error_medium", &dev->error_medium, 0);
-			if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
-				ss_json_bool(s, level, "error_medium_ignored", 1);
-			}
-		}
-		if (dev->wear_level != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "wear_level", dev->wear_level);
-		if (dev->afr != 0)
-			ss_json_double(s, level, "annual_failure_rate", dev->afr);
-		if (dev->prob != 0)
-			ss_json_double(s, level, "failure_probability", dev->prob);
-		json_temp_list(s, level, &dev->temp_list, reference);
-		ss_json_object_open(s, &level, "smart");
-		if (dev->smart_time)
-			ss_json_pair_iso8601(s, level, "measured_at", dev->smart_time);
-		/* low level attributes */
-		json_smart_list(state, disk_name, s, level, dev);
-		if (dev->smart[9].raw.value != SMART_UNASSIGNED)
-			ss_json_u64(s, level, "power_on_hours", dev->smart[9].raw.value & 0xFFFFFF);
-		/* high level attributes */
-		uint64_t temp;
-		uint64_t temp_min;
-		uint64_t temp_max;
-		smart_temperature_range(dev, &temp, &temp_min, &temp_max);
-		if (temp != SMART_UNASSIGNED) {
-			ss_json_u64(s, level, "temperature_celsius", temp);
-			if (temp_min != SMART_UNASSIGNED)
-				ss_json_u64(s, level, "temperature_min_celsius", temp_min);
-			if (temp_max != SMART_UNASSIGNED)
-				ss_json_u64(s, level, "temperature_max_celsius", temp_max);
+		json_device(state, s, level, disk_name, dev, pointer->split_index, reference);
+	}
+}
 
-			int is_nand = 0;
-			if (dev->rotational == 0) {
-				is_nand = 1;
-			} else if (dev->interf[0] != 0) {
-				if (strcasecmp(dev->interf, "nvme") == 0
-					|| strcasecmp(dev->interf, "sd") == 0 /* Secure Digital cards */
-					|| strcasecmp(dev->interf, "mmc") == 0 /* Embedded MultiMediaCards (eMMC) */
-					|| strcasecmp(dev->interf, "scm") == 0 /* Storage Class Memory */
-					|| strcasecmp(dev->interf, "ufs") == 0) { /* Universal Flash Storage */
-					is_nand = 1;
-				}
-			}
-
-			uint64_t warning_threshold = is_nand ? 55 : 40;
-			uint64_t critical_threshold = is_nand ? 60 : 45;
-			uint64_t danger_threshold = is_nand ? 70 : 50;
-
-			ss_json_u64(s, level, "temperature_warning_celsius", warning_threshold);
-			ss_json_u64(s, level, "temperature_critical_celsius", critical_threshold);
-			ss_json_u64(s, level, "temperature_danger_celsius", danger_threshold);
-
-			const char* status = "normal";
-			if (temp >= danger_threshold) {
-				status = "danger";
-			} else if (temp >= critical_threshold) {
-				status = "critical";
-			} else if (temp >= warning_threshold) {
-				status = "warning";
-			}
-			ss_json_str(s, level, "temperature_status", status);
-		}
-		if (dev->flags != SMART_UNASSIGNED) {
-			ss_json_bool(s, level, "failing", dev->flags & SMARTCTL_FLAG_FAIL);
-			ss_json_bool(s, level, "prefail", dev->flags & SMARTCTL_FLAG_PREFAIL);
-			ss_json_bool(s, level, "prefail_logged", dev->flags & SMARTCTL_FLAG_PREFAIL_LOGGED);
-			ss_json_bool(s, level, "error_logged", dev->flags & SMARTCTL_FLAG_ERROR_LOGGED);
-			ss_json_bool(s, level, "selftest_error_logged", dev->flags & SMARTCTL_FLAG_SELFTEST_ERROR_LOGGED);
-		}
-		ss_json_close(s, &level);
-		ss_json_close(s, &level);
+static void json_disconnected_device_list(struct snapraid_state* state, ss_t* s, int level, time_t reference)
+{
+	++level;
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i; i = i->next) {
+		struct snapraid_device* dev = i->data;
+		if (strcmp(dev->file, "disconnected") != 0)
+			continue;
+		json_device(state, s, level, dev->file, dev, -1, reference);
 	}
 }
 
@@ -1863,6 +1880,11 @@ static int handler_disks(struct mg_connection* conn, void* cbdata)
 	ss_json_array_open(&s, &level, "extra_disks");
 	json_disk_list(state, &s, level, &state->array.disk_list, DISK_EXTRA, state->array.last_time, is_v2);
 	ss_json_array_close(&s, &level);
+	if (is_v2) {
+		ss_json_array_open(&s, &level, "disconnected_devices");
+		json_disconnected_device_list(state, &s, level, state->array.last_time);
+		ss_json_array_close(&s, &level);
+	}
 	ss_json_close(&s, &level);
 
 	state_unlock();
