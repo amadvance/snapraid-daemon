@@ -18,7 +18,7 @@
  * @param log_f ZFILE pointer of the output log file
  * @param log_path Path to the output log file
  */
-void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path);
+int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path);
 
 /**
  * Parse a timestamp from a file name in the format YYMMDD-HHMMSS-*

@@ -74,26 +74,48 @@ int zclose(ZFILE* stream)
 	return result;
 }
 
-size_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream)
+ssize_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 {
 	if (stream == 0 || size == 0 || nmemb == 0)
 		return 0;
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
-		if (nmemb > UINT_MAX / size)
-			return 0;
+		if (nmemb > UINT_MAX / size) {
+			errno = EOVERFLOW;
+			return -1;
+		}
+
 		unsigned int total_bytes = (unsigned int)(size * nmemb);
 		int bytes_read = gzread(stream->handle.gz_file, ptr, total_bytes);
-		if (bytes_read <= 0)
-			return 0;
 
-		return (size_t)bytes_read / size;
+		if (bytes_read <= 0) {
+			int zerr;
+			gzerror(stream->handle.gz_file, &zerr);
+
+			if (bytes_read < 0 || zerr < 0) {
+				if (zerr != Z_ERRNO)
+					errno = EIO;
+
+				return -1;
+			}
+		}
+
+		return bytes_read / size;
 #else
-		return 0;
+		errno = ENOSYS;
+		return -1;
 #endif
 	} else {
-		return fread(ptr, size, nmemb, stream->handle.normal_file);
+		size_t ret = fread(ptr, size, nmemb, stream->handle.normal_file);
+
+		if (ret == 0 && ferror(stream->handle.normal_file)) {
+			if (errno == 0)
+				errno = EIO;
+			return -1;
+		}
+
+		return ret;
 	}
 }
 
