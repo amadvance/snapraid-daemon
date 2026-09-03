@@ -1095,18 +1095,24 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			int health = HEALTH_PENDING;
 			char health_reason[HEALTH_REASON_MAX];
 
-			/* do not pulse when updating just the time */
-			device->smart_time = state->array.last_time;
-
 			if (flags & SMARTCTL_FLAG_FAIL) {
 				snprintf(health_reason, sizeof(health_reason), "SMART reports a FAILING condition for disk %s", disk);
 				health = HEALTH_FAILING;
+				/* do not pulse when updating just the time */
+				device->smart_time = state->array.last_time;
 			} else if (flags & SMARTCTL_FLAG_PREFAIL) {
 				snprintf(health_reason, sizeof(health_reason), "SMART reports a PREFAIL condition for disk %s", disk);
 				health = HEALTH_PREFAIL;
+				/* do not pulse when updating just the time */
+				device->smart_time = state->array.last_time;
+			} else if (flags & (SMARTCTL_FLAG_OPEN | SMARTCTL_FLAG_UNSUPPORTED)) {
+				snprintf(health_reason, sizeof(health_reason), "SMART telemetry could not be obtained for disk %s", disk);
+				health = HEALTH_PENDING;
 			} else {
 				health_reason[0] = 0;
 				health = HEALTH_PASSED;
+				/* do not pulse when updating just the time */
+				device->smart_time = state->array.last_time;
 			}
 
 			if (device->health != health || device->flags != flags) {
