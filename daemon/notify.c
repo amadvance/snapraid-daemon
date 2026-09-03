@@ -386,9 +386,10 @@ int notify_result_locked_yield(struct snapraid_state* state, int high_cmd, int r
 			ret = -1;
 	}
 
-	/* heartbeat is notified only on MAINTENANCE reports */
+	/* heartbeat is notified only on successful MAINTENANCE reports */
 	if (state->config.notify_heartbeat[0] != 0
 		&& high_cmd == CMD_MAINTENANCE
+		&& exit_code == 0
 		&& report_level >= LVL_WARNING) {
 		if (heartbeat_locked_yield(state) != 0)
 			ret = -1;
