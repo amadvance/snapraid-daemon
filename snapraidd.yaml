@@ -253,11 +253,16 @@ paths:
 
         Execution Logic:
         - Commands are executed in the exact order provided in the 'tasks' array.
-        - If a command fails, all subsequent tasks in the queue are automatically
-          cancelled to prevent operating on inconsistent data.
+        - If a command is executed and its execution fails, all subsequent tasks in the
+          queue are automatically cancelled to prevent operating on inconsistent data.
+          Commands skipped or rejected because their execution preconditions are not
+          satisfied are not considered execution failures and do not trigger this
+          cancellation rule.
+        - Exception: The 'start' command is best-effort. A failure to send the start
+          notification does not cancel subsequent tasks.
         - Exception: The 'report' and 'down' commands are treated as finalizers.
-          If they are present in the sequence, they will be executed regardless
-          of the success or failure of preceding commands.
+          If they are present in the sequence, they are executed regardless of failures
+          in preceding commands.
         - Note: The 'shutdown' command is rejected for security reasons to prevent
           remote shutdown exploits.
 
