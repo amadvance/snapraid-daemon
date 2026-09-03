@@ -1873,16 +1873,19 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 
 	/* first process map associations */
 	if (strcmp(cmd, "map") == 0) {
+		state->parser_previous_was_association = 1; /* no lock required for parser_* fields as private to parser */
+
 		state_lock();
 		process_map(state, map, mac);
 		state_unlock();
-
-		state->parser_previous_was_association = 1; /* no lock required for parser_* fields as private to parser */
 		return 0;
 	}
 
-	/* if there are association, after the first not "map", process them */
-	if (state->parser_previous_was_association) {
+	/*
+	 * Finalize map associations on map_end (supported by SnapRAID 15.x)
+	 * or on unixtime as a fallback for SnapRAID 14.x
+	 */
+	if (strcmp(cmd, "map_end") == 0 || (state->parser_previous_was_association && strcmp(cmd, "unixtime") == 0)) {
 		state->parser_previous_was_association = 0; /* no lock required for parser_* fields as private to parser */
 
 		state_lock();
