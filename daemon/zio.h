@@ -44,7 +44,7 @@ int zclose(ZFILE* stream);
 /**
  * Read from a file.
  */
-size_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream);
+ssize_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream);
 
 /**
  * Write to a file.

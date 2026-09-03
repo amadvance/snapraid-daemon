@@ -2069,7 +2069,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 #define RUN_INPUT_MAX 4096
 #define RUN_FIELD_MAX 64
 
-void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path)
+int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path)
 {
 	char buf[RUN_INPUT_MAX];
 	char plain[RUN_INPUT_MAX];
@@ -2189,14 +2189,15 @@ void parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, con
 		} else if (n == 0) {
 			/* EOF, discard partial read not ending with \n */
 			break;
-		} else { /* n < 0 */
-			if (errno == EINTR) {
+		} else {
+			if (errno == EINTR)
 				continue;
-			} else {
-				break;
-			}
+
+			return -1;
 		}
 	}
+
+	return 0;
 }
 
 int parse_timestamp(const char* name, time_t* out)
@@ -2342,14 +2343,19 @@ int parse_past_log(struct snapraid_state* state)
 
 		state_unlock();
 
-		parse_log(state, 0, f, 0, 0);
+		int parse_ret = parse_log(state, 0, f, 0, 0);
 		++count;
 
 		state_lock();
 
 		log_task_push(&task->message_list);
 
-		if (state->parser_has_end)
+		if (parse_ret < 0) {
+			task->state = PROCESS_STATE_TERM;
+			task->exit_code = EXIT_EXEC_FAILED;
+		}
+
+		if (parse_ret == 0 && state->parser_has_end)
 			parse_end_locked(state, task);
 
 		/*

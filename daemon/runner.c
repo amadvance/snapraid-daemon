@@ -1115,7 +1115,8 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 			os_term(pid);
 		}
 
-		parse_log(state, f, 0, log_f, log_path);
+		int parse_ret = parse_log(state, f, 0, log_f, log_path);
+		int parse_errno = errno;
 
 		/* wait for the child process to terminate */
 		pid_ret = os_wait(pid, &status);
@@ -1141,6 +1142,16 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 		}
 		if (log_f)
 			zflush(log_f);
+
+		if (parse_ret < 0) {
+			log_task(LVL_ERROR, "task %d failed reading %s output, errno=%s(%d)", number, command_name(cmd), strerror(parse_errno), parse_errno);
+			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "Failed reading %s output, errno=%s(%d)", command_name(cmd), strerror(parse_errno), parse_errno);
+
+			success = 0;
+
+			if (pid_ret >= 0)
+				pid_ret = EXIT_EXEC_FAILED;
+		}
 	}
 
 	/* if the next task uses the hook, skip the post */
