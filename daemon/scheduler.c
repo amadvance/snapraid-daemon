@@ -65,18 +65,20 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
+		int shutdown = automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance");
+
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SYNC, now, group, &sync_arg_list);
 		if (do_scrub)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SCRUB, now, group, &scrub_arg_list);
-		if (spindown) {
+		if (spindown && !shutdown) {
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_PROBE, now, group, 0);
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_DOWN, now, group, 0);
 		}
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_REPORT, now, group, 0);
-		if (automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance"))
+		if (shutdown)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SHUTDOWN, now, group, 0);
 		*status = 202;
 	}

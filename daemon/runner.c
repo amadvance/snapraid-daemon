@@ -82,13 +82,6 @@ static int runner_health_check_locked(struct snapraid_state* state)
 		 * PREFAIL -> FAILING may trigger the "failing" shutdown policy.
 		 */
 		if (old_health != HEALTH_PENDING) {
-			/* check if the current task is a report or if there is a scheduled one */
-			if (!runner_has_cmd_locked(state, CMD_REPORT)) {
-				char msg[MSG_MAX];
-				int status;
-				runner_locked(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
-			}
-
 			/* check if we should trigger a shutdown based on the new health status */
 			int trigger_shutdown = 0;
 			if (new_health == HEALTH_PREFAIL && config_shutdown_on(state->config.sys_shutdown_on, "prefail"))
@@ -97,10 +90,17 @@ static int runner_health_check_locked(struct snapraid_state* state)
 				trigger_shutdown = 1;
 
 			if (trigger_shutdown) {
-				if (!runner_has_cmd_locked(state, CMD_SHUTDOWN)) {
+				task_list_cancel_all(state, "Canceled before shutdown");
+				char msg[MSG_MAX];
+				int status;
+				runner_locked(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
+				runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, 0, msg, sizeof(msg), &status);
+			} else {
+				/* check if the current task is a report or if there is a scheduled one */
+				if (!runner_has_cmd_locked(state, CMD_REPORT)) {
 					char msg[MSG_MAX];
 					int status;
-					runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, 0, msg, sizeof(msg), &status);
+					runner_locked(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
 				}
 			}
 		}
@@ -1185,6 +1185,11 @@ bail:
 	/* check the array health, but DO NOT propagate it to the task */
 	runner_health_check_locked(state);
 
+	/* if the queue was cleared or the next task does not need hooks, do not skip post-hook */
+	tommy_node* next = tommy_list_head(&state->runner.waiting_list);
+	if (next == 0 || !runner_need_hook(((struct snapraid_task*)next->data)->cmd))
+		post_skip = 0;
+
 	struct snapraid_hook post_hook;
 	if (post_skip == 0) {
 		state->runner.hook_flags = 0;
@@ -1645,14 +1650,6 @@ void runner_step_locked(struct snapraid_state* state, const char* snapraid, int 
 		now = time(0);
 	if (group == 0)
 		group = ++state->runner.group_allocator;
-
-	/*
-	 * Cancel any pending spindown tasks so disks are not put to sleep right before shutdown
-	 *
-	 * On shutdown the OS will have to unmount filesystems, which requires write operations to them.
-	 */
-	if (cmd == CMD_SHUTDOWN)
-		task_list_cancel_down(state, "Canceled before shutdown");
 
 	struct snapraid_task* task = task_alloc();
 	task->cmd = cmd;
