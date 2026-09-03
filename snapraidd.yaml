@@ -18,17 +18,22 @@ paths:
     post:
       summary: Trigger full maintenance sequence
       description: >
-        Initiates the automated maintenance workflow, executing 'up', 'sync',
-        and 'scrub'. The process is concluded by a 'report' task to notify the
-        result.
+        Initiates the automated maintenance workflow. Maintenance normally
+        executes the 'up', 'sync', optional 'scrub', and finalization phases
+        in sequence, where 'scrub' is conditional on successful completion of
+        the preceding dependent phase. If 'sync' fails or is aborted, subsequent
+        dependent phases such as 'scrub' are canceled, while finalization tasks
+        continue according to their normal semantics.
 
         This operation is subject to all safety thresholds defined in the
         daemon configuration, specifically 'sync_threshold_deletes' and
         'sync_threshold_updates'.
 
-        If the 'sync' phase exceeds the delete threshold, the daemon will
-        suspend the 'sync' task to prevent accidental data loss.
-        Regardless, the 'scrub' phase is not bypassed.
+        If the 'sync' phase reaches one of the configured safety thresholds, the
+        daemon aborts the sync to prevent accidental data loss. Subsequent
+        dependent maintenance phases, including 'scrub', are skipped.
+        Finalization tasks such as reporting, spindown, and configured shutdown
+        continue according to their normal rules.
 
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
