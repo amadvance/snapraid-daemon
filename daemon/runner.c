@@ -324,8 +324,11 @@ static int runner_report_locked(struct snapraid_state* state)
 			}
 		}
 
-		for (tommy_node* dev_node = tommy_list_head(&disk->device_list); dev_node != 0; dev_node = dev_node->next) {
-			struct snapraid_device* dev = dev_node->data;
+		for (tommy_node* dev_node = tommy_list_head(&disk->device_pointer_list); dev_node != 0; dev_node = dev_node->next) {
+			struct snapraid_device_pointer* pointer = dev_node->data;
+			struct snapraid_device* dev = pointer->device;
+			if (!device_is_connected(dev))
+				continue;
 
 			if (!smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)) {
 				if (dev->error_protocol.value != SMART_UNASSIGNED
@@ -1439,10 +1442,11 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 			if (threshold == 0)
 				continue;
 
-			for (tommy_node* j = tommy_list_head(&disk->device_list); j; j = j->next) {
-				struct snapraid_device* device = j->data;
+			for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
+				struct snapraid_device_pointer* pointer = j->data;
+				struct snapraid_device* device = pointer->device;
 				/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-				if (device->power == POWER_ACTIVE)
+				if (device_is_connected(device) && device->power == POWER_ACTIVE)
 					active = 1;
 			}
 

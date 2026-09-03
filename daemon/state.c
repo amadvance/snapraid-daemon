@@ -18,6 +18,7 @@ struct snapraid_state* state_init(void)
 	thread_mutex_init(&state->state_lock);
 	thread_mutex_init(&state->log_lock);
 	thread_rwlock_init(&state->web_lock);
+	tommy_list_init(&state->device_catalog);
 	state->daemon_loading = 1;
 	state->daemon_running = 1;
 	state->daemon_start_time = time(0);
@@ -42,6 +43,7 @@ void state_done(struct snapraid_state* state)
 	tommy_list_foreach(&state->array.bucket_parse_list, bucket_free);
 	tommy_list_foreach(&state->array.bucket_list, bucket_free);
 	tommy_list_foreach(&state->array.disk_list, disk_free);
+	tommy_list_foreach(&state->device_catalog, device_free);
 	tommy_list_foreach(&state->web.page_list, page_free);
 	tommy_list_foreach(&state->parser_association, association_free);
 	crypto_wipe(state->rest_auth_cache, sizeof(state->rest_auth_cache));
