@@ -987,6 +987,22 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 	}
 }
 
+static void process_info(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 3)
+		return;
+
+	const char* file = map[1];
+	char* disk = map[2];
+
+	if (disk[0] == 0) /* ignore devices not associated to any disk */
+		return;
+
+	find_device(state, task->number, disk, file);
+}
+
 static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 {
 	int runtime = !state->daemon_loading;
@@ -1908,6 +1924,10 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 	} else if (is_parity(cmd)) {
 		state_lock();
 		process_parity(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "info") == 0) {
+		state_lock();
+		process_info(state, map, mac);
 		state_unlock();
 	} else if (strcmp(cmd, "attr") == 0) {
 		state_lock();
