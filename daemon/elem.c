@@ -334,7 +334,7 @@ void task_list_cancel_in_group(struct snapraid_state* state, struct snapraid_tas
 	}
 }
 
-void task_list_cancel_down(struct snapraid_state* state, const char* msg)
+void task_list_cancel_all(struct snapraid_state* state, const char* msg)
 {
 	time_t now = time(0);
 	tommy_node* i = tommy_list_head(&state->runner.waiting_list);
@@ -342,9 +342,7 @@ void task_list_cancel_down(struct snapraid_state* state, const char* msg)
 		tommy_node* i_next = i->next;
 		struct snapraid_task* task = i->data;
 
-		if (task->cmd == CMD_DOWN || task->cmd == CMD_DOWN_IDLE) {
-			task_cancel(state, task, msg, now);
-		}
+		task_cancel(state, task, msg, now);
 
 		i = i_next;
 	}
