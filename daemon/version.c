@@ -149,6 +149,7 @@ static int check_repo_version(const char* curl_path, const char* repo, char* ver
 
 	int status = 0;
 	pid_t ret = os_wait(pid, &status);
+	os_dispose(pid);
 	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: wait failed, errno=%s(%d)", repo, strerror(errno), errno);
 		ss_done(&ss);

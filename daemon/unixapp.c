@@ -346,7 +346,9 @@ int os_shutdown(void)
 	}
 
 	int status;
-	if (os_wait(pid, &status) == -1) {
+	pid_t pid_ret = os_wait(pid, &status);
+	os_dispose(pid);
+	if (pid_ret == -1) {
 		log_task(LVL_ERROR, "failed to wait for poweroff, errno=%s(%d)", strerror(errno), errno);
 		return -1;
 	}
