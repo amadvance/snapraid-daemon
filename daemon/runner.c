@@ -175,6 +175,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	} else {
 		int status;
 		pid_t pid_ret = os_wait(pid, &status);
+		os_dispose(pid);
 		if (pid_ret == -1) {
 			log_task(LVL_ERROR, "failed to wait for docker %s, errno=%s(%d)", action, strerror(errno), errno);
 			if (log_f != 0)
@@ -1179,8 +1180,11 @@ bail:
 	if (task->canceled)
 		post_skip = 0;
 
-	/* process terminated and reaped, clear pid before post-hook */
+	/* stop publishing the process reference before releasing it */
+	pid_t release_pid = task->pid;
 	task->pid = 0;
+	if (release_pid > 0)
+		os_dispose(release_pid);
 	task->unix_end_time = unix_end_time;
 
 	task->health = health_task(task, 0, 0);
@@ -1839,6 +1843,8 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 {
 	pid_t pid;
 	int number;
+	int term_ret = 0;
+	int term_errno = 0;
 
 	sncpy(msg, msg_size, "");
 
@@ -1860,11 +1866,6 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 
 	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Stop requested");
 
-	state_unlock();
-
-	*stop_pid = pid;
-	*stop_number = number;
-
 	if (pid > 0) {
 		/*
 		 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
@@ -1872,11 +1873,22 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 		 * In practice, PID recycling across the OS requires tens of thousands of process spawns
 		 * and wrap-around, making this an accepted non-issue.
 		 */
-		if (os_term(pid) != 0) {
-			if (errno == ESRCH)
+		term_ret = os_term(pid);
+		if (term_ret != 0)
+			term_errno = errno;
+	}
+
+	state_unlock();
+
+	*stop_pid = pid;
+	*stop_number = number;
+
+	if (pid > 0) {
+		if (term_ret != 0) {
+			if (term_errno == ESRCH)
 				log_msg(LVL_INFO, "task %d (pid %" PRIu64 ") already terminated before SIGTERM", number, (uint64_t)pid);
 			else
-				log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(errno), errno);
+				log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(term_errno), term_errno);
 			sncpy(msg, msg_size, "Stop requested");
 		} else {
 			log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
