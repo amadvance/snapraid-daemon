@@ -1868,7 +1868,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	pid = task->pid;
 	number = task->number;
 
-	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Stop requested");
+	message_insert(&task->message_list, MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, "Stop requested");
 
 	if (pid > 0) {
 		/*
