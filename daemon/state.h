@@ -316,7 +316,7 @@ struct snapraid_task {
 	uint64_t block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
 	uint64_t block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
-	pid_t pid; /**< Process ID of the running task */
+	pid_t pid; /**< Process reference of the running task */
 	int canceled; /**< Set to 1 if task stop/cancel was requested */
 	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
 	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
