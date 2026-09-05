@@ -1135,14 +1135,18 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 		} else {
 			if (WIFEXITED(status)) {
-				if (WEXITSTATUS(status) == 0) {
+				int exit_code = WEXITSTATUS(status);
+
+				if (exit_code == 0) {
 					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
-					success = 1;
 				} else {
-					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, WEXITSTATUS(status));
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, exit_code);
 				}
+
+				success = task_exit_success(cmd, exit_code);
+
 				if (log_f != 0)
-					zprintf(log_f, "daemon:term:%d\n", WEXITSTATUS(status));
+					zprintf(log_f, "daemon:term:%d\n", exit_code);
 			} else if (WIFSIGNALED(status)) {
 				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, os_signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
