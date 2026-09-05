@@ -334,7 +334,7 @@ static void task_cancel(struct snapraid_state* state, struct snapraid_task* task
 	/* remove from the waiting list */
 	tommy_list_remove_existing(&state->runner.waiting_list, &task->node);
 	sncpy(task->exit_msg, sizeof(task->exit_msg), msg);
-	message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+	message_insert(&task->message_list, MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
 	task->state = PROCESS_STATE_CANCEL;
 	task->unix_start_time = now;
 	task->unix_end_time = now;
