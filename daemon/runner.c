@@ -1085,7 +1085,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 
 	/*
 	 * Executing os_spawn() under state_lock is a deliberate tradeoff: it guarantees
-	 * atomic cancellation checking and PID assignment without releasing and re-acquiring
+	 * atomic cancellation checking and process-reference assignment without releasing and re-acquiring
 	 * the lock. Process spawn is fast enough that holding the lock here does not impact responsiveness.
 	 */
 	spawn_canceled = task->canceled || !state->daemon_running;
@@ -1115,12 +1115,12 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 		/* continue to run the hook_script */
 	} else {
 		if (log_f != 0)
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), (uint64_t)pid, log_path);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), os_display_pid(pid), log_path);
 		else
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), os_display_pid(pid));
 
 		if (spawn_shutdown) {
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), (uint64_t)pid);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), os_display_pid(pid));
 			os_term(pid);
 		}
 
@@ -1131,16 +1131,16 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 		pid_ret = os_wait(pid, &status);
 
 		if (pid_ret == -1) {
-			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), (uint64_t)pid, strerror(errno), errno);
+			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), os_display_pid(pid), strerror(errno), errno);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 		} else {
 			if (WIFEXITED(status)) {
 				int exit_code = WEXITSTATUS(status);
 
 				if (exit_code == 0) {
-					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), (uint64_t)pid);
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), os_display_pid(pid));
 				} else {
-					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), (uint64_t)pid, exit_code);
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), os_display_pid(pid), exit_code);
 				}
 
 				success = task_exit_success(cmd, exit_code);
@@ -1148,7 +1148,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 				if (log_f != 0)
 					zprintf(log_f, "daemon:term:%d\n", exit_code);
 			} else if (WIFSIGNALED(status)) {
-				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), (uint64_t)pid, os_signal_name(WTERMSIG(status)), WTERMSIG(status));
+				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), os_display_pid(pid), os_signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
 					zprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
@@ -1619,7 +1619,7 @@ void runner_done(struct snapraid_state* state)
 	if (task && task->running) {
 		task->canceled = 1;
 		if (task->pid > 0) {
-			log_msg(LVL_INFO, "killing helper process pid %" PRIu64 " due to daemon shutdown", (uint64_t)task->pid);
+			log_msg(LVL_INFO, "killing helper process pid %" PRIu64 " due to daemon shutdown", os_display_pid(task->pid));
 			os_kill(task->pid);
 		}
 	}
@@ -1843,9 +1843,10 @@ int runner_delete_old_history_locked(struct snapraid_state* state, char* msg, si
 	return 0;
 }
 
-int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, pid_t* stop_pid, int* stop_number)
+int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, uint64_t* stop_display_pid, int* stop_number)
 {
 	pid_t pid;
+	uint64_t display_pid;
 	int number;
 	int term_ret = 0;
 	int term_errno = 0;
@@ -1866,6 +1867,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 
 	task->canceled = 1;
 	pid = task->pid;
+	display_pid = os_display_pid(pid);
 	number = task->number;
 
 	message_insert(&task->message_list, MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, "Stop requested");
@@ -1884,18 +1886,18 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 
 	state_unlock();
 
-	*stop_pid = pid;
+	*stop_display_pid = display_pid;
 	*stop_number = number;
 
 	if (pid > 0) {
 		if (term_ret != 0) {
 			if (term_errno == ESRCH)
-				log_msg(LVL_INFO, "task %d (pid %" PRIu64 ") already terminated before SIGTERM", number, (uint64_t)pid);
+				log_msg(LVL_INFO, "task %d (pid %" PRIu64 ") already terminated before SIGTERM", number, display_pid);
 			else
-				log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, (uint64_t)pid, strerror(term_errno), term_errno);
+				log_msg(LVL_ERROR, "failed to send SIGTERM to task %d (pid %" PRIu64 "), errno=%s(%d)", number, display_pid, strerror(term_errno), term_errno);
 			sncpy(msg, msg_size, "Stop requested");
 		} else {
-			log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, (uint64_t)pid);
+			log_msg(LVL_INFO, "sent SIGTERM to task %d (pid %" PRIu64 ")", number, display_pid);
 			sncpy(msg, msg_size, "Signal sent");
 		}
 	} else {

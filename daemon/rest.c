@@ -1357,7 +1357,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
-	pid_t pid = 0;
+	uint64_t display_pid = 0;
 	int number = 0;
 	int level = 0;
 	ss_t s;
@@ -1368,7 +1368,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	if (runner_stop(state, msg, sizeof(msg), &status, &pid, &number) != 0)
+	if (runner_stop(state, msg, sizeof(msg), &status, &display_pid, &number) != 0)
 		return send_json_error(conn, status, msg);
 
 	ss_init(&s, JSON_INITIAL_SIZE);
@@ -1377,7 +1377,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	ss_json_bool(&s, level, "success", 1);
 	ss_json_str(&s, level, "message", "Signal sent");
 	ss_json_int(&s, level, "number", number);
-	ss_json_u64(&s, level, "pid", pid);
+	ss_json_u64(&s, level, "pid", display_pid);
 	ss_json_close(&s, &level);
 
 	send_json_answer(conn, status, &s);
