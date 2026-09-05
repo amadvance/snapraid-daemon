@@ -306,15 +306,20 @@ void task_free(void* void_task)
 	free(task);
 }
 
+int task_exit_success(int cmd, int exit_code)
+{
+	if (cmd == CMD_DIFF)
+		return exit_code == 0 || exit_code == EXIT_NEED_SYNC; /* detecting differences are not a failure */
+
+	return exit_code == 0;
+}
+
 int task_success(struct snapraid_task* task)
 {
 	if (task->state != PROCESS_STATE_TERM)
 		return 0;
 
-	if (task->cmd == CMD_DIFF)
-		return task->exit_code == 0 || task->exit_code == EXIT_NEED_SYNC; /* detecting differences are not a failure */
-
-	return task->exit_code == 0;
+	return task_exit_success(task->cmd, task->exit_code);
 }
 
 int task_same_group(const struct snapraid_task* task1, const struct snapraid_task* task2)

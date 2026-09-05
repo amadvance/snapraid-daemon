@@ -185,6 +185,11 @@ struct snapraid_task* task_alloc(void);
 void task_free(void* void_task);
 
 /**
+ * Check if the command exit code represents success.
+ */
+int task_exit_success(int cmd, int exit_code);
+
+/**
  * Check if the task failed.
  */
 int task_success(struct snapraid_task* task);
