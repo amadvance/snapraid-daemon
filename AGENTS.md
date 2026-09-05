@@ -99,6 +99,11 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
 - `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
 - `uncrustify.cfg`: Code formatting rules (C style enforcement)
 - Run `make doc` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
+- Always use parallel compilation with `make -j$(nproc)` instead of plain `make`
+- To cross-compile for Windows x64: build out-of-tree in `/tmp` so the Linux configuration is preserved:
+  `mkdir -p /tmp/snapraid-windows && (cd /tmp/snapraid-windows && /path/to/configure.windows-x64 && make -j$(nproc))`
+  Subsequent Windows rebuilds only require: `(cd /tmp/snapraid-windows && make -j$(nproc))`
+- The Windows build needs to be tested only when modifying Windows-specific code (e.g., `os/mingw.*`, `cmdline/mingwapp.c`, or Windows-specific `#ifdef` paths)
 
 ### Development Guidelines
 
