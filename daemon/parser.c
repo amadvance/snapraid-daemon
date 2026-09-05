@@ -1359,8 +1359,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		if (mac < 5)
 			return;
 
-		/* keep the state as starting */
-		pulse(state, PULSE_ACTIVITY);
+		pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 		stru64(&task->block_begin, map[2]);
 		stru64(&task->block_end, map[3]);
 		stru64(&task->block_count, map[4]);
@@ -1368,6 +1367,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		if (mac < 10)
 			return;
 
+		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 		pulse(state, PULSE_ACTIVITY);
 		task->state = PROCESS_STATE_RUN;
 		stru64(&task->block_idx, map[2]);
@@ -1381,7 +1381,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 	} else if (strcmp(map[1], "end") == 0) {
 		/* if stopping, ignore the end, and it's reported anyway */
 		if (task->state != PROCESS_STATE_SIGNAL) {
-			pulse(state, PULSE_ACTIVITY);
+			pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 			int runtime = !state->daemon_loading;
 			if (runtime)
 				task->state = PROCESS_STATE_TERM; /* trigger the finalizing state */
@@ -1400,7 +1400,7 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 2)
 		return;
 
-	pulse(state, PULSE_ACTIVITY);
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	task->state = PROCESS_STATE_SIGNAL;
 	task->exit_sig = SIGINT;
@@ -1414,7 +1414,7 @@ static int process_msg(struct snapraid_state* state, char** map, size_t mac)
 	if (mac < 3)
 		return 0;
 
-	pulse(state, PULSE_ACTIVITY);
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	const char* msg = map[2];
 
@@ -1509,12 +1509,14 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 	const char* sub = map[3];
 
 	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
+		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 		pulse(state, PULSE_ACTIVITY);
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_RECOVERED, disk, sub);
 			tommy_list_insert_tail(&task->fix_list, &file->node, file);
 		}
 	} else if (strcmp(ope, "unrecoverable") == 0) {
+		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 		pulse(state, PULSE_ACTIVITY);
 		if (++task->fix_counter <= FILES_MAX) {
 			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
@@ -1527,6 +1529,7 @@ static void process_error_recovered(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 
+	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_recovered;
 }
@@ -1535,6 +1538,7 @@ static void process_error_unrecoverable(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 
+	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_unrecoverable;
 }
@@ -1548,6 +1552,7 @@ static void process_error_soft(struct snapraid_state* state, char** map, size_t 
 
 	(void)map;
 
+	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_soft;
 }
@@ -1593,6 +1598,7 @@ static void process_parity_error_soft(struct snapraid_state* state, char** map, 
 
 	(void)map;
 
+	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_soft;
 }
@@ -1735,7 +1741,7 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 	const char* tag = map[1];
 
 	/* these are always unique and always changing something */
-	pulse(state, PULSE_ACTIVITY);
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	if (strcmp(tag, "fail") == 0) {
 		task->state = PROCESS_STATE_TERM;
@@ -2164,6 +2170,7 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 							if (log_f != 0)
 								log_task(LVL_ERROR, "requires SnapRAID 14.0 or newer");
 							state_lock();
+							pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 							if (state->runner.latest)
 								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
 							state_unlock();

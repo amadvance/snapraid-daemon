@@ -1855,8 +1855,6 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 
 	state_lock();
 
-	pulse(state, PULSE_ACTIVITY);
-
 	struct snapraid_task* task = state->runner.latest;
 	if (!task || !task->running) {
 		sncpy(msg, msg_size, "No task running");
@@ -1865,6 +1863,7 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 		return -1;
 	}
 
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	task->canceled = 1;
 	pid = task->pid;
 	display_pid = os_display_pid(pid);

@@ -1009,9 +1009,13 @@ components:
           description: >
             Related to the /tasks entry point.
 
-            Increments whenever any background task changes its lifecycle state.
-            A change here indicates that the data returned by /tasks
-            has potentially been updated.
+            Increments whenever data returned by /tasks may change, including
+            task lifecycle transitions, error updates, and task messages.
+            If this value is unchanged, the data returned by /tasks is
+            guaranteed to be unchanged, with the exception of high-frequency
+            progress metrics (such as progress percentage, ETA, speed, and
+            block counters) which are omitted to avoid excessive cache
+            invalidations; monitor pulse.activity for real-time progress.
         activity:
           type: integer
           format: int64
