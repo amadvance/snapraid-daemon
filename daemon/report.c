@@ -318,7 +318,7 @@ static struct snapraid_message* has_reason(tommy_list* list)
 }
 
 /**
- * Print task information (sync or scrub).
+ * Print task information.
  */
 static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_task* task)
 {
@@ -392,7 +392,7 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 	}
 
 	/* error statistics for both sync and scrub */
-	if (task->state != PROCESS_STATE_CANCEL) {
+	if (task->cmd != CMD_START && task->state != PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "  I/O Errors:     %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "  Data Errors:    %" PRIu64 "\n", task->error_data);
 		ss_printf(ss, "  Soft Errors:    %" PRIu64 "\n", task->error_soft);
@@ -471,7 +471,7 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 	ss_prints(ss, "\n");
 
 	/* error statistics for both sync and scrub */
-	if (task->state != PROCESS_STATE_CANCEL) {
+	if (task->cmd != CMD_START && task->state != PROCESS_STATE_CANCEL) {
 		ss_printf(ss, "I/O Errs: %" PRIu64 "\n", task->error_io);
 		ss_printf(ss, "Data Errs: %" PRIu64 "\n", task->error_data);
 		ss_printf(ss, "Soft Errors: %" PRIu64 "\n", task->error_soft);
@@ -1059,6 +1059,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 
 static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_report,
+	struct snapraid_task* latest_start,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -1139,6 +1140,12 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 
 	print_smart_changes_wide(state, ss, latest_report->unix_queue_time);
 
+	if (latest_start) {
+		print_line_separator(ss);
+		print_task_wide(ss, "START NOTIFICATION", latest_start);
+		ss_prints(ss, "\n");
+	}
+
 	if (latest_fix) {
 		print_line_separator(ss);
 		print_task_wide(ss, "FIX", latest_fix);
@@ -1182,6 +1189,7 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 
 void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_report,
+	struct snapraid_task* latest_start,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -1234,6 +1242,11 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 
 	print_smart_changes_narrow(state, ss, latest_report->unix_queue_time);
 
+	if (latest_start) {
+		print_task_narrow(ss, "START NOTIFICATION", latest_start);
+		ss_prints(ss, "\n");
+	}
+
 	if (latest_fix) {
 		print_task_narrow(ss, "FIX", latest_fix);
 		ss_prints(ss, "\n");
@@ -1271,6 +1284,7 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 
 void report_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_report,
+	struct snapraid_task* latest_start,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
@@ -1292,8 +1306,8 @@ void report_locked(struct snapraid_state* state, ss_t* ss,
 		is_mail = 0;
 
 	if (is_mail)
-		report_wide_locked(state, ss, latest_report, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_wide_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat);
 	else
-		report_narrow_locked(state, ss, latest_report, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_narrow_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat);
 }
 
