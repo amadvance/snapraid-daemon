@@ -224,6 +224,7 @@ static int tracked_is_worse(const struct snapraid_tracked* tracked, int kind, in
 static int runner_report_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* report_task = state->runner.latest;
+	struct snapraid_task* start_task = 0;
 	struct snapraid_task* diff_task = 0;
 	struct snapraid_task* fix_task = 0;
 	struct snapraid_task* sync_task = 0;
@@ -259,6 +260,9 @@ static int runner_report_locked(struct snapraid_state* state)
 				exit_code = EXIT_EXEC_FAILED;
 		}
 
+		if (start_task == 0 && task->cmd == CMD_START)
+			start_task = task;
+
 		if (diff_task == 0 && task->cmd == CMD_DIFF)
 			diff_task = task;
 
@@ -293,7 +297,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->array.diff_prev;
 
-	report_locked(state, &ss, report_task, fix_task, sync_task, scrub_task, diff_stat);
+	report_locked(state, &ss, report_task, start_task, fix_task, sync_task, scrub_task, diff_stat);
 
 	/*
 	 * Check if any prefail/critical raw attributes, prefail norm attributes, or error counters degraded since queue_time
