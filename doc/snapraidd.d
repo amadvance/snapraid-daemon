@@ -732,6 +732,7 @@ Configuration
 
 	For `diff` and `sync` commands, modification metrics are also exposed:
 
+	SNAPRAID_DIFF_EQUAL - Count of equal/unchanged files.
 	SNAPRAID_DIFF_ADDED - Count of added files.
 	SNAPRAID_DIFF_REMOVED - Count of removed files.
 	SNAPRAID_DIFF_UPDATED - Count of updated/modified files.

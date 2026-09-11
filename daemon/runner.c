@@ -748,6 +748,7 @@ struct snapraid_hook {
 
 	int array_health;
 
+	int64_t diff_equal;
 	int64_t diff_added;
 	int64_t diff_removed;
 	int64_t diff_updated;
@@ -800,6 +801,7 @@ static void hook_context_acquire_locked(struct snapraid_state* state, const stru
 		hook->error_unrecoverable = task->error_unrecoverable;
 
 		if (hook->cmd == CMD_DIFF || hook->cmd == CMD_SYNC) {
+			hook->diff_equal = task->diff_equal;
 			hook->diff_added = task->diff_added;
 			hook->diff_removed = task->diff_removed;
 			hook->diff_updated = task->diff_updated;
@@ -1015,6 +1017,7 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 			}
 
 			if (hook->cmd == CMD_DIFF || hook->cmd == CMD_SYNC) {
+				add_env(envv, &envv_count, "SNAPRAID_DIFF_EQUAL", "%" PRIi64, hook->diff_equal);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_ADDED", "%" PRIi64, hook->diff_added);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_REMOVED", "%" PRIi64, hook->diff_removed);
 				add_env(envv, &envv_count, "SNAPRAID_DIFF_UPDATED", "%" PRIi64, hook->diff_updated);
