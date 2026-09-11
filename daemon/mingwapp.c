@@ -31,20 +31,28 @@ int os_signal_interrupt(void)
 const char* app_find_engine(const char* sys_engine)
 {
 	wchar_t conv[CONV_MAX];
-	const char* path;
 
-	if (sys_engine && sys_engine[0])
-		path = sys_engine;
-	else
-		path = path_snapraid;
+#ifdef SNAPRAID_PATH
+	(void)sys_engine;
 
-	DWORD attrib = GetFileAttributesW(u8tou16(conv, path));
+	if (GetFileAttributesW(u8tou16(conv, SNAPRAID_PATH)) != INVALID_FILE_ATTRIBUTES)
+		return SNAPRAID_PATH;
 
+	return 0;
+#else
 	/* check for existence every time in case it's installed at later time */
-	if (attrib == INVALID_FILE_ATTRIBUTES)
-		return 0;
+	if (sys_engine != 0 && sys_engine[0] != 0) {
+		if (GetFileAttributesW(u8tou16(conv, sys_engine)) != INVALID_FILE_ATTRIBUTES)
+			return sys_engine;
 
-	return path;
+		return 0;
+	}
+
+	if (GetFileAttributesW(u8tou16(conv, path_snapraid)) != INVALID_FILE_ATTRIBUTES)
+		return path_snapraid;
+
+	return 0;
+#endif
 }
 
 const char* app_find_curl(void)
