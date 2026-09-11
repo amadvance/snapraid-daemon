@@ -217,7 +217,6 @@ EXTRA_DIST = \
 	commander/js/ui.js \
 	commander/js/api.js \
 	commander/js/app.js \
-	commander/js/init.js \
 	commander/js/utils.js \
 	brutale/index.html \
 	brutale/site.webmanifest \
@@ -232,7 +231,6 @@ EXTRA_DIST = \
 	brutale/js/ui.js \
 	brutale/js/api.js \
 	brutale/js/app.js \
-	brutale/js/init.js \
 	brutale/js/utils.js \
 	brutale/css/fonts/BebasNeue-Regular.woff2 \
 	brutale/css/fonts/PlusJakartaSans-Bold.woff2 \
