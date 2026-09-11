@@ -2996,7 +2996,7 @@ static int auth_handler_callback(struct mg_connection* conn, void* cbdata)
 	char* hash_str = config_colon + 1;
 
 	if (strcmp(inbound_user, config_user) != 0) {
-		log_msg(LVL_WARNING, "authentication failed (user mismatch: '%s') from IP %s", inbound_user, remote_addr);
+		log_msg(LVL_WARNING, "authentication failed (user mismatch) from IP %s", remote_addr);
 		goto bail;
 	}
 
