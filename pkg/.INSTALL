@@ -16,7 +16,7 @@ post_upgrade() {
 pre_remove() {
     if [ -d /run/systemd/system ]; then
         systemctl --no-reload stop snapraidd.service 'snapraidd@*.service' >/dev/null || true
-        systemctl disable snapraidd.service 'snapraidd@*.service' >/dev/null || true
+        systemctl --no-reload disable snapraidd.service snapraidd@.service >/dev/null || true
     fi
 }
 

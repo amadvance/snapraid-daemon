@@ -336,9 +336,8 @@ if INSTALL_SYSTEMD
 		echo ""; \
 		echo "=================================================================="; \
 		echo "Stopping and disabling systemd service..."; \
-		systemctl disable --now snapraidd.service 2>/dev/null || true; \
-		systemctl disable snapraidd@.service 2>/dev/null || true; \
-		systemctl stop 'snapraidd@*.service' 2>/dev/null || true; \
+		systemctl --no-reload stop snapraidd.service 'snapraidd@*.service' 2>/dev/null || true; \
+		systemctl --no-reload disable snapraidd.service snapraidd@.service 2>/dev/null || true; \
 		systemctl daemon-reload 2>/dev/null || true; \
 		echo "Cleaning up runtime files..."; \
 		rm -f /run/snapraidd.pid /run/snapraidd-*.pid; \
