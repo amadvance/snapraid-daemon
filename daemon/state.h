@@ -344,6 +344,14 @@ struct snapraid_task {
 	uint64_t error_recovered; /**< Total error recovered (fix only). */
 	uint64_t error_unrecoverable; /**< Total error unrecoverable (fix only). */
 
+	/* diff stats (diff/sync only) */
+	int64_t diff_equal; /**< Count of equal files */
+	int64_t diff_added; /**< Count of added files */
+	int64_t diff_removed; /**< Count of removed files */
+	int64_t diff_updated; /**< Count of updated files */
+	int64_t diff_moved; /**< Count of moved files */
+	int64_t diff_copied; /**< Count of copied files */
+
 	tommy_node node;
 };
 

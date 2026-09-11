@@ -1313,6 +1313,8 @@ static void process_bucket(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_list(struct snapraid_state* state, char** map, size_t mac)
 {
+	struct snapraid_task* task = state->runner.latest;
+
 	if (mac < 2)
 		return;
 
@@ -1331,6 +1333,15 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 
 		/* sort from the most relevant to the less relevant */
 		diff_sort(&state->array.diff_current);
+
+		if (task != 0) {
+			task->diff_equal = state->array.diff_current.diff_equal;
+			task->diff_added = state->array.diff_current.diff_added;
+			task->diff_removed = state->array.diff_current.diff_removed;
+			task->diff_updated = state->array.diff_current.diff_updated;
+			task->diff_moved = state->array.diff_current.diff_moved;
+			task->diff_copied = state->array.diff_current.diff_copied;
+		}
 	} else if (strcmp(tag, "bucket_begin") == 0) {
 		/* for any command that load content */
 
