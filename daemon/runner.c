@@ -1141,7 +1141,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 		time_t now = unix_start_time;
 		struct tm res;
 		const char* ext = ".log";
-#ifdef HAVE_ZLIB
+#if HAVE_ZLIB
 		if (state->config.sys_log_compression) {
 			ext = ".log.gz";
 		}

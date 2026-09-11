@@ -4,11 +4,6 @@
 #ifndef __ZIO_H
 #define __ZIO_H
 
-#ifdef MOCK_NO_ZLIB
-#undef HAVE_ZLIB
-#define HAVE_ZLIB 0
-#endif
-
 /****************************************************************************/
 /* zio */
 
