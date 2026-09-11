@@ -760,8 +760,11 @@ Configuration
 	Specifies a comma-separated list of Docker containers to pause during
 	tasks that access the array (e.g., plex, transmission).
 
-	The containers are paused immediately before running the task (or the
-	pre hook script) and unpaused immediately afterward.
+	Immediately before running the task (or the pre hook script), the daemon
+	pauses only the listed containers that are running and not already paused.
+	Afterward, it unpauses only those containers, restoring their initial state.
+	Containers that were already paused remain paused, and stopped containers
+	remain stopped.
 
     hook_run_as_user
 	Specifies the user account used to execute the hook_script.

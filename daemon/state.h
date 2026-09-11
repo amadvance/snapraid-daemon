@@ -356,6 +356,7 @@ struct snapraid_schedule {
 struct snapraid_hook_config {
 	char hook_script[CONFIG_MAX];
 	char hook_docker_pause[CONFIG_MAX];
+	char hook_docker_resume[CONFIG_MAX]; /**< Docker containers paused by the hook */
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
 	char engine_conf[PATH_MAX];
