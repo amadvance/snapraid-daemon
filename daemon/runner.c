@@ -800,11 +800,11 @@ static void hook_context_acquire_locked(struct snapraid_state* state, const stru
 		hook->error_unrecoverable = task->error_unrecoverable;
 
 		if (hook->cmd == CMD_DIFF || hook->cmd == CMD_SYNC) {
-			hook->diff_added = state->array.diff_current.diff_added;
-			hook->diff_removed = state->array.diff_current.diff_removed;
-			hook->diff_updated = state->array.diff_current.diff_updated;
-			hook->diff_moved = state->array.diff_current.diff_moved;
-			hook->diff_copied = state->array.diff_current.diff_copied;
+			hook->diff_added = task->diff_added;
+			hook->diff_removed = task->diff_removed;
+			hook->diff_updated = task->diff_updated;
+			hook->diff_moved = task->diff_moved;
+			hook->diff_copied = task->diff_copied;
 		}
 	} else {
 		hook->has_task = 0;
