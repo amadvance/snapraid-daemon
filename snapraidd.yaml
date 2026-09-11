@@ -900,8 +900,9 @@ components:
           type: boolean
           default: false
           description: >
-            If true, the daemon will command all disks in the array to enter
-            STANDBY mode once the task finishes succesfully or fails.
+            If true, the daemon will command disks configured for spindown
+            to enter STANDBY mode once the task finishes successfully or fails.
+            Disk types with spindown disabled (timeout set to 0) are excluded.
 
     TaskSchedule:
       type: object

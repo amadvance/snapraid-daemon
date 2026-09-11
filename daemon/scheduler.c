@@ -13,6 +13,57 @@
 #include "notify.h"
 #include "conf.h"
 
+/**
+ * Schedules probe and spindown steps following a task.
+ *
+ * Disks of a kind with spindown disabled (threshold set to 0) are excluded
+ * using '-d' arguments. If neither kind has spindown enabled, no spindown is performed.
+ */
+static void schedule_spindown_step_locked(struct snapraid_state* state, const char* snapraid, int high_cmd, time_t now, int group, int spindown)
+{
+	int spindown_data = state->config.spindown_idle_minutes_data;
+	int spindown_parity = state->config.spindown_idle_minutes_parity;
+
+	if (spindown < 0) {
+		/* if config has spindown management, don't wait, and spin down just after */
+		spindown = spindown_data != 0 || spindown_parity != 0;
+	}
+
+	if (!spindown)
+		return;
+
+	/* if both kinds have spindown enabled, spin down all array disks */
+	if (spindown_data != 0 && spindown_parity != 0) {
+		runner_step_locked(state, snapraid, high_cmd, CMD_PROBE, now, group, 0);
+		runner_step_locked(state, snapraid, high_cmd, CMD_DOWN, now, group, 0);
+		return;
+	}
+
+	/* otherwise at least one kind is disabled (0), select only enabled disks */
+	int count = 0;
+	sl_t down_arg_list;
+	sl_init(&down_arg_list);
+
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		if (disk->kind == DISK_EXTRA)
+			continue;
+		int threshold = (disk->kind == DISK_PARITY) ? spindown_parity : spindown_data;
+		if (threshold == 0)
+			continue;
+		sl_insert_str(&down_arg_list, "-d");
+		sl_insert_str(&down_arg_list, disk->name);
+		++count;
+	}
+
+	if (count > 0) {
+		runner_step_locked(state, snapraid, high_cmd, CMD_PROBE, now, group, 0);
+		runner_step_locked(state, snapraid, high_cmd, CMD_DOWN, now, group, &down_arg_list);
+	}
+
+	sl_free(&down_arg_list);
+}
+
 static void schedule_maintenance_locked(struct snapraid_state* state, time_t now, int spindown, int threshold, int automated, char* msg, size_t msg_size, int* status)
 {
 	sl_t sync_arg_list;
@@ -58,11 +109,6 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		sl_insert_int(&scrub_arg_list, state->config.scrub_older_than);
 	}
 
-	if (spindown < 0) {
-		/* if config has spindown management, don't wait, and spin down just after */
-		spindown = state->config.spindown_idle_minutes_data != 0 || state->config.spindown_idle_minutes_parity != 0;
-	}
-
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
 		int shutdown = automated && config_shutdown_on(state->config.sys_shutdown_on, "maintenance");
@@ -73,10 +119,8 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SYNC, now, group, &sync_arg_list);
 		if (do_scrub)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SCRUB, now, group, &scrub_arg_list);
-		if (spindown && !shutdown) {
-			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_PROBE, now, group, 0);
-			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_DOWN, now, group, 0);
-		}
+		if (!shutdown)
+			schedule_spindown_step_locked(state, snapraid, CMD_MAINTENANCE, now, group, spindown);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_REPORT, now, group, 0);
 		if (shutdown)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SHUTDOWN, now, group, 0);
@@ -122,11 +166,6 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	sl_insert_str(&scrub_arg_list, "-p");
 	sl_insert_str(&scrub_arg_list, "bad");
 
-	if (spindown < 0) {
-		/* if config has spindown management, don't wait, and spin down just after */
-		spindown = state->config.spindown_idle_minutes_data != 0 || state->config.spindown_idle_minutes_parity != 0;
-	}
-
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {
 		if (state->config.notify_start[0] != 0)
@@ -134,10 +173,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_FIX, now, group, &fix_arg_list);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_SCRUB, now, group, &scrub_arg_list);
-		if (spindown) {
-			runner_step_locked(state, snapraid, CMD_HEAL, CMD_PROBE, now, group, 0);
-			runner_step_locked(state, snapraid, CMD_HEAL, CMD_DOWN, now, group, 0);
-		}
+		schedule_spindown_step_locked(state, snapraid, CMD_HEAL, now, group, spindown);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_REPORT, now, group, 0);
 		*status = 202;
 	}
@@ -184,10 +220,7 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 			runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_UP, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_FIX, now, group, &fix_arg_list);
-		if (spindown) {
-			runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_PROBE, now, group, 0);
-			runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_DOWN, now, group, 0);
-		}
+		schedule_spindown_step_locked(state, snapraid, CMD_UNDELETE, now, group, spindown);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_REPORT, now, group, 0);
 		*status = 202;
 	}
