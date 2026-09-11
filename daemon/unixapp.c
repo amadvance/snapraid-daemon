@@ -38,11 +38,8 @@ static void app_signal_handler_hup(int sig)
 /****************************************************************************/
 /* app */
 
+#ifndef SNAPRAID_PATH
 static const char* snapraid_paths[] = {
-#ifdef SNAPRAID_PATH
-	/* Path configured at build time (e.g. on NixOS). */
-	SNAPRAID_PATH,
-#else
 	/* Linux & BSD */
 	"/usr/bin/snapraid",
 	"/usr/local/bin/snapraid",
@@ -50,24 +47,35 @@ static const char* snapraid_paths[] = {
 	/* macOS (Intel & Apple Silicon) */
 	"/opt/homebrew/bin/snapraid",
 #endif
-#endif
 	0
 };
+#endif
 
 const char* app_find_engine(const char* sys_engine)
 {
+#ifdef SNAPRAID_PATH
+	(void)sys_engine;
+
+	if (eaccess(SNAPRAID_PATH, X_OK) == 0)
+		return SNAPRAID_PATH;
+
+	return 0;
+#else
 	/* check for existence every time in case it's installed at later time */
 	if (sys_engine != 0 && sys_engine[0] != 0) {
 		if (eaccess(sys_engine, X_OK) == 0)
 			return sys_engine;
-	} else {
-		for (int i = 0; snapraid_paths[i]; ++i) {
-			if (eaccess(snapraid_paths[i], X_OK) == 0)
-				return snapraid_paths[i];
-		}
+
+		return 0;
+	}
+
+	for (int i = 0; snapraid_paths[i]; ++i) {
+		if (eaccess(snapraid_paths[i], X_OK) == 0)
+			return snapraid_paths[i];
 	}
 
 	return 0;
+#endif
 }
 
 static const char* curl_paths[] = {
