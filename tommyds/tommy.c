@@ -11,3 +11,4 @@
 
 #include "tommyhash.c"
 #include "tommylist.c"
+#include "tommytree.c"

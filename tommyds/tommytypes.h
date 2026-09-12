@@ -207,6 +207,7 @@ typedef struct tommy_node_struct {
 	 * Index of the node.
 	 * With tries this field is used to store the key.
 	 * With hashtables this field is used to store the hash value.
+	 * With trees this field is used to store the parent pointer and balance factor.
 	 * With lists this field is not used.
 	 */
 	tommy_size_t index;
