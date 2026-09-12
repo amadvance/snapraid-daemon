@@ -180,11 +180,21 @@ struct smart_entry {
 
 	/* temperature, 190, 194, 231 */
 	{ -1, FORMAT_16_MAXMINVAL, "Airflow_Temperature_Cel", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
-	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },  /* default entry */
+	/*
+	 * Temperature_Celsius is restricted to IDs 194 and 190 instead of using -1 (wildcard).
+	 * In smartctl, unrecognised drives fall back to the generic ATA default table where
+	 * ID 231 is named Temperature_Celsius. On SSDs, ID 231 represents the remaining life
+	 * percentage (SSD_Life_Left), so using -1 would misinterpret the life percentage as
+	 * a dangerously high temperature.
+	 */
+	{ 194, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE }, /* default entry */
+	{ 190, FORMAT_16_MAXMINVAL, "Temperature_Celsius", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ -1, FORMAT_16_MAXMINVAL, "Case_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ -1, FORMAT_16_MAXMINVAL, "Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Case", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ -1, FORMAT_16_MAXMINVAL, "Temperature_Internal", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ -1, FORMAT_16_MAXMINVAL, "Controller_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	{ -1, FORMAT_16_MAXMINVAL, "Device_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 
 	/* power on hours, 9 */
 	{ 9, FORMAT_24, "Power_On_Hours", SMART_KIND_TIME }, /* default entry */
@@ -223,7 +233,7 @@ struct smart_entry {
 	/* from SnapRAID SCSI mapping, see smartctl_attribute() */
 	{ 5, FORMAT_16, "Elements_In_Grown_Defect_List", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 	{ 194, FORMAT_16, "Current_Drive_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
-	{ 190, FORMAT_16, "Drive_Trip_Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
+	/* { 190, FORMAT_16, "Drive_Trip_Temperature", 0 }, */ /* threshold, not a measurement */
 	{ 4, FORMAT_32, "Accumulated_Start-Stop_Cycles", SMART_KIND_COUNT },
 	{ 193, FORMAT_32, "Accumulated_Load-Unload_Cycles", SMART_KIND_COUNT },
 	{ 12, FORMAT_32, "Number_Of_Hours_Powered_Up", SMART_KIND_TIME },
@@ -310,34 +320,37 @@ int smart_kind(int index, const char* name)
 
 void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64_t* temp_min, uint64_t* temp_max)
 {
-	uint64_t l, h, r;
+	/**
+	 * Temperature attributes in order of precedence:
+	 * 1. 194: Primary internal drive temperature (standard ATA/NVMe/SCSI).
+	 * 2. 190: Airflow temperature (traditional fallback for HDD).
+	 * 3. 231: Component/controller temperature (fallback for SSD).
+	 */
+	static const int IDS[] = { 194, 190, 231 };
 
 	*temp = SMART_UNASSIGNED;
 	*temp_min = SMART_UNASSIGNED;
 	*temp_max = SMART_UNASSIGNED;
 
-	/* first 190 */
-	r = dev->smart[190].raw.value;
-	if (r != SMART_UNASSIGNED) {
-		*temp = r & 0xFFFF;
-		l = (r >> 16) & 0xFFFF;
-		h = (r >> 32) & 0xFFFF;
-		if (l <= *temp && *temp <= h) {
-			*temp_min = l;
-			*temp_max = h;
-		}
-	}
+	for (size_t i = 0; i < sizeof(IDS) / sizeof(IDS[0]); ++i) {
+		int id = IDS[i];
+		struct smart_attr* attr = &dev->smart[id];
+		uint64_t r = attr->raw.value;
+		if (r == SMART_UNASSIGNED)
+			continue;
 
-	/* then 194 that overwrite 190 */
-	r = dev->smart[194].raw.value;
-	if (r != SMART_UNASSIGNED) {
+		/* ensure the attribute name actually represents a temperature */
+		if ((smart_kind(id, attr->name) & SMART_KIND_TEMP) == 0)
+			continue;
+
 		*temp = r & 0xFFFF;
-		l = (r >> 16) & 0xFFFF;
-		h = (r >> 32) & 0xFFFF;
+		uint64_t l = (r >> 16) & 0xFFFF;
+		uint64_t h = (r >> 32) & 0xFFFF;
 		if (l <= *temp && *temp <= h) {
 			*temp_min = l;
 			*temp_max = h;
 		}
+		return;
 	}
 }
 
