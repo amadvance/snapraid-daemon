@@ -282,7 +282,7 @@ void file_free(void* void_file);
 /* diff */
 
 /**
- * Clean up a difference statistics structure, freeing its file list.
+ * Clean up a difference statistics structure, freeing its file tree.
  * @param diff Pointer to difference statistics structure
  * @param equal New value for equal files counter
  */
@@ -296,26 +296,39 @@ void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal);
 void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest);
 
 /**
- * Sort the difference statistics.
- * @param diff Difference statistics to sort
+ * Start or reset diff parsing for difference statistics.
+ * @param diff Difference statistics structure
  */
-void diff_sort(struct snapraid_diff_stat* diff);
+void diff_start(struct snapraid_diff_stat* diff);
+
+/**
+ * Insert a file into difference tree maintaining at most FILES_MAX elements.
+ * @param diff Difference statistics structure
+ * @param change File change type (FILE_CHANGE_DIFF_*)
+ * @param disk Disk name
+ * @param path File path
+ * @param source_disk Source disk name (for move/copy/relocate, or 0)
+ * @param source_path Source file path (for move/copy/relocate, or 0)
+ */
+void diff_insert(struct snapraid_diff_stat* diff, int change, const char* disk, const char* path, const char* source_disk, const char* source_path);
 
 /****************************************************************************/
 /* fix */
 
 /**
- * Clean up a fix statistics structure, freeing its file list.
+ * Clean up a fix statistics structure, freeing its file tree.
  * @param fix Pointer to fix statistics structure
  */
 void fix_cleanup(struct snapraid_fix_stat* fix);
 
 /**
- * Accumulate fix results from a list into a fix statistics structure.
- * @param fix_src Source list of file entries
- * @param fix_dest Destination fix statistics structure
+ * Insert a file into fix tree maintaining at most FILES_MAX elements.
+ * @param fix Fix statistics structure
+ * @param change File change type (FILE_CHANGE_FIX_*)
+ * @param disk Disk name
+ * @param path File path
  */
-void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest);
+void fix_insert(struct snapraid_fix_stat* fix, int change, const char* disk, const char* path);
 
 /****************************************************************************/
 /* bucket */

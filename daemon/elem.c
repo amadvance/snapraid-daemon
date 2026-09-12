@@ -288,8 +288,6 @@ struct snapraid_task* task_alloc(void)
 	sl_init(&task->arg_list);
 	tommy_list_init(&task->message_list);
 	task->message_list_count = 0;
-	sl_init(&task->fix_list);
-	task->fix_counter = 0;
 	task->health = HEALTH_PENDING;
 	return task;
 }
@@ -301,7 +299,6 @@ void task_free(void* void_task)
 		return;
 	sl_free(&task->arg_list);
 	tommy_list_foreach(&task->message_list, message_free);
-	tommy_list_foreach(&task->fix_list, file_free);
 	free(task->text_report);
 	free(task);
 }
@@ -524,52 +521,6 @@ void file_free(void* void_file)
 	free(file);
 }
 
-/****************************************************************************/
-/* diff */
-
-void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal)
-{
-	diff->diff_equal = equal;
-	diff->diff_added = 0;
-	diff->diff_removed = 0;
-	diff->diff_updated = 0;
-	diff->diff_moved = 0;
-	diff->diff_copied = 0;
-	diff->diff_relocated = 0;
-	diff->diff_restored = 0;
-
-	tommy_list_foreach(&diff->file_list, file_free);
-	tommy_list_init(&diff->file_list);
-	diff->file_counter = 0;
-}
-
-void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest)
-{
-	/* clear the destination list */
-	tommy_list_foreach(&diff_dest->file_list, file_free);
-
-	*diff_dest = *diff_src;
-
-	/* reset the list */
-	tommy_list_init(&diff_src->file_list);
-	diff_src->file_counter = 0;
-
-	diff_src->diff_equal = diff_dest->diff_equal;
-	diff_src->diff_equal += diff_dest->diff_added;
-	diff_src->diff_equal += diff_dest->diff_updated;
-	diff_src->diff_equal += diff_dest->diff_moved;
-	diff_src->diff_equal += diff_dest->diff_copied;
-	/* don't add relocated as they match one copied and one removed */
-	diff_src->diff_equal += diff_dest->diff_restored;
-	diff_src->diff_added = 0;
-	diff_src->diff_removed = 0;
-	diff_src->diff_updated = 0;
-	diff_src->diff_moved = 0;
-	diff_src->diff_copied = 0;
-	diff_src->diff_relocated = 0;
-	diff_src->diff_restored = 0;
-}
-
 static int file_compare_disk_path(const void* void_a, const void* void_b)
 {
 	const struct snapraid_file* a = void_a;
@@ -591,9 +542,80 @@ static int file_compare_importance(const void* void_a, const void* void_b)
 	return file_compare_disk_path(void_a, void_b);
 }
 
-void diff_sort(struct snapraid_diff_stat* diff)
+/****************************************************************************/
+/* diff */
+
+void diff_cleanup(struct snapraid_diff_stat* diff, int64_t equal)
 {
-	tommy_list_sort(&diff->file_list, file_compare_importance);
+	diff->diff_equal = equal;
+	diff->diff_added = 0;
+	diff->diff_removed = 0;
+	diff->diff_updated = 0;
+	diff->diff_moved = 0;
+	diff->diff_copied = 0;
+	diff->diff_relocated = 0;
+	diff->diff_restored = 0;
+
+	tommy_tree_foreach(&diff->file_tree, file_free);
+	tommy_tree_init(&diff->file_tree, file_compare_importance);
+}
+
+void diff_start(struct snapraid_diff_stat* diff)
+{
+	diff_cleanup(diff, 0);
+}
+
+void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* diff_dest)
+{
+	/* clear the destination tree */
+	tommy_tree_foreach(&diff_dest->file_tree, file_free);
+
+	*diff_dest = *diff_src;
+
+	/* reset the source */
+	tommy_tree_init(&diff_src->file_tree, file_compare_importance);
+
+	diff_src->diff_equal = diff_dest->diff_equal;
+	diff_src->diff_equal += diff_dest->diff_added;
+	diff_src->diff_equal += diff_dest->diff_updated;
+	diff_src->diff_equal += diff_dest->diff_moved;
+	diff_src->diff_equal += diff_dest->diff_copied;
+	/* don't add relocated as they match one copied and one removed */
+	diff_src->diff_equal += diff_dest->diff_restored;
+	diff_src->diff_added = 0;
+	diff_src->diff_removed = 0;
+	diff_src->diff_updated = 0;
+	diff_src->diff_moved = 0;
+	diff_src->diff_copied = 0;
+	diff_src->diff_relocated = 0;
+	diff_src->diff_restored = 0;
+}
+
+void diff_insert(struct snapraid_diff_stat* diff, int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
+{
+	/* check if this exact entry is already present */
+	struct snapraid_file dummy;
+	dummy.change = change;
+	dummy.disk = (char*)disk;
+	dummy.path = (char*)path;
+
+	if (tommy_tree_search(&diff->file_tree, &dummy))
+		return;
+
+	/* enforce FILES_MAX */
+	if (tommy_tree_count(&diff->file_tree) >= FILES_MAX) {
+		tommy_tree_node* tail = tommy_tree_tail(&diff->file_tree);
+
+		if (file_compare_importance(&dummy, tail->data) >= 0)
+			return;
+
+		/* new file is more important than tail: remove tail */
+		struct snapraid_file* evicted = tommy_tree_remove_tail(&diff->file_tree);
+		file_free(evicted);
+	}
+
+	struct snapraid_file* file = file_alloc_source(change, disk, path, source_disk, source_path);
+	tommy_tree_insert(&diff->file_tree, &file->node, file);
 }
 
 /****************************************************************************/
@@ -604,97 +626,58 @@ void fix_cleanup(struct snapraid_fix_stat* fix)
 	fix->fix_recovered = 0;
 	fix->fix_unrecoverable = 0;
 
-	tommy_list_foreach(&fix->file_list, file_free);
-	tommy_list_init(&fix->file_list);
+	tommy_tree_foreach(&fix->file_tree, file_free);
+	tommy_tree_init(&fix->file_tree, file_compare_importance);
 }
 
-void fix_accumulate(tommy_list* fix_src, struct snapraid_fix_stat* fix_dest)
+void fix_insert(struct snapraid_fix_stat* fix, int change, const char* disk, const char* path)
 {
-	/* assume dest is already sorted */
-	tommy_list_sort(fix_src, file_compare_importance);
+	/* if recovered, remove any existing unrecoverable entry for the same file */
+	if (change == FILE_CHANGE_FIX_RECOVERED) {
+		struct snapraid_file dummy;
+		dummy.change = FILE_CHANGE_FIX_UNRECOVERABLE;
+		dummy.disk = (char*)disk;
+		dummy.path = (char*)path;
 
-	/* merge all elements from src to dest avoiding duplicates */
-	tommy_node* i = tommy_list_head(fix_src);
-	tommy_node* j = tommy_list_head(&fix_dest->file_list);
-	while (i) {
-		struct snapraid_file* src = i->data;
-
-		/* end of the destination list */
-		if (j == 0) {
-			/* insert at the end of the dest */
-			struct snapraid_file* dup = file_dup(src);
-			tommy_list_insert_tail(&fix_dest->file_list, &dup->node, dup);
-			i = i->next;
-			continue;
-		}
-
-		int cmd = file_compare_importance(i->data, j->data);
-		if (cmd > 0) {
-			/* next dest */
-			j = j->next;
-			continue;
-		}
-
-		if (cmd < 0) {
-			/* file is missing in dest */
-			struct snapraid_file* dup = file_dup(src);
-			tommy_list_insert_before(&fix_dest->file_list, j, &dup->node, dup);
-			i = i->next;
-			continue;
-		}
-
-		/* file is already present in dest with the same change state */
-		i = i->next;
-		j = j->next;
-	}
-
-	/* second pass: remove UNRECOVERABLE files that are now RECOVERED */
-	i = tommy_list_head(&fix_dest->file_list);
-	j = i;
-
-	/* move j to the start of RECOVERED files */
-	while (j) {
-		struct snapraid_file* f2 = j->data;
-		if (f2->change == FILE_CHANGE_FIX_RECOVERED)
-			break;
-		j = j->next;
-	}
-
-	while (i && j) {
-		struct snapraid_file* unr = i->data;
-		struct snapraid_file* rec = j->data;
-
-		if (unr->change != FILE_CHANGE_FIX_UNRECOVERABLE)
-			break; /* end of UNRECOVERABLE section */
-
-		int cmd = file_compare_disk_path(unr, rec);
-		if (cmd < 0) {
-			i = i->next;
-		} else if (cmd > 0) {
-			j = j->next;
-		} else {
-			/* same file is both UNRECOVERABLE and RECOVERED, remove the UNRECOVERABLE one */
-			tommy_node* i_next = i->next;
-			tommy_list_remove_existing(&fix_dest->file_list, i);
-			file_free(unr);
-			i = i_next;
-			j = j->next;
+		struct snapraid_file* existing_unr = tommy_tree_search(&fix->file_tree, &dummy);
+		if (existing_unr) {
+			tommy_tree_remove_existing(&fix->file_tree, &existing_unr->node);
+			file_free(existing_unr);
+			--fix->fix_unrecoverable;
 		}
 	}
 
-	/* recompute counters */
-	fix_dest->fix_recovered = 0;
-	fix_dest->fix_unrecoverable = 0;
+	/* check if this exact entry is already present */
+	struct snapraid_file dummy;
+	dummy.change = change;
+	dummy.disk = (char*)disk;
+	dummy.path = (char*)path;
 
-	i = tommy_list_head(&fix_dest->file_list);
-	while (i) {
-		struct snapraid_file* dst = i->data;
-		if (dst->change == FILE_CHANGE_FIX_RECOVERED)
-			++fix_dest->fix_recovered;
-		if (dst->change == FILE_CHANGE_FIX_UNRECOVERABLE)
-			++fix_dest->fix_unrecoverable;
-		i = i->next;
+	if (tommy_tree_search(&fix->file_tree, &dummy))
+		return;
+
+	/* enforce FILES_MAX */
+	if (tommy_tree_count(&fix->file_tree) >= FILES_MAX) {
+		tommy_tree_node* tail = tommy_tree_tail(&fix->file_tree);
+
+		if (file_compare_importance(&dummy, tail->data) >= 0)
+			return;
+
+		/* new file is more important than tail: remove tail */
+		struct snapraid_file* evicted = tommy_tree_remove_tail(&fix->file_tree);
+		if (evicted->change == FILE_CHANGE_FIX_RECOVERED)
+			--fix->fix_recovered;
+		else if (evicted->change == FILE_CHANGE_FIX_UNRECOVERABLE)
+			--fix->fix_unrecoverable;
+		file_free(evicted);
 	}
+
+	struct snapraid_file* file = file_alloc(change, disk, path);
+	tommy_tree_insert(&fix->file_tree, &file->node, file);
+	if (change == FILE_CHANGE_FIX_RECOVERED)
+		++fix->fix_recovered;
+	else if (change == FILE_CHANGE_FIX_UNRECOVERABLE)
+		++fix->fix_unrecoverable;
 }
 
 /****************************************************************************/

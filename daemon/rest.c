@@ -2286,7 +2286,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_u64(&s, level, "diff_relocated", array->diff_current.diff_relocated);
 		ss_json_u64(&s, level, "diff_restored", array->diff_current.diff_restored);
 		ss_json_array_open(&s, &level, "diffs");
-		for (tommy_node* i = tommy_list_head(&array->diff_current.file_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(&array->diff_current.file_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (--limit_diffs < 0)
 				break;
@@ -2304,7 +2304,7 @@ static int handler_array(struct mg_connection* conn, void* cbdata)
 		ss_json_u64(&s, level, "fix_recovered", array->fix_current.fix_recovered);
 		ss_json_u64(&s, level, "fix_unrecoverable", array->fix_current.fix_unrecoverable);
 		ss_json_array_open(&s, &level, "fixes");
-		for (tommy_node* i = tommy_list_head(&array->fix_current.file_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(&array->fix_current.file_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (--limit_fixes < 0)
 				break;

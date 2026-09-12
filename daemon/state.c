@@ -19,6 +19,10 @@ struct snapraid_state* state_init(void)
 	thread_mutex_init(&state->log_lock);
 	thread_rwlock_init(&state->web_lock);
 	tommy_list_init(&state->device_catalog);
+	diff_cleanup(&state->array.diff_parse, 0);
+	diff_cleanup(&state->array.diff_current, 0);
+	diff_cleanup(&state->array.diff_prev, 0);
+	fix_cleanup(&state->array.fix_current);
 	state->daemon_loading = 1;
 	state->daemon_running = 1;
 	state->daemon_start_time = time(0);
@@ -36,10 +40,10 @@ void state_done(struct snapraid_state* state)
 	if (state->runner.latest && state->runner.latest->running) /* if running it isn't in the lists */
 		task_free(state->runner.latest);
 	tommy_list_foreach(&state->runner.history_list, task_free);
-	tommy_list_foreach(&state->array.diff_parse.file_list, file_free);
-	tommy_list_foreach(&state->array.diff_current.file_list, file_free);
-	tommy_list_foreach(&state->array.diff_prev.file_list, file_free);
-	tommy_list_foreach(&state->array.fix_current.file_list, file_free);
+	tommy_tree_foreach(&state->array.diff_parse.file_tree, file_free);
+	tommy_tree_foreach(&state->array.diff_current.file_tree, file_free);
+	tommy_tree_foreach(&state->array.diff_prev.file_tree, file_free);
+	tommy_tree_foreach(&state->array.fix_current.file_tree, file_free);
 	tommy_list_foreach(&state->array.bucket_parse_list, bucket_free);
 	tommy_list_foreach(&state->array.bucket_list, bucket_free);
 	tommy_list_foreach(&state->array.disk_list, disk_free);

@@ -1236,46 +1236,25 @@ static void process_scan(struct snapraid_state* state, char** map, size_t mac)
 
 	if (strcmp(tag, "add") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_ADD, disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_ADD, disk, path, 0, 0);
 	} else if (strcmp(tag, "remove") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_REMOVE, disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_REMOVE, disk, path, 0, 0);
 	} else if (strcmp(tag, "update") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_UPDATE, disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_UPDATE, disk, path, 0, 0);
 	} else if (strcmp(tag, "move") == 0 && mac >= 5) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_MOVE, disk, map[4], disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_MOVE, disk, map[4], disk, path);
 	} else if (strcmp(tag, "copy") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_COPY, map[4], map[5], disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_COPY, map[4], map[5], disk, path);
 	} else if (strcmp(tag, "relocate") == 0 && mac >= 6) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc_source(FILE_CHANGE_DIFF_RELOCATE, map[4], map[5], disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_RELOCATE, map[4], map[5], disk, path);
 	} else if (strcmp(tag, "restore") == 0) {
 		/* do not pulse because this is temporary storage for parsing */
-		if (++state->array.diff_parse.file_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_DIFF_RESTORE, disk, path);
-			tommy_list_insert_tail(&state->array.diff_parse.file_list, &file->node, file);
-		}
+		diff_insert(&state->array.diff_parse, FILE_CHANGE_DIFF_RESTORE, disk, path, 0, 0);
 	}
 }
 
@@ -1323,16 +1302,13 @@ static void process_list(struct snapraid_state* state, char** map, size_t mac)
 	if (strcmp(tag, "scan_begin") == 0) {
 		/* a new diff list is coming, so cleanup it */
 		/* do not pulse because this is temporary storage for parsing */
-		diff_cleanup(&state->array.diff_parse, 0);
+		diff_start(&state->array.diff_parse);
 	} else if (strcmp(tag, "scan_end") == 0) {
 		/* now we pulse because we move the temporary parsing data to the real data */
 		pulse(state, PULSE_ARRAY);
 
 		/* move the parsing to the current state */
 		diff_move(&state->array.diff_parse, &state->array.diff_current);
-
-		/* sort from the most relevant to the less relevant */
-		diff_sort(&state->array.diff_current);
 
 		if (task != 0) {
 			task->diff_equal = state->array.diff_current.diff_equal;
@@ -1519,20 +1495,12 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 	const char* disk = map[2];
 	const char* sub = map[3];
 
-	if (strcmp(ope, "recovered") == 0 || strcmp(ope, "recoverable") == 0) {
-		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
-		pulse(state, PULSE_ACTIVITY);
-		if (++task->fix_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_RECOVERED, disk, sub);
-			tommy_list_insert_tail(&task->fix_list, &file->node, file);
-		}
-	} else if (strcmp(ope, "unrecoverable") == 0) {
-		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
-		pulse(state, PULSE_ACTIVITY);
-		if (++task->fix_counter <= FILES_MAX) {
-			struct snapraid_file* file = file_alloc(FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
-			tommy_list_insert_tail(&task->fix_list, &file->node, file);
-		}
+	if (task->cmd == CMD_FIX && strcmp(ope, "recovered") == 0) {
+		/* Omit PULSE_ARRAY on progress updates to avoid excessive /tasks polling */
+		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_RECOVERED, disk, sub);
+	} else if (task->cmd == CMD_FIX && strcmp(ope, "unrecoverable") == 0) {
+		/* Omit PULSE_ARRAY on progress updates to avoid excessive /tasks polling */
+		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
 	}
 }
 
@@ -1861,11 +1829,9 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			state->array.diff_time = task->unix_start_time;
 			break;
 		case CMD_FIX :
+			/* now we pulse to publish the fix */
 			pulse(state, PULSE_ARRAY);
 			state->array.fix_time = task->unix_start_time;
-
-			/* accumulate the parsing fix to the current state */
-			fix_accumulate(&task->fix_list, &state->array.fix_current);
 			break;
 		}
 	}
@@ -2268,6 +2234,9 @@ void parse_begin_locked(struct snapraid_state* state)
 {
 	/* clear the association mapping */
 	parser_mapping_start(state);
+
+	/* clear the diff tree */
+	diff_start(&state->array.diff_parse);
 
 	state->parser_has_end = 0;
 }

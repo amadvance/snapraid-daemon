@@ -436,7 +436,13 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->array.diff_prev;
 
-	report_locked(state, &ss, report_task, start_task, fix_task, sync_task, scrub_task, diff_stat);
+	struct snapraid_fix_stat* fix_stat = 0;
+
+	/* if we run a fix, use the array fix stat to report the current repair status since the latest sync */
+	if (fix_task != 0)
+		fix_stat = &state->array.fix_current;
+
+	report_locked(state, &ss, report_task, start_task, fix_task, sync_task, scrub_task, diff_stat, fix_stat);
 
 	/*
 	 * Check if any prefail/critical raw attributes, prefail norm attributes, or error counters degraded since queue_time
