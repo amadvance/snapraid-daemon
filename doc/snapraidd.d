@@ -1173,7 +1173,10 @@ REST API
 	fix - Attempts to recover deleted files or repair corrupted data using
 		the parity information.
 	report - Generates a comprehensive summary of the last operations and
-		array statistics.
+		array statistics. When a fix command has been executed, the
+		report includes a recovery section listing all files recovered
+		or unrecoverable since the last sync, reflecting the current
+		repair status of the array.
 	down_idle - Executes a conditional spindown operation of the disks that
 		have exceeded the `spindown_idle_minutes` threshold.
 

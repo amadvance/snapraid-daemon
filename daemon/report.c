@@ -148,14 +148,14 @@ static void print_line_separator(ss_t* ss)
 /**
  * Print differences list.
  */
-static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
+static void print_differences_wide(ss_t* ss, tommy_tree* diff_tree)
 {
 	/* group by change type */
 	for (int change = FILE_CHANGE_DIFF_FIRST; change <= FILE_CHANGE_DIFF_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(diff_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change == change) {
 				found = 1;
@@ -170,7 +170,7 @@ static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
 		ss_printf(ss, "  %s:\n", change_name(change));
 
 		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(diff_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
@@ -185,14 +185,14 @@ static void print_differences_wide(ss_t* ss, tommy_list* diff_list)
 	}
 }
 
-static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
+static void print_differences_narrow(ss_t* ss, tommy_tree* diff_tree)
 {
 	/* group by change type */
 	for (int change = FILE_CHANGE_DIFF_FIRST; change <= FILE_CHANGE_DIFF_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(diff_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change == change) {
 				found = 1;
@@ -207,7 +207,7 @@ static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
 		ss_printf(ss, "- %s\n", change_name(change));
 
 		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(diff_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(diff_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
@@ -225,14 +225,14 @@ static void print_differences_narrow(ss_t* ss, tommy_list* diff_list)
 /**
  * Print fix list.
  */
-static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
+static void print_fix_wide(ss_t* ss, tommy_tree* fix_tree)
 {
 	/* group by change type */
 	for (int change = FILE_CHANGE_FIX_FIRST; change <= FILE_CHANGE_FIX_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(fix_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change == change) {
 				found = 1;
@@ -247,7 +247,7 @@ static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
 		ss_printf(ss, "  %s:\n", change_name(change));
 
 		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(fix_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
@@ -258,14 +258,14 @@ static void print_fix_wide(ss_t* ss, tommy_list* fix_list)
 	}
 }
 
-static void print_fix_narrow(ss_t* ss, tommy_list* fix_list)
+static void print_fix_narrow(ss_t* ss, tommy_tree* fix_tree)
 {
 	/* group by change type */
 	for (int change = FILE_CHANGE_FIX_FIRST; change <= FILE_CHANGE_FIX_LAST; ++change) {
 		int found = 0;
 
 		/* check if there are any changes of this type */
-		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(fix_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change == change) {
 				found = 1;
@@ -280,7 +280,7 @@ static void print_fix_narrow(ss_t* ss, tommy_list* fix_list)
 		ss_printf(ss, "- %s\n", change_name(change));
 
 		/* print all changes of this type */
-		for (tommy_node* i = tommy_list_head(fix_list); i; i = i->next) {
+		for (tommy_tree_node* i = tommy_tree_head(fix_tree); i; i = tommy_tree_next(i)) {
 			struct snapraid_file* file = i->data;
 			if (file->change != change)
 				continue;
@@ -419,12 +419,6 @@ static void print_task_wide(ss_t* ss, const char* task_name, struct snapraid_tas
 			}
 		}
 	}
-
-	/* print recovered files if any */
-	if (!tommy_list_empty(&task->fix_list)) {
-		ss_prints(ss, "\nRECOVER:\n");
-		print_fix_wide(ss, &task->fix_list);
-	}
 }
 
 static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_task* task)
@@ -497,12 +491,6 @@ static void print_task_narrow(ss_t* ss, const char* task_name, struct snapraid_t
 				break;
 			}
 		}
-	}
-
-	/* print recovered files if any */
-	if (!tommy_list_empty(&task->fix_list)) {
-		ss_prints(ss, "\nRECOVER:\n");
-		print_fix_narrow(ss, &task->fix_list);
 	}
 }
 
@@ -1063,7 +1051,8 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
-	struct snapraid_diff_stat* diff_stat)
+	struct snapraid_diff_stat* diff_stat,
+	struct snapraid_fix_stat* fix_stat)
 {
 	int array_health;
 	time_t now = time(0);
@@ -1149,6 +1138,10 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	if (latest_fix) {
 		print_line_separator(ss);
 		print_task_wide(ss, "FIX", latest_fix);
+		if (fix_stat && !tommy_tree_empty(&fix_stat->file_tree)) {
+			ss_prints(ss, "\nRECOVER:\n");
+			print_fix_wide(ss, &fix_stat->file_tree);
+		}
 		ss_prints(ss, "\n");
 	}
 
@@ -1179,7 +1172,7 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 
 		/* differences list if enabled */
 		if (state->config.notify_differences != 0) {
-			print_differences_wide(ss, &diff_stat->file_list);
+			print_differences_wide(ss, &diff_stat->file_tree);
 			ss_prints(ss, "\n");
 		}
 	}
@@ -1193,11 +1186,9 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
-	struct snapraid_diff_stat* diff_stat)
+	struct snapraid_diff_stat* diff_stat,
+	struct snapraid_fix_stat* fix_stat)
 {
-	(void)latest_fix;
-	(void)diff_stat;
-
 	if (state->instance[0] != 0)
 		ss_printf(ss, "INSTANCE: %s\n", state->instance);
 
@@ -1249,6 +1240,10 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 
 	if (latest_fix) {
 		print_task_narrow(ss, "FIX", latest_fix);
+		if (fix_stat && !tommy_tree_empty(&fix_stat->file_tree)) {
+			ss_prints(ss, "\nRECOVER:\n");
+			print_fix_narrow(ss, &fix_stat->file_tree);
+		}
 		ss_prints(ss, "\n");
 	}
 
@@ -1276,7 +1271,7 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 
 		/* differences list if enabled */
 		if (state->config.notify_differences != 0) {
-			print_differences_narrow(ss, &diff_stat->file_list);
+			print_differences_narrow(ss, &diff_stat->file_tree);
 			ss_prints(ss, "\n");
 		}
 	}
@@ -1288,7 +1283,8 @@ void report_locked(struct snapraid_state* state, ss_t* ss,
 	struct snapraid_task* latest_fix,
 	struct snapraid_task* latest_sync,
 	struct snapraid_task* latest_scrub,
-	struct snapraid_diff_stat* diff_stat)
+	struct snapraid_diff_stat* diff_stat,
+	struct snapraid_fix_stat* fix_stat)
 {
 	int is_mail = 0;
 	const char* cmd = state->config.notify_result;
@@ -1306,8 +1302,8 @@ void report_locked(struct snapraid_state* state, ss_t* ss,
 		is_mail = 0;
 
 	if (is_mail)
-		report_wide_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_wide_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat, fix_stat);
 	else
-		report_narrow_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat);
+		report_narrow_locked(state, ss, latest_report, latest_start, latest_fix, latest_sync, latest_scrub, diff_stat, fix_stat);
 }
 

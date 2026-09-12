@@ -1218,6 +1218,10 @@ components:
           description: >
             The complete text-based results of a 'report' type tasks.
 
+            When a fix has been executed, the report includes a recovery section
+            listing all files recovered or unrecoverable since the last sync,
+            reflecting the current repair status of the array.
+
             For high-level maintenance macros (such as 'maintenance', 'heal',
             or 'undelete'), the daemon automatically appends a final 'report'
             command to the task sequence upon successful completion of the
@@ -2494,11 +2498,13 @@ components:
           format: int64
           description: >
             The count of files recovered in all the fix commands after the latest sync.
+            Limit of FILES_MAX applied.
         fix_unrecoverable:
           type: integer
           format: int64
           description: >
             The count of files unrecoverable in all the fix commands after the latest sync.
+            Limit of FILES_MAX applied.
         fixes:
           type: array
           description: >

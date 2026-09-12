@@ -6,6 +6,7 @@
 
 #include "civetweb/civetweb.h"
 #include "monocypher/monocypher.h"
+#include "tommyds/tommytree.h"
 #include "str.h"
 
 /**
@@ -331,9 +332,6 @@ struct snapraid_task {
 	int message_omit_info; /**< Number of messages over the limit. */
 	int message_omit_verbose; /**< Number of messages over the limit. */
 
-	uint64_t fix_counter; /**< Number of elements inserted in fix_list */
-	tommy_list fix_list; /**< List of recovered/recoverable/unrecoverable snapraid_file. Limit of FILES_MAX applied. */
-
 	char* text_report; /**< for CMD_REPORT it's the final text report */
 
 	/* error stats */
@@ -432,15 +430,14 @@ struct snapraid_diff_stat {
 	int64_t diff_copied; /**< Number of copied files */
 	int64_t diff_relocated; /**< Number of relocated files */
 	int64_t diff_restored; /**< Number of restored files */
-	uint64_t file_counter; /**< Number of elements inserted in file_list */
-	tommy_list file_list; /**< List of snapraid_file entries. Limit of FILES_MAX applied. */
+	tommy_tree file_tree; /**< Tree of snapraid_file entries. Limit of FILES_MAX applied. */
 };
 
 struct snapraid_fix_stat {
 	/* fix counters. Updated in fix and sync */
-	int64_t fix_recovered; /**< Number of recovered files */
-	int64_t fix_unrecoverable; /**< Number of unrecoverable files */
-	tommy_list file_list; /**< List of snapraid_file entries. Limit of FILES_MAX applied in the task and not here. */
+	int64_t fix_recovered; /**< Number of recovered files. Limit of FILES_MAX applied. */
+	int64_t fix_unrecoverable; /**< Number of unrecoverable files. Limit of FILES_MAX applied. */
+	tommy_tree file_tree; /**< Tree of snapraid_file entries. Limit of FILES_MAX applied. */
 };
 
 struct snapraid_bucket {
@@ -480,7 +477,7 @@ struct snapraid_array {
 	struct snapraid_diff_stat diff_prev; /**< Previous diff stat (used by report after a sync) */
 	struct snapraid_diff_stat diff_current; /**< Latest complete diff stat */
 
-	struct snapraid_fix_stat fix_current; /**< Latest complete fix stat */
+	struct snapraid_fix_stat fix_current; /**< Fix results accumulated since the latest sync */
 
 	tommy_list bucket_list; /**< Latest bucket list */
 	tommy_list bucket_parse_list; /**< Working bucket list while parsing */

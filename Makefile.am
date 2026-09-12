@@ -112,9 +112,11 @@ noinst_HEADERS = \
 	tommyds/tommychain.h \
 	tommyds/tommyhash.h \
 	tommyds/tommylist.h \
+	tommyds/tommytree.h \
 	tommyds/tommytypes.h \
 	tommyds/tommyhash.c \
 	tommyds/tommylist.c \
+	tommyds/tommytree.c \
 	jsmn/jsmn.h \
 	civetweb/civetweb.h \
 	civetweb/external_log_access.inl \
