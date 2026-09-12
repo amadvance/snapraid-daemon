@@ -964,6 +964,92 @@ static void report_attribute_change(struct snapraid_state* state, const char* di
 	}
 }
 
+static void process_smart_attribute(struct snapraid_state* state, struct snapraid_device* device,
+	const char* disk, int index, const char* raw, const char* norm, const char* worst,
+	const char* thresh, const char* name, int flags, int runtime)
+{
+	int kind = smart_kind(index, name);
+
+	uint64_t old_raw = device->smart[index].raw.value;
+	uint64_t old_norm = device->smart[index].norm.value;
+	int got_raw;
+	int got_norm;
+
+	if ((kind & SMART_KIND_PULSE) != 0) {
+		unsigned pulse;
+		if ((kind & SMART_KIND_TEMP) != 0)
+			pulse = PULSE_DISKS_UI;
+		else
+			pulse = PULSE_DISKS;
+		got_raw = pulse_stru64(state, pulse, &device->smart[index].raw.value, raw);
+		got_norm = pulse_stru64(state, pulse, &device->smart[index].norm.value, norm);
+		pulse_stru64(state, pulse, &device->smart[index].worst, worst);
+		pulse_stru64(state, pulse, &device->smart[index].thresh, thresh);
+		sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
+		device->smart[index].flags = flags;
+	} else {
+		/*
+		 * Do not pulse because we don't want to trigger an UI update
+		 * on generic attributes that increment for generic usage,
+		 * like the number of HOST_READ_COMMANDS or TOTAL_LBAS_READ.
+		 */
+		got_raw = stru64(&device->smart[index].raw.value, raw);
+		got_norm = stru64(&device->smart[index].norm.value, norm);
+		stru64(&device->smart[index].worst, worst);
+		stru64(&device->smart[index].thresh, thresh);
+		sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
+		device->smart[index].flags = flags;
+	}
+
+	/* track history only for CRITICAL and COUNT attributes */
+	if (got_raw >= 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
+		tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
+
+		if (old_raw != SMART_UNASSIGNED
+			&& runtime /* do not report on loading past logs */
+		) {
+			uint64_t cv_old = smart_conv(old_raw, kind);
+			uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
+			report_attribute_change(state, disk, index, name, "raw", 1, cv_old, cv_val);
+		}
+	}
+
+	/* track history for all PREFAIL attributes' norm values */
+	if (got_norm >= 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
+		tracked_update(&device->smart[index].norm, old_norm, SMART_KIND_NORM, state->array.last_time);
+
+		if (old_norm != SMART_UNASSIGNED
+			&& runtime /* do not report on loading past logs */
+		) {
+			uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
+			uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
+			report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
+		}
+	}
+}
+
+static void process_nvme_critical_warning(struct snapraid_state* state,
+	struct snapraid_device* device, const char* disk, uint64_t warning, int runtime)
+{
+	static const struct {
+		int index;
+		const char* name;
+	} WARNING[] = {
+		{ SMART_NVME_WARNING_AVAILABLE_SPARE, "Critical_Warning_Available_Spare" },
+		{ SMART_NVME_WARNING_TEMPERATURE, "Critical_Warning_Temperature" },
+		{ SMART_NVME_WARNING_RELIABILITY, "Critical_Warning_Reliability" },
+		{ SMART_NVME_WARNING_READ_ONLY, "Critical_Warning_Read_Only" },
+		{ SMART_NVME_WARNING_VOLATILE_MEMORY, "Critical_Warning_Volatile_Memory" },
+		{ SMART_NVME_WARNING_PERSISTENT_MEMORY, "Critical_Warning_Persistent_Memory" },
+	};
+
+	/* bits 6-7 are reserved and intentionally ignored */
+	for (size_t i = 0; i < sizeof(WARNING) / sizeof(WARNING[0]); ++i) {
+		const char* raw = (warning & (1ULL << i)) != 0 ? "1" : "0";
+		process_smart_attribute(state, device, disk, WARNING[i].index, raw, "-", "-", "-", WARNING[i].name, 0, runtime);
+	}
+}
+
 static void process_info(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -1152,63 +1238,13 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			flags |= SMART_ATTR_WHEN_FAILED_NEVER;
 
 		if (strint(&index, tag) == 0 && index >= 0 && index < 256) {
-			int kind = smart_kind(index, name);
-
-			uint64_t old_raw = device->smart[index].raw.value;
-			uint64_t old_norm = device->smart[index].norm.value;
-			int got_raw;
-			int got_norm;
-
-			if ((kind & SMART_KIND_PULSE) != 0) {
-				unsigned pulse;
-				if ((kind & SMART_KIND_TEMP) != 0)
-					pulse = PULSE_DISKS_UI;
-				else
-					pulse = PULSE_DISKS;
-				got_raw = pulse_stru64(state, pulse, &device->smart[index].raw.value, raw);
-				got_norm = pulse_stru64(state, pulse, &device->smart[index].norm.value, norm);
-				pulse_stru64(state, pulse, &device->smart[index].worst, worst);
-				pulse_stru64(state, pulse, &device->smart[index].thresh, thresh);
-				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
-				device->smart[index].flags = flags;
+			/* index 100 is only the aggregate input produced by SnapRAID CLI */
+			if (index == 100 && strcmp(name, "Critical_Warning") == 0) {
+				uint64_t warning;
+				if (stru64(&warning, raw) == 0)
+					process_nvme_critical_warning(state, device, disk, warning, runtime);
 			} else {
-				/*
-				 * Do not pulse because we don't want to trigger an UI update
-				 * on generic attributes that increment for generic usage,
-				 * like the number of HOST_READ_COMMANDS or TOTAL_LBAS_READ.
-				 */
-				got_raw = stru64(&device->smart[index].raw.value, raw);
-				got_norm = stru64(&device->smart[index].norm.value, norm);
-				stru64(&device->smart[index].worst, worst);
-				stru64(&device->smart[index].thresh, thresh);
-				sncpy(device->smart[index].name, sizeof(device->smart[index].name), name);
-				device->smart[index].flags = flags;
-			}
-
-			/* track history only for CRITICAL and COUNT attributes */
-			if (got_raw >= 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
-				tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
-
-				if (old_raw != SMART_UNASSIGNED
-					&& runtime /* do not report on loading past logs */
-				) {
-					uint64_t cv_old = smart_conv(old_raw, kind);
-					uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
-					report_attribute_change(state, disk, index, name, "raw", 1, cv_old, cv_val);
-				}
-			}
-
-			/* track history for all PREFAIL attributes' norm values */
-			if (got_norm >= 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
-				tracked_update(&device->smart[index].norm, old_norm, SMART_KIND_NORM, state->array.last_time);
-
-				if (old_norm != SMART_UNASSIGNED
-					&& runtime /* do not report on loading past logs */
-				) {
-					uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
-					uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
-					report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
-				}
+				process_smart_attribute(state, device, disk, index, raw, norm, worst, thresh, name, flags, runtime);
 			}
 		}
 	}

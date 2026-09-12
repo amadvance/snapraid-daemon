@@ -22,6 +22,16 @@
 #define SMART_KIND_NORM 0x200 /**< It's a norm value */
 
 /**
+ * Virtual SMART attribute IDs used for the defined NVMe Critical Warning bits.
+ */
+#define SMART_NVME_WARNING_AVAILABLE_SPARE 110
+#define SMART_NVME_WARNING_TEMPERATURE 111
+#define SMART_NVME_WARNING_RELIABILITY 112
+#define SMART_NVME_WARNING_READ_ONLY 113
+#define SMART_NVME_WARNING_VOLATILE_MEMORY 114
+#define SMART_NVME_WARNING_PERSISTENT_MEMORY 115
+
+/**
  * Convert a raw SMART value based on its kind.
  * @param raw Raw SMART attribute value
  * @param kind Attribute kind (one of SMART_KIND_* combined with one of FORMAT_*)
