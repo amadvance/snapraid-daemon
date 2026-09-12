@@ -29,7 +29,6 @@
 #define FORMAT_64 0x60000 /**< 64 bits */
 #define FORMAT_16_MAXMINVAL 0x70000 /**< three 16-bit fields MAX-MIN-VAL */
 #define FORMAT_64_60 0x80000 /**< 64 bits * 60 (minutes) */
-#define FORMAT_8_BM 0x90000 /**< Bit masks of lower 8 bits */
 #define FORMAT_64_1000_512 0xA0000 /**< 64 bits * 1000 * 512 */
 #define FORMAT_48_GB 0xB0000 /**< 48 bits * 1000^3 */
 #define FORMAT_48_GIB 0xC0000 /**< 48 bits * 1024^3 */
@@ -253,7 +252,13 @@ struct smart_entry {
 	/* from SnapRAID NVME mapping, see smartctl_attribute() */
 	{ 194, FORMAT_16, "Temperature", SMART_KIND_TEMP | SMART_KIND_PULSE },
 	{ 12, FORMAT_48, "Power_Cycles", SMART_KIND_COUNT },
-	{ -1, FORMAT_8_BM, "Critical_Warning", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	/* split Critical_Warning into virtual attributes in process_nvme_critical_warning() */
+	{ SMART_NVME_WARNING_AVAILABLE_SPARE, FORMAT_8, "Critical_Warning_Available_Spare", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ SMART_NVME_WARNING_TEMPERATURE, FORMAT_8, "Critical_Warning_Temperature", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ SMART_NVME_WARNING_RELIABILITY, FORMAT_8, "Critical_Warning_Reliability", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ SMART_NVME_WARNING_READ_ONLY, FORMAT_8, "Critical_Warning_Read_Only", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ SMART_NVME_WARNING_VOLATILE_MEMORY, FORMAT_8, "Critical_Warning_Volatile_Memory", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
+	{ SMART_NVME_WARNING_PERSISTENT_MEMORY, FORMAT_8, "Critical_Warning_Persistent_Memory", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 	{ -1, FORMAT_64, "Available_Spare", SMART_KIND_LIFE_RATIO },
 	{ -1, FORMAT_64_1000_512, "Data_Units_Read", SMART_KIND_SIZE },
 	{ -1, FORMAT_64_1000_512, "Data_Units_Written", SMART_KIND_SIZE },
@@ -268,8 +273,6 @@ struct smart_entry {
 
 uint64_t smart_conv(uint64_t raw, int kind)
 {
-	unsigned counter;
-
 	if ((kind & SMART_KIND_NORM) != 0)
 		return raw & 0xFF;
 
@@ -296,13 +299,6 @@ uint64_t smart_conv(uint64_t raw, int kind)
 	case FORMAT_64_1000_512 :
 	case FORMAT_64_60 :
 		return raw;
-	case FORMAT_8_BM :
-		/* count bits */
-		counter = 0;
-		for (int i = 0; i < 8; ++i)
-			if (raw & (1ULL << i))
-				++counter;
-		return counter;
 	}
 
 	return raw;
