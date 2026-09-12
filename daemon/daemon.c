@@ -182,7 +182,7 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 			sncpy(state->config.conf, sizeof(state->config.conf), optarg);
 			break;
 		case 'C' :
-			sncpy(state->array.engine_conf, sizeof(state->array.engine_conf), optarg);
+			sncpy(state->engine_conf_arg, sizeof(state->engine_conf_arg), optarg);
 			break;
 		case 'i' : {
 			if (optarg[0] == 0) {

@@ -769,7 +769,10 @@ static void hook_config_acquire_locked(struct snapraid_state* state, struct snap
 	config->hook_docker_resume[0] = 0;
 	sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(config->conf, sizeof(config->conf), state->config.conf);
-	sncpy(config->engine_conf, sizeof(config->engine_conf), state->array.engine_conf);
+	if (state->engine_conf_arg[0] != 0)
+		sncpy(config->engine_conf, sizeof(config->engine_conf), state->engine_conf_arg);
+	else
+		sncpy(config->engine_conf, sizeof(config->engine_conf), state->array.engine_conf);
 	sncpy(config->instance, sizeof(config->instance), state->instance);
 }
 
@@ -1843,9 +1846,9 @@ void runner_step_locked(struct snapraid_state* state, const char* snapraid, int 
 	}
 
 	sl_insert_str(&task->arg_list, snapraid);
-	if (state->array.engine_conf[0] != 0) {
+	if (state->engine_conf_arg[0] != 0) {
 		sl_insert_str(&task->arg_list, "-c");
-		sl_insert_str(&task->arg_list, state->array.engine_conf);
+		sl_insert_str(&task->arg_list, state->engine_conf_arg);
 	}
 	sl_insert_str(&task->arg_list, command_name(cmd_translate));
 	sl_insert_str(&task->arg_list, "--log");

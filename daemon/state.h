@@ -669,6 +669,9 @@ struct snapraid_state {
 	/**< Data protected by the log lock */
 	thread_mutex_t log_lock; /**< Protection for the following data */
 	struct snapraid_log log; /**< Logging configuration */
+
+	/**< Data immutable after command-line parsing */
+	char engine_conf_arg[PATH_MAX]; /**< SnapRAID configuration file specified via -C, --engine-conf */
 };
 
 /****************************************************************************/

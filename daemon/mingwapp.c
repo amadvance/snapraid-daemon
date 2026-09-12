@@ -664,9 +664,9 @@ static int do_service_install(const struct snapraid_state* state)
 		sncat(bin_path, sizeof(bin_path), state->config.conf);
 		sncat(bin_path, sizeof(bin_path), "\"");
 	}
-	if (state->array.engine_conf[0]) {
+	if (state->engine_conf_arg[0]) {
 		sncat(bin_path, sizeof(bin_path), " -C \"");
-		sncat(bin_path, sizeof(bin_path), state->array.engine_conf);
+		sncat(bin_path, sizeof(bin_path), state->engine_conf_arg);
 		sncat(bin_path, sizeof(bin_path), "\"");
 	}
 
