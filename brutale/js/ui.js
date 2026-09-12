@@ -106,17 +106,22 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
     const dataLen = temperaturaArray.length;
     const maxIndex = dataLen > 1 ? dataLen - 1 : 1;
 
+    const warnLimit = warningTemp != null ? warningTemp : 40;
+    const critLimit = criticalTemp != null ? criticalTemp : 45;
+    const dangerLimit = dangerTemp != null ? dangerTemp : 50;
+
+    const axisMin = 20;
+    const maxObserved = temperaturaArray.reduce((max, val) => Math.max(max, val), maxTemp || 0);
+    const axisMax = Math.ceil(Math.max(dangerLimit + 10, maxObserved) / 10) * 10;
+    const axisMid = Math.round((axisMin + axisMax) / 2 / 5) * 5;
+
     // 3. Coordinate Math (Actual Pixels)
     const getY = (temp) => {
-        const normalized = (temp - 20) / (70 - 20);
+        const normalized = (temp - axisMin) / (axisMax - axisMin);
         return chartHeight - (normalized * chartHeight) + margin.top;
     };
 
     const getX = (index) => (index / maxIndex) * chartWidth + margin.left;
-
-    const warnLimit = warningTemp != null ? warningTemp : 40;
-    const critLimit = criticalTemp != null ? criticalTemp : 45;
-    const dangerLimit = dangerTemp != null ? dangerTemp : 50;
 
     const getColor = (temp) => {
         if (temp < warnLimit) return '#00d2ff';   // Cyan
@@ -132,8 +137,8 @@ export function renderTempSparkline(containerId, temperaturaArray, minTemp, maxT
     const axisColor = isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
     const textColor = isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
 
-    // Guide Rails & Labels (20, 45, 70)
-    [20, 45, 70].forEach(level => {
+    // Guide Rails & Labels
+    [axisMin, axisMid, axisMax].forEach(level => {
         const yPos = getY(level);
         svg += `
             <text x="5" y="${yPos + 4}" font-size="10" fill="${textColor}" font-family="sans-serif">${level}°</text>
