@@ -93,6 +93,10 @@ ssize_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 			int zerr;
 			gzerror(stream->handle.gz_file, &zerr);
 
+			/* treat incomplete stream at EOF as normal EOF to recover interrupted logs */
+			if (bytes_read == 0 && zerr == Z_BUF_ERROR)
+				return 0;
+
 			if (bytes_read < 0 || zerr < 0) {
 				if (zerr != Z_ERRNO)
 					errno = EIO;
