@@ -1533,9 +1533,11 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 
 	if (task->cmd == CMD_FIX && strcmp(ope, "recovered") == 0) {
 		pulse(state, PULSE_ARRAY);
+		state->array.fix_time = task->unix_start_time;
 		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_RECOVERED, disk, sub);
 	} else if (task->cmd == CMD_FIX && strcmp(ope, "unrecoverable") == 0) {
 		pulse(state, PULSE_ARRAY);
+		state->array.fix_time = task->unix_start_time;
 		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
 	}
 }
