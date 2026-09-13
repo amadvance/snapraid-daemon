@@ -7,6 +7,7 @@
 #include "civetweb/civetweb.h"
 #include "monocypher/monocypher.h"
 #include "tommyds/tommytree.h"
+#include "tommyds/tommyhashtbl.h"
 #include "str.h"
 
 /**
@@ -39,6 +40,11 @@
  * Max UUID length.
  */
 #define UUID_MAX 128
+
+/**
+ * Max device identifier length.
+ */
+#define ID_MAX 128
 
 /**
  * Max filesystem type/label length
@@ -622,10 +628,29 @@ struct snapraid_web {
 	time_t page_time; /**< Time of the pages loaded from disk */
 };
 
+/**
+ * Fixed bucket count for current-mapping associations hashtable.
+ */
+#define PARSER_ASSOCIATION_HASH_SIZE 4096
+
+/**
+ * Fixed bucket count for permanent duplicate-ID blacklist hashtable.
+ */
+#define PARSER_DUPLICATE_HASH_SIZE 256
+
 struct snapraid_association {
 	char file[PATH_MAX]; /**< Device node. */
-	char id[KEYWORD_MAX]; /**< Unique id. */
-	tommy_node node;
+	char id[ID_MAX]; /**< Unique id. */
+	tommy_node node; /**< Node in parser_association. */
+	tommy_hashtable_node hash_node; /**< Node in parser_association_hash. */
+};
+
+/**
+ * Permanently blacklisted ambiguous device identifier.
+ */
+struct snapraid_duplicate_id {
+	char id[ID_MAX]; /**< Ambiguous identifier string. */
+	tommy_hashtable_node node; /**< Node in parser_duplicate_hash. */
 };
 
 struct snapraid_state {
@@ -644,6 +669,8 @@ struct snapraid_state {
 	int parser_version_major; /**< Major version number */
 	int parser_version_minor; /**< Minor version number */
 	tommy_list parser_association; /**< Associations of device<->id */
+	tommy_hashtable parser_association_hash; /**< First association for each ID in the current mapping */
+	tommy_hashtable parser_duplicate_hash; /**< IDs permanently known to be ambiguous */
 	int parser_previous_was_association; /**< If the previous entry was an association */
 	int parser_has_end; /**< If the daemon:end record was read */
 

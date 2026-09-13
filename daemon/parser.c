@@ -12,11 +12,23 @@
 #include "parser.h"
 
 /**
+ * Callback to remove an association from the hashtable and free it
+ */
+static void association_hash_remove_and_free(void* arg, void* obj)
+{
+	struct snapraid_state* state = arg;
+	struct snapraid_association* association = obj;
+
+	tommy_hashtable_remove_existing(&state->parser_association_hash, &association->hash_node);
+	association_free(association);
+}
+
+/**
  * Cleanup the association list for every parsed file
  */
 static void parser_mapping_start(struct snapraid_state* state)
 {
-	tommy_list_foreach(&state->parser_association, association_free);
+	tommy_list_foreach_arg(&state->parser_association, association_hash_remove_and_free, state);
 	tommy_list_init(&state->parser_association);
 	state->parser_previous_was_association = 0;
 }
@@ -34,30 +46,98 @@ static int parser_device_has_id(struct snapraid_device* device, const char* id)
 }
 
 /**
- * Check if the association already exists
+ * Compute the hash for a device identifier string
  */
-static int parser_association_is_present(struct snapraid_state* state, const char* file, const char* id)
+static tommy_hash_t parser_mapping_hash(const char* id)
 {
-	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-
-		if (strcmp(association->file, file) == 0 && strcmp(association->id, id) == 0)
-			return 1;
-	}
-
-	return 0;
+	return tommy_strhash_u32(0, id);
 }
 
+/**
+ * Comparison function to search an association by identifier
+ */
+static int parser_association_id_compare(const void* arg, const void* obj)
+{
+	const char* id = arg;
+	const struct snapraid_association* association = obj;
+	return strcmp(id, association->id);
+}
+
+/**
+ * Comparison function to search a blacklisted duplicate ID by identifier
+ */
+static int parser_duplicate_id_compare(const void* arg, const void* obj)
+{
+	const char* id = arg;
+	const struct snapraid_duplicate_id* duplicate = obj;
+	return strcmp(id, duplicate->id);
+}
+
+/**
+ * Find a blacklisted duplicate identifier in the hash table
+ */
+static struct snapraid_duplicate_id* parser_duplicate_id_find(struct snapraid_state* state, const char* id, tommy_hash_t hash)
+{
+	return tommy_hashtable_search(&state->parser_duplicate_hash, parser_duplicate_id_compare, id, hash);
+}
+
+/**
+ * Permanently blacklist an ambiguous device identifier
+ */
+static void parser_duplicate_id_add(struct snapraid_state* state, const char* id, tommy_hash_t hash)
+{
+	if (parser_duplicate_id_find(state, id, hash) != 0)
+		return;
+
+	struct snapraid_duplicate_id* duplicate = calloc_nofail(1, sizeof(struct snapraid_duplicate_id));
+	sncpy(duplicate->id, sizeof(duplicate->id), id);
+	tommy_hashtable_insert(&state->parser_duplicate_hash, &duplicate->node, duplicate, hash);
+}
 
 /**
  * Insert a new mapping entry
  */
 static void parser_mapping_device(struct snapraid_state* state, const char* file, const char* id)
 {
-	if (!parser_association_is_present(state, file, id)) {
-		struct snapraid_association* association = association_alloc(file, id);
-		tommy_list_insert_tail(&state->parser_association, &association->node, association);
+	char id_buf[ID_MAX];
+
+	/* canonicalize id to ID_MAX before hashing and searching */
+	sncpy(id_buf, sizeof(id_buf), id);
+	id = id_buf;
+
+	int runtime = !state->daemon_loading;
+	tommy_hash_t hash = parser_mapping_hash(id);
+
+	/* ignore identifiers permanently known to be ambiguous */
+	if (parser_duplicate_id_find(state, id, hash) != 0)
+		return;
+
+	/* check if this id was already observed in the current mapping */
+	struct snapraid_association* association = tommy_hashtable_search(&state->parser_association_hash, parser_association_id_compare, id, hash);
+
+	if (association != 0) {
+		/* repetition of the same (file, id) pair is harmless */
+		if (strcmp(association->file, file) == 0)
+			return;
+
+		/* same id observed on two different files in the same mapping: mark permanently ambiguous */
+		if (runtime)
+			log_task(LVL_WARNING, "device id '%s' is associated with both '%s' and '%s'; ignoring this id permanently", id, association->file, file);
+
+		/* add id to permanent duplicate blacklist */
+		parser_duplicate_id_add(state, id, hash);
+
+		/* immediately remove the first occurrence from the current mapping and free it */
+		tommy_hashtable_remove_existing(&state->parser_association_hash, &association->hash_node);
+		tommy_list_remove_existing(&state->parser_association, &association->node);
+		association_free(association);
+		return;
 	}
+
+	/* first observation of this unique id: record the new association */
+	association = association_alloc(file, id);
+	tommy_list_insert_tail(&state->parser_association, &association->node, association);
+	tommy_hashtable_insert(&state->parser_association_hash, &association->hash_node, association, hash);
 }
 
 /**
@@ -129,11 +209,49 @@ static void parser_device_remove(struct snapraid_state* state, struct snapraid_d
 }
 
 /**
+ * Remove any devices contaminated by permanently ambiguous IDs
+ */
+static void parser_mapping_remove_duplicate_device_ids(struct snapraid_state* state)
+{
+	if (tommy_hashtable_count(&state->parser_duplicate_hash) == 0)
+		return;
+
+	int runtime = !state->daemon_loading;
+
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
+		struct snapraid_device* device = i->data;
+		tommy_node* i_next = i->next;
+		int contaminated = 0;
+
+		for (tommy_node* j = tommy_list_head(&device->id_list); j != 0; j = j->next) {
+			sn_t* sn = j->data;
+			tommy_hash_t hash = parser_mapping_hash(sn->str);
+
+			if (parser_duplicate_id_find(state, sn->str, hash) != 0) {
+				contaminated = 1;
+				break;
+			}
+		}
+
+		if (contaminated) {
+			if (runtime)
+				log_task(LVL_INFO, "removing contaminated device on '%s' due to ambiguous ID", device->file);
+			pulse(state, PULSE_DISKS);
+			parser_device_remove(state, device);
+		}
+
+		i = i_next;
+	}
+}
+
+/**
  * Apply the association to all devices
  */
 static void parser_mapping_process_locked(struct snapraid_state* state)
 {
 	int runtime = !state->daemon_loading;
+
+	parser_mapping_remove_duplicate_device_ids(state);
 
 	/* Reset recognition state for all devices in the catalog. */
 	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
