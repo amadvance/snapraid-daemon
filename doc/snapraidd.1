@@ -1079,10 +1079,11 @@ ntfy priority (urgent, high, default, low, min).
 ntfy tag (rotating_light, warning, default, \-1, +1, heavy_check_mark).
 .HP 4
 .I %h
-high\-level task name (maintenance, heal, undelete).
+high\-level task name (maintenance, heal, undelete, refresh).
 .HP 4
 .I %c
-exit code of the task (\-1 if signaled or canceled).
+resulting task/group exit code; negative values are daemon\-defined
+failures (\-1 execution/infrastructure, \-2 pre\-hook, \-3 post\-hook).
 .PD
 .RE
 .PP
