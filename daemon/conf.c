@@ -462,7 +462,7 @@ int config_load_locked(struct snapraid_state* state)
 				if (*val == 0) {
 					config->sys_log_compression = 0;
 				} else if (parse_int(val, 0, 1, &config->sys_log_compression) == 0) {
-#ifndef HAVE_ZLIB
+#if !HAVE_ZLIB
 					if (config->sys_log_compression == 1) {
 						++error_count;
 						log_msg(LVL_ERROR, "invalid config option %s=%s, gzip compression is not supported by this build", key, val);

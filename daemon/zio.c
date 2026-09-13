@@ -20,6 +20,14 @@ int is_gz_extension(const char* filename)
 	return strcmp(filename + len - 3, ".gz") == 0;
 }
 
+#if HAVE_ZLIB
+static void set_zlib_errno(int zerr)
+{
+	if (zerr != Z_ERRNO || errno == 0)
+		errno = EIO;
+}
+#endif
+
 ZFILE* zdopen(int fd, const char* mode, int is_gz)
 {
 	ZFILE* stream;
@@ -62,12 +70,21 @@ int zclose(ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
-		result = (gzclose(stream->handle.gz_file) == 0) ? 0 : -1;
+		int zerr = gzclose(stream->handle.gz_file);
+		if (zerr != 0) {
+			set_zlib_errno(zerr);
+			result = -1;
+		} else {
+			result = 0;
+		}
 #else
+		errno = ENOSYS;
 		result = -1;
 #endif
 	} else {
 		result = fclose(stream->handle.normal_file);
+		if (result != 0 && errno == 0)
+			errno = EIO;
 	}
 
 	free(stream);
@@ -98,9 +115,7 @@ ssize_t zread(void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 				return 0;
 
 			if (bytes_read < 0 || zerr < 0) {
-				if (zerr != Z_ERRNO)
-					errno = EIO;
-
+				set_zlib_errno(zerr);
 				return -1;
 			}
 		}
@@ -130,19 +145,33 @@ size_t zwrite(const void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
-		if (nmemb > UINT_MAX / size)
+		if (nmemb > UINT_MAX / size) {
+			errno = EOVERFLOW;
 			return 0;
+		}
 		unsigned int total_bytes = (unsigned int)(size * nmemb);
 		int bytes_written = gzwrite(stream->handle.gz_file, ptr, total_bytes);
-		if (bytes_written <= 0)
+		if (bytes_written <= 0) {
+			int zerr;
+			gzerror(stream->handle.gz_file, &zerr);
+			set_zlib_errno(zerr);
 			return 0;
+		}
 
 		return (size_t)bytes_written / size;
 #else
+		errno = ENOSYS;
 		return 0;
 #endif
 	} else {
-		return fwrite(ptr, size, nmemb, stream->handle.normal_file);
+		size_t ret = fwrite(ptr, size, nmemb, stream->handle.normal_file);
+
+		if (ret == 0 && ferror(stream->handle.normal_file)) {
+			if (errno == 0)
+				errno = EIO;
+		}
+
+		return ret;
 	}
 }
 
@@ -177,12 +206,23 @@ int zflush(ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
-		return gzflush(stream->handle.gz_file, Z_SYNC_FLUSH);
+		int zerr = gzflush(stream->handle.gz_file, Z_SYNC_FLUSH);
+		if (zerr != 0) {
+			set_zlib_errno(zerr);
+			return -1;
+		}
+
+		return 0;
 #else
+		errno = ENOSYS;
 		return -1;
 #endif
 	} else {
-		return fflush(stream->handle.normal_file);
+		int res = fflush(stream->handle.normal_file);
+		if (res != 0 && errno == 0)
+			errno = EIO;
+
+		return res;
 	}
 }
 
@@ -193,12 +233,23 @@ int zfinish(ZFILE* stream)
 
 	if (stream->is_gz) {
 #if HAVE_ZLIB
-		return gzflush(stream->handle.gz_file, Z_FINISH);
+		int zerr = gzflush(stream->handle.gz_file, Z_FINISH);
+		if (zerr != 0) {
+			set_zlib_errno(zerr);
+			return -1;
+		}
+
+		return 0;
 #else
+		errno = ENOSYS;
 		return -1;
 #endif
 	} else {
-		return fflush(stream->handle.normal_file);
+		int res = fflush(stream->handle.normal_file);
+		if (res != 0 && errno == 0)
+			errno = EIO;
+
+		return res;
 	}
 }
 
