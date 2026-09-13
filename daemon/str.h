@@ -88,8 +88,9 @@ void strupr(char* str);
  * null-terminates each token by overwriting its trailing delimiter,
  * and stores a pointer to each token's start in @split_map.
  *
- * Leading and consecutive delimiters are silently skipped, so the
- * output never contains empty tokens.
+ * If @trim_empty is non-zero, leading and consecutive delimiters are
+ * silently skipped, and tokens trimmed to empty are discarded.
+ * If @trim_empty is zero, empty tokens are preserved.
  *
  * The input string is modified in-place; @split_map entries point
  * directly into @str and are only valid for its lifetime.
@@ -99,15 +100,16 @@ void strupr(char* str);
  * \param str Input string to tokenise (modified in-place).
  * \param delimiters Null-terminated set of delimiter characters.
  * \param trim Null-terminated set of characters to trim from the start and end of each token.
+ * \param trim_empty Whether to trim empty tokens and consecutive delimiters.
  * \return Number of tokens stored in @split_map.
  *
  * Example:
  *   char  buf[] = "  one, two,, , three  ";
  *   char* map[8];
- *   unsigned n = strsplit(map, 8, buf, ",", " ");
+ *   unsigned n = strsplit(map, 8, buf, ",", " ", 1);
  *   // n == 3, map[] == { "one", "two", "three" }
  */
-unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim);
+unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim, int trim_empty);
 
 /****************************************************************************/
 /* string list */

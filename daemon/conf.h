@@ -48,6 +48,15 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity);
 
 /**
+ * Parse and validate hook_docker_pause string.
+ * @param val Input string to parse
+ * @param dst Buffer to store validated string
+ * @param dst_size Size of buffer
+ * @return 0 on success, -1 on error
+ */
+int config_parse_docker_pause(const char* val, char* dst, size_t dst_size);
+
+/**
  * Get string representation of log level.
  * @param level Log level value
  * @return String representation

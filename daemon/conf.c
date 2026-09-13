@@ -20,7 +20,7 @@ int config_shutdown_on(const char* sys_shutdown_on, const char* event)
 	sncpy(copy, sizeof(copy), sys_shutdown_on);
 
 	char* tokens[16];
-	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n");
+	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n", 0);
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (strcmp(tokens[i], event) == 0)
@@ -75,7 +75,7 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 	sncpy(copy, sizeof(copy), val);
 
 	char* tokens[16];
-	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n");
+	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n", 0);
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (strcmp(tokens[i], "maintenance") != 0
@@ -89,13 +89,35 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 	return 0;
 }
 
+int config_parse_docker_pause(const char* val, char* dst, size_t dst_size)
+{
+	char copy[CONFIG_MAX];
+	sncpy(copy, sizeof(copy), val);
+
+	char* tokens[CONTAINERS_MAX + 1];
+	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t\r\n", 0);
+
+	if (n > CONTAINERS_MAX)
+		return -1;
+
+	for (unsigned i = 0; i < n; ++i) {
+		if (tokens[i][0] == 0)
+			return -1;
+		if (strpbrk(tokens[i], " \t\r\n") != 0)
+			return -1;
+	}
+
+	sncpy(dst, dst_size, val);
+	return 0;
+}
+
 int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity)
 {
 	char copy[CONFIG_MAX];
 	sncpy(copy, sizeof(copy), val);
 
 	char* tokens[4];
-	unsigned n = strsplit(tokens, 4, copy, ",", " \t\r\n");
+	unsigned n = strsplit(tokens, 4, copy, ",", " \t\r\n", 0);
 
 	if (n == 1) {
 		int v;
@@ -265,7 +287,8 @@ int config_parse_smart_ignore(const char* input, struct snapraid_config* config)
 	char copy[CONFIG_MAX];
 	sncpy(copy, sizeof(copy), input);
 
-	unsigned n = strsplit(tokens, 64, copy, " \t", " \t\r\n");
+	/* trim empty tokens to collapse consecutive whitespace into a single delimiter */
+	unsigned n = strsplit(tokens, 64, copy, " \t", " \t\r\n", 1);
 	if (n < 2) {
 		return -1;
 	}
@@ -587,7 +610,11 @@ int config_load_locked(struct snapraid_state* state)
 			} else if (strcmp(key, "hook_script") == 0) {
 				sncpy(config->hook_script, sizeof(config->hook_script), val);
 			} else if (strcmp(key, "hook_docker_pause") == 0) {
-				sncpy(config->hook_docker_pause, sizeof(config->hook_docker_pause), val);
+				if (config_parse_docker_pause(val, config->hook_docker_pause, sizeof(config->hook_docker_pause)) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "notify_syslog_enabled") == 0) {
 				if (parse_int(val, 0, 1, &config->notify_syslog) == 0) {
 				} else {
