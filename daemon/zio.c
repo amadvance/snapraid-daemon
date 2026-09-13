@@ -166,7 +166,7 @@ size_t zwrite(const void* ptr, size_t size, size_t nmemb, ZFILE* stream)
 	} else {
 		size_t ret = fwrite(ptr, size, nmemb, stream->handle.normal_file);
 
-		if (ret == 0 && ferror(stream->handle.normal_file)) {
+		if (ret != nmemb && ferror(stream->handle.normal_file)) {
 			if (errno == 0)
 				errno = EIO;
 		}
