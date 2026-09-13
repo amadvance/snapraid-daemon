@@ -1443,10 +1443,12 @@ bail:
 	if (task->canceled && post_skip != 0) {
 		/*
 		 * The task succeeded and postponed its hook, but was canceled while closing logs.
-		 * Let this task commit normally and propagate cancellation to the next task,
-		 * which will consume the postponed hook and cancel the group.
+		 * Let this task commit normally. If the next task belongs to the same group,
+		 * propagate cancellation to it, which will consume the postponed hook and cancel the group.
 		 */
-		stop_pending = 1;
+		next = tommy_list_head(&state->runner.waiting_list);
+		if (next != 0 && task_same_group(task, next->data))
+			stop_pending = 1;
 		task->canceled = 0;
 	}
 
