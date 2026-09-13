@@ -880,9 +880,11 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook->config.hook_script);
 		if (log_f != 0) {
-			zprintf(log_f, "daemon:pre:%s\n", hook->config.hook_script);
+			if (zprintf(log_f, "daemon:pre:%s\n", hook->config.hook_script) < 0)
+				log_task(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", hook->log_file, strerror(errno), errno);
 			/* finish the gzip member so the script sees a valid completed stream in SNAPRAID_LOG_FILE */
-			zfinish(log_f);
+			if (zfinish(log_f) != 0)
+				log_task(LVL_WARNING, "failed to finalize log file %s, errno=%s(%d)", hook->log_file, strerror(errno), errno);
 		}
 		sncpy(hook_event, sizeof(hook_event), "task-begin");
 		hook_argv[0] = (char*)hook->config.hook_script;
@@ -979,9 +981,11 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook->config.hook_script);
 		if (log_f != 0) {
-			zprintf(log_f, "daemon:post:%s\n", hook->config.hook_script);
+			if (zprintf(log_f, "daemon:post:%s\n", hook->config.hook_script) < 0)
+				log_task(LVL_WARNING, "failed to write log file %s, errno=%s(%d)", hook->log_file, strerror(errno), errno);
 			/* finish the gzip member so the script sees a valid completed stream in SNAPRAID_LOG_FILE */
-			zfinish(log_f);
+			if (zfinish(log_f) != 0)
+				log_task(LVL_WARNING, "failed to finalize log file %s, errno=%s(%d)", hook->log_file, strerror(errno), errno);
 		}
 		if (success)
 			sncpy(hook_event, sizeof(hook_event), "task-end");
