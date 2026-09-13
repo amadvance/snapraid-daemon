@@ -1209,10 +1209,13 @@ components:
             Size of blocks processed.
         log_file:
           type: string
-          example: '/var/log/snapraid/20260112-sync.log'
+          example: '/var/log/snapraid/20260112-sync.log.gz'
           description: >
             The absolute path to the log file for this specific task execution.
             This file is stored in the directory defined by 'sys_log_directory' in the config.
+            Depending on 'sys_log_compression', the file ends with either '.log' or
+            '.log.gz' (for example '/var/log/snapraid/20260112-sync.log' or
+            '/var/log/snapraid/20260112-sync.log.gz').
         report_output:
           type: string
           description: >
