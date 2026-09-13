@@ -56,5 +56,10 @@ int zprintf(ZFILE* stream, const char* format, ...) __attribute__((format(attrib
  */
 int zflush(ZFILE* stream);
 
+/**
+ * Finish the current compression member and flush pending data.
+ */
+int zfinish(ZFILE* stream);
+
 #endif
 
