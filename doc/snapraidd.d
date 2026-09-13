@@ -342,6 +342,23 @@ Configuration
 	age at which old command logs are deleted. Logs are kept indefinitely
 	if this is set to 0 or left unset.
 
+    sys_log_compression
+	Enables compression of individual SnapRAID task log files in gzip (.gz)
+	format.
+
+	Setting this option to 1 enables gzip compression, saving files with the
+	.log.gz extension. If set to 0 or left empty (the default), log files are
+	saved as plain text with the .log extension.
+
+	Gzip compression requires the daemon to be built with zlib support. If
+	compression is enabled on a build without zlib, the daemon logs an error
+	and falls back to uncompressed logs.
+
+	Changing this option only affects newly created task logs. Existing logs
+	(whether uncompressed .log or compressed .log.gz) continue to be read
+	transparently by the daemon when reconstructing array history, and are
+	purged by sys_log_retention_days regardless of format.
+
     sys_shutdown_on
 	A comma-separated list of events that trigger an automatic system shutdown.
 
