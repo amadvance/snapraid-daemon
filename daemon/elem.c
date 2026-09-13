@@ -632,26 +632,26 @@ void fix_cleanup(struct snapraid_fix_stat* fix)
 
 void fix_insert(struct snapraid_fix_stat* fix, int change, const char* disk, const char* path)
 {
-	/* if recovered, remove any existing unrecoverable entry for the same file */
-	if (change == FILE_CHANGE_FIX_RECOVERED) {
-		struct snapraid_file dummy;
-		dummy.change = FILE_CHANGE_FIX_UNRECOVERABLE;
-		dummy.disk = (char*)disk;
-		dummy.path = (char*)path;
+	int opposite = change == FILE_CHANGE_FIX_RECOVERED ? FILE_CHANGE_FIX_UNRECOVERABLE : FILE_CHANGE_FIX_RECOVERED;
 
-		struct snapraid_file* existing_unr = tommy_tree_search(&fix->file_tree, &dummy);
-		if (existing_unr) {
-			tommy_tree_remove_existing(&fix->file_tree, &existing_unr->node);
-			file_free(existing_unr);
+	/* remove any opposite entry for the same file */
+	struct snapraid_file dummy;
+	dummy.change = opposite;
+	dummy.disk = (char*)disk;
+	dummy.path = (char*)path;
+
+	struct snapraid_file* existing = tommy_tree_search(&fix->file_tree, &dummy);
+	if (existing) {
+		tommy_tree_remove_existing(&fix->file_tree, &existing->node);
+		file_free(existing);
+		if (opposite == FILE_CHANGE_FIX_RECOVERED)
+			--fix->fix_recovered;
+		else
 			--fix->fix_unrecoverable;
-		}
 	}
 
 	/* check if this exact entry is already present */
-	struct snapraid_file dummy;
 	dummy.change = change;
-	dummy.disk = (char*)disk;
-	dummy.path = (char*)path;
 
 	if (tommy_tree_search(&fix->file_tree, &dummy))
 		return;
