@@ -877,6 +877,26 @@ static int config_temp_open(const char* conf_path, int* dir_fd, char* temp_name,
 		return -1;
 	}
 
+	int has_conf = 0;
+	mode_t mode;
+	struct stat conf_st;
+	if (fstatat(*dir_fd, file_name, &conf_st, AT_SYMLINK_NOFOLLOW) == 0) {
+		if (S_ISLNK(conf_st.st_mode)) {
+			close(*dir_fd);
+			*dir_fd = -1;
+			errno = ELOOP;
+			return -1;
+		}
+		has_conf = 1;
+		mode = conf_st.st_mode & 0777;
+	} else if (errno == ENOENT) {
+		mode = 0644;
+	} else {
+		close(*dir_fd);
+		*dir_fd = -1;
+		return -1;
+	}
+
 	unsigned char random[16];
 	if (os_randomize(random, sizeof(random)) != 0) {
 		close(*dir_fd);
@@ -900,15 +920,23 @@ static int config_temp_open(const char* conf_path, int* dir_fd, char* temp_name,
 	}
 	temp_name[len] = 0;
 
-	int f = openat(*dir_fd, temp_name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0644);
+	int f = openat(*dir_fd, temp_name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
 	if (f == -1) {
 		close(*dir_fd);
 		*dir_fd = -1;
 		return -1;
 	}
 
-	/* apply the requested configuration file mode independently of umask */
-	if (fchmod(f, 0644) != 0) {
+	if (has_conf && fchown(f, conf_st.st_uid, conf_st.st_gid) != 0) {
+		close(f);
+		unlinkat(*dir_fd, temp_name, 0);
+		close(*dir_fd);
+		*dir_fd = -1;
+		return -1;
+	}
+
+	/* apply the configuration file mode independently of umask */
+	if (fchmod(f, mode) != 0) {
 		close(f);
 		unlinkat(*dir_fd, temp_name, 0);
 		close(*dir_fd);

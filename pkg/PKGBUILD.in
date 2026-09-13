@@ -23,11 +23,11 @@ package() {
   cd "$pkgname-$pkgver"
   make DESTDIR="$pkgdir/" install
   
-  # Add example config and docs (Matches your script's logic)
+  # Add example config and docs
   install -Dm644 snapraidd.conf.example "$pkgdir/usr/share/doc/$pkgname/snapraidd.conf.example"
   install -m644 snapraidd.yaml AUTHORS HISTORY README "$pkgdir/usr/share/doc/$pkgname/"
 
-  # Ensure the config exists in /etc (Matches your script's cp line)
+  # Ensure the config exists in /etc
   install -Dm644 snapraidd.conf.example "$pkgdir/etc/snapraidd.conf"
 
   # Arch Policy: License must also be in the license directory

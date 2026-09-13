@@ -284,7 +284,7 @@ install-data-hook:
 		else \
 			echo "  No configuration found. Installing default to:"; \
 			echo "  $(sysconfdir)/snapraidd.conf"; \
-			$(INSTALL) -D -m 600 $(srcdir)/snapraidd.conf.example $(sysconfdir)/snapraidd.conf; \
+			$(INSTALL) -D -m 644 $(srcdir)/snapraidd.conf.example $(sysconfdir)/snapraidd.conf; \
 		fi; \
 	else \
 		echo "DESTDIR is set ($(DESTDIR)), installing example only"; \
