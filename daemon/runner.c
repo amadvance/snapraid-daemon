@@ -880,8 +880,11 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		char hook_event[KEYWORD_MAX];
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook->config.hook_script);
-		if (log_f != 0)
+		if (log_f != 0) {
 			zprintf(log_f, "daemon:pre:%s\n", hook->config.hook_script);
+			/* finish the gzip member so the script sees a valid completed stream in SNAPRAID_LOG_FILE */
+			zfinish(log_f);
+		}
 		sncpy(hook_event, sizeof(hook_event), "task-begin");
 		hook_argv[0] = (char*)hook->config.hook_script;
 		hook_argv[1] = hook_event;
@@ -976,8 +979,11 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 		char hook_event[KEYWORD_MAX];
 		int script_ret;
 		log_task(LVL_INFO, "task %d run %s", number, hook->config.hook_script);
-		if (log_f != 0)
+		if (log_f != 0) {
 			zprintf(log_f, "daemon:post:%s\n", hook->config.hook_script);
+			/* finish the gzip member so the script sees a valid completed stream in SNAPRAID_LOG_FILE */
+			zfinish(log_f);
+		}
 		if (success)
 			sncpy(hook_event, sizeof(hook_event), "task-end");
 		else

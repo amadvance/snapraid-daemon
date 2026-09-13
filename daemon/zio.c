@@ -186,3 +186,19 @@ int zflush(ZFILE* stream)
 	}
 }
 
+int zfinish(ZFILE* stream)
+{
+	if (stream == 0)
+		return -1;
+
+	if (stream->is_gz) {
+#if HAVE_ZLIB
+		return gzflush(stream->handle.gz_file, Z_FINISH);
+#else
+		return -1;
+#endif
+	} else {
+		return fflush(stream->handle.normal_file);
+	}
+}
+
