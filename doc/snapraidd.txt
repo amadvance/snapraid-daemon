@@ -885,8 +885,9 @@ task's state and results:
 %l - Task level (critical, error, warning, info, debug).
 %n - ntfy priority (urgent, high, default, low, min).
 %t - ntfy tag (rotating_light, warning, default, -1, +1, heavy_check_mark).
-%h - high-level task name (maintenance, heal, undelete).
-%c - exit code of the task (-1 if signaled or canceled).
+%h - high-level task name (maintenance, heal, undelete, refresh).
+%c - resulting task/group exit code; negative values are daemon-defined
+    failures (-1 execution/infrastructure, -2 pre-hook, -3 post-hook).
 
 The report contents are not available as a placeholder. They are passed
 to the command through standard input (stdin).

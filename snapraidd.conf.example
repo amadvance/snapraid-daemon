@@ -489,7 +489,7 @@ notify_syslog_level = info
 # %l : Replaced with the task level ("info").
 # %n : Replaced with the ntfy priority ("low").
 # %t : Replaced with the ntfy tag ("play_or_pause_button").
-# %h : Replaced with the high-level task name ("maintenance").
+# %h : Replaced with the high-level task name (maintenance, heal, undelete, refresh).
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
@@ -523,8 +523,9 @@ notify_syslog_level = info
 # %l : Replaced with the task level (critical, error, warning, info, debug).
 # %n : Replaced with the ntfy priority (urgent, high, default, low, min).
 # %t : Replaced with the ntfy tag (rotating_light, warning, -1, +1, heavy_check_mark).
-# %h : Replaced with the high-level task name (maintenance, heal, undelete).
-# %c : Replaced with the exit code of the task (-1 if signaled or canceled).
+# %h : Replaced with the high-level task name (maintenance, heal, undelete, refresh).
+# %c : Replaced with the resulting task/group exit code; negative values are
+#      daemon-defined failures (-1 execution/infrastructure, -2 pre-hook, -3 post-hook).
 #
 # Automatic Header Injection:
 # If the command contains --mail-from or --mail-rcpt options, the
