@@ -372,7 +372,8 @@ static int runner_report_locked(struct snapraid_state* state)
 	int report_level = LVL_INFO;
 	int report_high_cmd = report_task->high_cmd;
 	ss_t ss;
-	int exit_code = 0;
+	int failure_code = 0;
+	int success_code = 0;
 
 	/* find the latest sync and scrub tasks from history */
 	tommy_node* i = tommy_list_tail(&state->runner.history_list);
@@ -387,16 +388,18 @@ static int runner_report_locked(struct snapraid_state* state)
 		report_level = level_mix(report_level, task_level(task));
 
 		/*
-		 * The history is scanned backwards, so overwrite exit_code on each
+		 * The history is scanned backwards, so overwrite failure_code on each
 		 * unsuccessful task. This leaves the exit code of the first failure
-		 * in chronological order. Use task_success() because some non-zero
-		 * exit codes, such as diff reporting differences, are successful.
+		 * in chronological order. For successful tasks, keep any non-zero
+		 * exit code so special non-failure exit codes are preserved.
 		 */
 		if (!task_success(task)) {
 			if (task->state == PROCESS_STATE_TERM)
-				exit_code = task->exit_code;
+				failure_code = task->exit_code;
 			else
-				exit_code = EXIT_EXEC_FAILED;
+				failure_code = EXIT_EXEC_FAILED;
+		} else if (task->exit_code != 0) {
+			success_code = task->exit_code;
 		}
 
 		if (start_task == 0 && task->cmd == CMD_START)
@@ -423,6 +426,8 @@ static int runner_report_locked(struct snapraid_state* state)
 
 		i = i->prev;
 	}
+
+	int exit_code = failure_code != 0 ? failure_code : success_code;
 
 	ss_init(&ss, 48 * 1024);
 
