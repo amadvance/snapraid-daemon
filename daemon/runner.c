@@ -122,8 +122,6 @@ static int runner_need_hook(int cmd)
 	return 0;
 }
 
-#define CONTAINERS_MAX 128
-
 static int run_docker_inspect(const char* docker_path, char** containers, unsigned container_count, ss_t* output)
 {
 	char** argv = calloc_nofail(container_count + 6, sizeof(char*));
@@ -213,7 +211,7 @@ static int docker_select_running(const char* docker_path, const char* containers
 
 	char* copy = strdup_nofail(containers);
 	char* references[CONTAINERS_MAX + 1];
-	unsigned reference_count = strsplit(references, CONTAINERS_MAX + 1, copy, ",", " \t");
+	unsigned reference_count = strsplit(references, CONTAINERS_MAX + 1, copy, ",", " \t", 0);
 
 	if (reference_count == 0) {
 		free(copy);
@@ -232,7 +230,8 @@ static int docker_select_running(const char* docker_path, const char* containers
 		goto bail;
 
 	char* lines[CONTAINERS_MAX + 1];
-	unsigned line_count = strsplit(lines, CONTAINERS_MAX + 1, ss_extract(&output), "\n", "\r");
+	/* trim empty tokens to discard the trailing newline in command output */
+	unsigned line_count = strsplit(lines, CONTAINERS_MAX + 1, ss_extract(&output), "\n", "\r", 1);
 	if (line_count != reference_count) {
 		log_task(LVL_ERROR, "docker inspect returned %u containers instead of %u", line_count, reference_count);
 		goto bail;
@@ -240,7 +239,7 @@ static int docker_select_running(const char* docker_path, const char* containers
 
 	for (unsigned i = 0; i < line_count; ++i) {
 		char* fields[4];
-		unsigned field_count = strsplit(fields, 4, lines[i], "|", " \t\r");
+		unsigned field_count = strsplit(fields, 4, lines[i], "|", " \t\r", 0);
 		if (field_count != 3) {
 			log_task(LVL_ERROR, "invalid docker inspect output");
 			goto bail;
@@ -275,7 +274,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 
 	/* split the string using strsplit up to CONTAINERS_MAX + 1 tokens to detect truncation */
 	char* tokens[CONTAINERS_MAX + 1];
-	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t");
+	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t", 0);
 
 	if (n == 0) {
 		free(copy);

@@ -824,8 +824,9 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 					goto forbidden;
 				}
 				++j;
-				if (json_config_string(js, &jv[j], transient.hook_docker_pause, sizeof(transient.hook_docker_pause)) == 0) {
-				} else {
+				char val_str[CONFIG_MAX];
+				if (json_config_string(js, &jv[j], val_str, sizeof(val_str)) != 0
+					|| config_parse_docker_pause(val_str, transient.hook_docker_pause, sizeof(transient.hook_docker_pause)) != 0) {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
 				}

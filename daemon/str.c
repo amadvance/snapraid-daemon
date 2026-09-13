@@ -188,41 +188,73 @@ void strupr(char* str)
 }
 #endif
 
-unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim)
+unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* delimiters, const char* trim, int trim_empty)
 {
 	unsigned mac = 0;
 
-	/* skip initial delimiters */
-	str += strspn(str, delimiters);
-
-	while (*str != 0 && mac < split_max) {
-		/* start of the token */
-		char* tok_start = str;
-
-		/* find the first delimiter or the end of the string */
-		str += strcspn(str, delimiters);
-
-		/* put the final terminator if missing */
-		if (*str != 0)
-			*str++ = 0;
-
-		/* skip trailing delimiters */
+	if (trim_empty) {
+		/* skip initial delimiters */
 		str += strspn(str, delimiters);
 
-		/* trim the token if trim is specified */
-		if (trim != 0) {
-			tok_start += strspn(tok_start, trim);
-			size_t len = strlen(tok_start);
-			while (len > 0 && strchr(trim, tok_start[len - 1]) != 0) {
-				tok_start[len - 1] = 0;
-				--len;
+		while (*str != 0 && mac < split_max) {
+			/* start of the token */
+			char* tok_start = str;
+
+			/* find the first delimiter or the end of the string */
+			str += strcspn(str, delimiters);
+
+			/* put the final terminator if missing */
+			if (*str != 0)
+				*str++ = 0;
+
+			/* skip trailing delimiters */
+			str += strspn(str, delimiters);
+
+			/* trim the token if trim is specified */
+			if (trim != 0) {
+				tok_start += strspn(tok_start, trim);
+				size_t len = strlen(tok_start);
+				while (len > 0 && strchr(trim, tok_start[len - 1]) != 0) {
+					tok_start[len - 1] = 0;
+					--len;
+				}
+			}
+
+			/* store the token only if it's not empty */
+			if (*tok_start != 0) {
+				split_map[mac] = tok_start;
+				++mac;
 			}
 		}
+	} else {
+		if (*str == 0)
+			return 0;
 
-		/* store the token only if it's not empty */
-		if (*tok_start != 0) {
+		while (mac < split_max) {
+			char* tok_start = str;
+
+			str += strcspn(str, delimiters);
+
+			int has_next = *str != 0;
+			if (has_next) {
+				*str = 0;
+				++str;
+			}
+
+			if (trim != 0) {
+				tok_start += strspn(tok_start, trim);
+				size_t len = strlen(tok_start);
+				while (len > 0 && strchr(trim, tok_start[len - 1]) != 0) {
+					tok_start[len - 1] = 0;
+					--len;
+				}
+			}
+
 			split_map[mac] = tok_start;
 			++mac;
+
+			if (!has_next)
+				break;
 		}
 	}
 

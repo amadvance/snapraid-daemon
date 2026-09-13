@@ -43,6 +43,11 @@
 #define FSINFO_MAX 64
 
 /**
+ * Max number of docker containers.
+ */
+#define CONTAINERS_MAX 128
+
+/**
  * SMART attributes count.
  */
 #define SMART_COUNT 256
