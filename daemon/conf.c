@@ -97,8 +97,10 @@ int config_parse_docker_pause(const char* val, char* dst, size_t dst_size)
 	char* tokens[CONTAINERS_MAX + 1];
 	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t\r\n", 0);
 
-	if (n > CONTAINERS_MAX)
+	if (n > CONTAINERS_MAX) {
+		log_msg(LVL_ERROR, "docker container list exceeds maximum %u containers", CONTAINERS_MAX);
 		return -1;
+	}
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (tokens[i][0] == 0)
@@ -283,23 +285,28 @@ bail:
 
 int config_parse_smart_ignore(const char* input, struct snapraid_config* config)
 {
-	char* tokens[64];
+	char* tokens[SMARTIGNORE_MAX + 2];
 	char copy[CONFIG_MAX];
 	sncpy(copy, sizeof(copy), input);
 
 	/* trim empty tokens to collapse consecutive whitespace into a single delimiter */
-	unsigned n = strsplit(tokens, 64, copy, " \t", " \t\r\n", 1);
+	unsigned n = strsplit(tokens, SMARTIGNORE_MAX + 2, copy, " \t", " \t\r\n", 1);
 	if (n < 2) {
 		return -1;
 	}
 
+	if (n - 1 > SMARTIGNORE_MAX) {
+		log_msg(LVL_ERROR, "smartignore list exceeds maximum %u elements", SMARTIGNORE_MAX);
+		return -1;
+	}
+
 	/*
-	 * Reject "0" as an attribute index since 0 is reserved as the sentinel value
-	 * indicating a name-based rule in smartignore_match.
+	 * Validate numeric attribute IDs to be in the valid SMART attribute range (1 to SMART_COUNT - 1).
+	 * Reject 0 since 0 is reserved as the sentinel value indicating a name-based rule in smartignore_match.
 	 */
 	for (unsigned i = 1; i < n; ++i) {
 		int val;
-		if (strint(&val, tokens[i]) == 0 && val == 0) {
+		if (strint(&val, tokens[i]) == 0 && (val <= 0 || val >= SMART_COUNT)) {
 			return -1;
 		}
 	}

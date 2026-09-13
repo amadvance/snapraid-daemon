@@ -30,7 +30,10 @@
  **/
 #define MSG_MAX 256
 
-#define CONFIG_MAX 512 /**< Max length of a configuration option */
+/**
+ * Max length of a configuration option
+ */
+#define CONFIG_MAX 512
 
 /**
  * Max UUID length.
@@ -46,6 +49,11 @@
  * Max number of docker containers.
  */
 #define CONTAINERS_MAX 128
+
+/**
+ * Max number of smart ignores per line.
+ */
+#define SMARTIGNORE_MAX 128
 
 /**
  * SMART attributes count.
