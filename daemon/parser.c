@@ -1532,10 +1532,10 @@ static void process_status(struct snapraid_state* state, char** map, size_t mac)
 	const char* sub = map[3];
 
 	if (task->cmd == CMD_FIX && strcmp(ope, "recovered") == 0) {
-		/* Omit PULSE_ARRAY on progress updates to avoid excessive /tasks polling */
+		pulse(state, PULSE_ARRAY);
 		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_RECOVERED, disk, sub);
 	} else if (task->cmd == CMD_FIX && strcmp(ope, "unrecoverable") == 0) {
-		/* Omit PULSE_ARRAY on progress updates to avoid excessive /tasks polling */
+		pulse(state, PULSE_ARRAY);
 		fix_insert(&state->array.fix_current, FILE_CHANGE_FIX_UNRECOVERABLE, disk, sub);
 	}
 }
