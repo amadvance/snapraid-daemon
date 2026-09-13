@@ -216,6 +216,7 @@ struct snapraid_device_pointer {
 
 struct snapraid_split {
 	int index; /**< Index of the split */
+	int last_update_at_number; /**< The latest task number that updated the split */
 	char path[PATH_MAX]; /**< Parity file or mount dir */
 	char uuid[UUID_MAX]; /**< Current UUID. */
 	char content_path[PATH_MAX]; /**< Parity file stored in the content file. */

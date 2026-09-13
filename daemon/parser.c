@@ -376,6 +376,22 @@ static void remove_disappeared_disks(struct snapraid_state* state, struct snapra
 
 				j = j_next;
 			}
+
+			/* remove any split that is not referenced */
+			for (tommy_node* j = tommy_list_head(&disk->split_list); j != 0; ) {
+				struct snapraid_split* split = j->data;
+				tommy_node* j_next = j->next;
+
+				if (split->last_update_at_number < task->number) {
+					if (runtime)
+						log_task(LVL_INFO, "removing unreferenced split '%s/%d'", disk->name, split->index);
+					pulse(state, PULSE_DISKS);
+					tommy_list_remove_existing(&disk->split_list, &split->node);
+					split_free(split);
+				}
+
+				j = j_next;
+			}
 		}
 
 		i = i_next;
@@ -505,7 +521,7 @@ int split_compare(const void* void_a, const void* void_b)
 	return 0;
 }
 
-static struct snapraid_split* find_split(tommy_list* list, int index)
+static struct snapraid_split* find_split(tommy_list* list, int index, int number)
 {
 	struct snapraid_split* split;
 	tommy_node* i;
@@ -513,13 +529,16 @@ static struct snapraid_split* find_split(tommy_list* list, int index)
 	i = tommy_list_head(list);
 	while (i) {
 		split = i->data;
-		if (index == split->index)
+		if (index == split->index) {
+			split->last_update_at_number = number;
 			return split;
+		}
 		i = i->next;
 	}
 
 	split = calloc_nofail(1, sizeof(struct snapraid_split));
 	split->index = index;
+	split->last_update_at_number = number;
 	tommy_list_insert_tail(list, &split->node, split);
 
 	/* the list must be sorted by index for the JSON output that references the array position */
@@ -645,7 +664,7 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	const char* uuid = map[3];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
+	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	char old_path[PATH_MAX];
 	if (runtime)
@@ -687,7 +706,7 @@ static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 	const char* uuid = map[3];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_EXTRA, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, 0); /* extra disks never have the split index */
+	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* extra disks never have the split index */
 
 	char old_path[PATH_MAX];
 	if (runtime)
@@ -733,7 +752,7 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, index);
+	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	char old_path[PATH_MAX];
 	if (runtime)
@@ -809,7 +828,7 @@ static void process_content_data_split(struct snapraid_state* state, char** map,
 	const char* uuid = map[2];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
+	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	char old_uuid[UUID_MAX];
 	if (runtime)
@@ -842,7 +861,7 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, index);
+	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	char old_path[PATH_MAX];
 	if (runtime)
@@ -972,7 +991,7 @@ static void process_fsinfo_data_split(struct snapraid_state* state, char** map, 
 	const char* label = map[5];
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, 0); /* at present data disks don't have the split index */
+	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
 	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
@@ -1021,7 +1040,7 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 		return;
 
 	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
-	struct snapraid_split* split = find_split(&disk->split_list, index);
+	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
 	pulse_stru64(state, PULSE_DISKS, &split->fsfree, size_free);
