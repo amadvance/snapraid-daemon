@@ -111,10 +111,12 @@ noinst_HEADERS = \
 	monocypher/monocypher.h \
 	tommyds/tommychain.h \
 	tommyds/tommyhash.h \
+	tommyds/tommyhashtbl.h \
 	tommyds/tommylist.h \
 	tommyds/tommytree.h \
 	tommyds/tommytypes.h \
 	tommyds/tommyhash.c \
+	tommyds/tommyhashtbl.c \
 	tommyds/tommylist.c \
 	tommyds/tommytree.c \
 	jsmn/jsmn.h \

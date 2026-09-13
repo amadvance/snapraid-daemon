@@ -23,6 +23,8 @@ struct snapraid_state* state_init(void)
 	diff_cleanup(&state->array.diff_current, 0);
 	diff_cleanup(&state->array.diff_prev, 0);
 	fix_cleanup(&state->array.fix_current);
+	tommy_hashtable_init(&state->parser_association_hash, PARSER_ASSOCIATION_HASH_SIZE);
+	tommy_hashtable_init(&state->parser_duplicate_hash, PARSER_DUPLICATE_HASH_SIZE);
 	state->daemon_loading = 1;
 	state->daemon_running = 1;
 	state->daemon_start_time = time(0);
@@ -50,6 +52,9 @@ void state_done(struct snapraid_state* state)
 	tommy_list_foreach(&state->device_catalog, device_free);
 	tommy_list_foreach(&state->web.page_list, page_free);
 	tommy_list_foreach(&state->parser_association, association_free);
+	tommy_hashtable_done(&state->parser_association_hash);
+	tommy_hashtable_foreach(&state->parser_duplicate_hash, free);
+	tommy_hashtable_done(&state->parser_duplicate_hash);
 	crypto_wipe(state->rest_auth_cache, sizeof(state->rest_auth_cache));
 	thread_mutex_destroy(&state->state_lock);
 	thread_mutex_destroy(&state->log_lock);
