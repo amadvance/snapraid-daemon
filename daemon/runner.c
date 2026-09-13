@@ -1373,6 +1373,24 @@ bail:
 		os_dispose(release_pid);
 	task->unix_end_time = unix_end_time;
 
+	if (spawn_canceled) {
+		task->state = PROCESS_STATE_CANCEL;
+	} else if (pid_ret < 0) {
+		task->exit_code = pid_ret;
+		task->state = PROCESS_STATE_TERM;
+	} else if (WIFEXITED(status)) {
+		task->exit_code = WEXITSTATUS(status);
+		task->state = PROCESS_STATE_TERM;
+
+		parse_end_locked(state, task);
+	} else if (WIFSIGNALED(status)) {
+		task->exit_sig = WTERMSIG(status);
+		task->state = PROCESS_STATE_SIGNAL;
+	} else {
+		task->exit_code = EXIT_EXEC_FAILED;
+		task->state = PROCESS_STATE_TERM;
+	}
+
 	task->health = health_task(task, 0, 0);
 
 	/* check the array health, but DO NOT propagate it to the task */
@@ -1388,23 +1406,6 @@ bail:
 		state->runner.hook_flags = 0;
 		hook_context_acquire_locked(state, task, &post_hook);
 		post_hook.config = hook_config;
-
-		/*
-		 * Override the hook snapshot with the final process status while keeping the
-		 * global task state unchanged until the post-hook completes.
-		 */
-		if (spawn_canceled) {
-			post_hook.task_state = PROCESS_STATE_CANCEL;
-		} else if (pid_ret < 0) {
-			post_hook.exit_code = pid_ret;
-			post_hook.task_state = PROCESS_STATE_TERM;
-		} else if (WIFEXITED(status)) {
-			post_hook.exit_code = WEXITSTATUS(status);
-			post_hook.task_state = PROCESS_STATE_TERM;
-		} else if (WIFSIGNALED(status)) {
-			post_hook.exit_sig = WTERMSIG(status);
-			post_hook.task_state = PROCESS_STATE_SIGNAL;
-		}
 		state_unlock();
 
 		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0) {
@@ -1513,12 +1514,6 @@ bail:
 			snprintf(msg, sizeof(msg), "The preceding %s operation failed to execute", command_name(cmd));
 		task_list_cancel_in_group(state, task, msg);
 	} else if (WIFEXITED(status)) {
-		/* child's exit(code) or return from main */
-		task->exit_code = WEXITSTATUS(status);
-		task->state = PROCESS_STATE_TERM;
-
-		parse_end_locked(state, task);
-
 		if (task->canceled) {
 			/* cancel queued tasks on user stop */
 			snprintf(msg, sizeof(msg), "The preceding %s operation was canceled", command_name(cmd));
