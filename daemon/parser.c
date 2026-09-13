@@ -1018,12 +1018,17 @@ static void process_smart_attribute(struct snapraid_state* state, struct snaprai
 	if (got_norm >= 0 && (flags & SMART_ATTR_TYPE_PREFAIL) != 0) {
 		tracked_update(&device->smart[index].norm, old_norm, SMART_KIND_NORM, state->array.last_time);
 
-		if (old_norm != SMART_UNASSIGNED
-			&& runtime /* do not report on loading past logs */
-		) {
+		if (old_norm != SMART_UNASSIGNED) {
 			uint64_t cv_old = smart_conv(old_norm, SMART_KIND_NORM);
 			uint64_t cv_val = smart_conv(device->smart[index].norm.value, SMART_KIND_NORM);
-			report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
+
+			if (cv_old != cv_val) {
+				if ((kind & SMART_KIND_PULSE) == 0)
+					pulse(state, PULSE_DISKS);
+
+				if (runtime) /* do not report on loading past logs */
+					report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
+			}
 		}
 	}
 }
