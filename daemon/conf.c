@@ -142,7 +142,6 @@ int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity)
 	return -1;
 }
 
-
 const char* config_level_str(int level)
 {
 	switch (level) {
