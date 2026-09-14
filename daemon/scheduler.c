@@ -408,7 +408,7 @@ void* scheduler_thread(void* arg)
 
 	state_lock();
 
-	while (state->daemon_running) {
+	while (daemon_is_running(state)) {
 		int schedule = 0;
 		time_t now = time(0);
 
@@ -477,7 +477,7 @@ void* scheduler_thread(void* arg)
 			}
 
 			/* early exit on shutdown */
-			if (!state->daemon_running)
+			if (!daemon_is_running(state))
 				break;
 
 			/*
@@ -521,7 +521,7 @@ void* scheduler_thread(void* arg)
 			}
 
 			/* early exit on shutdown */
-			if (!state->daemon_running)
+			if (!daemon_is_running(state))
 				break;
 
 			/* clean history every 10 minutes */
@@ -533,7 +533,7 @@ void* scheduler_thread(void* arg)
 			}
 
 			/* early exit on shutdown */
-			if (!state->daemon_running)
+			if (!daemon_is_running(state))
 				break;
 
 			/* probe and spindown, use the lowest interval */
@@ -561,7 +561,7 @@ void* scheduler_thread(void* arg)
 		}
 
 		/* early exit on shutdown */
-		if (!state->daemon_running)
+		if (!daemon_is_running(state))
 			break;
 
 		thread_cond_wait(&state->scheduler.cond, &state->state_lock);

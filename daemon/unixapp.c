@@ -16,7 +16,7 @@
 
 int os_signal_interrupt(void)
 {
-	return !state_ptr()->daemon_running;
+	return !daemon_is_running(state_ptr());
 }
 
 static void app_signal_handler_term(int sig)
@@ -31,7 +31,7 @@ static void app_signal_handler_hup(int sig)
 {
 	(void)sig;
 
-	if (state_ptr()->daemon_running)
+	if (daemon_is_running(state_ptr()))
 		state_ptr()->daemon_reloading = 1;
 }
 
@@ -346,7 +346,7 @@ int os_shutdown(void)
 
 	log_task(LVL_INFO, "spawning poweroff to shut down system");
 	os_privileges_acquire();
-	pid_t pid = os_spawn(argv, 0, 0, 0);
+	pid_t pid = os_spawn(argv, 0, 0, 0, 0);
 	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn poweroff, errno=%s(%d)", strerror(errno), errno);
@@ -354,7 +354,7 @@ int os_shutdown(void)
 	}
 
 	int status;
-	pid_t pid_ret = os_wait(pid, &status);
+	pid_t pid_ret = os_wait(pid, &status, 0);
 	os_dispose(pid);
 	if (pid_ret == -1) {
 		log_task(LVL_ERROR, "failed to wait for poweroff, errno=%s(%d)", strerror(errno), errno);

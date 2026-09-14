@@ -27,6 +27,7 @@ struct snapraid_state* state_init(void)
 	tommy_hashtable_init(&state->parser_duplicate_hash, PARSER_DUPLICATE_HASH_SIZE);
 	state->daemon_loading = 1;
 	state->daemon_running = 1;
+	state->daemon_aborting = 0;
 	state->daemon_start_time = time(0);
 	state->array.health = health_array_locked(state, state->array.health_reason, sizeof(state->array.health_reason));
 

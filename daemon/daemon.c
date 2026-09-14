@@ -356,10 +356,10 @@ void daemon_run(struct snapraid_state* state)
 {
 	state_lock();
 
-	if (state->daemon_running)
+	if (daemon_is_running(state))
 		log_msg(LVL_INFO, "daemon ready");
 
-	while (state->daemon_running) { /* stopped by signals */
+	while (daemon_is_running(state)) { /* stopped by signals */
 		if (state->daemon_reloading) {
 			/*
 			 * Clear before reloading. A SIGHUP received while reloading sets
@@ -389,7 +389,7 @@ void daemon_run(struct snapraid_state* state)
 
 			state_unlock();
 
-			if (state->daemon_running && reload_rest) {
+			if (daemon_is_running(state) && reload_rest) {
 				if (rest_reload(state, prev_net_enabled, net_enabled, net_port, net_acl) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web server");
 					os_exit();
@@ -397,7 +397,7 @@ void daemon_run(struct snapraid_state* state)
 				web_start(state);
 			}
 
-			if (state->daemon_running && !state->web.page_nocache) {
+			if (daemon_is_running(state) && !state->web.page_nocache) {
 				if (web_reload(state, net_web_root) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
 					os_exit();
@@ -406,7 +406,7 @@ void daemon_run(struct snapraid_state* state)
 
 			state_lock();
 
-			if (!state->daemon_running)
+			if (!daemon_is_running(state))
 				break;
 		}
 
