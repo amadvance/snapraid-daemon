@@ -1808,6 +1808,54 @@ upon the first execution of a SnapRAID command.
 .SS commander.zip or brutale.zip 
 The web dashboard assets are searched for in the same directory
 as the executable.
+.SH KNOWN ISSUES 
+.SS Monotonic Time Assumption 
+The daemon assumes that time progresses monotonically.
+.PP
+Historical log files are named using the local wall\-clock time and are
+replayed in filename order at startup. If the local clock moves
+backwards, for example during a daylight\-saving\-time transition or
+after a manual clock adjustment, logs created later may be replayed
+before older ones, or two tasks may generate the same log filename.
+.PP
+The daemon also assumes that the modification time of the SnapRAID
+content file increases whenever the file is updated. If the system
+clock moves backwards and the content file is subsequently modified
+by a SnapRAID command executed outside the daemon, the startup probe
+may not detect the newer content state.
+.PP
+For correct state reconstruction, the system clock and local civil
+time are therefore expected not to move backwards while retained
+daemon logs or
+.SS Lifetime Counters Depend on Log Retention 
+Some cumulative statistics are reconstructed at startup from the
+retained daemon logs rather than from separately persistent state.
+.PP
+When old logs are removed according to the configured log retention
+period, information contained only in those logs is no longer
+available during a subsequent restart. As a result, cumulative
+counters reconstructed from the available history may decrease or
+restart from zero after older logs have been removed.
+.PP
+Such counters should therefore be interpreted as covering the history
+available in the retained daemon logs, rather than necessarily the
+complete lifetime of the installation.
+.SS Incomplete Log Recovery 
+Incomplete daemon logs are recovered only up to the last complete
+record that can be parsed successfully.
+.PP
+For plain logs, a final unterminated line is discarded. For compressed
+logs, a truncated gzip stream may still be recovered up to the last
+complete decompressed record available before the truncation.
+.PP
+Any data contained only in an incomplete final record is therefore
+lost during restart reconstruction. Tasks without the required final
+termination information are treated as interrupted according to the
+available log state.
+.PP
+Log recovery should therefore be considered best effort and guarantees
+only the preservation of complete records successfully written before
+the interruption.
 .SH COPYRIGHT 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH SEE ALSO 
