@@ -547,21 +547,19 @@ static void print_device_wide(struct snapraid_state* state, const char* disk_nam
 	ss_prints(ss, "   Interface: ");
 	ss_printl(ss, device->interf[0] ? device->interf : "-", sp->interf_len);
 	ss_prints(ss, "\n");
-	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
+	if (device->error_medium.value != SMART_UNASSIGNED
+		&& device->error_medium.value != 0
+		&& !smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)
+	) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
-			ss_printf(ss, "(ignored) Medium Errors: %" PRIu64 "\n", device->error_medium.value);
-		} else {
-			ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
-		}
+		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
 	}
-	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
+	if (device->error_protocol.value != SMART_UNASSIGNED
+		&& device->error_protocol.value != 0
+		&& !smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)
+	) {
 		ss_printc(ss, ' ', sp->tab_len + sp->name_len + sp->health_len);
-		if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
-			ss_printf(ss, "(ignored) Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
-		} else {
-			ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
-		}
+		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_wide(device->flags);
@@ -587,19 +585,17 @@ static void print_device_narrow(struct snapraid_state* state, const char* disk_n
 
 	ss_printf(ss, " %s\n", device->serial[0] ? device->serial : "-");
 
-	if (device->error_medium.value != SMART_UNASSIGNED && device->error_medium.value != 0) {
-		if (smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)) {
-			ss_printf(ss, "(ignored) Medium Errors: %" PRIu64 "\n", device->error_medium.value);
-		} else {
-			ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
-		}
+	if (device->error_medium.value != SMART_UNASSIGNED
+		&& device->error_medium.value != 0
+		&& !smartignore_match(disk_name, 0, "error_medium", &state->config.smartignore_list)
+	) {
+		ss_printf(ss, "!! Medium Errors: %" PRIu64 "\n", device->error_medium.value);
 	}
-	if (device->error_protocol.value != SMART_UNASSIGNED && device->error_protocol.value != 0) {
-		if (smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)) {
-			ss_printf(ss, "(ignored) Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
-		} else {
-			ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
-		}
+	if (device->error_protocol.value != SMART_UNASSIGNED
+		&& device->error_protocol.value != 0
+		&& !smartignore_match(disk_name, 0, "error_protocol", &state->config.smartignore_list)
+	) {
+		ss_printf(ss, "!! Protocol Errors: %" PRIu64 "\n", device->error_protocol.value);
 	}
 	if (device->flags != SMART_UNASSIGNED) {
 		const char* smart = smart_report_narrow(device->flags);
@@ -686,7 +682,7 @@ struct smart_header {
 	int attr_printed;
 };
 
-static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* dev_serial, const char* attr_name, int is_ignored)
+static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* dev_serial, const char* attr_name)
 {
 	if (!sh->header_printed) {
 		print_line_separator(ss);
@@ -701,12 +697,12 @@ static void print_smart_header_wide(ss_t* ss, struct smart_header* sh, const cha
 		sh->disk_printed = 1;
 	}
 	if (!sh->attr_printed) {
-		ss_printf(ss, "%s%s\n", attr_name, is_ignored ? " (ignored)" : "");
+		ss_printf(ss, "%s\n", attr_name);
 		sh->attr_printed = 1;
 	}
 }
 
-static void print_smart_header_narrow(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* attr_name, int is_ignored)
+static void print_smart_header_narrow(ss_t* ss, struct smart_header* sh, const char* disk_name, const char* attr_name)
 {
 	if (!sh->header_printed) {
 		ss_prints(ss, "ATTRIBUTES CHANGES\n");
@@ -717,7 +713,7 @@ static void print_smart_header_narrow(ss_t* ss, struct smart_header* sh, const c
 		sh->disk_printed = 1;
 	}
 	if (!sh->attr_printed) {
-		ss_printf(ss, "%s%s\n", attr_name, is_ignored ? " (ignored)" : "");
+		ss_printf(ss, "%s\n", attr_name);
 		sh->attr_printed = 1;
 	}
 }
@@ -738,13 +734,13 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 			&& disk->error_io.prev != SMART_UNASSIGNED
 			&& disk->error_io.value != disk->error_io.prev
 			&& disk->error_io.prev_last >= queue_time
+			&& !smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)
 		) {
 			uint64_t cv_val = disk->error_io.value;
 			uint64_t cv_old = disk->error_io.prev;
 
 			if (cv_val != cv_old) {
-				int ignored = smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list);
-				print_smart_header_wide(ss, &sh, disk->name, 0, "Input_Output_Errors", ignored);
+				print_smart_header_wide(ss, &sh, disk->name, 0, "Input_Output_Errors");
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -758,13 +754,13 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 			&& disk->error_data.prev != SMART_UNASSIGNED
 			&& disk->error_data.value != disk->error_data.prev
 			&& disk->error_data.prev_last >= queue_time
+			&& !smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)
 		) {
 			uint64_t cv_val = disk->error_data.value;
 			uint64_t cv_old = disk->error_data.prev;
 
 			if (cv_val != cv_old) {
-				int ignored = smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list);
-				print_smart_header_wide(ss, &sh, disk->name, 0, "Silent_Errors", ignored);
+				print_smart_header_wide(ss, &sh, disk->name, 0, "Silent_Errors");
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -784,6 +780,9 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 				struct smart_attr* attr = &dev->smart[k];
 				sh.attr_printed = 0;
 
+				if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
+					continue;
+
 				/*
 				 * Raw change
 				 *
@@ -800,7 +799,7 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
 
 					if (cv_val != cv_old) {
-						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
+						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name);
 
 						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -824,7 +823,7 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
 
 					if (cv_val != cv_old) {
-						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
+						print_smart_header_wide(ss, &sh, disk->name, dev->serial, attr->name);
 
 						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* lower is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -844,13 +843,13 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 				&& dev->error_protocol.prev != SMART_UNASSIGNED
 				&& dev->error_protocol.value != dev->error_protocol.prev
 				&& dev->error_protocol.prev_last >= queue_time
+				&& !smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)
 			) {
 				uint64_t cv_val = dev->error_protocol.value;
 				uint64_t cv_old = dev->error_protocol.prev;
 
 				if (cv_val != cv_old) {
-					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
-					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Protocol_Errors", ignored);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Protocol_Errors");
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -864,13 +863,13 @@ static void print_smart_changes_wide(struct snapraid_state* state, ss_t* ss, tim
 				&& dev->error_medium.prev != SMART_UNASSIGNED
 				&& dev->error_medium.value != dev->error_medium.prev
 				&& dev->error_medium.prev_last >= queue_time
+				&& !smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list)
 			) {
 				uint64_t cv_val = dev->error_medium.value;
 				uint64_t cv_old = dev->error_medium.prev;
 
 				if (cv_val != cv_old) {
-					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
-					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Medium_Errors", ignored);
+					print_smart_header_wide(ss, &sh, disk->name, dev->serial, "Medium_Errors");
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -900,13 +899,13 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 			&& disk->error_io.prev != SMART_UNASSIGNED
 			&& disk->error_io.value != disk->error_io.prev
 			&& disk->error_io.prev_last >= queue_time
+			&& !smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list)
 		) {
 			uint64_t cv_val = disk->error_io.value;
 			uint64_t cv_old = disk->error_io.prev;
 
 			if (cv_val != cv_old) {
-				int ignored = smartignore_match(disk->name, 0, "error_io", &state->config.smartignore_list);
-				print_smart_header_narrow(ss, &sh, disk->name, "Input_Output_Errors", ignored);
+				print_smart_header_narrow(ss, &sh, disk->name, "Input_Output_Errors");
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -920,13 +919,13 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 			&& disk->error_data.prev != SMART_UNASSIGNED
 			&& disk->error_data.value != disk->error_data.prev
 			&& disk->error_data.prev_last >= queue_time
+			&& !smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list)
 		) {
 			uint64_t cv_val = disk->error_data.value;
 			uint64_t cv_old = disk->error_data.prev;
 
 			if (cv_val != cv_old) {
-				int ignored = smartignore_match(disk->name, 0, "error_data", &state->config.smartignore_list);
-				print_smart_header_narrow(ss, &sh, disk->name, "Silent_Errors", ignored);
+				print_smart_header_narrow(ss, &sh, disk->name, "Silent_Errors");
 
 				const char* changed = cv_old < cv_val ? "degraded" : "improved";
 				int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -944,6 +943,9 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 				struct smart_attr* attr = &dev->smart[k];
 				sh.attr_printed = 0;
 
+				if (smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list))
+					continue;
+
 				/*
 				 * Raw change
 				 *
@@ -960,7 +962,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 					uint64_t cv_old = smart_conv(attr->raw.prev, kind);
 
 					if (cv_val != cv_old) {
-						print_smart_header_narrow(ss, &sh, disk->name, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
+						print_smart_header_narrow(ss, &sh, disk->name, attr->name);
 
 						const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -984,7 +986,7 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 					uint64_t cv_old = smart_conv(attr->norm.prev, SMART_KIND_NORM);
 
 					if (cv_val != cv_old) {
-						print_smart_header_narrow(ss, &sh, disk->name, attr->name, smartignore_match(disk->name, k, attr->name, &state->config.smartignore_list));
+						print_smart_header_narrow(ss, &sh, disk->name, attr->name);
 
 						const char* changed = cv_old > cv_val ? "degraded" : "improved"; /* lower is worse */
 						int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -1002,13 +1004,13 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 				&& dev->error_protocol.prev != SMART_UNASSIGNED
 				&& dev->error_protocol.value != dev->error_protocol.prev
 				&& dev->error_protocol.prev_last >= queue_time
+				&& !smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list)
 			) {
 				uint64_t cv_val = dev->error_protocol.value;
 				uint64_t cv_old = dev->error_protocol.prev;
 
 				if (cv_val != cv_old) {
-					int ignored = smartignore_match(disk->name, 0, "error_protocol", &state->config.smartignore_list);
-					print_smart_header_narrow(ss, &sh, disk->name, "Protocol_Errors", ignored);
+					print_smart_header_narrow(ss, &sh, disk->name, "Protocol_Errors");
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;
@@ -1022,13 +1024,13 @@ static void print_smart_changes_narrow(struct snapraid_state* state, ss_t* ss, t
 				&& dev->error_medium.prev != SMART_UNASSIGNED
 				&& dev->error_medium.value != dev->error_medium.prev
 				&& dev->error_medium.prev_last >= queue_time
+				&& !smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list)
 			) {
 				uint64_t cv_val = dev->error_medium.value;
 				uint64_t cv_old = dev->error_medium.prev;
 
 				if (cv_val != cv_old) {
-					int ignored = smartignore_match(disk->name, 0, "error_medium", &state->config.smartignore_list);
-					print_smart_header_narrow(ss, &sh, disk->name, "Medium_Errors", ignored);
+					print_smart_header_narrow(ss, &sh, disk->name, "Medium_Errors");
 
 					const char* changed = cv_old < cv_val ? "degraded" : "improved"; /* higher is worse */
 					int64_t delta = (int64_t)cv_val - (int64_t)cv_old;

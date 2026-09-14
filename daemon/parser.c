@@ -1079,34 +1079,30 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 	}
 }
 
-static void report_attribute_change(struct snapraid_state* state, const char* disk,
-	int attr_index, const char* attr_name, const char* attr_type, int is_higher_worse,
-	uint64_t cv_old, uint64_t cv_val)
+static void report_attribute_change(struct snapraid_state* state, const char* disk, int attr_index, const char* attr_name, const char* attr_type, int is_higher_worse, int warning_on_degradation, uint64_t cv_old, uint64_t cv_val)
 {
 	if (cv_old == cv_val)
 		return;
 
-	int ignored = smartignore_match(disk, attr_index, attr_name, &state->config.smartignore_list);
-	if (!ignored) {
-		int worse;
-		if (is_higher_worse) {
-			worse = cv_old < cv_val;
-		} else {
-			worse = cv_old > cv_val;
-		}
+	if (smartignore_match(disk, attr_index, attr_name, &state->config.smartignore_list))
+		return;
 
-		const char* changed = worse ? "degraded" : "improved";
-		int level = worse ? LVL_WARNING : LVL_INFO;
+	int worse;
+	if (is_higher_worse) {
+		worse = cv_old < cv_val;
+	} else {
+		worse = cv_old > cv_val;
+	}
 
-		log_task(level, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64,
-			attr_type, attr_name, disk, changed, cv_old, cv_val);
+	const char* changed = worse ? "degraded" : "improved";
+	int level = worse && warning_on_degradation ? LVL_WARNING : LVL_INFO;
 
-		/* if the attribute degraded and there isn't already a report scheduled, schedule a new one */
-		if (worse && !runner_has_cmd_locked(state, CMD_REPORT)) {
-			char msg[MSG_MAX];
-			int status;
-			runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, 0, msg, sizeof(msg), &status);
-		}
+	log_task(level, "SMART %s attribute '%s' of disk '%s' %s from %" PRIu64 " to %" PRIu64, attr_type, attr_name, disk, changed, cv_old, cv_val);
+
+	if (warning_on_degradation && worse && !runner_has_cmd_locked(state, CMD_REPORT)) {
+		char msg[MSG_MAX];
+		int status;
+		runner_locked(state, 0, CMD_REPORT, state->array.last_time, 0, 0, msg, sizeof(msg), &status);
 	}
 }
 
@@ -1151,12 +1147,17 @@ static void process_smart_attribute(struct snapraid_state* state, struct snaprai
 	if (got_raw >= 0 && (kind & SMART_KIND_CRITICAL) != 0 && (kind & SMART_KIND_COUNT) != 0) {
 		tracked_update(&device->smart[index].raw, old_raw, kind, state->array.last_time);
 
-		if (old_raw != SMART_UNASSIGNED
-			&& runtime /* do not report on loading past logs */
-		) {
+		if (old_raw != SMART_UNASSIGNED) {
 			uint64_t cv_old = smart_conv(old_raw, kind);
 			uint64_t cv_val = smart_conv(device->smart[index].raw.value, kind);
-			report_attribute_change(state, disk, index, name, "raw", 1, cv_old, cv_val);
+
+			if (cv_old != cv_val) {
+				if ((kind & SMART_KIND_PULSE) == 0)
+					pulse(state, PULSE_DISKS);
+
+				if (runtime) /* do not report on loading past logs */
+					report_attribute_change(state, disk, index, name, "raw", 1, 1, cv_old, cv_val);
+			}
 		}
 	}
 
@@ -1173,7 +1174,7 @@ static void process_smart_attribute(struct snapraid_state* state, struct snaprai
 					pulse(state, PULSE_DISKS);
 
 				if (runtime) /* do not report on loading past logs */
-					report_attribute_change(state, disk, index, name, "norm", 0, cv_old, cv_val);
+					report_attribute_change(state, disk, index, name, "norm", 0, (kind & SMART_KIND_CRITICAL) != 0, cv_old, cv_val);
 			}
 		}
 	}
@@ -1276,7 +1277,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			if (old != SMART_UNASSIGNED
 				&& runtime /* do not report on loading past logs */
 			) {
-				report_attribute_change(state, disk, 0, "error_protocol", "raw", 1, old, device->error_protocol.value);
+				report_attribute_change(state, disk, 0, "error_protocol", "raw", 1, 1, old, device->error_protocol.value);
 			}
 		}
 	} else if (strcmp(tag, "error_medium") == 0) {
@@ -1287,7 +1288,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			if (old != SMART_UNASSIGNED
 				&& runtime /* do not report on loading past logs */
 			) {
-				report_attribute_change(state, disk, 0, "error_medium", "raw", 1, old, device->error_medium.value);
+				report_attribute_change(state, disk, 0, "error_medium", "raw", 1, 1, old, device->error_medium.value);
 			}
 		}
 	} else if (strcmp(tag, "wear_level") == 0)
