@@ -306,7 +306,7 @@ void task_free(void* void_task)
 int task_exit_success(int cmd, int exit_code)
 {
 	if (cmd == CMD_DIFF)
-		return exit_code == 0 || exit_code == EXIT_NEED_SYNC; /* detecting differences are not a failure */
+		return exit_code == 0 || exit_code == EXIT_SYNC_NEEDED; /* detecting differences are not a failure */
 
 	return exit_code == 0;
 }
@@ -385,7 +385,7 @@ int task_level(struct snapraid_task* task)
 
 	/* check exit code */
 	if (task->state == PROCESS_STATE_TERM) {
-		if (task->exit_code == EXIT_SYNC_NEEDED)
+		if (task->cmd == CMD_DIFF && task->exit_code == EXIT_SYNC_NEEDED)
 			level = level_mix(level, LVL_WARNING);
 		else if (task->exit_code != 0)
 			level = level_mix(level, LVL_ERROR);
