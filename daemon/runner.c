@@ -122,7 +122,10 @@ static int runner_need_hook(int cmd)
 	return 0;
 }
 
-static int run_docker_inspect(const char* docker_path, char** containers, unsigned container_count, ss_t* output)
+/**
+ * Run docker inspect to query the state of containers.
+ */
+static int run_docker_inspect(const char* docker_path, char** containers, unsigned container_count, ss_t* output, pid_t* pid_slot)
 {
 	char** argv = calloc_nofail(container_count + 6, sizeof(char*));
 
@@ -137,7 +140,7 @@ static int run_docker_inspect(const char* docker_path, char** containers, unsign
 
 	int stdout_fd = -1;
 	os_privileges_acquire();
-	pid_t pid = os_spawn(argv, &stdout_fd, 0, 0);
+	pid_t pid = os_spawn(argv, &stdout_fd, 0, 0, pid_slot);
 	os_privileges_release();
 	free(argv);
 	if (pid < 0) {
@@ -164,7 +167,7 @@ static int run_docker_inspect(const char* docker_path, char** containers, unsign
 	close(stdout_fd);
 
 	int status;
-	pid_t pid_ret = os_wait(pid, &status);
+	pid_t pid_ret = os_wait(pid, &status, pid_slot);
 	os_dispose(pid);
 	if (pid_ret == -1) {
 		log_task(LVL_ERROR, "failed to wait for docker inspect, errno=%s(%d)", strerror(errno), errno);
@@ -205,7 +208,10 @@ static int docker_list_append(char* list, size_t list_size, const char* value)
 	return 0;
 }
 
-static int docker_select_running(const char* docker_path, const char* containers, char* resume, size_t resume_size)
+/**
+ * Query docker to find which configured containers are currently running.
+ */
+static int docker_select_running(const char* docker_path, const char* containers, char* resume, size_t resume_size, pid_t* pid_slot)
 {
 	resume[0] = 0;
 
@@ -226,7 +232,7 @@ static int docker_select_running(const char* docker_path, const char* containers
 	ss_init(&output, 4096);
 	int ret = -1;
 
-	if (run_docker_inspect(docker_path, references, reference_count, &output) != 0)
+	if (run_docker_inspect(docker_path, references, reference_count, &output, pid_slot) != 0)
 		goto bail;
 
 	char* lines[CONTAINERS_MAX + 1];
@@ -262,7 +268,10 @@ bail:
 	return ret;
 }
 
-static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, ZFILE* log_f, const char* log_prefix)
+/**
+ * Run a docker sub-command on a list of containers.
+ */
+static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, ZFILE* log_f, const char* log_prefix, pid_t* pid_slot)
 {
 	if (log_f != 0) {
 		zprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
@@ -304,7 +313,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 
 	int ret = -1;
 	os_privileges_acquire();
-	pid_t pid = os_spawn(argv, 0, 0, 0);
+	pid_t pid = os_spawn(argv, 0, 0, 0, pid_slot);
 	os_privileges_release();
 	if (pid < 0) {
 		log_task(LVL_ERROR, "failed to spawn docker %s, errno=%s(%d)", action, strerror(errno), errno);
@@ -312,7 +321,7 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 			zprintf(log_f, "daemon:%s_fail\n", log_prefix);
 	} else {
 		int status;
-		pid_t pid_ret = os_wait(pid, &status);
+		pid_t pid_ret = os_wait(pid, &status, pid_slot);
 		os_dispose(pid);
 		if (pid_ret == -1) {
 			log_task(LVL_ERROR, "failed to wait for docker %s, errno=%s(%d)", action, strerror(errno), errno);
@@ -647,6 +656,11 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 
 	state_lock();
 
+	if (ret == 0) {
+		state->daemon_aborting = 1;
+		state->daemon_running = 0;
+	}
+
 	struct snapraid_task* shutdown_task = state->runner.latest;
 
 	shutdown_task->running = 0;
@@ -828,11 +842,20 @@ static void hook_context_acquire_locked(struct snapraid_state* state, const stru
 	}
 }
 
-static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int* out_hook_flags)
+/**
+ * Execute pre-run hooks (docker container pausing and pre_run_script).
+ */
+static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int* out_hook_flags, pid_t* pid_slot)
 {
 	int cmd = hook->cmd;
 	int high_cmd = hook->high_cmd;
 	int number = hook->number;
+
+	if (daemon_is_aborting(state_ptr())) {
+		if (exit_neg_msg)
+			snprintf(exit_neg_msg, exit_neg_msg_size, "Pre-hook aborted because the system is shutting down");
+		return -1;
+	}
 
 	if (hook->config.hook_docker_pause[0] != 0 && runner_need_hook(cmd)) {
 		const char* docker_path = app_find_docker();
@@ -846,7 +869,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		}
 
 		if (docker_select_running(docker_path, hook->config.hook_docker_pause,
-			hook->config.hook_docker_resume, sizeof(hook->config.hook_docker_resume)) != 0) {
+			hook->config.hook_docker_resume, sizeof(hook->config.hook_docker_resume), pid_slot) != 0) {
 			if (log_f != 0)
 				zprintf(log_f, "daemon:pre_docker_fail\n");
 			if (exit_neg_msg)
@@ -864,7 +887,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 			*out_hook_flags |= HOOK_FLAG_DOCKER;
 
 			log_task(LVL_INFO, "task %d pausing docker containers: %s", number, hook->config.hook_docker_resume);
-			if (run_docker_cmd(docker_path, "pause", hook->config.hook_docker_resume, log_f, "pre_docker") != 0) {
+			if (run_docker_cmd(docker_path, "pause", hook->config.hook_docker_resume, log_f, "pre_docker", pid_slot) != 0) {
 				if (exit_neg_msg)
 					snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to pause docker containers");
 				return -1;
@@ -872,6 +895,12 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 			if (log_f)
 				zflush(log_f);
 		}
+	}
+
+	if (daemon_is_aborting(state_ptr())) {
+		if (exit_neg_msg)
+			snprintf(exit_neg_msg, exit_neg_msg_size, "Pre-hook aborted because the system is shutting down");
+		return -1;
 	}
 
 	if (hook->config.hook_script[0] != 0 && runner_need_hook(cmd)) {
@@ -921,7 +950,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		envv[envv_count] = NULL;
 
 		os_privileges_acquire();
-		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user);
+		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, pid_slot);
 		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
@@ -970,10 +999,16 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 	return 0;
 }
 
-static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags)
+/**
+ * Execute post-run hooks (post_run_script and docker container unpausing).
+ */
+static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char* exit_neg_msg, size_t exit_neg_msg_size, int success, int hook_flags, pid_t* pid_slot)
 {
 	int number = hook->number;
 	int ret = 0;
+
+	if (daemon_is_aborting(state_ptr()))
+		return 0;
 
 	if ((hook_flags & HOOK_FLAG_SCRIPT) && hook->config.hook_script[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		char* hook_argv[3];
@@ -1063,7 +1098,7 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 		envv[envv_count] = NULL;
 
 		os_privileges_acquire();
-		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user);
+		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, pid_slot);
 		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
@@ -1100,11 +1135,14 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 			zflush(log_f);
 	}
 
+	if (daemon_is_aborting(state_ptr()))
+		return 0;
+
 	if ((hook_flags & HOOK_FLAG_DOCKER) && hook->config.hook_docker_resume[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		const char* docker_path = app_find_docker();
 		if (docker_path) {
 			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook->config.hook_docker_resume);
-			if (run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_resume, log_f, "post_docker") != 0) {
+			if (run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_resume, log_f, "post_docker", pid_slot) != 0) {
 				ret = -1;
 				if (exit_neg_msg && exit_neg_msg[0] == 0)
 					snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to unpause docker containers");
@@ -1131,7 +1169,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	time_t unix_start_time;
 	time_t unix_queue_time;
 	time_t unix_end_time;
-	pid_t pid;
+	pid_t pid = 0;
 	int cmd;
 	int high_cmd;
 	int status;
@@ -1252,7 +1290,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 
 	int hook_flags = 0;
 	if (pre_hook_flags == 0) {
-		int hook_ret = runner_hook_begin(&pre_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), &hook_flags);
+		int hook_ret = runner_hook_begin(&pre_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), &hook_flags, &state->runner.helper_pid);
 		hook_config = pre_hook.config;
 		if (hook_ret < 0) {
 			pid_ret = EXIT_PRE_HOOK_FAILED;
@@ -1270,15 +1308,14 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	 * atomic cancellation checking and process-reference assignment without releasing and re-acquiring
 	 * the lock. Process spawn is fast enough that holding the lock here does not impact responsiveness.
 	 */
-	spawn_canceled = task->canceled || !state->daemon_running;
+	spawn_canceled = task->canceled || !daemon_is_running(state);
 	int spawn_shutdown = 0;
 	if (!spawn_canceled) {
 		os_privileges_acquire();
-		pid = os_spawn(argv, NULL, &f, NULL);
+		pid = os_spawn(argv, 0, &f, 0, &task->pid);
 		os_privileges_release();
 		if (pid > 0) {
-			task->pid = pid;
-			spawn_shutdown = !state->daemon_running;
+			spawn_shutdown = !daemon_is_running(state);
 		}
 	}
 
@@ -1297,32 +1334,32 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 		/* continue to run the hook_script */
 	} else {
 		if (log_f != 0)
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), os_display_pid(pid), log_path);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") with log %s", number, command_name(cmd), os_pid(pid), log_path);
 		else
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), os_display_pid(pid));
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ")", number, command_name(cmd), os_pid(pid));
 
 		if (spawn_shutdown) {
-			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), os_display_pid(pid));
-			os_term(pid);
+			log_task(LVL_INFO, "task %d run %s (pid %" PRIu64 ") canceled right after spawn, terminating process", number, command_name(cmd), os_pid(pid));
+			os_term(&task->pid);
 		}
 
 		int parse_ret = parse_log(state, f, 0, log_f, log_path);
 		int parse_errno = errno;
 
 		/* wait for the child process to terminate */
-		pid_ret = os_wait(pid, &status);
+		pid_ret = os_wait(pid, &status, &task->pid);
 
 		if (pid_ret == -1) {
-			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), os_display_pid(pid), strerror(errno), errno);
+			log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") failed wait, errno=%s(%d)", number, command_name(cmd), os_pid(pid), strerror(errno), errno);
 			snprintf(exit_neg_msg, sizeof(exit_neg_msg), "The task %s failed to wait, errno=%s(%d)", command_name(cmd), strerror(errno), errno);
 		} else {
 			if (WIFEXITED(status)) {
 				int exit_code = WEXITSTATUS(status);
 
 				if (exit_code == 0) {
-					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), os_display_pid(pid));
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ")", number, command_name(cmd), os_pid(pid));
 				} else {
-					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), os_display_pid(pid), exit_code);
+					log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") exit code %d", number, command_name(cmd), os_pid(pid), exit_code);
 				}
 
 				success = task_exit_success(cmd, exit_code);
@@ -1330,7 +1367,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 				if (log_f != 0)
 					zprintf(log_f, "daemon:term:%d\n", exit_code);
 			} else if (WIFSIGNALED(status)) {
-				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), os_display_pid(pid), os_signal_name(WTERMSIG(status)), WTERMSIG(status));
+				log_task(LVL_INFO, "task %d end %s (pid %" PRIu64 ") signal %s(%d)", number, command_name(cmd), os_pid(pid), os_signal_name(WTERMSIG(status)), WTERMSIG(status));
 				if (log_f != 0)
 					zprintf(log_f, "daemon:signal:%d\n", WTERMSIG(status));
 			}
@@ -1366,11 +1403,8 @@ bail:
 	if (task->canceled)
 		post_skip = 0;
 
-	/* stop publishing the process reference before releasing it */
-	pid_t release_pid = task->pid;
-	task->pid = 0;
-	if (release_pid > 0)
-		os_dispose(release_pid);
+	if (pid > 0)
+		os_dispose(pid);
 	task->unix_end_time = unix_end_time;
 
 	if (spawn_canceled) {
@@ -1408,7 +1442,7 @@ bail:
 		post_hook.config = hook_config;
 		state_unlock();
 
-		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags) != 0) {
+		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags, &state->runner.helper_pid) != 0) {
 			if (pid_ret >= 0)
 				pid_ret = EXIT_POST_HOOK_FAILED;
 		}
@@ -1674,7 +1708,7 @@ static void* runner_thread(void* arg)
 	state_lock();
 
 	while (1) {
-		while (state->daemon_running /* daemon is still running */
+		while (daemon_is_running(state) /* daemon is still running */
 			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
 			&& !tommy_list_empty(&state->runner.waiting_list)) { /* there is something to run */
 
@@ -1735,13 +1769,13 @@ static void* runner_thread(void* arg)
 					hook.config = postponed_config;
 
 					state_unlock();
-					(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags);
+					(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
 					state_lock();
 				}
 			}
 		}
 
-		if (!state->daemon_running)
+		if (!daemon_is_running(state))
 			break;
 
 		thread_cond_wait(&state->runner.cond, &state->state_lock);
@@ -1758,7 +1792,7 @@ static void* runner_thread(void* arg)
 		hook.config = postponed_config;
 
 		state_unlock();
-		(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags);
+		(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
 		state_lock();
 
 	}
@@ -1770,6 +1804,8 @@ static void* runner_thread(void* arg)
 
 void runner_init(struct snapraid_state* state)
 {
+	state->runner.helper_pid = 0;
+
 	/* create the log directory at initialization */
 	if (state->config.sys_log_directory[0] != 0) {
 		int mkdir_ret = mkdir(state->config.sys_log_directory, 0755);
@@ -1797,10 +1833,19 @@ void runner_done(struct snapraid_state* state)
 
 	if (task && task->running) {
 		task->canceled = 1;
-		if (task->pid > 0) {
-			log_msg(LVL_INFO, "killing helper process pid %" PRIu64 " due to daemon shutdown", os_display_pid(task->pid));
-			os_kill(task->pid);
+		uint64_t pid = os_slot_pid(&task->pid);
+		if (pid > 0) {
+			log_msg(LVL_INFO, "killing task process pid %" PRIu64 " due to daemon shutdown", pid);
 		}
+		os_kill(&task->pid);
+	}
+
+	if (daemon_is_aborting(state)) {
+		uint64_t helper_pid = os_slot_pid(&state->runner.helper_pid);
+		if (helper_pid > 0) {
+			log_msg(LVL_INFO, "killing helper process pid %" PRIu64 " due to daemon abort", helper_pid);
+		}
+		os_kill(&state->runner.helper_pid);
 	}
 
 	/* signal the condition to allow the thread to stop */
@@ -1824,7 +1869,7 @@ const char* runner_begin_locked(struct snapraid_state* state, char* msg, size_t 
 		return 0;
 	}
 
-	if (!state->daemon_running) {
+	if (!daemon_is_running(state)) {
 		log_msg(LVL_ERROR, "failed to start runner because daemon is terminating");
 		sncpy(msg, msg_size, "Daemon is terminating");
 		*status = 503;
@@ -2024,7 +2069,6 @@ int runner_delete_old_history_locked(struct snapraid_state* state, char* msg, si
 
 int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* status, uint64_t* stop_display_pid, int* stop_number)
 {
-	pid_t pid;
 	uint64_t display_pid;
 	int number;
 	int term_ret = 0;
@@ -2044,30 +2088,21 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 	task->canceled = 1;
-	pid = task->pid;
-	display_pid = os_display_pid(pid);
+	display_pid = os_slot_pid(&task->pid);
 	number = task->number;
 
 	message_insert(&task->message_list, MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, "Stop requested");
 
-	if (pid > 0) {
-		/*
-		 * Calling os_term(pid) after retrieving task->pid presents a theoretical TOCTOU
-		 * race if the target process exits, gets reaped, and its PID recycled by the OS in that window.
-		 * In practice, PID recycling across the OS requires tens of thousands of process spawns
-		 * and wrap-around, making this an accepted non-issue.
-		 */
-		term_ret = os_term(pid);
-		if (term_ret != 0)
-			term_errno = errno;
-	}
+	term_ret = os_term(&task->pid);
+	if (term_ret != 0)
+		term_errno = errno;
 
 	state_unlock();
 
 	*stop_display_pid = display_pid;
 	*stop_number = number;
 
-	if (pid > 0) {
+	if (display_pid > 0) {
 		if (term_ret != 0) {
 			if (term_errno == ESRCH)
 				log_msg(LVL_INFO, "task %d (pid %" PRIu64 ") already terminated before SIGTERM", number, display_pid);

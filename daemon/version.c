@@ -119,7 +119,7 @@ static int check_repo_version(const char* curl_path, const char* repo, char* ver
 
 	int stdout_fd = -1;
 	/* run curl with the daemon's current unprivileged credentials; update checks do not require root privileges */
-	pid_t pid = os_spawn(argv, &stdout_fd, 0, 0);
+	pid_t pid = os_spawn(argv, &stdout_fd, 0, 0, 0);
 	if (pid < 0) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: spawn failed, errno=%s(%d)", repo, strerror(errno), errno);
 		return -1;
@@ -148,7 +148,7 @@ static int check_repo_version(const char* curl_path, const char* repo, char* ver
 	close(stdout_fd);
 
 	int status = 0;
-	pid_t ret = os_wait(pid, &status);
+	pid_t ret = os_wait(pid, &status, 0);
 	os_dispose(pid);
 	if (ret == -1) {
 		log_msg(LVL_ERROR, "failed to check updates for %s: wait failed, errno=%s(%d)", repo, strerror(errno), errno);

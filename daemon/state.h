@@ -337,7 +337,7 @@ struct snapraid_task {
 	uint64_t block_idx; /**< Block currently processed. block_begin <= processed_block < block_end */
 	uint64_t block_done; /**< Incremental number of block processed. 0 <= block_done < block_count */
 	uint64_t size_done; /**< Number of bytes processed until now */
-	pid_t pid; /**< Process reference of the running task */
+	pid_t pid; /**< Published process reference of the running task */
 	int canceled; /**< Set to 1 if task stop/cancel was requested */
 	int exit_code; /**< Exit code. Valid only for PROCESS_STATE_TERM */
 	int exit_sig; /**< Signal code. Valid only for PROCESS_STATE_SIGNAL */
@@ -402,6 +402,7 @@ struct snapraid_runner {
 	tommy_list history_list; /**< List of snapraid_task already executed */
 	int hold_off; /**< Hold off the next maintenance */
 	uint32_t task_pending; /**< Bit mask of pending high-level commands being initialized before enqueuing */
+	pid_t helper_pid; /**< Published process reference of the active synchronous helper */
 };
 
 struct snapraid_scheduler {
@@ -657,11 +658,13 @@ struct snapraid_duplicate_id {
 struct snapraid_state {
 	/*
 	 * These flags are written by signal/control handlers and read by all daemon
-	 * threads. daemon_running is set once during state initialization and is
-	 * never set again: a termination request is therefore absorbing.
+	 * threads. daemon_running is 1 while the daemon is active and 0 when stopping.
+	 * daemon_aborting is set to 1 when an immediate abort/shutdown is triggered;
+	 * once set, it remains sticky and is never cleared by subsequent stop requests.
 	 */
 	volatile sig_atomic_t daemon_loading; /**< Initialization is in progress. */
-	volatile sig_atomic_t daemon_running; /**< The daemon has not received a termination request. */
+	volatile sig_atomic_t daemon_running; /**< Daemon running state (1 = running, 0 = stopped). */
+	volatile sig_atomic_t daemon_aborting; /**< Daemon abort state (1 = aborting/shutdown, 0 = normal). */
 	volatile sig_atomic_t daemon_reloading; /**< A configuration reload is requested. */
 	volatile sig_atomic_t daemon_sig; /**< Signal received by the daemon that made it stopping */
 	time_t daemon_start_time; /**< Time the daemon started */
@@ -714,6 +717,16 @@ struct snapraid_state {
 	/**< Data immutable after command-line parsing */
 	char engine_conf_arg[PATH_MAX]; /**< SnapRAID configuration file specified via -C, --engine-conf */
 };
+
+static inline int daemon_is_running(const struct snapraid_state* state)
+{
+	return state->daemon_running != 0;
+}
+
+static inline int daemon_is_aborting(const struct snapraid_state* state)
+{
+	return state->daemon_aborting != 0;
+}
 
 /****************************************************************************/
 /* state */
