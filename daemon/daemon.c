@@ -194,7 +194,17 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 				fprintf(stderr, "Error: Invalid character '%c' in instance name. Only [a-zA-Z0-9_-] are allowed.\n", optarg[len]);
 				exit(EXIT_FAILURE);
 			}
+			if (len >= sizeof(state->instance)) {
+				fprintf(stderr, "Error: Instance name is too long. Maximum length is %d characters.\n", INSTANCE_MAX - 1);
+				exit(EXIT_FAILURE);
+			}
 			sncpy(state->instance, sizeof(state->instance), optarg);
+#ifdef __MINGW32__
+			for (char* p = state->instance; *p != 0; ++p) {
+				if (*p >= 'A' && *p <= 'Z')
+					*p += 'a' - 'A';
+			}
+#endif
 			app_instance(state->instance);
 			break;
 		}
