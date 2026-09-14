@@ -56,7 +56,10 @@ Options
 		instances of the daemon, this option separates their namespaces
 		(e.g., config file suffix, PID file, logging identifiers, and
 		Windows service names). The name must only contain alphanumeric
-		characters, hyphens, and underscores.
+		characters, hyphens, and underscores, with a maximum length of 63
+		characters. On Windows, instance names are converted to lowercase
+		because Windows service names are case-insensitive. On Unix, the
+		supplied letter case is preserved.
 
 	-p, --pidfile FILE
 		Overrides the default location for the PID file. Default:

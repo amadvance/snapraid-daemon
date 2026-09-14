@@ -67,6 +67,11 @@
 #define SMART_COUNT 256
 
 /**
+ * Max instance name storage size, including the terminating null.
+ */
+#define INSTANCE_MAX 64
+
+/**
  * Flags returned by smartctl.
  */
 #define SMARTCTL_FLAG_UNSUPPORTED (1 << 0) /**< Device not recognized, requiring the -d option. */
@@ -386,7 +391,7 @@ struct snapraid_hook_config {
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
 	char engine_conf[PATH_MAX];
-	char instance[64];
+	char instance[INSTANCE_MAX];
 };
 
 struct snapraid_runner {
@@ -694,7 +699,7 @@ struct snapraid_state {
 	struct snapraid_array array; /**< Global array metadata */
 	struct snapraid_config config; /**< Runtime configuration */
 	struct snapraid_system system; /**< Host system information */
-	char instance[64]; /**< Instance name specified via -i, --instance */
+	char instance[INSTANCE_MAX]; /**< Instance name specified via -i, --instance */
 	char log_ident[128]; /**< Formatted logging identifier for syslog */
 
 #ifdef __MINGW32__
