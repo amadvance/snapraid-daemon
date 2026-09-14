@@ -612,8 +612,22 @@ static struct snapraid_device* find_disk_device(struct snapraid_state* state, in
 
 static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 {
+	int runtime = !state->daemon_loading;
 	struct snapraid_task* task = state->runner.latest;
 	uint64_t access_count;
+
+	/*
+	 * Do not update access counters when loading past logs.
+	 * The access counter is provided by the kernel and resets to zero
+	 * on host reboot. If a pre-reboot counter and idle baseline were
+	 * restored from past logs and happened to match the kernel counter
+	 * sampled at startup, the daemon would preserve a stale idle baseline
+	 * across boots, potentially leading to premature spin-down.
+	 * Skipping this during loading ensures that the startup probe initializes
+	 * a fresh access counter and idle baseline.
+	 */
+	if (!runtime)
+		return;
 
 	if (mac < 3)
 		return;
@@ -637,11 +651,6 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 		 *
 		 * We don't want to trigger continous change in the UI while
 		 * a disk is in use and has accesses.
-		 *
-		 * Note that automatic down is not affected, because the
-		 * value is still stored. Only if the deamon is restarted
-		 * it may "lose" the time of idle, because some logs may be
-		 * deleted.
 		 */
 		disk->access_count = access_count;
 		disk->access_count_initial_time = state->array.last_time;
