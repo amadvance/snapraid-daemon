@@ -543,7 +543,7 @@ void json_smart_list(struct snapraid_state* state, const char* disk_name, ss_t* 
 		if (attr->raw.value == SMART_UNASSIGNED)
 			continue;
 
-		json_attr(state, disk_name, j, s, &level, SMART_KIND_CRITICAL | SMART_KIND_VENDOR, attr);
+		json_attr(state, disk_name, j, s, &level, SMART_KIND_VENDOR, attr);
 	}
 
 	ss_json_array_close(s, &level);

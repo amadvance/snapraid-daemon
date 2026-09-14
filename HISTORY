@@ -24,9 +24,11 @@ SnapRAID-Daemon HISTORY
      using the template unit `snapraidd@.service`.
    - On Windows, multiple service instances can be registered and
      managed using the `--service-install` option with the `-i` flag.
- * Schedule a report notification on raw value changes of
-   counting/critical SMART attributes and on normalized value changes of
-   prefail attributes.
+ * Schedule a report notification on degradations of counting/critical
+   raw SMART attributes and tracked error counters. Normalized value
+   degradations of critical prefail attributes also generate warning
+   notifications, while normalized changes of non-critical prefail
+   attributes are tracked as informational history.
    Historical tracking for normalized values (with highest/worst
    baselines and threshold values) is exported via REST API/YAML and
    integrated into status reports.
@@ -44,9 +46,9 @@ SnapRAID-Daemon HISTORY
    "prefail", or "failing").
  * Added a "smartignore" configuration option to allow ignoring specific
    SMART attributes (e.g., Spin_Up_Time, Raw_Read_Error_Rate) for one or
-   more disks to avoid generating report notifications when they change.
-   Ignored attributes are marked as ignored in status reports and in the
-   REST API.
+   more disks. Ignored attribute changes do not generate warning
+   notifications and are omitted from status reports, while the attributes
+   remain available and marked as ignored in the REST API.
  * Export temperature warning/critical thresholds and status fields in
    the REST API, and integrate them into the web dashboards to
    automatically color-code drives (supporting higher limits for SSD,

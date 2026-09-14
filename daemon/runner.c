@@ -458,7 +458,8 @@ static int runner_report_locked(struct snapraid_state* state)
 	report_locked(state, &ss, report_task, start_task, fix_task, sync_task, scrub_task, diff_stat, fix_stat);
 
 	/*
-	 * Check if any prefail/critical raw attributes, prefail norm attributes, or error counters degraded since queue_time
+	 * Check if any critical SMART attributes or error counters degraded since queue_time.
+	 * Normalized PREFAIL changes raise the report level only for critical attributes.
 	 */
 	int has_warning_smart_changes = 0;
 	time_t queue_time = report_task->unix_queue_time;
@@ -521,8 +522,8 @@ static int runner_report_locked(struct snapraid_state* state)
 					continue;
 
 				int kind = smart_kind(k, attr->name);
-				if (tracked_is_worse(&attr->raw, kind, 1, queue_time)
-					|| tracked_is_worse(&attr->norm, SMART_KIND_NORM, 0, queue_time)
+				if ((kind & SMART_KIND_CRITICAL) != 0
+					&& (tracked_is_worse(&attr->raw, kind, 1, queue_time) || tracked_is_worse(&attr->norm, SMART_KIND_NORM, 0, queue_time))
 				) {
 					has_warning_smart_changes = 1;
 					break;

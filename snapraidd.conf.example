@@ -68,14 +68,20 @@ sys_log_retention_days = 120
 #sys_shutdown_on = maintenance, prefail, failing
 
 # The sys_smartignore option allows you to ignore specific SMART attributes
-# for one or more disks. If ignored, the attribute will not generate a
-# warning notification when it degrades, and it will be marked as ignored
-# in the REST API. Typical attributes to ignore are Spin_Up_Time and
-# Raw_Read_Error_Rate. You can also use Error_Protocol and Error_Medium
-# to ignore device-level protocol or medium errors.
+# for one or more disks. Changes of ignored attributes are omitted from
+# status reports and do not generate warning notifications. The attributes
+# continue to be collected and are exported in the REST API as ignored.
+# Typical attributes to ignore are Spin_Up_Time and Raw_Read_Error_Rate.
+# You can also use Error_Protocol and Error_Medium to ignore device-level
+# protocol or medium errors.
 #
-# Note that sys_smartignore only suppresses warning notifications for attribute
-# value changes. It does not affect the evaluation of the health of the array
+# Normalized-value degradations of critical PREFAIL SMART attributes generate
+# warning notifications. Normalized-value changes of non-critical PREFAIL
+# attributes are informational, even when not ignored. sys_smartignore can
+# still be used to hide noisy vendor-specific changes from reports and to
+# suppress warnings from actionable raw/error-counter changes.
+#
+# sys_smartignore does not affect the evaluation of the health of the array
 # if an attribute goes below its threshold. If an attribute fails (reaches
 # its threshold), it will still trigger a critical notification and degrade
 # the array health.
