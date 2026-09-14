@@ -577,13 +577,13 @@ notify_syslog_level = info
 
 # Controls the filter for 'notify_result'. The notification is sent only
 # if the task result is equal to or more severe than this level.
-# Values: info (always), warning, error, critical. Default: error.
+# Values: info (always), warning, error, critical. Default: warning.
 # Example: If set to 'error', notifications are sent for errors and
 # critical failures, but NOT for successful 'info' runs.
 #
 # This option can only be modified via the REST API if 'net_config_full_access'
 # is set to 1. Otherwise, it remains read-only for security reasons.
-notify_result_level = error
+notify_result_level = warning
 
 # The user account used for notify_heartbeat, notify_start, notify_result and mail notifications.
 # If missing or left blank, the task runs with the daemon's current privileges.
