@@ -951,7 +951,7 @@ File format (.netrc or _netrc):
 Controls the filter for `notify_result`. The notification is sent only
 if the task result is equal to or more severe than this level.
 Valid values are `info` (always send), `warning`, `error`, and `critical`.
-The default is `error`.
+The default is `warning`.
 
 Note that SMART attribute changes are rated as `warning`, while general
 health status changes (such as failing or prefailing disks, or corrupted

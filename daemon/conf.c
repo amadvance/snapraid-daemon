@@ -1112,7 +1112,7 @@ void config_default_locked(struct snapraid_state* state)
 	config->notify_heartbeat[0] = 0;
 	config->notify_start[0] = 0;
 	config->notify_result[0] = 0;
-	config->notify_result_level = LVL_ERROR;
+	config->notify_result_level = LVL_WARNING;
 	config->notify_differences = 0;
 }
 
