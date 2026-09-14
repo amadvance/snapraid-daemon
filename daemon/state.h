@@ -13,7 +13,7 @@
 /**
  * Exit code of the engine if differences are detected
  **/
-#define EXIT_NEED_SYNC 2
+#define EXIT_SYNC_NEEDED 2
 
 #define EXIT_EXEC_FAILED -1 /**< Task execution or daemon infrastructure failure */
 #define EXIT_PRE_HOOK_FAILED -2 /**< Pre-execution hook failure */
@@ -536,11 +536,6 @@ static inline int level_mix(int level, int new_level)
 		level = new_level;
 	return level;
 }
-
-/**
- * SnapRAID exit code when a sync is needed, like in 'diff'
- */
-#define EXIT_SYNC_NEEDED 2
 
 #define CONFIG_LINE_MAX 1024
 
