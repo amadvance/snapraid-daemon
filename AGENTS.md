@@ -115,10 +115,14 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
 - **Naming**: Snake_case for functions, UPPER_CASE for macros/constants
 - **Indentation**: Tabs for indentation, no alignment (existing codebase style)
 - **Comments**: C-style `/** */` for multiline comments; C `/* first letter lowercase */` for single-line inline notes
+- **Critical Comments**: Always add a comment at non-obvious critical points, especially around data-integrity invariants, crash recovery, fallback behavior, concurrency, and fatal versus best-effort error handling. Explain why the logic is required, not merely what the code does.
 - **Headers**: All `.h` files have include guards (`#ifndef __NAME_H`)
 - **Preferences**: Use 0 instead of NULL and '\0'
 - **Preferences**: Use prefix ++variable and --variable instead of postfix variable++ and variable-- where both are equivalent
 - **Safety Checks**: Avoid adding safety checks for conditions that never happen
+- **Type Casts**: Avoid type casts unless strictly necessary for compilation with -Werror and unavoidable by other mean
+- **Simplicity First**: Always choose the simplest design with the minimal number of state variables, branches, and lines of code.
+- **Stack Over Heap**: Prefer stack-allocated fixed-size buffers over dynamic memory allocation (`malloc`/`free`) whenever the upper bound is small, fixed, and known at compile time.
 - **Commit Messages**: Every time a change is done, a single line commit description should be provided for that change
 - **Git Commits**: Never commit changes to git.
  
