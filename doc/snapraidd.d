@@ -691,26 +691,52 @@ Configuration
 	daemon events.
 
 	The script is executed with a single positional argument that
-	represents the lifecycle stage of the task currently being processed
-	by the daemon:
+	represents the current stage of a hook lifecycle. A hook lifecycle
+	is an uninterrupted session covering one or more consecutive tasks
+	that access the array:
 
-	task-begin - Triggered immediately before the daemon begins a
-		scheduled sequence of actions that access the array
-		(e.g., sync, scrub, or maintenance).
-	task-end - Triggered after the entire sequence of actions has
-		concluded successfully.
-	task-error - Triggered if the task sequence is aborted, interrupted,
-		or encounters an operational failure.
+	task-begin - Triggered immediately before the daemon begins an
+		array-access session (e.g., sync, scrub, or maintenance).
+		This starts a hook lifecycle, which may span multiple
+		consecutive task groups.
+	task-end - Triggered after the session has concluded successfully.
+		This closes the matching hook lifecycle and uses the same
+		hook configuration snapshot captured when `task-begin` was
+		executed.
+	task-error - Triggered if the session is aborted, interrupted, or
+		encounters an operational failure. This closes the active hook
+		lifecycle using the same hook configuration snapshot and
+		acquired-resource state captured when `task-begin` was executed.
 
 	If `task-begin` fails, `task-error` is not invoked. The `task-begin`
 	handler is responsible for reverting any partial changes before
 	returning an error.
 
-	Note that 'task-end' reflects only whether the task finished its
-	execution cycle. It does not necessarily reflect hardware or data
-	integrity. For example, a sync command may return 'task-end' even if
-	the array is technically in a corrupt state, provided the sync process
-	itself finished without crashing.
+	Hook lifecycle boundaries do not necessarily match task group boundaries.
+	When consecutive array-access tasks can safely share the same paused
+	state (such as paused Docker containers and pre-hook preparations), the
+	daemon may postpone hook cleanup and keep that state active across the
+	boundary between two task groups. As a result, a `task-begin` event may
+	occur while processing one group and the corresponding `task-end` or
+	`task-error` event may occur only after tasks belonging to a subsequent
+	group have completed.
+
+	The hook configuration is snapshotted when the hook lifecycle begins
+	and remains associated with that lifecycle until cleanup completes.
+	Configuration reloads do not alter an already active hook lifecycle.
+	In particular, the corresponding `task-end` or `task-error` hook,
+	the post-script, and Docker cleanup always use the same hook configuration
+	and acquired-resource state established by the matching `task-begin`,
+	even if the daemon configuration changes in the meantime.
+
+	A new configuration becomes effective for hooks when a new hook lifecycle
+	is started after the previous one has been fully cleaned up.
+
+	Note that 'task-end' reflects only whether the hook lifecycle finished
+	its execution cycle successfully. It does not necessarily reflect
+	hardware or data integrity. For example, a sync command may return
+	'task-end' even if the array is technically in a corrupt state, provided
+	the sync process itself finished without crashing.
 
 	Future versions of the daemon will introduce new event types that may
 	not relate to array access or follow the `task-` naming convention.
@@ -778,9 +804,10 @@ Configuration
 	Specifies a comma-separated list of Docker containers to pause during
 	tasks that access the array (e.g., plex, transmission).
 
-	Immediately before running the task (or the pre hook script), the daemon
-	pauses only the listed containers that are running and not already paused.
-	Afterward, it unpauses only those containers, restoring their initial state.
+	At the start of a hook lifecycle (immediately before executing the
+	`task-begin` hook), the daemon pauses only the listed containers that
+	are running and not already paused. When the hook lifecycle concludes,
+	it unpauses only those containers, restoring their initial state.
 	Containers that were already paused remain paused, and stopped containers
 	remain stopped.
 
