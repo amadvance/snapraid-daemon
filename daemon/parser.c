@@ -1996,18 +1996,31 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 		/* set the time, only if we complete the command */
 		switch (task->cmd) {
 		case CMD_SYNC :
-			/* now we pulse because we move the diff */
 			pulse(state, PULSE_ARRAY);
 			state->array.sync_time = task->unix_start_time;
 
-			/* after a sync the latest diff is the sync itself */
+			/*
+			 * The sync writes the current filesystem state into the content file, so
+			 * the differences found by its scan no longer belong to the current state
+			 * and are moved to the previous one.
+			 *
+			 * This is also correct for an interrupted sync that reaches this point:
+			 * the updated content file is still saved, while any parity not yet updated
+			 * remains represented by unsynchronized blocks.
+			 */
 			state->array.diff_time = task->unix_start_time;
-			state->array.fix_time = 0;
-
-			/* move the current to the previous state */
 			diff_move(&state->array.diff_current, &state->array.diff_prev);
 
-			/* clear the parsing fix as now they are integrated in the parity */
+			/*
+			 * Fix results describe recoveries relative to the content state preceding
+			 * this sync. Once the sync saves the current filesystem state into the
+			 * content file, those results no longer refer to the current baseline.
+			 *
+			 * This is also correct for an interrupted sync that reaches this point:
+			 * the updated content file is still saved, while incomplete parity is
+			 * represented separately by unsynchronized blocks.
+			 */
+			state->array.fix_time = 0;
 			fix_cleanup(&state->array.fix_current);
 			break;
 		case CMD_SCRUB :
@@ -2019,7 +2032,6 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 			state->array.diff_time = task->unix_start_time;
 			break;
 		case CMD_FIX :
-			/* now we pulse to publish the fix */
 			pulse(state, PULSE_ARRAY);
 			state->array.fix_time = task->unix_start_time;
 			break;
