@@ -288,7 +288,6 @@ struct snapraid_task* task_alloc(void)
 	sl_init(&task->arg_list);
 	tommy_list_init(&task->message_list);
 	task->message_list_count = 0;
-	task->health = HEALTH_PENDING;
 	return task;
 }
 
@@ -816,7 +815,7 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 	return health;
 }
 
-int health_task(struct snapraid_task* task, char* reason, size_t reason_size)
+int health_task(const struct snapraid_task* task, char* reason, size_t reason_size)
 {
 	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
