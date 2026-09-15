@@ -2348,7 +2348,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 	return ignore_this_line;
 }
 
-#define RUN_INPUT_MAX 4096
+#define RUN_INPUT_MAX 8192
 #define RUN_FIELD_MAX 64
 
 int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, const char* log_path)
