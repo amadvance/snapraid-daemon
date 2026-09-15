@@ -809,8 +809,15 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 	int device_health = health_device_pointer_list(&disk->device_pointer_list, msg, sizeof(msg));
 	health = health_worse(health, device_health, reason, reason_size, msg);
 
-	int split_health = health_split_list(disk->name, &disk->split_list, msg, sizeof(msg));
-	health = health_worse(health, split_health, reason, reason_size, msg);
+	/*
+	 * Extra disks are not represented by the protected disk state in the content file,
+	 * so retained content metadata can belong to a previous data/parity role and must
+	 * not affect their health.
+	 */
+	if (disk->kind != DISK_EXTRA) {
+		int split_health = health_split_list(disk->name, &disk->split_list, msg, sizeof(msg));
+		health = health_worse(health, split_health, reason, reason_size, msg);
+	}
 
 	return health;
 }

@@ -540,6 +540,27 @@ static struct snapraid_disk* find_disk(tommy_list* list, int number, const char*
 	return disk;
 }
 
+/**
+ * Finds or creates a disk for authoritative configuration records.
+ *
+ * Unlike find_disk(), which preserves existing disk classifications to avoid
+ * unintentional role overwrites from observational or content-derived records
+ * (such as content_* or fsinfo_*), this helper updates disk->kind when
+ * processing authoritative configuration directives (data, extra, parity)
+ * and pulses state changes accordingly.
+ */
+static struct snapraid_disk* find_config_disk(struct snapraid_state* state, int number, const char* name, int kind, int64_t last_time)
+{
+	struct snapraid_disk* disk = find_disk(&state->array.disk_list, number, name, kind, last_time);
+
+	if (disk->kind != kind) {
+		pulse(state, PULSE_DISKS | PULSE_ARRAY);
+		disk->kind = kind;
+	}
+
+	return disk;
+}
+
 int split_compare(const void* void_a, const void* void_b)
 {
 	const struct snapraid_split* split_a = void_a;
@@ -702,7 +723,7 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[2];
 	const char* uuid = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_DATA, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	char old_path[PATH_MAX];
@@ -744,7 +765,7 @@ static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[2];
 	const char* uuid = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_EXTRA, task->unix_start_time);
+	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_EXTRA, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* extra disks never have the split index */
 
 	char old_path[PATH_MAX];
@@ -790,7 +811,7 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	if (!parse_parity_split(name, &index))
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_PARITY, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	char old_path[PATH_MAX];
