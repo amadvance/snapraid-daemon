@@ -1777,6 +1777,20 @@ static void process_error_soft(struct snapraid_state* state, char** map, size_t 
 	++task->error_soft;
 }
 
+static void process_obj_error_soft(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 4) /* obj_error:<disk_name>:<file>:<msg> */
+		return;
+
+	(void)map;
+
+	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	pulse(state, PULSE_ACTIVITY);
+	++task->error_soft;
+}
+
 static void process_error_io(struct snapraid_state* state, char** map, size_t mac)
 {
 	struct snapraid_task* task = state->runner.latest;
@@ -1784,7 +1798,27 @@ static void process_error_io(struct snapraid_state* state, char** map, size_t ma
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, map[2], DISK_DATA, task->unix_start_time);
+	const char* disk_name = map[2];
+
+	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_DATA, task->unix_start_time);
+	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
+	++disk->transient_error_io;
+	++task->error_io;
+	uint64_t old = disk->error_io.value;
+	++disk->error_io.value;
+	tracked_update(&disk->error_io, old, 0, state->array.last_time);
+}
+
+static void process_obj_error_io(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 4) /* obj_error:<disk_name>:<file>:<msg> */
+		return;
+
+	const char* disk_name = map[1];
+
+	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_DATA, task->unix_start_time);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 	++disk->transient_error_io;
 	++task->error_io;
@@ -2261,25 +2295,31 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_error_unrecoverable(state);
 		state_unlock();
+	} else if (strcmp(cmd, "error") == 0) {
+		state_lock();
+		process_error_soft(state, map, mac);
+		state_unlock();
 	} else if (
-		strcmp(cmd, "error") == 0
-		|| strcmp(cmd, "hardlink_error") == 0
+		strcmp(cmd, "hardlink_error") == 0
 		|| strcmp(cmd, "symlink_error") == 0
 		|| strcmp(cmd, "dir_error") == 0
 		|| strcmp(cmd, "empty_error") == 0
 	) {
 		state_lock();
-		process_error_soft(state, map, mac);
+		process_obj_error_soft(state, map, mac);
+		state_unlock();
+	} else if (strcmp(cmd, "error_io") == 0) {
+		state_lock();
+		process_error_io(state, map, mac);
 		state_unlock();
 	} else if (
-		strcmp(cmd, "error_io") == 0
-		|| strcmp(cmd, "hardlink_error_io") == 0
+		strcmp(cmd, "hardlink_error_io") == 0
 		|| strcmp(cmd, "symlink_error_io") == 0
 		|| strcmp(cmd, "dir_error_io") == 0
 		|| strcmp(cmd, "empty_error_io") == 0
 	) {
 		state_lock();
-		process_error_io(state, map, mac);
+		process_obj_error_io(state, map, mac);
 		state_unlock();
 	} else if (
 		strcmp(cmd, "error_data") == 0
