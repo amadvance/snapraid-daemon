@@ -227,6 +227,13 @@ Health
 	CORRUPT - Silent errors (hash or parity mismatches) were detected, though
 		no physical hardware issues were identified.
 		In this state, scheduled maintenance remains active.
+	DEGRADED - The filesystem UUID does not match the UUID recorded in the
+		content file. This typically indicates that the expected filesystem
+		might not be present at the mount point (for example, if the disk is
+		not mounted), representing a serious array condition without implying
+		physical hardware failure.
+		Automated maintenance is suspended in this state, and manual
+		intervention is required.
 	PREFAIL - The SMART telemetry reports a pre-failing condition, or a
 		task encountered input/output errors while accessing files.
 		Automated maintenance is suspended in this state, and manual
@@ -242,7 +249,7 @@ Health
 	result for a `probe` task if that operation encountered no specific
 	errors.
 
-	In the PREFAIL or FAILING state, the `Maintenance` button in the Web
+	In the DEGRADED, PREFAIL or FAILING state, the `Maintenance` button in the Web
 	UI is replaced with a `Refresh` button. This allows you to force the
 	daemon to re-scan the state of the array (by re-reading the content
 	file) after any manual fixes have been performed via the command line.
@@ -768,7 +775,7 @@ Configuration
 	variables are also available:
 
 	SNAPRAID_ARRAY_HEALTH - The health classification of the array after the
-		task (`passed`, `prefail`, `failing`, `corrupt` or `pending`).
+		task (`passed`, `prefail`, `failing`, `degraded`, `corrupt` or `pending`).
 	SNAPRAID_HEALTH - The health classification of the task.
 	SNAPRAID_STATUS - The exit status of the task (`terminated`, `signaled`, `canceled`).
 	SNAPRAID_EXIT_CODE - The exit code of the task if `terminated`.
@@ -1015,6 +1022,8 @@ REST API
 	a parity synchronization, followed by a data integrity scrub, and
 	concludes by issuing a system-wide health report.
 	This is the primary endpoint for routine array upkeep.
+	The operation is aborted if the array is in a `DEGRADED`, `PREFAIL` or
+	`FAILING` health state.
 	This task is subject to the `sync_threshold_deletes` and
 	`sync_threshold_updates` safety checks defined in the configuration.
 	The percentage of the array checked and the age filter are determined
@@ -1075,7 +1084,7 @@ REST API
         data, followed by a `report` task to evaluate and broadcast the
         resulting array health.
 
-        This is specifically useful for clearing `FAILING` or `PREFAIL` modes
+        This is specifically useful for clearing `FAILING`, `PREFAIL` or `DEGRADED` modes
         once the underlying hardware or configuration issues have been
         resolved manually.
 

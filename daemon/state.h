@@ -106,8 +106,9 @@
 #define HEALTH_PASSED 1
 #define HEALTH_PENDING 0
 #define HEALTH_CORRUPT -1
-#define HEALTH_PREFAIL -2
-#define HEALTH_FAILING -3
+#define HEALTH_DEGRADED -2
+#define HEALTH_PREFAIL -3
+#define HEALTH_FAILING -4
 
 /**
  * Pulse masks

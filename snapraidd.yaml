@@ -25,6 +25,9 @@ paths:
         dependent phases such as 'scrub' are canceled, while finalization tasks
         continue according to their normal semantics.
 
+        The operation is aborted if the array is in a 'DEGRADED', 'PREFAIL',
+        or 'FAILING' health state to protect array and parity integrity.
+
         This operation is subject to all safety thresholds defined in the
         daemon configuration, specifically 'sync_threshold_deletes' and
         'sync_threshold_updates'.
@@ -217,7 +220,7 @@ paths:
         followed by a 'report' task to evaluate and broadcast the
         resulting array health.
 
-        This is specifically useful for clearing 'FAILING' or 'PREFAIL' modes
+        This is specifically useful for clearing 'FAILING', 'PREFAIL', or 'DEGRADED' modes
         once the underlying hardware or configuration issues have been
         resolved manually.
 
@@ -384,7 +387,7 @@ paths:
                     $ref: '#/components/schemas/Pulse'
                   health:
                     type: string
-                    enum: [passed, corrupt, prefail, failing, pending]
+                    enum: [passed, corrupt, degraded, prefail, failing, pending]
                     description: >
                       The aggregate health of the entire array.
 
@@ -393,6 +396,9 @@ paths:
                       * corrupt: This is triggered by the presence of silent
                         data errors, specifically if the 'blocks_bad' counter
                         is greater than zero.
+                      * degraded: The filesystem UUID does not match the UUID
+                        stored in the content file, indicating the expected filesystem
+                        may not be present at the mountpoint.
                       * prefail: A critical state indicating that one or more
                         underlying devices have encountered I/O failures, or a
                         SMART prefail condition.
@@ -412,7 +418,7 @@ paths:
                     description: >
                       A human-readable string explaining the current health state.
                       This provides the specific cause when health is 'corrupt',
-                      'prefail', 'failing' or 'pending' (e.g., "Disk 'd1' reporting SMART errors").
+                      'degraded', 'prefail', 'failing' or 'pending' (e.g., "Disk 'd1' reporting SMART errors").
                       This field is omitted if the health is 'passed'.
                   active_command:
                     type: string
@@ -761,7 +767,7 @@ paths:
               schema:
                 type: string
                 example: |
-                  # HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)
+                  # HELP snapraid_array_health Array health state (0=pending..5=failing)
                   # TYPE snapraid_array_health gauge
                   snapraid_array_health 1
 
@@ -1091,16 +1097,15 @@ components:
             The operational health of the task, dynamically derived from
             the execution results and exit codes.
 
-            * passed: The task completed without hardware errors. This
+            * passed: The task completed or is running without hardware errors. This
               includes runs with 'soft' errors (e.g., files modified or moved
               during execution) which do not compromise parity integrity.
             * corrupt: The task detected 'silent data errors'.
-              This indicates data corruption that requires a heal' operation,
+              This indicates data corruption that requires a 'heal' operation,
               but does not necessarily imply physical hardware failure.
             * prefail: The task encountered physical I/O errors.
             * failing: The task encountered failing errors like disks missing.
-            * pending: The task is currently queued or running and
-              has not yet produced a final health result.
+            * pending: The task is currently queued waiting to be executed.
         health_reason:
           type: string
           description: >
@@ -1692,13 +1697,16 @@ components:
             Logical name (e.g., d1, d2, ..., parity, 2-parity, ...).
         health:
           type: string
-          enum: [passed, corrupt, prefail, failing, pending]
+          enum: [passed, corrupt, degraded, prefail, failing, pending]
           description: >
             The aggregate operational health of the logical disk.
 
             * passed: All member devices are nominal, and no data
               inconsistencies are detected.
             * corrupt: The disk has encountered silent data errors.
+            * degraded: The filesystem UUID does not match the UUID
+              stored in the content file, indicating the expected filesystem
+              may not be present at the mountpoint.
             * prefail: A critical state indicating that one or more
               underlying devices have encountered I/O failures, or a
               SMART prefail condition.
@@ -2287,7 +2295,7 @@ components:
             This field is omitted if no instance is defined.
         health:
           type: string
-          enum: [passed, corrupt, prefail, failing, pending]
+          enum: [passed, corrupt, degraded, prefail, failing, pending]
           description: >
             The aggregate health of the entire array.
 
@@ -2296,6 +2304,9 @@ components:
             * corrupt: This is triggered by the presence of silent
               data errors, specifically if the 'blocks_bad' counter
               is greater than zero.
+            * degraded: The filesystem UUID does not match the UUID
+              stored in the content file, indicating the expected filesystem
+              may not be present at the mountpoint.
             * prefail: A critical state indicating that one or more
               underlying devices have encountered I/O failures, or a
               SMART prefail condition.

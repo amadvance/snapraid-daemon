@@ -928,8 +928,18 @@ a.badge:hover {
     background: var(--c-neo-yellow);
 }
 
-.health-banner.failing {
+.health-banner.degraded {
     background: var(--c-neo-orange);
+    color: var(--c-white);
+}
+
+.health-banner.degraded .health-banner-reason,
+.health-banner.degraded .health-banner-title {
+    color: var(--c-white);
+}
+
+.health-banner.failing {
+    background: var(--c-neo-pink);
     color: var(--c-white);
 }
 

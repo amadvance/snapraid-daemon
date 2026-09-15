@@ -3,6 +3,10 @@ SnapRAID-Daemon HISTORY
 
 2.0 (Work in Progress)
 ======================
+ * Added a "degraded" health state for disks and the array when a
+   filesystem UUID mismatch is detected against the content file.
+   This distinguishes missing mountpoints or unmounted disks from
+   hardware failures.
  * Added a "check_updates" option to periodically check for new daemon
    releases on GitHub. The WebUI now displays the update status under
    the Configuration card on the Dashboard and shows a dedicated
