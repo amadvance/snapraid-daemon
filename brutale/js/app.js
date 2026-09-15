@@ -396,7 +396,7 @@ const app = {
                 case '#/':
                     app.updatePageTitle('Dashboard');
                     const health = app.state.dashboardArray?.health;
-                    if (health === 'failing' || health === 'prefail') {
+                    if (health === 'failing' || health === 'prefail' || health === 'degraded') {
                         actions.innerHTML = `
                             <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
                         `;
@@ -491,7 +491,7 @@ const app = {
                 const actions = document.getElementById('header-actions');
                 const health = array?.health;
                 let actionBtn = '';
-                if (health === 'failing' || health === 'prefail') {
+                if (health === 'failing' || health === 'prefail' || health === 'degraded') {
                     actionBtn = `
                         <button class="btn btn-primary" data-tooltip="Re-read the array status after performing manual fixes via the command line" data-action="refresh">Refresh</button>
                     `;

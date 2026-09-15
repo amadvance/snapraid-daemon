@@ -2404,8 +2404,9 @@ static int metrics_health_numeric(int health)
 	case HEALTH_PENDING : return 0;
 	case HEALTH_PASSED : return 1;
 	case HEALTH_CORRUPT : return 2;
-	case HEALTH_PREFAIL : return 3;
-	case HEALTH_FAILING : return 4;
+	case HEALTH_DEGRADED : return 3;
+	case HEALTH_PREFAIL : return 4;
+	case HEALTH_FAILING : return 5;
 	}
 
 	return 0;
@@ -2483,7 +2484,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	struct snapraid_pulse* pulse = &state->pulse;
 
 	/* array health */
-	ss_prints(&s, "# HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
+	ss_prints(&s, "# HELP snapraid_array_health Array health state (pending=0, passed=1, corrupt=2, degraded=3, prefail=4, failing=5)\n");
 	ss_prints(&s, "# TYPE snapraid_array_health gauge\n");
 	ss_printf(&s, "snapraid_array_health %d\n", metrics_health_numeric(array->health));
 	ss_prints(&s, "\n");
@@ -2628,7 +2629,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 	ss_prints(&s, "\n");
 
 	/* per-disk health */
-	ss_prints(&s, "# HELP snapraid_disk_health Per-disk health state (pending=0, passed=1, corrupt=2, prefail=3, failing=4)\n");
+	ss_prints(&s, "# HELP snapraid_disk_health Per-disk health state (pending=0, passed=1, corrupt=2, degraded=3, prefail=4, failing=5)\n");
 	ss_prints(&s, "# TYPE snapraid_disk_health gauge\n");
 	for (int r = 0; r < METRICS_DISK_ROLE_COUNT; ++r) {
 		for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {

@@ -56,7 +56,7 @@ const getVersionScore = (v) => {
 };
 
 const healthBadge = (health) => {
-    const map = { passed: 'green', prefail: 'yellow', failing: 'red', corrupt: 'purple', pending: 'grey' };
+    const map = { passed: 'green', prefail: 'yellow', failing: 'red', corrupt: 'purple', pending: 'grey', degraded: 'orange' };
     return badge(health, map[health] || 'grey');
 };
 
@@ -1272,6 +1272,8 @@ export const renderHealthBanner = (state) => {
         title = 'WARNING: ARRAY PREFAIL';
     else if (state.health === 'failing')
         title = 'CRITICAL: ARRAY FAILING';
+    else if (state.health === 'degraded')
+        title = 'WARNING: ARRAY DEGRADED';
     else if (state.health === 'corrupt')
         title = 'WARNING: ARRAY CORRUPTED';
     else if (state.health === 'pending')

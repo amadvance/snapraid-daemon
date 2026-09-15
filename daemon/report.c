@@ -27,14 +27,15 @@ static int disk_count_device(struct snapraid_disk* disk)
 static const char* health_report_wide(int health)
 {
 	switch (health) {
-	case HEALTH_PASSED : return " [passed]";
-	case HEALTH_FAILING : return "[FAILING]";
-	case HEALTH_PREFAIL : return "[PREFAIL]";
-	case HEALTH_CORRUPT : return "[CORRUPT]";
-	case HEALTH_PENDING : return "[pending]";
+	case HEALTH_PASSED : return "  [passed]";
+	case HEALTH_FAILING : return " [FAILING]";
+	case HEALTH_PREFAIL : return " [PREFAIL]";
+	case HEALTH_DEGRADED : return "[DEGRADED]";
+	case HEALTH_CORRUPT : return " [CORRUPT]";
+	case HEALTH_PENDING : return " [pending]";
 	}
 
-	return "[-]";
+	return "       [-]";
 }
 
 static const char* health_report_narrow(int health)
@@ -43,6 +44,7 @@ static const char* health_report_narrow(int health)
 	case HEALTH_PASSED : return "[OK]";
 	case HEALTH_FAILING : return "[FAIL]";
 	case HEALTH_PREFAIL : return "[PRE]";
+	case HEALTH_DEGRADED : return "[DEG]";
 	case HEALTH_CORRUPT : return "[BAD]";
 	case HEALTH_PENDING : return "[??]";
 	}
@@ -1085,6 +1087,8 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "  Overall Status: FAILING\n");
 	else if (array_health == HEALTH_PREFAIL)
 		ss_prints(ss, "  Overall Status: PRE FAILING\n");
+	else if (array_health == HEALTH_DEGRADED)
+		ss_prints(ss, "  Overall Status: DEGRADED\n");
 	else if (array_health == HEALTH_CORRUPT)
 		ss_prints(ss, "  Overall Status: CORRUPT\n");
 	else
@@ -1101,7 +1105,7 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	sp.serial_len = 0;
 	sp.interf_len = 0;
 	sp.tab_len = 2;
-	sp.health_len = 9;
+	sp.health_len = 10;
 
 	/* get field lenghts */
 	spacing_disk_list(&state->array.disk_list, &sp);
@@ -1207,6 +1211,8 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "FAILING\n");
 	else if (array_health == HEALTH_PREFAIL)
 		ss_prints(ss, "PRE FAILING\n");
+	else if (array_health == HEALTH_DEGRADED)
+		ss_prints(ss, "DEGRADED\n");
 	else if (array_health == HEALTH_CORRUPT)
 		ss_prints(ss, "CORRUPT\n");
 	else

@@ -987,6 +987,12 @@ a.badge:hover {
     border-left: 4px solid var(--c-amber-500);
 }
 
+.health-banner.degraded {
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    border-left: 4px solid var(--c-orange-500);
+}
+
 .health-banner.failing {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
@@ -1016,6 +1022,10 @@ a.badge:hover {
 
 .health-banner.prefail .health-banner-title {
     color: var(--c-amber-500);
+}
+
+.health-banner.degraded .health-banner-title {
+    color: var(--c-orange-500);
 }
 
 .health-banner.failing .health-banner-title {

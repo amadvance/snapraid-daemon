@@ -73,9 +73,9 @@ static int runner_health_check_locked(struct snapraid_state* state)
 
 		/*
 		 * Only transitions from an established health state are actionable. Ignore
-		 * the initial PENDING -> PASSED/PREFAIL/FAILING transition so a machine that
-		 * boots already degraded is not immediately shut down again, allowing
-		 * recovery and maintenance after reboot.
+		 * the initial PENDING -> non-PENDING transition so a machine that
+		 * boots with prefail or failing disks is not immediately shut down again,
+		 * allowing recovery and troubleshooting after reboot.
 		 *
 		 * Once initialized, every health change is handled normally. For example,
 		 * PASSED -> PREFAIL may trigger the "prefail" shutdown policy, while
@@ -541,7 +541,7 @@ static int runner_report_locked(struct snapraid_state* state)
 	/* propagate the array health to the report task */
 	/* do not call health_task() as the report cannot fail */
 	report_task->health = runner_health_check_locked(state);
-	if (report_task->health == HEALTH_CORRUPT || report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
+	if (report_task->health == HEALTH_CORRUPT || report_task->health == HEALTH_DEGRADED || report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
 		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* store the report (dup to shrink the allocation) */
@@ -1601,6 +1601,13 @@ static int runner_precondition_locked(struct snapraid_state* state)
 		break;
 	default :
 		/* other commands are run only if the array is sane */
+		if (state->array.health == HEALTH_DEGRADED) {
+			const char* msg = "Array is DEGRADED! Task aborted!";
+			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
+			message_insert(&task->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+			return -1;
+		}
+
 		if (state->array.health == HEALTH_PREFAIL) {
 			const char* msg = "Array is in PREFAIL! Task aborted!";
 			sncpy(state->runner.latest->exit_msg, sizeof(state->runner.latest->exit_msg), msg);
