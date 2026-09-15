@@ -209,6 +209,73 @@ static void parser_device_remove(struct snapraid_state* state, struct snapraid_d
 }
 
 /**
+ * Remove devices when multiple historical identities converge to the same current device.
+ *
+ * This scenario occurs when different historical entries in the catalog contain distinct
+ * identifiers (e.g. entry A has ID X, entry B has ID Y) that the current mapping now
+ * associates with the same device node (e.g. X -> /dev/sda and Y -> /dev/sda). This can
+ * happen after hardware changes, controller reconfiguration, or drive swaps where device
+ * nodes are reassigned and new or multiple identifiers are reported.
+ *
+ * After parser_mapping_apply(), both historical entries are recognized and point to the
+ * same device file. Because it is impossible to know which historical entry represents
+ * the actual device, or to safely merge conflicting historical telemetry and health,
+ * all colliding entries are discarded. Later, find_device() will instantiate a clean
+ * device initialized with HEALTH_PENDING and populate it with all current IDs.
+ */
+static void parser_mapping_remove_colliding_devices(struct snapraid_state* state)
+{
+	int runtime = !state->daemon_loading;
+
+	/* loop until all collision sets across all device nodes are resolved */
+	while (1) {
+		char file[PATH_MAX];
+		int found = 0;
+
+		/* find the first pair of recognized catalog entries that share the same device node */
+		for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0 && !found; i = i->next) {
+			struct snapraid_device* device = i->data;
+
+			/* skip devices not recognized by current mapping */
+			if (!device->parser_mapping_recognized)
+				continue;
+
+			/* compare against following entries to detect duplicate device node */
+			for (tommy_node* j = i->next; j != 0; j = j->next) {
+				struct snapraid_device* other = j->data;
+
+				if (other->parser_mapping_recognized && strcmp(device->file, other->file) == 0) {
+					sncpy(file, sizeof(file), device->file);
+					found = 1;
+					break;
+				}
+			}
+		}
+
+		/* done when no collisions remain in the catalog */
+		if (!found)
+			return;
+
+		if (runtime)
+			log_task(LVL_WARNING, "multiple historical device identities converged to '%s'; discarding historical device information", file);
+
+		/* remove all recognized catalog entries that collided on this device node */
+		for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
+			struct snapraid_device* device = i->data;
+			tommy_node* i_next = i->next;
+
+			/* safe to remove: find_device() will later recreate a clean device for this node */
+			if (device->parser_mapping_recognized && strcmp(device->file, file) == 0) {
+				pulse(state, PULSE_DISKS);
+				parser_device_remove(state, device);
+			}
+
+			i = i_next;
+		}
+	}
+}
+
+/**
  * Remove any devices contaminated by permanently ambiguous IDs
  */
 static void parser_mapping_remove_duplicate_device_ids(struct snapraid_state* state)
@@ -267,6 +334,8 @@ static void parser_mapping_process_locked(struct snapraid_state* state)
 
 		parser_mapping_apply(state, association);
 	}
+
+	parser_mapping_remove_colliding_devices(state);
 
 	/*
 	 * Disconnect devices in catalog not recognized by the current complete mapping.
