@@ -200,7 +200,6 @@ struct snapraid_device {
 	uint64_t flags; /**< Smartctl flags. SMART_UNASSIGNED if not set. */
 	double afr; /**< Estimated annual failure rate (the average number of failures you expect in a year) */
 	double prob; /**< Estimated probability of failure (the probability of at least one failure in the next year) */
-	int parser_mapping_recognized; /**< Device identity recognized by the current map */
 	int power; /**< POWER mode. POWER_PENDING if not set. */
 	int health; /**< HEALTH code. HEALTH_PENDING if not set. */
 	char health_reason[HEALTH_REASON_MAX]; /**< Human readable health issue description. Empty if not set. */
