@@ -101,14 +101,14 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 {
 	char id_buf[ID_MAX];
 
-	/* canonicalize id to ID_MAX before hashing and searching */
+	/* use the stored representation so hashing and comparisons agree after truncation */
 	sncpy(id_buf, sizeof(id_buf), id);
 	id = id_buf;
 
 	int runtime = !state->daemon_loading;
 	tommy_hash_t hash = parser_mapping_hash(id);
 
-	/* ignore identifiers permanently known to be ambiguous */
+	/* a blacklisted ID cannot identify a device, even if this map lists it only once */
 	if (parser_duplicate_id_find(state, id, hash) != 0)
 		return;
 
@@ -116,51 +116,28 @@ static void parser_mapping_device(struct snapraid_state* state, const char* file
 	struct snapraid_association* association = tommy_hashtable_search(&state->parser_association_hash, parser_association_id_compare, id, hash);
 
 	if (association != 0) {
-		/* repetition of the same (file, id) pair is harmless */
+		/* repeated records for the same device do not change the mapping */
 		if (strcmp(association->file, file) == 0)
 			return;
 
-		/* same id observed on two different files in the same mapping: mark permanently ambiguous */
+		/* the same ID on two nodes cannot safely identify either physical device */
 		if (runtime)
 			log_task(LVL_WARNING, "device id '%s' is associated with both '%s' and '%s'; ignoring this id permanently", id, association->file, file);
 
-		/* add id to permanent duplicate blacklist */
+		/* remember the ambiguity across subsequent maps and historical log replay */
 		parser_duplicate_id_add(state, id, hash);
 
-		/* immediately remove the first occurrence from the current mapping and free it */
+		/* remove the first record so neither conflicting node can use this ID */
 		tommy_hashtable_remove_existing(&state->parser_association_hash, &association->hash_node);
 		tommy_list_remove_existing(&state->parser_association, &association->node);
 		association_free(association);
 		return;
 	}
 
-	/* first observation of this unique id: record the new association */
+	/* retain one lookup entry per ID and preserve input order in the list */
 	association = association_alloc(file, id);
 	tommy_list_insert_tail(&state->parser_association, &association->node, association);
 	tommy_hashtable_insert(&state->parser_association_hash, &association->hash_node, association, hash);
-}
-
-/**
- * Remap the device using the specified association
- */
-static void parser_mapping_apply(struct snapraid_state* state, struct snapraid_association* association)
-{
-	int runtime = !state->daemon_loading;
-
-	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
-		struct snapraid_device* device = i->data;
-
-		if (parser_device_has_id(device, association->id)) {
-			device->parser_mapping_recognized = 1;
-
-			if (strcmp(device->file, association->file) != 0) {
-				if (runtime)
-					log_task(LVL_WARNING, "remapping id '%s' to device '%s' (was '%s')", association->id, association->file, device->file);
-				pulse(state, PULSE_DISKS);
-				sncpy(device->file, sizeof(device->file), association->file);
-			}
-		}
-	}
 }
 
 /**
@@ -187,9 +164,12 @@ static void parser_mapping_add(struct snapraid_state* state, struct snapraid_ass
 
 /**
  * Remove a device from all disks and the global catalog, freeing its memory.
+ * Notify consumers here so every catalog removal invalidates the disk state.
  */
 static void parser_device_remove(struct snapraid_state* state, struct snapraid_device* device)
 {
+	pulse(state, PULSE_DISKS);
+
 	/* remove any disk pointer referencing this device */
 	for (tommy_node* d = tommy_list_head(&state->array.disk_list); d != 0; d = d->next) {
 		struct snapraid_disk* disk = d->data;
@@ -209,153 +189,128 @@ static void parser_device_remove(struct snapraid_state* state, struct snapraid_d
 }
 
 /**
- * Remove devices when multiple historical identities converge to the same current device.
+ * Remove historical identities converging to the same current device node.
  *
- * This scenario occurs when different historical entries in the catalog contain distinct
- * identifiers (e.g. entry A has ID X, entry B has ID Y) that the current mapping now
- * associates with the same device node (e.g. X -> /dev/sda and Y -> /dev/sda). This can
- * happen after hardware changes, controller reconfiguration, or drive swaps where device
- * nodes are reassigned and new or multiple identifiers are reported.
- *
- * After parser_mapping_apply(), both historical entries are recognized and point to the
- * same device file. Because it is impossible to know which historical entry represents
- * the actual device, or to safely merge conflicting historical telemetry and health,
- * all colliding entries are discarded. Later, find_device() will instantiate a clean
- * device initialized with HEALTH_PENDING and populate it with all current IDs.
+ * Call after remapping and disconnecting unrecognized devices, so only current
+ * identities are compared. Discard every colliding entry because their historical
+ * telemetry cannot be safely merged. Later, find_device() recreates a clean
+ * device with HEALTH_PENDING and all current IDs.
  */
 static void parser_mapping_remove_colliding_devices(struct snapraid_state* state)
 {
 	int runtime = !state->daemon_loading;
 
-	/* loop until all collision sets across all device nodes are resolved */
-	while (1) {
-		char file[PATH_MAX];
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
+		struct snapraid_device* device = i->data;
 		int found = 0;
 
-		/* find the first pair of recognized catalog entries that share the same device node */
-		for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0 && !found; i = i->next) {
-			struct snapraid_device* device = i->data;
-
-			/* skip devices not recognized by current mapping */
-			if (!device->parser_mapping_recognized)
-				continue;
-
-			/* compare against following entries to detect duplicate device node */
-			for (tommy_node* j = i->next; j != 0; j = j->next) {
+		/* all unrecognized historical devices already use the shared disconnected marker */
+		if (device_is_connected(device)) {
+			/* keep the first entry alive while removing every later entry in its collision set */
+			for (tommy_node* j = i->next; j != 0; ) {
 				struct snapraid_device* other = j->data;
+				tommy_node* j_next = j->next;
 
-				if (other->parser_mapping_recognized && strcmp(device->file, other->file) == 0) {
-					sncpy(file, sizeof(file), device->file);
+				if (strcmp(device->file, other->file) == 0) {
+					/* log once per device node even when more than two identities collide */
+					if (!found && runtime)
+						log_task(LVL_WARNING, "multiple historical device identities converged to '%s'; discarding historical device information", device->file);
 					found = 1;
+					parser_device_remove(state, other);
+				}
+
+				j = j_next;
+			}
+		}
+
+		/* save the surviving successor before possibly freeing the first entry too */
+		i = i->next;
+
+		if (found) {
+			/* discard the complete collision set; choosing either history would be unsafe */
+			parser_device_remove(state, device);
+		}
+	}
+}
+
+/**
+ * Reconcile historical devices, discard collisions, then learn new identifiers.
+ */
+static void parser_mapping_process_locked(struct snapraid_state* state)
+{
+	int runtime = !state->daemon_loading;
+	int has_duplicate_ids = tommy_hashtable_count(&state->parser_duplicate_hash) != 0;
+
+	/*
+	 * Phase 1: reconcile each historical identity against the complete current map.
+	 * Do not learn new IDs yet, because they must not influence this recognition pass.
+	 */
+	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
+		struct snapraid_device* device = i->data;
+		tommy_node* i_next = i->next;
+		struct snapraid_association* match = 0;
+		struct snapraid_association* conflict = 0;
+		int contaminated = 0;
+
+		/* without blacklisted IDs no historical identity can be contaminated */
+		if (has_duplicate_ids) {
+			/* one ambiguous historical ID contaminates the complete catalog entry */
+			for (tommy_node* j = tommy_list_head(&device->id_list); j != 0; j = j->next) {
+				sn_t* sn = j->data;
+				tommy_hash_t hash = parser_mapping_hash(sn->str);
+
+				if (parser_duplicate_id_find(state, sn->str, hash) != 0) {
+					contaminated = 1;
 					break;
 				}
 			}
 		}
 
-		/* done when no collisions remain in the catalog */
-		if (!found)
-			return;
-
-		if (runtime)
-			log_task(LVL_WARNING, "multiple historical device identities converged to '%s'; discarding historical device information", file);
-
-		/* remove all recognized catalog entries that collided on this device node */
-		for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
-			struct snapraid_device* device = i->data;
-			tommy_node* i_next = i->next;
-
-			/* safe to remove: find_device() will later recreate a clean device for this node */
-			if (device->parser_mapping_recognized && strcmp(device->file, file) == 0) {
-				pulse(state, PULSE_DISKS);
-				parser_device_remove(state, device);
-			}
-
-			i = i_next;
-		}
-	}
-}
-
-/**
- * Remove any devices contaminated by permanently ambiguous IDs
- */
-static void parser_mapping_remove_duplicate_device_ids(struct snapraid_state* state)
-{
-	if (tommy_hashtable_count(&state->parser_duplicate_hash) == 0)
-		return;
-
-	int runtime = !state->daemon_loading;
-
-	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
-		struct snapraid_device* device = i->data;
-		tommy_node* i_next = i->next;
-		int contaminated = 0;
-
-		for (tommy_node* j = tommy_list_head(&device->id_list); j != 0; j = j->next) {
-			sn_t* sn = j->data;
-			tommy_hash_t hash = parser_mapping_hash(sn->str);
-
-			if (parser_duplicate_id_find(state, sn->str, hash) != 0) {
-				contaminated = 1;
-				break;
-			}
-		}
-
 		if (contaminated) {
+			/* telemetry cannot be attributed reliably once any identity is ambiguous */
 			if (runtime)
 				log_task(LVL_INFO, "removing contaminated device on '%s' due to ambiguous ID", device->file);
-			pulse(state, PULSE_DISKS);
 			parser_device_remove(state, device);
-		}
+		} else {
+			/*
+			 * All historical IDs of a device must resolve to the same current node.
+			 * If they split across nodes, neither current device can safely inherit
+			 * the combined historical telemetry.
+			 */
+			for (tommy_node* j = tommy_list_head(&state->parser_association); j != 0; j = j->next) {
+				struct snapraid_association* association = j->data;
 
-		i = i_next;
-	}
-}
+				if (!parser_device_has_id(device, association->id))
+					continue;
 
-/**
- * Apply the association to all devices
- */
-static void parser_mapping_process_locked(struct snapraid_state* state)
-{
-	int runtime = !state->daemon_loading;
+				if (!match) {
+					match = association;
+				} else if (strcmp(match->file, association->file) != 0) {
+					conflict = association;
+					break;
+				}
+			}
 
-	parser_mapping_remove_duplicate_device_ids(state);
-
-	/* Reset recognition state for all devices in the catalog. */
-	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; i = i->next) {
-		struct snapraid_device* device = i->data;
-		device->parser_mapping_recognized = 0;
-	}
-
-	/*
-	 * Remap devices using the listed association
-	 */
-	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
-		struct snapraid_association* association = i->data;
-
-		parser_mapping_apply(state, association);
-	}
-
-	parser_mapping_remove_colliding_devices(state);
-
-	/*
-	 * Disconnect devices in catalog not recognized by the current complete mapping.
-	 *
-	 * If a physical device is disconnected, replaced, or missing from the
-	 * mapping, mark its device node as "disconnected".
-	 * Devices stay in device_catalog permanently in case they are reconnected.
-	 * Devices without unique IDs cannot be reconnected, so remove them completely.
-	 */
-	for (tommy_node* i = tommy_list_head(&state->device_catalog); i != 0; ) {
-		struct snapraid_device* device = i->data;
-		tommy_node* i_next = i->next;
-
-		if (!device->parser_mapping_recognized) {
-			if (tommy_list_empty(&device->id_list)) {
+			if (conflict) {
+				/* the individual IDs remain valid, only their historical grouping is unsafe */
+				if (runtime)
+					log_task(LVL_WARNING, "historical device identity maps to both '%s' and '%s'; discarding historical device information", match->file, conflict->file);
+				parser_device_remove(state, device);
+			} else if (match) {
+				/* a matching stable ID reconnects the identity at its current device node */
+				if (strcmp(device->file, match->file) != 0) {
+					if (runtime)
+						log_task(LVL_WARNING, "remapping id '%s' to device '%s' (was '%s')", match->id, match->file, device->file);
+					pulse(state, PULSE_DISKS);
+					sncpy(device->file, sizeof(device->file), match->file);
+				}
+			} else if (tommy_list_empty(&device->id_list)) {
+				/* without a stable ID there is no way to recognize this entry on a later map */
 				if (runtime)
 					log_task(LVL_INFO, "removing unrecognized device without ID on '%s'", device->file);
-				pulse(state, PULSE_DISKS);
 				parser_device_remove(state, device);
 			} else if (device_is_connected(device)) {
+				/* preserve telemetry for a future reconnection, but release the obsolete path */
 				if (runtime)
 					log_task(LVL_INFO, "disconnecting unrecognized device with serial '%s', family '%s', model '%s'", device->serial, device->family, device->model);
 				pulse(state, PULSE_DISKS);
@@ -367,10 +322,16 @@ static void parser_mapping_process_locked(struct snapraid_state* state)
 	}
 
 	/*
-	 * After remapping add new associations to all devices in the catalog
-	 *
-	 * This is required in case new IDs are found after the device is created.
-	 * This may happen because the kernel or snapraid is updated, and can get new information.
+	 * Phase 2: different histories may have matched distinct IDs now resolving
+	 * to one node. Only recognized devices remain connected, so file equality
+	 * identifies exactly these collision sets.
+	 */
+	parser_mapping_remove_colliding_devices(state);
+
+	/*
+	 * Phase 3: enrich the surviving identities with all IDs reported for their
+	 * current node. At this point they cannot affect recognition or preserve
+	 * historical telemetry from a colliding device.
 	 */
 	for (tommy_node* i = tommy_list_head(&state->parser_association); i != 0; i = i->next) {
 		struct snapraid_association* association = i->data;
