@@ -2554,8 +2554,13 @@ int parse_past_log(struct snapraid_state* state)
 			parse_end_locked(state, task);
 
 		/*
-		 * If the log does not contain termination tags, the process was interrupted.
+		 * If the log does not contain process termination tags, the process was interrupted.
 		 * Replicate a forced termination: exit code 1 on Windows and SIGKILL on Unix.
+		 *
+		 * Past logs reconstruct the result of the SnapRAID process, not the complete
+		 * hook lifecycle. If daemon:term or daemon:signal was already logged, keep that
+		 * result even if daemon:end is missing: after a restart any unfinished post-hook
+		 * is no longer operationally relevant and is not resumed.
 		 */
 		if (task->state != PROCESS_STATE_SIGNAL && task->state != PROCESS_STATE_TERM) {
 #ifdef _WIN32
