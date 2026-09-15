@@ -538,10 +538,9 @@ static int runner_report_locked(struct snapraid_state* state)
 	if (has_warning_smart_changes)
 		report_level = level_mix(report_level, LVL_WARNING);
 
-	/* propagate the array health to the report task */
-	/* do not call health_task() as the report cannot fail */
-	report_task->health = runner_health_check_locked(state);
-	if (report_task->health == HEALTH_CORRUPT || report_task->health == HEALTH_DEGRADED || report_task->health == HEALTH_PREFAIL || report_task->health == HEALTH_FAILING)
+	/* a report cannot fail itself, so its notification uses the array health */
+	int array_health = runner_health_check_locked(state);
+	if (array_health == HEALTH_CORRUPT || array_health == HEALTH_DEGRADED || array_health == HEALTH_PREFAIL || array_health == HEALTH_FAILING)
 		report_level = level_mix(report_level, LVL_CRITICAL);
 
 	/* store the report (dup to shrink the allocation) */
@@ -800,15 +799,16 @@ static void hook_config_acquire_locked(struct snapraid_state* state, struct snap
  *
  * @param state Pointer to current daemon state (must hold state_lock)
  * @param task Optional pointer to task (may be NULL during shutdown)
+ * @param task_health Task health snapshot for hook execution
  * @param hook Pointer to hook context structure to populate
  */
-static void hook_context_acquire_locked(struct snapraid_state* state, const struct snapraid_task* task, struct snapraid_hook* hook)
+static void hook_context_acquire_locked(struct snapraid_state* state, const struct snapraid_task* task, int task_health, struct snapraid_hook* hook)
 {
 	memset(hook, 0, sizeof(*hook));
 
 	hook_config_acquire_locked(state, &hook->config);
 	hook->array_health = state->array.health;
-	hook->task_health = HEALTH_PENDING;
+	hook->task_health = task_health;
 
 	if (task) {
 		hook->has_task = 1;
@@ -821,7 +821,6 @@ static void hook_context_acquire_locked(struct snapraid_state* state, const stru
 		hook->exit_code = task->exit_code;
 		hook->unix_start_time = task->unix_start_time;
 		hook->unix_end_time = task->unix_end_time;
-		hook->task_health = task->health;
 		hook->error_io = task->error_io;
 		hook->error_data = task->error_data;
 		hook->error_soft = task->error_soft;
@@ -1251,7 +1250,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	struct snapraid_hook pre_hook;
 	struct snapraid_hook_config hook_config;
 	if (pre_hook_flags == 0) {
-		hook_context_acquire_locked(state, task, &pre_hook);
+		hook_context_acquire_locked(state, task, HEALTH_PENDING, &pre_hook);
 	} else {
 		hook_config = state->runner.hook_config;
 	}
@@ -1426,7 +1425,7 @@ bail:
 		task->state = PROCESS_STATE_TERM;
 	}
 
-	task->health = health_task(task, 0, 0);
+	int task_health = health_task(task, 0, 0);
 
 	/* check the array health, but DO NOT propagate it to the task */
 	runner_health_check_locked(state);
@@ -1439,7 +1438,7 @@ bail:
 	struct snapraid_hook post_hook;
 	if (post_skip == 0) {
 		state->runner.hook_flags = 0;
-		hook_context_acquire_locked(state, task, &post_hook);
+		hook_context_acquire_locked(state, task, task_health, &post_hook);
 		post_hook.config = hook_config;
 		state_unlock();
 
@@ -1773,7 +1772,7 @@ static void* runner_thread(void* arg)
 					state->runner.hook_flags = 0;
 
 					struct snapraid_hook hook;
-					hook_context_acquire_locked(state, task, &hook);
+					hook_context_acquire_locked(state, task, HEALTH_PENDING, &hook);
 					hook.config = postponed_config;
 
 					state_unlock();
@@ -1796,7 +1795,7 @@ static void* runner_thread(void* arg)
 		state->runner.hook_flags = 0;
 
 		struct snapraid_hook hook;
-		hook_context_acquire_locked(state, 0, &hook);
+		hook_context_acquire_locked(state, 0, HEALTH_PENDING, &hook);
 		hook.config = postponed_config;
 
 		state_unlock();

@@ -2602,9 +2602,6 @@ int parse_past_log(struct snapraid_state* state)
 #endif
 		}
 
-		/* compute the task health */
-		task->health = health_task(task, 0, 0);
-
 		state->runner.latest = 0;
 
 		/* retain only recent tasks in the in-memory history */
