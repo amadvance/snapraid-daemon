@@ -8,6 +8,9 @@ BIN=@bindir@/snapraidd
 CONF=@sysconfdir@/snapraidd.conf
 PIDF=/run/snapraidd.pid
 
+# Maximum time to wait for a clean shutdown
+STOP_TIMEOUT=60
+
 # Check if the binary is actually executable
 if [ ! -x "$BIN" ]; then
     echo "Error: $BIN not found or not executable."
@@ -16,43 +19,72 @@ fi
 
 snapraidd_start() {
     if [ -f "$PIDF" ]; then
+        PID=$(cat "$PIDF")
+
         # Check if the process is actually running
-        if ps -p $(cat "$PIDF") > /dev/null 2>&1; then
-            echo "snapraidd is already running (PID: $(cat "$PIDF"))."
-            return
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "snapraidd is already running (PID: $PID)."
+            return 0
         fi
+
         # Stale PID file found
         rm -f "$PIDF"
     fi
 
     echo "Starting snapraidd..."
-    $BIN --conf "$CONF"
+    "$BIN" --conf "$CONF"
 }
 
 snapraidd_stop() {
-    if [ -f "$PIDF" ]; then
-        PID=$(cat "$PIDF")
-        echo "Stopping snapraidd (PID: $PID)..."
-        kill "$PID"
-        # The daemon should unlink the file, but we wait and clean up to be sure
-        COUNT=0
-        while [ -f "$PIDF" ] && [ $COUNT -lt 5 ]; do
-            sleep 1
-            COUNT=$((COUNT + 1))
-        done
-        [ -f "$PIDF" ] && rm -f "$PIDF"
-    else
+    if [ ! -f "$PIDF" ]; then
         echo "snapraidd is not running."
+        return 0
     fi
+
+    PID=$(cat "$PIDF")
+
+    # Stale PID file
+    if ! kill -0 "$PID" 2>/dev/null; then
+        rm -f "$PIDF"
+        echo "snapraidd is not running."
+        return 0
+    fi
+
+    echo "Stopping snapraidd (PID: $PID)..."
+
+    if ! kill "$PID"; then
+        echo "Error: Failed to stop snapraidd (PID: $PID)."
+        return 1
+    fi
+
+    COUNT=0
+    while kill -0 "$PID" 2>/dev/null; do
+        if [ "$COUNT" -ge "$STOP_TIMEOUT" ]; then
+            echo "Error: snapraidd (PID: $PID) did not stop within $STOP_TIMEOUT seconds."
+            return 1
+        fi
+
+        sleep 1
+        COUNT=$((COUNT + 1))
+    done
+
+    echo "snapraidd stopped."
+    return 0
 }
 
 snapraidd_reload() {
     if [ -f "$PIDF" ]; then
-        echo "Reloading snapraidd configuration (SIGHUP)..."
-        kill -HUP $(cat "$PIDF")
-    else
-        echo "Error: snapraidd is not running; cannot reload."
+        PID=$(cat "$PIDF")
+
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "Reloading snapraidd configuration (SIGHUP)..."
+            kill -HUP "$PID"
+            return
+        fi
     fi
+
+    echo "Error: snapraidd is not running; cannot reload."
+    return 1
 }
 
 case "$1" in
@@ -63,8 +95,7 @@ case "$1" in
         snapraidd_stop
         ;;
     'restart')
-        snapraidd_stop
-        sleep 2
+        snapraidd_stop || exit 1
         snapraidd_start
         ;;
     'reload')
