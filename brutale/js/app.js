@@ -728,10 +728,11 @@ const app = {
     },
 
     triggerUndelete: async (disk, path) => {
-        const rootPath = path.startsWith('/') ? path : '/' + path;
+        const escapedRootPath = (path.startsWith('/') ? path : '/' + path).replace(/[\\*?\[\]]/g, '\\$&');
+        const escapedDisk = disk ? disk.replace(/[\\*?\[\]]/g, '\\$&') : '';
         if (await showConfirm(`Recover missing file?\n${disk}:${path}`, 'Undelete File')) {
             try {
-                await API.undelete({ filter_disks: [disk], filters: [rootPath] });
+                await API.undelete({ filter_disks: escapedDisk ? [escapedDisk] : [], filters: [escapedRootPath] });
                 showToast('Undelete Task Queued', 'info');
             } catch (e) {
                 showToast('Failed to start undelete: ' + e.message, 'error');

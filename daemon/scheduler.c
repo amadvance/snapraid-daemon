@@ -186,6 +186,85 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	state_unlock();
 }
 
+#ifdef _WIN32
+/**
+ * Converts a filter pattern from unified API/Unix escaping syntax to SnapRAID Windows syntax.
+ *
+ * In the REST API, '\' is the standard wildcard escape character ('\*', '\?', '\[', '\]', '\\'),
+ * while '^' is treated as a regular literal character.
+ *
+ * In SnapRAID CLI on Windows, '^' is the escape character ('^*', '^?', '^[', '^]', '^^') because
+ * pathimport() unconditionally replaces all '\' with '/' as path separators.
+ * However, inside wildcard character classes [...], SnapRAID treats all characters (including '^')
+ * literally and not as escapes. Therefore, carets inside an unescaped character class must be
+ * preserved as-is.
+ *
+ * This function translates:
+ * - '\[', '\]', '\*', '\?' -> '^[', '^]', '^*', '^?'
+ * - '\^' or lone '^'      -> '^^' (outside character classes)
+ * - '^' inside [...]      -> '^' (preserved as-is)
+ * - '\\'                  -> '\'
+ * - unescaped wildcards   -> preserved as wildcards ('*', '?', '[', ']')
+ *
+ * Returns 0 on success, or -1 if the converted string would exceed dst_size.
+ */
+static int filter_escape_to_windows(char* dst, size_t dst_size, const char* src)
+{
+	size_t j = 0;
+	int in_class = 0;
+
+	for (size_t i = 0; src[i] != 0; ++i) {
+		if (in_class) {
+			if (src[i] == ']')
+				in_class = 0;
+
+			if (j + 1 >= dst_size)
+				return -1;
+			dst[j++] = src[i];
+		} else if (src[i] == '\\') {
+			char next = src[i + 1];
+			if (next == '*' || next == '?' || next == '[' || next == ']') {
+				if (j + 2 >= dst_size)
+					return -1;
+				dst[j++] = '^';
+				dst[j++] = next;
+				++i;
+			} else if (next == '^') {
+				if (j + 2 >= dst_size)
+					return -1;
+				dst[j++] = '^';
+				dst[j++] = '^';
+				++i;
+			} else if (next == '\\') {
+				if (j + 1 >= dst_size)
+					return -1;
+				dst[j++] = '\\';
+				++i;
+			} else {
+				if (j + 1 >= dst_size)
+					return -1;
+				dst[j++] = '\\';
+			}
+		} else if (src[i] == '^') {
+			if (j + 2 >= dst_size)
+				return -1;
+			dst[j++] = '^';
+			dst[j++] = '^';
+		} else {
+			if (src[i] == '[')
+				in_class = 1;
+
+			if (j + 1 >= dst_size)
+				return -1;
+			dst[j++] = src[i];
+		}
+	}
+
+	dst[j] = 0;
+	return 0;
+}
+#endif
+
 void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, sl_t* disk_filter_list, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
@@ -199,10 +278,6 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 		return;
 	}
 
-	int group = ++state->runner.group_allocator;
-
-	state->runner.task_pending |= CMD_HIGH_BIT(CMD_UNDELETE);
-
 	sl_t fix_arg_list;
 	sl_init(&fix_arg_list);
 
@@ -212,16 +287,54 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 		for (tommy_node* i = tommy_list_head(disk_filter_list); i != 0; i = i->next) {
 			sn_t* sn = i->data;
 			sl_insert_str(&fix_arg_list, "-d");
+#ifdef _WIN32
+			/*
+			 * On Windows, SnapRAID CLI uses '^' instead of '\' as the wildcard escape
+			 * character because pathimport() converts all '\' to '/'. Convert the unified
+			 * API '\' escapes and literal '^' into SnapRAID Windows syntax.
+			 */
+			char conv[PATH_MAX];
+			if (filter_escape_to_windows(conv, sizeof(conv), sn->str) != 0) {
+				sncpy(msg, msg_size, "Filter disk exceeds maximum length");
+				*status = 400;
+				sl_free(&fix_arg_list);
+				state_unlock();
+				return;
+			}
+			sl_insert_str(&fix_arg_list, conv);
+#else
 			sl_insert_str(&fix_arg_list, sn->str);
+#endif
 		}
 	}
 	if (filter_list) {
 		for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
 			sn_t* sn = i->data;
 			sl_insert_str(&fix_arg_list, "-f");
+#ifdef _WIN32
+			/*
+			 * On Windows, SnapRAID CLI uses '^' instead of '\' as the wildcard escape
+			 * character because pathimport() converts all '\' to '/'. Convert the unified
+			 * API '\' escapes and literal '^' into SnapRAID Windows syntax.
+			 */
+			char conv[PATH_MAX];
+			if (filter_escape_to_windows(conv, sizeof(conv), sn->str) != 0) {
+				sncpy(msg, msg_size, "Filter path exceeds maximum length");
+				*status = 400;
+				sl_free(&fix_arg_list);
+				state_unlock();
+				return;
+			}
+			sl_insert_str(&fix_arg_list, conv);
+#else
 			sl_insert_str(&fix_arg_list, sn->str);
+#endif
 		}
 	}
+
+	int group = ++state->runner.group_allocator;
+
+	state->runner.task_pending |= CMD_HIGH_BIT(CMD_UNDELETE);
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);
 	if (snapraid) {

@@ -1136,7 +1136,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
-					char val[CONFIG_MAX];
+					char val[PATH_MAX];
 					if (json_string(js, &jv[j], val, sizeof(val)) == 0) {
 						sl_insert_str(&arg_list, val);
 					} else {

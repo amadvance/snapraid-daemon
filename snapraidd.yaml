@@ -893,16 +893,20 @@ components:
           description: >
             Optional filters (e.g., 'dir/', '*.txt') to limit the
             restoration scope. Each item corresponds to a '-f'
-            argument in the SnapRAID CLI.
+            argument in the SnapRAID CLI. Wildcard characters
+            ('*', '?', '[', ']') can be escaped with a backslash
+            (e.g., '\[', '\*') to match literal characters.
             Valid only for `undelete`.
         filter_disks:
           type: array
           items:
             type: string
           description: >
-            Optional disk names (e.g., 'd1') to restrict the restoration
-            scope. Each item corresponds to a '-d' argument in the
-            SnapRAID CLI.
+            Optional disk names or patterns (e.g., 'd1', 'data*') to restrict
+            the restoration scope. Each item corresponds to a '-d'
+            argument in the SnapRAID CLI. Wildcard characters
+            ('*', '?', '[', ']') can be escaped with a backslash
+            (e.g., '\[', '\*') to match literal characters.
             Valid only for `undelete`.
         ignore_thresholds:
           type: boolean
