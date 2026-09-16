@@ -179,10 +179,16 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 			state->log.foreground = 1;
 			break;
 		case 'c' :
-			sncpy(state->config.conf, sizeof(state->config.conf), optarg);
+			if (absolutepath(optarg, state->config.conf) == 0) {
+				fprintf(stderr, "Error: Invalid daemon configuration file '%s': %s\n", optarg, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 			break;
 		case 'C' :
-			sncpy(state->engine_conf_arg, sizeof(state->engine_conf_arg), optarg);
+			if (absolutepath(optarg, state->engine_conf_arg) == 0) {
+				fprintf(stderr, "Error: Invalid SnapRAID configuration file '%s': %s\n", optarg, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 			break;
 		case 'i' : {
 			if (optarg[0] == 0) {
