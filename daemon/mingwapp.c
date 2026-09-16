@@ -274,6 +274,9 @@ void app_done(void)
 
 #include "messages.h"
 
+/* timeout in milliseconds for service shutdown and preshutdown */
+#define SERVICE_SHUTDOWN_TIMEOUT 90000
+
 static int is_our_service(const char* name)
 {
 	size_t len = strlen(DAEMON_NAME);
@@ -290,7 +293,7 @@ static int wait_for_service_stop(SC_HANDLE schService)
 	DWORD dwBytesNeeded;
 	int count = 0;
 
-	while (count < 300) {
+	while (count < SERVICE_SHUTDOWN_TIMEOUT / 100) {
 		if (!QueryServiceStatusEx(
 				schService,
 				SC_STATUS_PROCESS_INFO,
@@ -460,7 +463,7 @@ static int do_service_stop_all(void)
 					}
 				} else {
 					if (wait_for_service_stop(schService) != 0) {
-						fprintf(stderr, "Service %s failed to stop within 30 seconds.\n", name);
+						fprintf(stderr, "Service %s failed to stop within %d seconds.\n", name, SERVICE_SHUTDOWN_TIMEOUT / 1000);
 						overall_success = -1;
 					} else {
 						printf("Service %s stopped successfully.\n", name);
@@ -508,7 +511,7 @@ static int do_service_remove_all(void)
 				int stopped = 1;
 				ControlService(schService, SERVICE_CONTROL_STOP, &status);
 				if (wait_for_service_stop(schService) != 0) {
-					fprintf(stderr, "Service %s failed to stop within 30 seconds for removal.\n", name);
+					fprintf(stderr, "Service %s failed to stop within %d seconds for removal.\n", name, SERVICE_SHUTDOWN_TIMEOUT / 1000);
 					overall_success = -1;
 					stopped = 0;
 				}
@@ -750,6 +753,10 @@ static int do_service_install(const struct snapraid_state* state)
 	sfa.lpsaActions = actions;
 	ChangeServiceConfig2W(schService, SERVICE_CONFIG_FAILURE_ACTIONS, &sfa);
 
+	SERVICE_PRESHUTDOWN_INFO psi;
+	psi.dwPreshutdownTimeout = SERVICE_SHUTDOWN_TIMEOUT;
+	ChangeServiceConfig2W(schService, SERVICE_CONFIG_PRESHUTDOWN_INFO, &psi);
+
 	char reg_path[PATH_MAX];
 	wchar_t wreg_path[PATH_MAX];
 	snprintf(reg_path, sizeof(reg_path), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", service_name);
@@ -808,7 +815,7 @@ static int do_service_remove(void)
 	int stopped = 1;
 	ControlService(schService, SERVICE_CONTROL_STOP, &status);
 	if (wait_for_service_stop(schService) != 0) {
-		fprintf(stderr, "Service %s failed to stop within 30 seconds.\n", service_name);
+		fprintf(stderr, "Service %s failed to stop within %d seconds.\n", service_name, SERVICE_SHUTDOWN_TIMEOUT / 1000);
 		ret = -1;
 		stopped = 0;
 	}
@@ -918,9 +925,6 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		return TRUE; /* signal handled, don't terminate parent */
 	case CTRL_CLOSE_EVENT :
 	case CTRL_LOGOFF_EVENT :
-		state_ptr()->daemon_sig = SIGTERM;
-		state_ptr()->daemon_running = 0;
-		return TRUE; /* signal handled, but Windows will kill us after timeout */
 	case CTRL_SHUTDOWN_EVENT :
 		/*
 		 * Return TRUE to prevent our termination while child handles shutdown.
@@ -930,7 +934,6 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
 		 */
 		state_ptr()->daemon_sig = SIGTERM;
-		state_ptr()->daemon_aborting = 1;
 		state_ptr()->daemon_running = 0;
 		return TRUE; /* signal handled, but Windows will kill us after timeout */
 	default :
@@ -943,10 +946,10 @@ void report_progress(DWORD currentState, DWORD exitCode, DWORD waitHint)
 	g_ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
 	g_ServiceStatus.dwCurrentState = currentState;
 
-	if (currentState == SERVICE_START_PENDING) {
-		g_ServiceStatus.dwControlsAccepted = 0;
+	if (currentState == SERVICE_RUNNING) {
+		g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_PRESHUTDOWN;
 	} else {
-		g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+		g_ServiceStatus.dwControlsAccepted = 0;
 	}
 
 	g_ServiceStatus.dwWin32ExitCode = exitCode;
@@ -969,32 +972,30 @@ void report_progress(DWORD currentState, DWORD exitCode, DWORD waitHint)
 	SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 }
 
-VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
+DWORD WINAPI ServiceCtrlHandlerEx(DWORD CtrlCode, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext)
 {
+	(void)dwEventType;
+	(void)lpEventData;
+	(void)lpContext;
+
 	switch (CtrlCode) {
 	case SERVICE_CONTROL_STOP :
-		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
-			/* signal the runner to stop */
-			state_ptr()->daemon_sig = SIGTERM;
-			state_ptr()->daemon_running = 0;
-
-			/* tell the OS we are trying to stop */
-			report_progress(SERVICE_STOP_PENDING, NO_ERROR, 5000);
-		}
-		break;
+	case SERVICE_CONTROL_PRESHUTDOWN :
 	case SERVICE_CONTROL_SHUTDOWN :
 		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
 			/* signal the runner to stop */
 			state_ptr()->daemon_sig = SIGTERM;
-			state_ptr()->daemon_aborting = 1;
 			state_ptr()->daemon_running = 0;
 
 			/* tell the OS we are trying to stop */
-			report_progress(SERVICE_STOP_PENDING, NO_ERROR, 5000);
+			report_progress(SERVICE_STOP_PENDING, NO_ERROR, SERVICE_SHUTDOWN_TIMEOUT);
 		}
-		break;
+		return NO_ERROR;
+	case SERVICE_CONTROL_INTERROGATE :
+		SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
+		return NO_ERROR;
 	default :
-		break;
+		return ERROR_CALL_NOT_IMPLEMENTED;
 	}
 }
 
@@ -1008,7 +1009,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR* argv)
 
 	if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0))
 		return;
-	g_StatusHandle = RegisterServiceCtrlHandlerW(wservice_name, ServiceCtrlHandler);
+	g_StatusHandle = RegisterServiceCtrlHandlerExW(wservice_name, ServiceCtrlHandlerEx, 0);
 	if (g_StatusHandle == 0)
 		return;
 
