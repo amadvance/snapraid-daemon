@@ -162,7 +162,7 @@ uint32_t calculate_crc32(const void* void_data, size_t length)
 /****************************************************************************/
 /* unescape */
 
-static uint16_t hex_to_uint16(const char* s)
+static int hex_to_uint16(const char* s, uint16_t* out)
 {
 	uint16_t val = 0;
 	for (int i = 0; i < 4; ++i) {
@@ -171,12 +171,13 @@ static uint16_t hex_to_uint16(const char* s)
 		if (c >= '0' && c <= '9') val |= (c - '0');
 		else if (c >= 'a' && c <= 'f') val |= (c - 'a' + 10);
 		else if (c >= 'A' && c <= 'F') val |= (c - 'A' + 10);
-		else return 0xFFFF; /* error marker */
+		else return -1;
 	}
-	return val;
+	*out = val;
+	return 0;
 }
 
-static int utf8_encode(uint16_t cp, char* out)
+static int utf8_encode(uint32_t cp, char* out)
 {
 	if (cp <= 0x7F) {
 		out[0] = (char)cp;
@@ -185,11 +186,17 @@ static int utf8_encode(uint16_t cp, char* out)
 		out[0] = (char)(0xC0 | (cp >> 6));
 		out[1] = (char)(0x80 | (cp & 0x3F));
 		return 2;
-	} else {
+	} else if (cp <= 0xFFFF) {
 		out[0] = (char)(0xE0 | (cp >> 12));
 		out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
 		out[2] = (char)(0x80 | (cp & 0x3F));
 		return 3;
+	} else {
+		out[0] = (char)(0xF0 | (cp >> 18));
+		out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+		out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+		out[3] = (char)(0x80 | (cp & 0x3F));
+		return 4;
 	}
 }
 
@@ -217,9 +224,38 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 				if (i + 4 >= len)
 					return -1; /* invalid unicode escape */
 
-				uint16_t cp = hex_to_uint16(src + i + 1);
-				if (cp == 0xFFFF)
+				uint16_t u;
+				if (hex_to_uint16(src + i + 1, &u) != 0)
 					return -1; /* invalid hex */
+
+				uint32_t cp;
+				if (u >= 0xD800 && u <= 0xDBFF) {
+					/* high surrogate must be followed by a low surrogate */
+					if (i + 10 >= len
+						|| src[i + 5] != '\\'
+						|| src[i + 6] != 'u')
+						return -1;
+
+					uint16_t low;
+					if (hex_to_uint16(src + i + 7, &low) != 0)
+						return -1;
+
+					if (low < 0xDC00 || low > 0xDFFF)
+						return -1;
+
+					cp = 0x10000
+						+ (((uint32_t)u - 0xD800) << 10)
+						+ ((uint32_t)low - 0xDC00);
+
+					i += 11;
+				} else {
+					/* lone low surrogate is invalid */
+					if (u >= 0xDC00 && u <= 0xDFFF)
+						return -1;
+
+					cp = u;
+					i += 5;
+				}
 
 				char utf8[4];
 				int utf8_len = utf8_encode(cp, utf8);
@@ -230,7 +266,6 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 
 				memcpy(dst + j, utf8, utf8_len);
 				j += utf8_len;
-				i += 5;
 				goto next_char;
 			}
 			default :
