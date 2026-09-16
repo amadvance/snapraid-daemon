@@ -24,7 +24,9 @@ static void app_signal_handler_term(int sig)
 	struct snapraid_state* state = state_ptr();
 
 	state->daemon_sig = sig;
-	state->daemon_running = 0;
+	/* keep the runner alive until an emergency shutdown completes or fails safely */
+	if (!daemon_is_aborting(state))
+		state->daemon_running = 0;
 }
 
 static void app_signal_handler_hup(int sig)

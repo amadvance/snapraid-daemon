@@ -98,11 +98,21 @@ static int runner_health_check_locked(struct snapraid_state* state)
 				trigger_shutdown = 1;
 
 			if (trigger_shutdown) {
+				/*
+				 * Set abort first so the signal handler defers a concurrent graceful
+				 * stop, then keep the runner alive until emergency shutdown completes
+				 */
+				state->daemon_aborting = 1;
+				log_task(LVL_CRITICAL, "entering abort state for emergency shutdown on %s health status", health_name(new_health));
+				state->daemon_running = 1;
 				task_list_cancel_all(state, "Canceled before shutdown");
-				char msg[MSG_MAX];
-				int status;
-				runner_locked(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
-				runner_locked(state, 0, CMD_SHUTDOWN, 0, 0, 0, msg, sizeof(msg), &status);
+
+				/*
+				 * emergency report and shutdown do not execute SnapRAID, so enqueue
+				 * them directly without weakening validation for generic submissions
+				 */
+				runner_step_locked(state, state->config.sys_engine, 0, CMD_REPORT, 0, 0, 0);
+				runner_step_locked(state, state->config.sys_engine, 0, CMD_SHUTDOWN, 0, 0, 0);
 			} else {
 				/* check if the current task is a report or if there is a scheduled one */
 				if (!runner_has_cmd_locked(state, CMD_REPORT)) {
@@ -646,55 +656,6 @@ static int runner_start_locked(struct snapraid_state* state)
 	return 0;
 }
 
-static int runner_shutdown_locked(struct snapraid_state* state)
-{
-	log_task_reset();
-
-	if (state->array.health == HEALTH_PREFAIL) {
-		log_task(LVL_INFO, "executing system shutdown on prefail health status");
-	} else if (state->array.health == HEALTH_FAILING) {
-		log_task(LVL_INFO, "executing system shutdown on failing health status");
-	} else {
-		log_task(LVL_INFO, "executing system shutdown after maintenance");
-	}
-
-	state_unlock();
-
-	int ret = os_shutdown();
-
-	state_lock();
-
-	if (ret == 0) {
-		state->daemon_aborting = 1;
-		state->daemon_running = 0;
-	}
-
-	struct snapraid_task* shutdown_task = state->runner.latest;
-
-	shutdown_task->running = 0;
-	shutdown_task->state = PROCESS_STATE_TERM;
-	shutdown_task->exit_code = 0;
-
-	time_t unix_end_time = time(0);
-	if (unix_end_time < shutdown_task->unix_start_time)
-		unix_end_time = shutdown_task->unix_start_time;
-	shutdown_task->unix_end_time = unix_end_time;
-
-	if (ret != 0) {
-		log_task(LVL_CRITICAL, "system shutdown failed");
-		shutdown_task->exit_code = EXIT_EXEC_FAILED;
-	}
-
-	log_task_push(&shutdown_task->message_list);
-
-	/* insert the task in the done list */
-	tommy_list_insert_tail(&state->runner.history_list, &shutdown_task->node, shutdown_task);
-
-	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
-
-	return 0;
-}
-
 /**
  * Check if the previous task can be omitted
  */
@@ -1190,6 +1151,68 @@ static void runner_hook_postponed_locked_yield(struct snapraid_state* state, con
 	state_lock();
 }
 
+static int runner_shutdown_locked(struct snapraid_state* state)
+{
+	log_task_reset();
+
+	if (state->array.health == HEALTH_PREFAIL) {
+		log_task(LVL_INFO, "executing system shutdown on prefail health status");
+	} else if (state->array.health == HEALTH_FAILING) {
+		log_task(LVL_INFO, "executing system shutdown on failing health status");
+	} else {
+		log_task(LVL_INFO, "executing system shutdown after maintenance");
+	}
+
+	state_unlock();
+
+	log_task(LVL_CRITICAL, "calling system shutdown");
+	int ret = os_shutdown();
+	log_task(LVL_CRITICAL, "system shutdown returned with status %d", ret);
+
+	state_lock();
+
+	if (ret == 0) {
+		state->daemon_running = 0;
+	} else {
+		/*
+		 * If system shutdown failed, clear the abort state so that the daemon
+		 * remains functional and accessible to the administrator, and execute
+		 * any postponed post-hooks.
+		 */
+		state->daemon_aborting = 0;
+		runner_hook_postponed_locked_yield(state, 0);
+
+		/* honor a stop request deferred while the emergency shutdown was in progress */
+		if (state->daemon_sig)
+			state->daemon_running = 0;
+	}
+
+	struct snapraid_task* shutdown_task = state->runner.latest;
+
+	shutdown_task->running = 0;
+	shutdown_task->state = PROCESS_STATE_TERM;
+	shutdown_task->exit_code = 0;
+
+	time_t unix_end_time = time(0);
+	if (unix_end_time < shutdown_task->unix_start_time)
+		unix_end_time = shutdown_task->unix_start_time;
+	shutdown_task->unix_end_time = unix_end_time;
+
+	if (ret != 0) {
+		log_task(LVL_CRITICAL, "system shutdown failed");
+		shutdown_task->exit_code = EXIT_EXEC_FAILED;
+	}
+
+	log_task_push(&shutdown_task->message_list);
+
+	/* insert the task in the done list */
+	tommy_list_insert_tail(&state->runner.history_list, &shutdown_task->node, shutdown_task);
+
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
+
+	return 0;
+}
+
 static void log_write_escaped(ZFILE* f, const char* str)
 {
 	while (*str) {
@@ -1476,10 +1499,15 @@ bail:
 	/* check the array health, but DO NOT propagate it to the task */
 	runner_health_check_locked(state);
 
-	/* if the queue was cleared or the next task does not need hooks, do not skip post-hook */
-	tommy_node* next = tommy_list_head(&state->runner.waiting_list);
-	if (next == 0 || !runner_need_hook(((struct snapraid_task*)next->data)->cmd))
-		post_skip = 0;
+	/* if aborting, postpone post-hooks so they are not executed before shutdown */
+	if (daemon_is_aborting(state)) {
+		post_skip = 1;
+	} else {
+		/* if the queue was cleared or the next task does not need hooks, do not skip post-hook */
+		tommy_node* next = tommy_list_head(&state->runner.waiting_list);
+		if (next == 0 || !runner_need_hook(((struct snapraid_task*)next->data)->cmd))
+			post_skip = 0;
+	}
 
 	struct snapraid_hook post_hook;
 	if (post_skip == 0) {
@@ -1527,7 +1555,7 @@ bail:
 		 * Let this task commit normally. If the next task belongs to the same group,
 		 * propagate cancellation to it, which will consume the postponed hook and cancel the group.
 		 */
-		next = tommy_list_head(&state->runner.waiting_list);
+		tommy_node* next = tommy_list_head(&state->runner.waiting_list);
 		if (next != 0 && task_same_group(task, next->data))
 			stop_pending = 1;
 		task->canceled = 0;

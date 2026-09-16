@@ -213,9 +213,6 @@ static int result_locked_yield(struct snapraid_state* state, int high_cmd, int r
 	/* report text */
 	ss_prints(&ss, report_text);
 
-	if (daemon_is_aborting(state))
-		goto bail;
-
 	os_privileges_acquire();
 	int ret = os_command(cmd, run_as_user, ss_extract(&ss), &state->runner.helper_pid);
 	os_privileges_release();

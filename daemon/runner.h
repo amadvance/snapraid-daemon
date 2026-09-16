@@ -70,16 +70,16 @@ int runner_locked(struct snapraid_state* state, int high_cmd, int cmd, time_t no
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
  * @param status Pointer to store HTTP status code
- * @return Validated SnapRAID executable path, or 0 on failure
+ * @return SnapRAID command path, an emergency placeholder, or 0 on failure
  */
 const char* runner_begin_locked(struct snapraid_state* state, char* msg, size_t msg_size, int* status);
 
 /**
- * Append a prevalidated SnapRAID command to the task queue with state lock already held.
- * This function cannot fail. The SnapRAID executable and daemon running state must
- * have been validated with runner_begin_locked().
+ * Append a command to the task queue with state lock already held.
+ * This function cannot fail. The command path and daemon running state must have
+ * been admitted with runner_begin_locked().
  * @param state Current snapraid state
- * @param snapraid Validated SnapRAID executable path
+ * @param snapraid SnapRAID command path
  * @param high_cmd High-level command ID
  * @param cmd SnapRAID command ID to execute
  * @param now Current timestamp, 0 for autodetected

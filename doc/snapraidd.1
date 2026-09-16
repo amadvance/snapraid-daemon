@@ -436,16 +436,25 @@ Supported events are:
 .PD 0
 .HP 4
 .I maintenance
-Shuts down the host after an automated, scheduled
-maintenance finishes.
+Shuts down the host after scheduled maintenance finishes
+its finalization. Post\-hooks and Docker unpause operations
+are executed, and the final report is sent, before initiating
+the shutdown, even if intermediate dependent phases (such as
+scrub) were canceled due to errors. If an emergency shutdown
+is triggered by a prefail or failing health state, post\-hooks
+and Docker unpause operations are not executed.
 .HP 4
 .I prefail
 Shuts down the host immediately after sending reports if
-array health transitions to prefail.
+array health transitions to prefail. Queued tasks and post\-hooks
+are canceled, and paused Docker containers are not unpaused,
+to prevent further disk activity.
 .HP 4
 .I failing
 Shuts down the host immediately after sending reports if
-array health transitions to failing.
+array health transitions to failing. Queued tasks and post\-hooks
+are canceled, and paused Docker containers are not unpaused,
+to prevent further disk activity.
 .PD
 .RE
 .PP
@@ -1772,8 +1781,9 @@ apply changes to static	parameters without restarting the
 service.
 .SS SIGTERM, SIGINT 
 Initiates a graceful shutdown. If a task is currently
-running, the daemon attempts to terminate the child process
-before exiting.
+running, the active SnapRAID process is terminated, the
+post\-run hook is executed and any paused Docker containers are
+unpaused.
 .SS SIGQUIT 
 Immediately terminates the process using the default signal
 action and may generate a core dump. This signal is intended

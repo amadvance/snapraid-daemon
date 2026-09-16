@@ -25,6 +25,16 @@ int os_signal_interrupt(void)
 	return !daemon_is_running(state_ptr());
 }
 
+static void app_signal_handler_term(int sig)
+{
+	struct snapraid_state* state = state_ptr();
+
+	state->daemon_sig = sig;
+	/* keep the runner alive until an emergency shutdown completes or fails safely */
+	if (!daemon_is_aborting(state))
+		state->daemon_running = 0;
+}
+
 /****************************************************************************/
 /* app */
 
@@ -920,8 +930,7 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		 * will receive these events automatically because it's attached
 		 * to the same console, so we don't need to forward them.
 		 */
-		state_ptr()->daemon_sig = SIGINT;
-		state_ptr()->daemon_running = 0;
+		app_signal_handler_term(SIGINT);
 		return TRUE; /* signal handled, don't terminate parent */
 	case CTRL_CLOSE_EVENT :
 	case CTRL_LOGOFF_EVENT :
@@ -933,8 +942,7 @@ static BOOL WINAPI console_handler(DWORD ctrl_type)
 		 * of returning TRUE: ~5 seconds for CLOSE_EVENT and LOGOFF_EVENT,
 		 * ~5-20 seconds for SHUTDOWN_EVENT (configurable in registry).
 		 */
-		state_ptr()->daemon_sig = SIGTERM;
-		state_ptr()->daemon_running = 0;
+		app_signal_handler_term(SIGTERM);
 		return TRUE; /* signal handled, but Windows will kill us after timeout */
 	default :
 		return FALSE;
@@ -984,8 +992,7 @@ DWORD WINAPI ServiceCtrlHandlerEx(DWORD CtrlCode, DWORD dwEventType, LPVOID lpEv
 	case SERVICE_CONTROL_SHUTDOWN :
 		if (g_ServiceStatus.dwCurrentState == SERVICE_RUNNING) {
 			/* signal the runner to stop */
-			state_ptr()->daemon_sig = SIGTERM;
-			state_ptr()->daemon_running = 0;
+			app_signal_handler_term(SIGTERM);
 
 			/* tell the OS we are trying to stop */
 			report_progress(SERVICE_STOP_PENDING, NO_ERROR, SERVICE_SHUTDOWN_TIMEOUT);

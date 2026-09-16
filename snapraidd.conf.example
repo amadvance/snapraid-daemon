@@ -48,11 +48,16 @@ sys_log_retention_days = 120
 # Comma-separated list of events that trigger an automatic system shutdown.
 # Supported events:
 #   - maintenance: shuts down the host after an automated, scheduled
-#     maintenance finishes
+#     maintenance finishes (all maintenance tasks, post-hooks, Docker
+#     unpause operations, and reports are fully completed beforehand)
 #   - prefail: shuts down the host immediately (after sending reports) if
-#     array health transitions to prefail
+#     array health transitions to prefail; queued tasks and post-hooks
+#     are canceled, and paused Docker containers are not unpaused,
+#     to prevent further disk activity
 #   - failing: shuts down the host immediately (after sending reports) if
-#     array health transitions to failing
+#     array health transitions to failing; queued tasks and post-hooks
+#     are canceled, and paused Docker containers are not unpaused,
+#     to prevent further disk activity
 # Spaces around commas are ignored.
 #
 # Health-based shutdowns ('prefail' and 'failing') trigger strictly on a

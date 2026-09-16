@@ -395,12 +395,21 @@ A comma-separated list of events that trigger an automatic system shutdown.
 
 Supported events are:
 
-maintenance - Shuts down the host after an automated, scheduled
-    maintenance finishes.
+maintenance - Shuts down the host after scheduled maintenance finishes
+    its finalization. Post-hooks and Docker unpause operations
+    are executed, and the final report is sent, before initiating
+    the shutdown, even if intermediate dependent phases (such as
+    scrub) were canceled due to errors. If an emergency shutdown
+    is triggered by a prefail or failing health state, post-hooks
+    and Docker unpause operations are not executed.
 prefail - Shuts down the host immediately after sending reports if
-    array health transitions to prefail.
+    array health transitions to prefail. Queued tasks and post-hooks
+    are canceled, and paused Docker containers are not unpaused,
+    to prevent further disk activity.
 failing - Shuts down the host immediately after sending reports if
-    array health transitions to failing.
+    array health transitions to failing. Queued tasks and post-hooks
+    are canceled, and paused Docker containers are not unpaused,
+    to prevent further disk activity.
 
 Spaces around commas are ignored.
 
@@ -1408,8 +1417,9 @@ service.
 
 ---- 10.0.2 SIGTERM, SIGINT ----
 Initiates a graceful shutdown. If a task is currently
-running, the daemon attempts to terminate the child process
-before exiting.
+running, the active SnapRAID process is terminated, the
+post-run hook is executed and any paused Docker containers are
+unpaused.
 
 ---- 10.0.3 SIGQUIT ----
 Immediately terminates the process using the default signal
