@@ -1169,6 +1169,27 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 	return ret;
 }
 
+/**
+ * Execute postponed post-run hooks.
+ */
+static void runner_hook_postponed_locked_yield(struct snapraid_state* state, const struct snapraid_task* task)
+{
+	if (state->runner.hook_flags == 0)
+		return;
+
+	int postponed_flags = state->runner.hook_flags;
+	struct snapraid_hook_config postponed_config = state->runner.hook_config;
+	state->runner.hook_flags = 0;
+
+	struct snapraid_hook hook;
+	hook_context_acquire_locked(state, task, HEALTH_PENDING, &hook);
+	hook.config = postponed_config;
+
+	state_unlock();
+	(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
+	state_lock();
+}
+
 static void log_write_escaped(ZFILE* f, const char* str)
 {
 	while (*str) {
@@ -1791,19 +1812,7 @@ static void* runner_thread(void* arg)
 				tommy_list_insert_tail(&state->runner.history_list, &task->node, task);
 
 				/* if this canceled task was supposed to handle the hook, we must close the hook now */
-				if (state->runner.hook_flags && runner_need_hook(task->cmd)) {
-					int postponed_flags = state->runner.hook_flags;
-					struct snapraid_hook_config postponed_config = state->runner.hook_config;
-					state->runner.hook_flags = 0;
-
-					struct snapraid_hook hook;
-					hook_context_acquire_locked(state, task, HEALTH_PENDING, &hook);
-					hook.config = postponed_config;
-
-					state_unlock();
-					(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
-					state_lock();
-				}
+				runner_hook_postponed_locked_yield(state, task);
 			}
 		}
 
@@ -1814,20 +1823,7 @@ static void* runner_thread(void* arg)
 	}
 
 	/* if the daemon is shutting down and a hook was skipped, we must close it now */
-	if (state->runner.hook_flags) {
-		int postponed_flags = state->runner.hook_flags;
-		struct snapraid_hook_config postponed_config = state->runner.hook_config;
-		state->runner.hook_flags = 0;
-
-		struct snapraid_hook hook;
-		hook_context_acquire_locked(state, 0, HEALTH_PENDING, &hook);
-		hook.config = postponed_config;
-
-		state_unlock();
-		(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
-		state_lock();
-
-	}
+	runner_hook_postponed_locked_yield(state, 0);
 
 	state_unlock();
 
