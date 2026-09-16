@@ -58,12 +58,13 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
  * Schedule an undelete operation.
  * @param state Current snapraid state
  * @param spindown 1 to spindown disks after completion, 0 otherwise
- * @param filter_list List of filters for undelete
+ * @param filter_list List of file filters for undelete
+ * @param disk_filter_list List of disk filters for undelete
  * @param msg Buffer for error message
  * @param msg_size Size of message buffer
  * @param status Pointer to store HTTP status code
  */
-void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, char* msg, size_t msg_size, int* status);
+void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, sl_t* disk_filter_list, char* msg, size_t msg_size, int* status);
 
 /**
  * Schedule a spindown of idle disks.

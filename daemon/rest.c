@@ -1072,10 +1072,12 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	char* js;
 	int jc;
 	sl_t arg_list;
+	sl_t disk_arg_list;
 	int apply_spindown = 0;
 	int ignore_threshold = 0;
 
 	sl_init(&arg_list);
+	sl_init(&disk_arg_list);
 
 	if (strcmp(ri->request_method, "OPTIONS") == 0)
 		return send_no_content(conn);
@@ -1085,6 +1087,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	int cmd = 0;
 	int has_filters = 0;
+	int has_disk_filters = 0;
 	int has_spindown = 0;
 	int has_threshold = 0;
 	if (strncmp(path, "/snapraid/v1/", 13) == 0)
@@ -1103,6 +1106,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	case CMD_UNDELETE :
 		has_spindown = 1;
 		has_filters = 1;
+		has_disk_filters = 1;
 		break;
 	default :
 		break;
@@ -1141,6 +1145,20 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 					}
 					++j;
 				}
+			} else if (has_disk_filters && json_type(js, &jv[j], json_const("filter_disks"), JSMN_ARRAY) == 0) {
+				int j1 = j;
+				int c1 = jv[++j].size;
+				++j;
+				while (c1-- > 0) {
+					char val[CONFIG_MAX];
+					if (json_string(js, &jv[j], val, sizeof(val)) == 0) {
+						sl_insert_str(&disk_arg_list, val);
+					} else {
+						json_error_arg(msg, sizeof(msg), js, &jv[j1], &jv[j]);
+						goto bad;
+					}
+					++j;
+				}
 			} else if (has_spindown && json_entry(js, &jv[j], json_const("spindown_on_finish")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &apply_spindown) == 0) {
@@ -1172,7 +1190,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 		schedule_heal(state, apply_spindown, msg, sizeof(msg), &status);
 		break;
 	case CMD_UNDELETE :
-		schedule_undelete(state, apply_spindown, &arg_list, msg, sizeof(msg), &status);
+		schedule_undelete(state, apply_spindown, &arg_list, &disk_arg_list, msg, sizeof(msg), &status);
 		break;
 	case CMD_SUSPEND_IDLE :
 		schedule_suspend_idle(state, msg, sizeof(msg), &status);
@@ -1184,6 +1202,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 	free(js);
 	sl_free(&arg_list);
+	sl_free(&disk_arg_list);
 
 	if (status >= 200 && status <= 299)
 		return send_json_success(conn, status);
@@ -1192,6 +1211,8 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 
 bad:
 	free(js);
+	sl_free(&arg_list);
+	sl_free(&disk_arg_list);
 	return send_json_error(conn, 400, "Unrecognized json");
 }
 

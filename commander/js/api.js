@@ -67,7 +67,7 @@ export const API = {
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
     spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
-    undelete: (filters, options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify({ filters, ...options }) }),
+    undelete: (options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify(options) }),
     stopTask: () => request('/stop', { method: 'POST' }),
     refreshArray: () => request('/refresh', { method: 'POST' }),
     setHoldOff: (enabled) => request('/hold_off', { method: 'POST', body: JSON.stringify({ enabled }) })

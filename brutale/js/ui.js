@@ -634,7 +634,7 @@ export const renderDifferences = (arrayInfo) => {
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
                         <span>${escAttr(d.path)}</span>
-                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-path="${escAttr(d.path)}">Undelete</button>` : ''}
+                        ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-disk="${escAttr(d.disk)}" data-path="${escAttr(d.path)}">Undelete</button>` : ''}
                     </div>
                 </td>
             </tr>

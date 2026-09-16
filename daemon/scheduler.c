@@ -186,7 +186,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	state_unlock();
 }
 
-void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, char* msg, size_t msg_size, int* status)
+void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, sl_t* disk_filter_list, char* msg, size_t msg_size, int* status)
 {
 	time_t now = time(0);
 
@@ -208,10 +208,19 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 	sl_insert_str(&fix_arg_list, "--gui-rescan-after"); /* force a rescan after the fix, equivalent to a 'diff' */
 	sl_insert_str(&fix_arg_list, "-m");
-	for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
-		sn_t* sn = i->data;
-		sl_insert_str(&fix_arg_list, "-f");
-		sl_insert_str(&fix_arg_list, sn->str);
+	if (disk_filter_list) {
+		for (tommy_node* i = tommy_list_head(disk_filter_list); i != 0; i = i->next) {
+			sn_t* sn = i->data;
+			sl_insert_str(&fix_arg_list, "-d");
+			sl_insert_str(&fix_arg_list, sn->str);
+		}
+	}
+	if (filter_list) {
+		for (tommy_node* i = tommy_list_head(filter_list); i != 0; i = i->next) {
+			sn_t* sn = i->data;
+			sl_insert_str(&fix_arg_list, "-f");
+			sl_insert_str(&fix_arg_list, sn->str);
+		}
 	}
 
 	const char* snapraid = runner_begin_locked(state, msg, msg_size, status);

@@ -142,7 +142,7 @@ const app = {
                     showToast('Refreshed settings', 'info');
                     break;
                 case 'settings-save': app.saveSettings(); break;
-                case 'undelete': app.triggerUndelete(ds.path); break;
+                case 'undelete': app.triggerUndelete(ds.disk, ds.path); break;
                 case 'undelete-batch': app.triggerUndeleteBatch(); break;
                 case 'heal': app.triggerHeal(); break;
                 case 'smart-details': app.showSmartDetails(ds.node); break;
@@ -718,7 +718,7 @@ const app = {
 
         if (confirmRes) {
             try {
-                await API.undelete(filters, { spindown_on_finish: confirmRes === 'spindown' });
+                await API.undelete({ filters, spindown_on_finish: confirmRes === 'spindown' });
                 showToast(`Undelete queued for ${filters.length} patterns`, 'info');
                 input.value = ''; // Clear input on success
             } catch (e) {
@@ -727,10 +727,11 @@ const app = {
         }
     },
 
-    triggerUndelete: async (path) => {
-        if (await showConfirm(`Recover missing file?\n${path}`, 'Undelete File')) {
+    triggerUndelete: async (disk, path) => {
+        const rootPath = path.startsWith('/') ? path : '/' + path;
+        if (await showConfirm(`Recover missing file?\n${disk}:${path}`, 'Undelete File')) {
             try {
-                await API.undelete([path]);
+                await API.undelete({ filter_disks: [disk], filters: [rootPath] });
                 showToast('Undelete Task Queued', 'info');
             } catch (e) {
                 showToast('Failed to start undelete: ' + e.message, 'error');
