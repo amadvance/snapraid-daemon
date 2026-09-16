@@ -1388,8 +1388,21 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 				/* do not pulse when updating just the time */
 				device->smart_time = state->array.last_time;
 			} else if (flags & (SMARTCTL_FLAG_OPEN | SMARTCTL_FLAG_UNSUPPORTED)) {
-				snprintf(health_reason, sizeof(health_reason), "SMART telemetry could not be obtained for disk %s", disk);
-				health = HEALTH_PENDING;
+				/*
+				 * Failure to obtain SMART telemetry must not clear an
+				 * already established PREFAIL/FAILING condition.
+				 * Keep the previous health until a valid SMART
+				 * assessment establishes a new state.
+				 */
+				if (device->health == HEALTH_PREFAIL
+					|| device->health == HEALTH_FAILING) {
+					health = device->health;
+					sncpy(health_reason, sizeof(health_reason), device->health_reason);
+				} else {
+					snprintf(health_reason, sizeof(health_reason),
+						"SMART telemetry could not be obtained for disk %s", disk);
+					health = HEALTH_PENDING;
+				}
 			} else {
 				health_reason[0] = 0;
 				health = HEALTH_PASSED;
