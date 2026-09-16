@@ -1169,6 +1169,20 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 	return ret;
 }
 
+static void log_write_escaped(ZFILE* f, const char* str)
+{
+	while (*str) {
+		switch (*str) {
+		case '\\' : zwrite("\\\\", 2, 1, f); break;
+		case ':' :  zwrite("\\d", 2, 1, f); break;
+		case '\n' : zwrite("\\n", 2, 1, f); break;
+		case '\r' : zwrite("\\r", 2, 1, f); break;
+		default :   zwrite(str, 1, 1, f); break;
+		}
+		++str;
+	}
+}
+
 static int runner_go_locked_yield(struct snapraid_state* state)
 {
 	char msg[MSG_MAX];
@@ -1291,8 +1305,11 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 			zprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));
 		zprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
 		zprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
-		for (i = 0; i < argc; ++i)
-			zprintf(log_f, "daemon:argv:%d:%s\n", i, argv[i]);
+		for (i = 0; i < argc; ++i) {
+			zprintf(log_f, "daemon:argv:%d:", i);
+			log_write_escaped(log_f, argv[i]);
+			zprintf(log_f, "\n");
+		}
 		zflush(log_f);
 	}
 
