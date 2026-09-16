@@ -257,6 +257,10 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 					i += 5;
 				}
 
+				/* C strings cannot represent embedded NULs */
+				if (cp == 0)
+					return -1;
+
 				char utf8[4];
 				int utf8_len = utf8_encode(cp, utf8);
 
