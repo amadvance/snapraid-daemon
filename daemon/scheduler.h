@@ -67,6 +67,15 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, sl_t* disk_filter_list, char* msg, size_t msg_size, int* status);
 
 /**
+ * Converts a filter pattern from unified API/Unix escaping syntax to SnapRAID Windows syntax.
+ * @param dst Destination buffer
+ * @param dst_size Size of destination buffer
+ * @param src Source filter string
+ * @return 0 on success, -1 if converted string exceeds dst_size
+ */
+int filter_escape_to_windows(char* dst, size_t dst_size, const char* src);
+
+/**
  * Schedule a spindown of idle disks.
  * @param state Current snapraid state
  * @param msg Buffer for error message

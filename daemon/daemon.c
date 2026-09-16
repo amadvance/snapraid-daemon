@@ -13,6 +13,7 @@
 #include "log.h"
 #include "parser.h"
 #include "web.h"
+#include "selftest.h"
 
 /****************************************************************************/
 /* helpers */
@@ -164,6 +165,8 @@ struct option long_options[] = {
 void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 {
 	int c;
+
+	test(argc, argv);
 
 	config_init(state);
 

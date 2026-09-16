@@ -186,7 +186,6 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 	state_unlock();
 }
 
-#ifdef _WIN32
 /**
  * Converts a filter pattern from unified API/Unix escaping syntax to SnapRAID Windows syntax.
  *
@@ -208,7 +207,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
  *
  * Returns 0 on success, or -1 if the converted string would exceed dst_size.
  */
-static int filter_escape_to_windows(char* dst, size_t dst_size, const char* src)
+int filter_escape_to_windows(char* dst, size_t dst_size, const char* src)
 {
 	size_t j = 0;
 	int in_class = 0;
@@ -263,7 +262,6 @@ static int filter_escape_to_windows(char* dst, size_t dst_size, const char* src)
 	dst[j] = 0;
 	return 0;
 }
-#endif
 
 void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_list, sl_t* disk_filter_list, char* msg, size_t msg_size, int* status)
 {

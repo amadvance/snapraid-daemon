@@ -99,6 +99,7 @@ snapraidd_SOURCES = \
 	daemon/report.c \
 	daemon/notify.c \
 	daemon/smart.c \
+	daemon/selftest.c \
 	daemon/unixapp.c \
 	daemon/mingwapp.c \
 	os/unix.c \
@@ -149,6 +150,7 @@ noinst_HEADERS = \
 	daemon/report.h \
 	daemon/notify.h \
 	daemon/smart.h \
+	daemon/selftest.h \
 	daemon/version.h
 
 # Add the .version file in the distribution
@@ -452,6 +454,9 @@ if HAVE_ADVD2
 %.xml : %.d
 	advd2 xml < $< > $@
 endif
+
+check-local: snapraidd$(EXEEXT)
+	./snapraidd$(EXEEXT) test
 
 MANUAL=./snapraidd -f -N -i manual
 
