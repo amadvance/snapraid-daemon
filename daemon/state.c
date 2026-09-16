@@ -29,7 +29,8 @@ struct snapraid_state* state_init(void)
 	state->daemon_running = 1;
 	state->daemon_aborting = 0;
 	state->daemon_start_time = time(0);
-	state->array.health = health_array_locked(state, state->array.health_reason, sizeof(state->array.health_reason));
+	state->array.health = HEALTH_PENDING;
+	sncpy(state->array.health_reason, sizeof(state->array.health_reason), "Daemon is initializing and array health assessment is pending");
 
 	return state;
 }
