@@ -399,4 +399,7 @@ AC_CONFIG_FILES([makensis.sh], [chmod a+x makensis.sh])
 datadir='${prefix}/share/snapraidd'
 AC_SUBST([datadir]) 
 
+# Ensure object subdirectories exist for out-of-tree builds without depcomp
+AC_CONFIG_COMMANDS([mkdir-obj], [$MKDIR_P daemon os civetweb tommyds monocypher])
+
 AC_OUTPUT
