@@ -72,16 +72,24 @@ static int runner_health_check_locked(struct snapraid_state* state)
 		state->array.health = new_health;
 
 		/*
-		 * Only transitions from an established health state are actionable. Ignore
-		 * the initial PENDING -> non-PENDING transition so a machine that
-		 * boots with prefail or failing disks is not immediately shut down again,
-		 * allowing recovery and troubleshooting after reboot.
+		 * Ignore a PENDING -> non-PENDING transition only during startup, so a
+		 * machine that boots with prefail or failing disks is not immediately shut
+		 * down again, allowing recovery and troubleshooting after reboot.
 		 *
-		 * Once initialized, every health change is handled normally. For example,
-		 * PASSED -> PREFAIL may trigger the "prefail" shutdown policy, while
-		 * PREFAIL -> FAILING may trigger the "failing" shutdown policy.
+		 * HEALTH_PENDING is not itself a startup marker: it can legitimately
+		 * reappear at runtime when a newly discovered device has not yet obtained
+		 * SMART telemetry. Such runtime transitions must remain actionable,
+		 * otherwise a subsequent PREFAIL or FAILING condition could permanently
+		 * miss the configured automatic shutdown.
+		 *
+		 * Established PREFAIL and FAILING device health is preserved when SMART
+		 * telemetry is temporarily unavailable, so a transient smartctl failure
+		 * does not create a spurious FAILING -> PENDING -> FAILING transition.
 		 */
-		if (old_health != HEALTH_PENDING) {
+		int startup_pending = old_health == HEALTH_PENDING
+			&& state->runner.latest->high_cmd == CMD_STARTUP;
+
+		if (!startup_pending) {
 			/* check if we should trigger a shutdown based on the new health status */
 			int trigger_shutdown = 0;
 			if (new_health == HEALTH_PREFAIL && config_shutdown_on(state->config.sys_shutdown_on, "prefail"))
