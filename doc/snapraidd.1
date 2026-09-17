@@ -1882,6 +1882,16 @@ available log state.
 Log recovery should therefore be considered best effort and guarantees
 only the preservation of complete records successfully written before
 the interruption.
+.SS Configuration changes may take effect later 
+Configuration changes are applied asynchronously to the affected runtime
+components. Completion of a configuration update or reload does not
+guarantee that every component has already switched to the new
+configuration.
+.PP
+For a short transition period, some components may still operate with
+the previous settings while others already use the new ones. Therefore,
+configuration changes must not be assumed to take effect atomically or
+immediately when the update or reload operation completes.
 .SH COPYRIGHT 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH SEE ALSO 
