@@ -2137,6 +2137,66 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 	}
 }
 
+/**
+ * Check if the line begins with a valid SnapRAID tag identifier.
+ * A tag must start with a lowercase letter or digit, contain only lowercase
+ * letters, digits, underscores, or dashes, and end with a colon.
+ */
+static int is_tag_format(const char* s)
+{
+	/* libc prefixes SnapRAID crash diagnostics with the process name */
+	if (strncmp(s, "snapraid: ", 10) == 0)
+		return 0;
+
+	const char* p = s;
+
+	/* tag name must begin with a lowercase letter or digit */
+	if (!islower((unsigned char)*p) && !isdigit((unsigned char)*p))
+		return 0;
+
+	/* tag name consists of lowercase letters, digits, underscores, and dashes */
+	while (*p != 0 && *p != ':') {
+		if (!islower((unsigned char)*p) && !isdigit((unsigned char)*p) && *p != '_' && *p != '-')
+			return 0;
+		++p;
+	}
+
+	/* must be followed by a colon and have at least 2 characters to reject Windows drive letters (e.g. c:\) */
+	return *p == ':' && p - s >= 2;
+}
+
+/**
+ * Process a raw non-tag line from standard error.
+ *
+ * These are typically early errors emitted before the SnapRAID log is set up
+ * (such as CLI option validation or system errors), which are printed directly
+ * to stderr without structured log tags.
+ */
+static void process_raw(struct snapraid_state* state, const char* line, size_t len)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (!task || len == 0)
+		return;
+
+	/* trim trailing whitespace including the final \n */
+	while (len > 0 && isspace((unsigned char)line[len - 1]))
+		--len;
+
+	if (len == 0)
+		return;
+
+	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
+
+	if (task->message_list_count <= MESSAGES_MAX) {
+		struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, line, len);
+		tommy_list_insert_tail(&task->message_list, &message->node, message);
+		++task->message_list_count;
+	} else {
+		++task->message_omit_error;
+	}
+}
+
 static int process_line(struct snapraid_state* state, char** map, size_t mac)
 {
 	const char* cmd;
@@ -2443,26 +2503,37 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 
 					plain[plain_len] = 0;
 					map[mac] = 0;
+					dup[dup_len] = 0; /* it contains the \n */
 
 					if (!disable) {
-						ignore_this_line = process_line(state, map, mac);
+						if (!is_tag_format(dup)) {
+							/*
+							 * Runtime diagnostics can precede the version tag, but raw lines
+							 * in past logs are valid only since SnapRAID 15.
+							 */
+							if (runtime || state->parser_version_major >= 15) {
+								state_lock();
+								process_raw(state, dup, dup_len);
+								state_unlock();
+							}
+						} else {
+							ignore_this_line = process_line(state, map, mac);
 
-						/* version 15 is the minimal supported one */
-						int is_old_snapraid = state->parser_version_major != 0 && state->parser_version_major < 15;
-						if (is_old_snapraid && runtime) {
-							/* don't log error in syslog if it's a past log */
-							if (log_f != 0)
-								log_task(LVL_ERROR, "requires SnapRAID 15.0 or newer");
-							state_lock();
-							pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
-							if (state->runner.latest)
-								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 15.0 or newer");
-							state_unlock();
-							disable = 1;
+							/* version 15 is the minimal supported one */
+							int is_old_snapraid = state->parser_version_major != 0 && state->parser_version_major < 15;
+							if (is_old_snapraid && runtime) {
+								/* don't log error in syslog if it's a past log */
+								if (log_f != 0)
+									log_task(LVL_ERROR, "requires SnapRAID 15.0 or newer");
+								state_lock();
+								pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
+								if (state->runner.latest)
+									message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 15.0 or newer");
+								state_unlock();
+								disable = 1;
+							}
 						}
 					}
-
-					dup[dup_len] = 0; /* it contains the \n */
 
 					/* write dup to the log */
 					if (!ignore_this_line && log_f != 0) {

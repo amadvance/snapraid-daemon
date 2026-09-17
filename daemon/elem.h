@@ -81,13 +81,26 @@ void split_free(void* void_split);
 /* message */
 
 /**
+ * Allocate and initialize a new message with known length.
+ * @param level Logging level
+ * @param type Message type
+ * @param msg Message text
+ * @param len Length of message text
+ * @return Pointer to newly allocated message
+ */
+struct snapraid_message* message_alloc_len(int level, int type, const char* msg, size_t len);
+
+/**
  * Allocate and initialize a new message.
  * @param level Logging level
  * @param type Message type
  * @param msg Message text
  * @return Pointer to newly allocated message
  */
-struct snapraid_message* message_alloc(int level, int type, const char* msg);
+static inline struct snapraid_message* message_alloc(int level, int type, const char* msg)
+{
+	return message_alloc_len(level, type, msg, strlen(msg));
+}
 
 /**
  * Free a message entry.
@@ -96,13 +109,26 @@ struct snapraid_message* message_alloc(int level, int type, const char* msg);
 void message_free(void* void_message);
 
 /**
+ * Insert a message into a message list with known length.
+ * @param list Destination message list
+ * @param level Logging level
+ * @param type Message type
+ * @param msg Message text
+ * @param len Length of message text
+ */
+void message_insert_len(tommy_list* list, int level, int type, const char* msg, size_t len);
+
+/**
  * Insert a message into a message list.
  * @param list Destination message list
  * @param level Logging level
  * @param type Message type
  * @param msg Message text
  */
-void message_insert(tommy_list* list, int level, int type, const char* msg);
+static inline void message_insert(tommy_list* list, int level, int type, const char* msg)
+{
+	message_insert_len(list, level, type, msg, strlen(msg));
+}
 
 /****************************************************************************/
 /* run */
