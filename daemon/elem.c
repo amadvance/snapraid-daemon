@@ -150,13 +150,13 @@ void split_free(void* void_split)
 /****************************************************************************/
 /* message */
 
-struct snapraid_message* message_alloc(int level, int type, const char* msg)
+struct snapraid_message* message_alloc_len(int level, int type, const char* msg, size_t len)
 {
-	size_t len = strlen(msg);
 	struct snapraid_message* message = malloc_nofail(sizeof(struct snapraid_message) + len + 1);
 	message->level = level;
 	message->type = type;
-	memcpy(message->msg, msg, len + 1);
+	memcpy(message->msg, msg, len);
+	message->msg[len] = 0;
 	return message;
 }
 
@@ -165,9 +165,9 @@ void message_free(void* void_message)
 	free(void_message);
 }
 
-void message_insert(tommy_list* list, int level, int type, const char* msg)
+void message_insert_len(tommy_list* list, int level, int type, const char* msg, size_t len)
 {
-	struct snapraid_message* message = message_alloc(level, type, msg);
+	struct snapraid_message* message = message_alloc_len(level, type, msg, len);
 	tommy_list_insert_tail(list, &message->node, message);
 }
 
