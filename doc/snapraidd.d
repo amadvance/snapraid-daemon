@@ -1480,6 +1480,17 @@ Known Issues
 	only the preservation of complete records successfully written before
 	the interruption.
 
+  Configuration changes may take effect later
+	Configuration changes are applied asynchronously to the affected runtime
+	components. Completion of a configuration update or reload does not
+	guarantee that every component has already switched to the new
+	configuration.
+
+	For a short transition period, some components may still operate with
+	the previous settings while others already use the new ones. Therefore,
+	configuration changes must not be assumed to take effect atomically or
+	immediately when the update or reload operation completes.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 
