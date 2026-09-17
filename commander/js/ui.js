@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, escHtml, Icons } from './utils.js';
+import { formatMemorySize, formatDiskSize, formatFullTime, formatSeconds, formatRelativeTime, formatDuration, formatAgoMins, formatAgoDays, formatSignal, formatHistory, escHtml, escAttr, Icons } from './utils.js';
 
 /* --- Shared Components --- */
 const badge = (text, color) => `<span class="badge badge-${color}">${text}</span>`;
 
-export { escHtml };
+export { escHtml, escAttr };
 export const esc = (str) => str.replace(/'/g, "\\'");
-const escAttr = escHtml;
 
 /**
  * Calculates a numerical score for a version string to allow easy comparisons.
@@ -633,7 +632,7 @@ export const renderDifferences = (arrayInfo) => {
                 <td class="text-xs font-mono">${escHtml(d.disk)}</td>
                 <td class="text-xs break-all">
                     <div class="flex justify-between items-center">
-                        <span>${escAttr(d.path)}</span>
+                        <span>${escHtml(d.path)}</span>
                         ${isRemoved ? `<button class="btn btn-primary btn-sm ml-2" data-tooltip="Restore only this specific deleted file" data-action="undelete" data-disk="${escAttr(d.disk)}" data-path="${escAttr(d.path)}">Undelete</button>` : ''}
                     </div>
                 </td>
