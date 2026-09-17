@@ -355,9 +355,9 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
 }
 
 /**
- * Remove the disappeared disks or devices, but only if task complete succesfully
+ * Remove unreferenced disks, devices or splits, but only if task complete successfully
  */
-static void remove_disappeared_disks(struct snapraid_state* state, struct snapraid_task* task)
+static void remove_unreferenced_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
 	int runtime = !state->daemon_loading;
 
@@ -386,7 +386,7 @@ static void remove_disappeared_disks(struct snapraid_state* state, struct snapra
 
 		if (disk->last_update_at_number < task->number) {
 			if (runtime)
-				log_task(LVL_INFO, "removing disappeared disk '%s'", disk->name);
+				log_task(LVL_INFO, "removing unreferenced disk '%s'", disk->name);
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
@@ -2622,7 +2622,7 @@ void parse_begin_locked(struct snapraid_state* state)
 void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task)
 {
 	/* remove disks that were not referenced */
-	remove_disappeared_disks(state, task);
+	remove_unreferenced_disks(state, task);
 }
 
 int parse_past_log(struct snapraid_state* state)
