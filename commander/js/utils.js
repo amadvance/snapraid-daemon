@@ -11,6 +11,11 @@ export const escHtml = (str) => {
         .replace(/'/g, '&#39;');
 };
 
+export const escAttr = (str) => {
+    if (str == null) return '';
+    return escHtml(str).replace(/\r/g, '&#13;');
+};
+
 export const formatFullTime = (isoString, referenceIsoString) => {
     if (!isoString || !referenceIsoString)
         return '-';
