@@ -2159,7 +2159,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 
 	/*
 	 * Finalize map associations on map_end (supported by SnapRAID 15.x)
-	 * or on unixtime as a fallback for SnapRAID 14.x
+	 * or on unixtime as a fallback for historical logs generated with SnapRAID 14.x
 	 */
 	if (strcmp(cmd, "map_end") == 0 || (state->parser_previous_was_association && strcmp(cmd, "unixtime") == 0)) {
 		state->parser_previous_was_association = 0; /* no lock required for parser_* fields as private to parser */
@@ -2376,6 +2376,7 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 	size_t mac_limit = 0; /* no limit */
 	int escape = 0;
 	int disable = 0;
+	int runtime = !state->daemon_loading;
 
 	map[mac++] = plain;
 
@@ -2446,16 +2447,16 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 					if (!disable) {
 						ignore_this_line = process_line(state, map, mac);
 
-						/* version 14 is the minimal supported one */
-						int is_old_snapraid = state->parser_version_major != 0 && state->parser_version_major < 14;
-						if (is_old_snapraid) {
+						/* version 15 is the minimal supported one */
+						int is_old_snapraid = state->parser_version_major != 0 && state->parser_version_major < 15;
+						if (is_old_snapraid && runtime) {
 							/* don't log error in syslog if it's a past log */
 							if (log_f != 0)
-								log_task(LVL_ERROR, "requires SnapRAID 14.0 or newer");
+								log_task(LVL_ERROR, "requires SnapRAID 15.0 or newer");
 							state_lock();
 							pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 							if (state->runner.latest)
-								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 14.0 or newer");
+								message_insert(&state->runner.latest->message_list, MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, "Requires SnapRAID 15.0 or newer");
 							state_unlock();
 							disable = 1;
 						}

@@ -9,5 +9,6 @@ arch = x86_64
 license = GPL3
 depend = zlib
 depend = zstd
+depend = snapraid>=15.0
 depend = systemd
 backup = etc/snapraidd.conf

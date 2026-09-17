@@ -1966,6 +1966,7 @@ void runner_step_locked(struct snapraid_state* state, const char* snapraid, int 
 	sl_insert_str(&task->arg_list, "--log");
 	sl_insert_str(&task->arg_list, ">&2");
 	sl_insert_str(&task->arg_list, "--gui");
+	sl_insert_str(&task->arg_list, "--lock-options");
 	if (arg_list) {
 		task->arg_custom = tommy_list_count(&task->arg_list);
 		sl_insert_list(&task->arg_list, arg_list);

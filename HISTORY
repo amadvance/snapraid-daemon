@@ -3,6 +3,7 @@ SnapRAID-Daemon HISTORY
 
 2.0 (Work in Progress)
 ======================
+ * Require SnapRAID 15.0 or newer.
  * Added a "degraded" health state for disks and the array when a
    filesystem UUID mismatch is detected against the content file.
    This distinguishes missing mountpoints or unmounted disks from
