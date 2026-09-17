@@ -1500,6 +1500,14 @@ Known Issues
 	configuration changes must not be assumed to take effect atomically or
 	immediately when the update or reload operation completes.
 
+  Non-UTF-8 Paths in the REST API
+	On Unix, filesystem paths containing invalid UTF-8 bytes are represented
+	in the REST API with Python's surrogateescape encoding (PEP 383).
+	Non-decodable bytes in the range 0x80-0xFF are mapped to lone Unicode
+	surrogate code points in the range U+DC80-U+DCFF (formatted in JSON as
+	`\udc80`-`\udcff`), allowing paths with arbitrary byte sequences to be
+	represented losslessly across the REST API.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 

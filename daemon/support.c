@@ -248,9 +248,17 @@ int json_unescape(const char* src, size_t len, char* dst, size_t dst_size)
 						+ ((uint32_t)low - 0xDC00);
 
 					i += 11;
+				} else if (u >= 0xDC80 && u <= 0xDCFF) {
+					/* PEP 383 surrogateescape: restore raw byte in 0x80–0xFF range */
+					if (j + 1 >= dst_size)
+						return -1; /* buffer overflow */
+
+					dst[j++] = (char)(u - 0xDC00);
+					i += 5;
+					goto next_char;
 				} else {
-					/* lone low surrogate is invalid */
-					if (u >= 0xDC00 && u <= 0xDFFF)
+					/* other lone surrogates are invalid */
+					if (u >= 0xD800 && u <= 0xDFFF)
 						return -1;
 
 					cp = u;
