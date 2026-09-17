@@ -34,7 +34,7 @@
 /**
  * Max size of the JSON text
  */
-#define JSON_MAX_SIZE 16384
+#define JSON_MAX_SIZE 32768
 
 /**
  * Initial size for building Prometheus metrics text
@@ -176,8 +176,7 @@ static int json_string(const char* js, jsmntok_t* jv, char* out, size_t out_size
 {
 	size_t len = jv[0].end - jv[0].start;
 
-	if (jv[0].type != JSMN_STRING
-		|| len + 1 > out_size)
+	if (jv[0].type != JSMN_STRING)
 		return -1;
 
 	if (json_unescape(&js[jv[0].start], len, out, out_size) != 0)

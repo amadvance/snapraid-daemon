@@ -728,7 +728,9 @@ const app = {
     },
 
     triggerUndelete: async (disk, path) => {
-        const escapedRootPath = (path.startsWith('/') ? path : '/' + path).replace(/[\\*?\[\]]/g, '\\$&');
+        // Escape literal SnapRAID wildcards
+        const escapedRootPath = (path.startsWith('/') ? path : '/' + path)
+            .replace(/[\\*?\[\]]/g, '\\$&');
         const escapedDisk = disk ? disk.replace(/[\\*?\[\]]/g, '\\$&') : '';
         if (await showConfirm(`Recover missing file?\n${disk}:${path}`, 'Undelete File')) {
             try {

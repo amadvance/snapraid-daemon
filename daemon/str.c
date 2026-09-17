@@ -495,8 +495,13 @@ static void ss_json_esc(ss_t* s, const char* arg)
 			len = 4;
 			min_cp = 0x10000;
 		} else {
-			/* bare continuation byte (0x80–0xBF) or invalid byte (0xF8–0xFF) */
-			ss_write(s, "\\ufffd", 6);
+			/*
+			 * Bare continuation byte (0x80–0xBF) or invalid lead byte (0xF8–0xFF).
+			 * Encode as PEP 383 surrogateescape (U+DC80–U+DCFF).
+			 */
+			char buf[7];
+			snprintf(buf, sizeof(buf), "\\udc%02x", *p);
+			ss_write(s, buf, 6);
 			++p;
 			continue;
 		}
@@ -510,8 +515,13 @@ static void ss_json_esc(ss_t* s, const char* arg)
 			}
 		}
 		if (!valid) {
-			/* emit one replacement char and advance a single byte to resync */
-			ss_write(s, "\\ufffd", 6);
+			/*
+			 * Invalid continuation: emit surrogateescape for lead byte and advance
+			 * one byte to resynchronize.
+			 */
+			char buf[7];
+			snprintf(buf, sizeof(buf), "\\udc%02x", *p);
+			ss_write(s, buf, 6);
 			++p;
 			continue;
 		}
@@ -536,24 +546,16 @@ static void ss_json_esc(ss_t* s, const char* arg)
 			break;
 		}
 
-		/* overlong encoding: codepoint is representable in a shorter sequence */
-		if (cp < min_cp) {
-			ss_write(s, "\\ufffd", 6);
-			++p; /* advance only 1 byte; continuation bytes may be valid elsewhere */
-			continue;
-		}
-
-		/* surrogate halves U+D800–U+DFFF are forbidden in UTF-8 (RFC 3629) */
-		if (cp >= 0xD800 && cp <= 0xDFFF) {
-			ss_write(s, "\\ufffd", 6);
-			p += len;
-			continue;
-		}
-
-		/* codepoints above U+10FFFF are outside the Unicode range */
-		if (cp > 0x10FFFF) {
-			ss_write(s, "\\ufffd", 6);
-			p += len;
+		/*
+		 * If sequence is overlong, surrogate half, or beyond Unicode range,
+		 * encode the lead byte as PEP 383 surrogateescape and advance one byte.
+		 * Subsequent continuation bytes will also be encoded as surrogateescapes.
+		 */
+		if (cp < min_cp || (cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF) {
+			char buf[7];
+			snprintf(buf, sizeof(buf), "\\udc%02x", *p);
+			ss_write(s, buf, 6);
+			++p;
 			continue;
 		}
 
