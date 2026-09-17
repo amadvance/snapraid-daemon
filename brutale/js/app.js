@@ -707,13 +707,12 @@ const app = {
         const input = document.getElementById('undelete-patterns');
         if (!input) return;
 
-        const text = input.value.trim();
-        if (!text) {
+        const filters = input.value.split(/\r?\n/).filter(line => line.length !== 0);
+        if (filters.length === 0) {
             showToast('Please enter at least one file pattern', 'warning');
             return;
         }
 
-        const filters = text.split('\n').map(l => l.trim()).filter(l => l);
         const confirmRes = await showConfirmDown(`Recover files matching ${filters.length} patterns?`, 'Undelete Files');
 
         if (confirmRes) {
