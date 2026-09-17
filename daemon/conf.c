@@ -741,6 +741,18 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	tommy_node* i;
 	struct snapraid_config_line* found = 0;
 
+	/* when clearing, comment all active occurrences to ensure none remain effective */
+	if (*value == 0) {
+		i = tommy_list_head(&config->line_list);
+		while (i) {
+			struct snapraid_config_line* line = i->data;
+			if (line_matches_key(line->text, key, 0))
+				snprintf(line->text, sizeof(line->text), "#%s =", key);
+			i = i->next;
+		}
+		return;
+	}
+
 	/* first try searching the effective option */
 	i = tommy_list_head(&config->line_list);
 	while (i) {
@@ -765,15 +777,7 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 
 	/* create the new formatted line */
 	if (found) {
-		if (*value == 0)
-			snprintf(found->text, sizeof(found->text), "#%s =", key);
-		else
-			snprintf(found->text, sizeof(found->text), "%s = %s", key, value);
-		return;
-	}
-
-	/* do not clear if already missing */
-	if (*value == 0) {
+		snprintf(found->text, sizeof(found->text), "%s = %s", key, value);
 		return;
 	}
 
