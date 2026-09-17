@@ -649,11 +649,11 @@ paths:
           $ref: '#/components/responses/CommandResult'
 
     patch:
-      summary: Update configuration (Permanent)
+      summary: Update configuration
       description: >
         Performs a partial update of the daemon settings. Validated changes are
-        immediately applied to the running process and persisted to the
-        'snapraidd.conf' file on disk.
+        immediately applied to the running process and written to the
+        configuration file.
       requestBody:
         required: true
         description: JSON object containing the fields to be updated.
