@@ -2046,6 +2046,8 @@ static void process_daemon(struct snapraid_state* state, char** map, size_t mac)
 		task->cmd = command_parse(val);
 	} else if (strcmp(tag, "high_command") == 0) {
 		task->high_cmd = command_parse(val);
+	} else if (strcmp(tag, "arg_custom") == 0) {
+		strint(&task->arg_custom, val);
 	} else if (strcmp(tag, "term") == 0) {
 		task->state = PROCESS_STATE_TERM;
 		if (strint(&task->exit_code, val) != 0)

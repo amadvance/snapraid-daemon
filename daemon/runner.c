@@ -1247,6 +1247,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	tommy_node* j;
 	int i;
 	int number;
+	int arg_custom;
 	struct snapraid_task* task = state->runner.latest;
 	struct snapraid_pulse pulse_before = state->pulse;
 
@@ -1256,6 +1257,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	cmd = task->cmd;
 	high_cmd = task->high_cmd;
 	number = task->number;
+	arg_custom = task->arg_custom;
 	argc = tommy_list_count(&task->arg_list);
 	argv = calloc_nofail(argc + 1, sizeof(char*));
 	for (i = 0, j = tommy_list_head(&task->arg_list); i < argc; ++i, j = j->next) {
@@ -1349,6 +1351,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 			zprintf(log_f, "daemon:high_command:%s\n", command_name(high_cmd));
 		zprintf(log_f, "daemon:scheduled:%" PRIi64 "\n", unix_queue_time);
 		zprintf(log_f, "daemon:start:%" PRIi64 "\n", unix_start_time);
+		zprintf(log_f, "daemon:arg_custom:%d\n", arg_custom);
 		for (i = 0; i < argc; ++i) {
 			zprintf(log_f, "daemon:argv:%d:", i);
 			log_write_escaped(log_f, argv[i]);
