@@ -755,6 +755,7 @@ static int health_worse(int current, int value, char* reason, size_t reason_size
 
 static int health_device_pointer_list(tommy_list* list, char* reason, size_t reason_size)
 {
+	char msg[HEALTH_REASON_MAX + KEYWORD_MAX];
 	int health = HEALTH_PASSED;
 
 	for (tommy_node* i = tommy_list_head(list); i; i = i->next) {
@@ -763,6 +764,12 @@ static int health_device_pointer_list(tommy_list* list, char* reason, size_t rea
 
 		if (device_is_connected(device)) {
 			health = health_worse(health, device->health, reason, reason_size, device->health_reason);
+		} else {
+			if (device->serial[0] != 0)
+				snprintf(msg, sizeof(msg), "Physical device with serial '%s' is disconnected", device->serial);
+			else
+				snprintf(msg, sizeof(msg), "Physical device is disconnected");
+			health = health_worse(health, HEALTH_DEGRADED, reason, reason_size, msg);
 		}
 	}
 

@@ -267,10 +267,12 @@ In this state, scheduled maintenance remains active.
 .HP 4
 .I DEGRADED
 The filesystem UUID does not match the UUID recorded in the
-content file. This typically indicates that the expected filesystem
-might not be present at the mount point (for example, if the disk is
-not mounted), representing a serious array condition without implying
-physical hardware failure.
+content file, or an associated physical device is currently disconnected.
+This typically indicates that the expected filesystem might not be
+present at the mount point (for example, if the disk is not mounted),
+or that the storage configuration is incomplete (such as a missing member
+of a multi\-device volume), representing a serious array condition without
+implying physical hardware failure.
 Automated maintenance is suspended in this state, and manual
 intervention is required.
 .HP 4
