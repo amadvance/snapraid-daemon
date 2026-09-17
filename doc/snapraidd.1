@@ -898,7 +898,8 @@ occur while processing one group and the corresponding \`task\-end\` or
 group have completed.
 .PP
 The hook configuration is snapshotted when the hook lifecycle begins
-and remains associated with that lifecycle until cleanup completes.
+and remains associated with that lifecycle until its cleanup attempt
+completes.
 Configuration reloads do not alter an already active hook lifecycle.
 In particular, the corresponding \`task\-end\` or \`task\-error\` hook,
 the post\-script, and Docker cleanup always use the same hook configuration
@@ -906,7 +907,8 @@ and acquired\-resource state established by the matching \`task\-begin\`,
 even if the daemon configuration changes in the meantime.
 .PP
 A new configuration becomes effective for hooks when a new hook lifecycle
-is started after the previous one has been fully cleaned up.
+is started after the cleanup attempt for the previous lifecycle has
+completed.
 .PP
 Note that \'task\-end\' reflects only whether the hook lifecycle finished
 its execution cycle successfully. It does not necessarily reflect
@@ -1053,9 +1055,11 @@ tasks that access the array (e.g., plex, transmission).
 At the start of a hook lifecycle (immediately before executing the
 \`task\-begin\` hook), the daemon pauses only the listed containers that
 are running and not already paused. When the hook lifecycle concludes,
-it unpauses only those containers, restoring their initial state.
-Containers that were already paused remain paused, and stopped containers
-remain stopped.
+it attempts to unpause only those containers. Containers that were
+already paused remain paused, and stopped containers remain stopped.
+.PP
+If the unpause operation fails, the hook cleanup is reported as failed.
+The daemon does not retry the unpause operation in a later hook lifecycle.
 .SS hook_run_as_user 
 Specifies the user account used to execute the hook_script.
 If this is missing or blank, the script is executed with the
