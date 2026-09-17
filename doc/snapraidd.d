@@ -305,9 +305,18 @@ Configuration
 		operational settings like maintenance schedules, scrub intensities,
 		and disk monitoring intervals. These parameters are fully
 		accessible and can be modified in real-time via the API.
-		Changes made through the REST interface are instantly applied
-		to the running process and persisted back to this file while
-		preserving all existing manual comments.
+		Changes made through the REST interface are applied to
+		the running process and persisted back to this file
+		while preserving all existing manual comments.
+
+	Configuration changes are not applied atomically to all runtime components
+	and existing operations. A successful configuration update means that
+	the new configuration has been accepted, but does not guarantee that
+	every component or previously scheduled task has already switched to it.
+
+	Components may apply new settings at different points in their lifecycle,
+	and tasks already scheduled or running may continue using settings
+	captured before the configuration change.
 
 	To make changes to the `/etc/snapraidd.conf` file effective, you must
 	either restart the daemon or send a SIGHUP signal to the running process.
