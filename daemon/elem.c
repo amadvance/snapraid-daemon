@@ -302,12 +302,23 @@ void task_free(void* void_task)
 	free(task);
 }
 
+int task_exit_warning(int cmd, int exit_code)
+{
+	if (cmd == CMD_DIFF && exit_code == EXIT_SYNC_NEEDED)
+		return 1;
+
+	if (exit_code == EXIT_DEGRADED)
+		return 1;
+
+	return 0;
+}
+
 int task_exit_success(int cmd, int exit_code)
 {
-	if (cmd == CMD_DIFF)
-		return exit_code == 0 || exit_code == EXIT_SYNC_NEEDED; /* detecting differences are not a failure */
+	if (exit_code == 0)
+		return 1;
 
-	return exit_code == 0;
+	return task_exit_warning(cmd, exit_code);
 }
 
 int task_success(struct snapraid_task* task)
@@ -384,7 +395,7 @@ int task_level(struct snapraid_task* task)
 
 	/* check exit code */
 	if (task->state == PROCESS_STATE_TERM) {
-		if (task->cmd == CMD_DIFF && task->exit_code == EXIT_SYNC_NEEDED)
+		if (task_exit_warning(task->cmd, task->exit_code))
 			level = level_mix(level, LVL_WARNING);
 		else if (task->exit_code != 0)
 			level = level_mix(level, LVL_ERROR);
@@ -813,6 +824,11 @@ int health_disk(struct snapraid_disk* disk, char* reason, size_t reason_size)
 		health = health_worse(health, HEALTH_PREFAIL, reason, reason_size, msg);
 	}
 
+	if (disk->degraded_at_task_number != 0) {
+		snprintf(msg, sizeof(msg), "Disk %s has missing device(s) and is running in degraded mode", disk->name);
+		health = health_worse(health, HEALTH_DEGRADED, reason, reason_size, msg);
+	}
+
 	int device_health = health_device_pointer_list(&disk->device_pointer_list, msg, sizeof(msg));
 	health = health_worse(health, device_health, reason, reason_size, msg);
 
@@ -847,6 +863,11 @@ int health_task(const struct snapraid_task* task, char* reason, size_t reason_si
 	if (task->error_unrecoverable != 0) {
 		snprintf(msg, sizeof(msg), "Task found %" PRIu64 " unrecoverable errors", task->error_unrecoverable);
 		health = health_worse(health, HEALTH_CORRUPT, reason, reason_size, msg);
+	}
+
+	if (task->exit_code == EXIT_DEGRADED) {
+		snprintf(msg, sizeof(msg), "Task found degraded disk(s) with missing device(s)");
+		health = health_worse(health, HEALTH_DEGRADED, reason, reason_size, msg);
 	}
 
 	switch (task->state) {

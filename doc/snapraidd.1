@@ -1912,6 +1912,19 @@ Non\-decodable bytes in the range 0x80\-0xFF are mapped to lone Unicode
 surrogate code points in the range U+DC80\-U+DCFF (formatted in JSON as
 \`\\udc80\`\-\`\\udcff\`), allowing paths with arbitrary byte sequences to be
 represented losslessly across the REST API.
+.SS Devices Without Stable IDs 
+The daemon relies on stable device identifiers, such as hardware serial
+numbers, to preserve physical device health information across mapping
+updates.
+.PP
+If a device exposes no stable identifier, as can happen with virtual
+disks or certain USB enclosures, its path cannot be trusted as a
+persistent identity because it may later refer to a different device.
+The daemon therefore discards historical device information when the
+device cannot be identified reliably.
+.PP
+As a result, previous SMART or health state may be lost until fresh
+telemetry is collected.
 .SH COPYRIGHT 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH SEE ALSO 

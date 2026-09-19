@@ -1512,6 +1512,20 @@ Known Issues
 	`\udc80`-`\udcff`), allowing paths with arbitrary byte sequences to be
 	represented losslessly across the REST API.
 
+  Devices Without Stable IDs
+	The daemon relies on stable device identifiers, such as hardware serial
+	numbers, to preserve physical device health information across mapping
+	updates.
+
+	If a device exposes no stable identifier, as can happen with virtual
+	disks or certain USB enclosures, its path cannot be trusted as a
+	persistent identity because it may later refer to a different device.
+	The daemon therefore discards historical device information when the
+	device cannot be identified reliably.
+
+	As a result, previous SMART or health state may be lost until fresh
+	telemetry is collected.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 

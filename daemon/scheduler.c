@@ -116,6 +116,7 @@ static void schedule_maintenance_locked(struct snapraid_state* state, time_t now
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_UP, now, group, 0);
+		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_PROBE, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SYNC, now, group, &sync_arg_list);
 		if (do_scrub)
 			runner_step_locked(state, snapraid, CMD_MAINTENANCE, CMD_SCRUB, now, group, &scrub_arg_list);
@@ -171,6 +172,7 @@ void schedule_heal(struct snapraid_state* state, int spindown, char* msg, size_t
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_HEAL, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_UP, now, group, 0);
+		runner_step_locked(state, snapraid, CMD_HEAL, CMD_PROBE, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_FIX, now, group, &fix_arg_list);
 		runner_step_locked(state, snapraid, CMD_HEAL, CMD_SCRUB, now, group, &scrub_arg_list);
 		schedule_spindown_step_locked(state, snapraid, CMD_HEAL, now, group, spindown);
@@ -339,6 +341,7 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_UP, now, group, 0);
+		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_PROBE, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_FIX, now, group, &fix_arg_list);
 		schedule_spindown_step_locked(state, snapraid, CMD_UNDELETE, now, group, spindown);
 		runner_step_locked(state, snapraid, CMD_UNDELETE, CMD_REPORT, now, group, 0);
@@ -416,6 +419,7 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_REFRESH, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_UP, now, group, 0);
+		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_PROBE, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_READ, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_REPORT, now, group, 0);
 		*status = 202;

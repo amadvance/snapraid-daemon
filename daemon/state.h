@@ -15,6 +15,11 @@
  **/
 #define EXIT_SYNC_NEEDED 2
 
+/**
+ * Exit code of the engine if a filesystem is degraded
+ **/
+#define EXIT_DEGRADED 3
+
 #define EXIT_EXEC_FAILED -1 /**< Task execution or daemon infrastructure failure */
 #define EXIT_PRE_HOOK_FAILED -2 /**< Pre-execution hook failure */
 #define EXIT_POST_HOOK_FAILED -3 /**< Post-execution hook failure */
@@ -43,6 +48,8 @@
 
 /**
  * Max device identifier length.
+ *
+ * No device identifier longer than 127 characters is known to have been publicly documented.
  */
 #define ID_MAX 128
 
@@ -255,6 +262,7 @@ struct snapraid_disk {
 	struct snapraid_tracked error_data; /**< Monotonic lifetime silent data errors (never reset). */
 	int last_update_at_number; /**< The latest task number that updated the disk */
 	int kind; /**< Kind of the disk. One of DISK_* */
+	int degraded_at_task_number; /**< The latest task number that reported the disk as degraded, or 0 */
 
 	tommy_list device_pointer_list; /**< List of snapraid_device_pointer */
 	tommy_list split_list; /**< List of snapraid_split */
