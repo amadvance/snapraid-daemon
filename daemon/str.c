@@ -192,70 +192,38 @@ unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* d
 {
 	unsigned mac = 0;
 
-	if (trim_empty) {
-		/* skip initial delimiters */
-		str += strspn(str, delimiters);
+	if (*str == 0)
+		return 0;
 
-		while (*str != 0 && mac < split_max) {
-			/* start of the token */
-			char* tok_start = str;
+	while (mac < split_max) {
+		char* begin = str;
 
-			/* find the first delimiter or the end of the string */
-			str += strcspn(str, delimiters);
+		str += strcspn(str, delimiters);
 
-			/* put the final terminator if missing */
-			if (*str != 0)
-				*str++ = 0;
+		char* end = str;
 
-			/* skip trailing delimiters */
-			str += strspn(str, delimiters);
+		int has_next = *str != 0;
+		if (has_next) {
+			*str = 0;
+			++str;
+		}
 
-			/* trim the token if trim is specified */
-			if (trim != 0) {
-				tok_start += strspn(tok_start, trim);
-				size_t len = strlen(tok_start);
-				while (len > 0 && strchr(trim, tok_start[len - 1]) != 0) {
-					tok_start[len - 1] = 0;
-					--len;
-				}
-			}
+		if (trim != 0) {
+			begin += strspn(begin, trim);
 
-			/* store the token only if it's not empty */
-			if (*tok_start != 0) {
-				split_map[mac] = tok_start;
-				++mac;
+			while (end > begin && strchr(trim, end[-1]) != 0) {
+				--end;
+				*end = 0;
 			}
 		}
-	} else {
-		if (*str == 0)
-			return 0;
 
-		while (mac < split_max) {
-			char* tok_start = str;
-
-			str += strcspn(str, delimiters);
-
-			int has_next = *str != 0;
-			if (has_next) {
-				*str = 0;
-				++str;
-			}
-
-			if (trim != 0) {
-				tok_start += strspn(tok_start, trim);
-				size_t len = strlen(tok_start);
-				while (len > 0 && strchr(trim, tok_start[len - 1]) != 0) {
-					tok_start[len - 1] = 0;
-					--len;
-				}
-			}
-
-			split_map[mac] = tok_start;
+		if (!trim_empty || *begin != 0) {
+			split_map[mac] = begin;
 			++mac;
-
-			if (!has_next)
-				break;
 		}
+
+		if (!has_next)
+			break;
 	}
 
 	return mac;
