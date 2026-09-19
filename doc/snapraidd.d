@@ -1526,6 +1526,18 @@ Known Issues
 	As a result, previous SMART or health state may be lost until fresh
 	telemetry is collected.
 
+  Concurrent Docker Changes During Hooks
+	Docker container state and identity are inspected before the daemon
+	performs its pause and resume operations.
+
+	Concurrent Docker operations, such as renaming a selected container or
+	pausing it externally, may therefore cause the wrong container to be
+	paused or resumed, or cause the daemon to undo a pause it did not
+	perform.
+
+	External changes to selected containers should not be performed while
+	a hook lifecycle is being established or is active.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 
