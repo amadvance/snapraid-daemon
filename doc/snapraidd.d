@@ -1541,6 +1541,12 @@ Known Issues
 	External changes to selected containers should not be performed while
 	a hook lifecycle is being established or is active.
 
+  Blocking Hooks and Docker Operations
+	Hook scripts and Docker operations are expected to terminate.
+	If they block indefinitely, task execution, hook cleanup, and graceful
+	daemon shutdown may also remain blocked. Paused Docker containers may
+	remain paused until external recovery is performed.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 
