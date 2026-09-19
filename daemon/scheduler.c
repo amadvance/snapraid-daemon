@@ -416,6 +416,7 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 		if (state->config.notify_start[0] != 0)
 			runner_step_locked(state, snapraid, CMD_REFRESH, CMD_START, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_UP, now, group, 0);
+		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_PROBE, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_READ, now, group, 0);
 		runner_step_locked(state, snapraid, CMD_REFRESH, CMD_REPORT, now, group, 0);
 		*status = 202;

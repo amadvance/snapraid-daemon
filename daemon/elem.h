@@ -211,7 +211,14 @@ struct snapraid_task* task_alloc(void);
 void task_free(void* void_task);
 
 /**
+ * Check if the command exit code represents a warning.
+ */
+int task_exit_warning(int cmd, int exit_code);
+
+/**
  * Check if the command exit code represents success.
+ *
+ * Warning exit codes are considered success.
  */
 int task_exit_success(int cmd, int exit_code);
 

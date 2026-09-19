@@ -355,7 +355,20 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
 }
 
 /**
- * Remove unreferenced disks, devices or splits, but only if task complete successfully
+ * Remove unreferenced disks, devices, and splits after a probe.
+ *
+ * Probe is the authoritative source for array configuration and disk components,
+ * as it inspects both snapraid.conf and all underlying physical devices across data,
+ * parity, and extra disks (unlike up/down which omit extra disks).
+ *
+ * Disks not referenced during the probe are no longer part of the configuration
+ * and are pruned from the array inventory, even if previously degraded.
+ *
+ * For surviving disks, unreferenced device pointers and splits are pruned only if
+ * the disk is not degraded. When a disk is degraded, missing member devices cannot
+ * be discovered or updated by the probe; preserving their existing device pointers
+ * ensures the daemon maintains knowledge of the missing hardware and reports its
+ * degraded state rather than assuming the surviving devices represent the whole disk.
  */
 static void remove_unreferenced_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
@@ -374,9 +387,7 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 		return;
 
 	/* only if the task terminated with success */
-	if (task->state != PROCESS_STATE_TERM)
-		return;
-	if (task->exit_code != 0)
+	if (!task_success(task))
 		return;
 
 	/* remove any disk that is not referenced */
@@ -390,7 +401,7 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
-		} else {
+		} else if (disk->degraded_at_task_number == 0) {
 			/* remove any device pointer that is not referenced */
 			for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j != 0; ) {
 				struct snapraid_device_pointer* pointer = j->data;
@@ -425,6 +436,37 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 		}
 
 		i = i_next;
+	}
+}
+
+/**
+ * Clear the degraded status of disks that are no longer degraded after a probe.
+ *
+ * Probe is the authoritative source for disk components, as an unfiltered probe
+ * inspects all disks. Any disk not tagged as "degraded" during a completed probe
+ * is verified healthy, allowing us to safely clear its degraded status even if
+ * other disks in the array remain degraded.
+ */
+static void clear_degraded_disks(struct snapraid_state* state, struct snapraid_task* task)
+{
+	/* for simplicity process only on PROBE that access both snapraid.conf and all devices */
+	if (task->cmd != CMD_PROBE)
+		return;
+
+	/* if there is any argument, it could be a filter by disk and info will be incomplete */
+	if (task->arg_custom != 0)
+		return;
+
+	/* only if the task terminated with success */
+	if (!task_success(task))
+		return;
+
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		if (disk->degraded_at_task_number != task->number && disk->degraded_at_task_number != 0) {
+			pulse(state, PULSE_DISKS | PULSE_ARRAY);
+			disk->degraded_at_task_number = 0;
+		}
 	}
 }
 
@@ -1250,6 +1292,25 @@ static void process_nvme_critical_warning(struct snapraid_state* state,
 	for (size_t i = 0; i < sizeof(WARNING) / sizeof(WARNING[0]); ++i) {
 		const char* raw = (warning & (1ULL << i)) != 0 ? "1" : "0";
 		process_smart_attribute(state, device, disk, WARNING[i].index, raw, "-", "-", "-", WARNING[i].name, 0, runtime);
+	}
+}
+
+static void process_degraded(struct snapraid_state* state, char** map, size_t mac)
+{
+	struct snapraid_task* task = state->runner.latest;
+
+	if (mac < 2)
+		return;
+
+	char* disk_name = map[1];
+	int index;
+
+	parse_parity_split(disk_name, &index);
+
+	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_UNDEFINED, 0);
+	if (disk) {
+		pulse(state, PULSE_DISKS | PULSE_ARRAY);
+		disk->degraded_at_task_number = task->number;
 	}
 }
 
@@ -2251,6 +2312,10 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_info(state, map, mac);
 		state_unlock();
+	} else if (strcmp(cmd, "degraded") == 0) {
+		state_lock();
+		process_degraded(state, map, mac);
+		state_unlock();
 	} else if (strcmp(cmd, "attr") == 0) {
 		state_lock();
 		process_attr(state, map, mac);
@@ -2623,6 +2688,9 @@ void parse_begin_locked(struct snapraid_state* state)
 
 void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task)
 {
+	/* clear degraded status only when probe completes with success */
+	clear_degraded_disks(state, task);
+
 	/* remove disks that were not referenced */
 	remove_unreferenced_disks(state, task);
 }

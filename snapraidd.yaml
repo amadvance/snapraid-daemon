@@ -397,9 +397,10 @@ paths:
                         data errors, specifically if the 'blocks_bad' counter
                         is greater than zero.
                       * degraded: The filesystem UUID does not match the UUID
-                        stored in the content file, or an associated physical
-                        device is currently disconnected, indicating an incomplete
-                        or inconsistent storage configuration.
+                        stored in the content file, an associated physical
+                        device is currently disconnected, or the filesystem has
+                        missing member devices, indicating an incomplete or
+                        inconsistent storage configuration.
                       * prefail: A critical state indicating that one or more
                         underlying devices have encountered I/O failures, or a
                         SMART prefail condition.
@@ -1719,9 +1720,10 @@ components:
               inconsistencies are detected.
             * corrupt: The disk has encountered silent data errors.
             * degraded: The filesystem UUID does not match the UUID
-              stored in the content file, or an associated physical
-              device is currently disconnected, indicating an incomplete
-              or inconsistent storage configuration.
+              stored in the content file, an associated physical
+              device is currently disconnected, or the filesystem has
+              missing member devices, indicating an incomplete or
+              inconsistent storage configuration.
             * prefail: A critical state indicating that one or more
               underlying devices have encountered I/O failures, or a
               SMART prefail condition.
@@ -2320,9 +2322,10 @@ components:
               data errors, specifically if the 'blocks_bad' counter
               is greater than zero.
             * degraded: The filesystem UUID does not match the UUID
-              stored in the content file, or an associated physical
-              device is currently disconnected, indicating an incomplete
-              or inconsistent storage configuration.
+              stored in the content file, an associated physical
+              device is currently disconnected, or the filesystem has
+              missing member devices, indicating an incomplete or
+              inconsistent storage configuration.
             * prefail: A critical state indicating that one or more
               underlying devices have encountered I/O failures, or a
               SMART prefail condition.
