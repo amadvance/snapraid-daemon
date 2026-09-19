@@ -256,8 +256,8 @@ struct snapraid_disk {
 	uint64_t access_count; /**< Counter of the number of read and write accesses to the disk. SMART_UNASSIGNED if not set. */
 	int64_t access_count_initial_time; /**< Time of the first access_count to this value. */
 	int64_t access_count_latest_time; /**< Time of latest access_count to this value. */
-	uint64_t transient_error_io; /**< Transient accumulator of I/O errors (cleared when verified error-free). */
-	uint64_t transient_error_data; /**< Transient accumulator of silent data errors (cleared when verified error-free). */
+	uint64_t transient_error_io; /**< I/O errors accumulated until content reports no stored bad blocks. */
+	uint64_t transient_error_data; /**< Silent data errors accumulated until content reports no stored bad blocks. */
 	struct snapraid_tracked error_io; /**< Monotonic lifetime I/O errors (never reset). */
 	struct snapraid_tracked error_data; /**< Monotonic lifetime silent data errors (never reset). */
 	int last_update_at_number; /**< The latest task number that updated the disk */

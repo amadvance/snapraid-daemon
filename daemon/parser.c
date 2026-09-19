@@ -471,7 +471,8 @@ static void clear_degraded_disks(struct snapraid_state* state, struct snapraid_t
 }
 
 /**
- * Clear the error accumulators of all the disks.
+ * Clear transient disk errors when the authoritative content state
+ * reports no stored bad blocks.
  */
 static void clear_disk_accumulator(struct snapraid_state* state)
 {
@@ -1002,11 +1003,14 @@ static void process_content_info(struct snapraid_state* state, char** map, size_
 	if (strcmp(tag, "file") == 0) {
 		pulse_stru64(state, PULSE_ARRAY, &state->array.file_total, val);
 	} else if (strcmp(tag, "block_bad") == 0) {
+		/*
+		 * The content file is authoritative for persisted bad-block state.
+		 * A zero value supersedes transient disk errors accumulated since
+		 * the previous content state was read.
+		 */
 		pulse_stru64(state, PULSE_ARRAY, &state->array.block_bad, val);
-		if (state->array.block_bad == 0) {
-			/* if content has no stored error, clear the disk error accumulators */
+		if (state->array.block_bad == 0)
 			clear_disk_accumulator(state);
-		}
 	} else if (strcmp(tag, "block_rehash") == 0) {
 		pulse_stru64(state, PULSE_ARRAY, &state->array.block_rehash, val);
 	} else if (strcmp(tag, "block_unscrubbed") == 0) {
