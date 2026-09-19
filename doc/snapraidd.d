@@ -1512,19 +1512,22 @@ Known Issues
 	`\udc80`-`\udcff`), allowing paths with arbitrary byte sequences to be
 	represented losslessly across the REST API.
 
-  Devices Without Stable IDs
-	The daemon relies on stable device identifiers, such as hardware serial
-	numbers, to preserve physical device health information across mapping
+  Devices Without Stable or Unique IDs
+	The daemon relies on stable and unique device identifiers, such as hardware
+	serial numbers, to preserve physical device health information across mapping
 	updates.
 
-	If a device exposes no stable identifier, as can happen with virtual
-	disks or certain USB enclosures, its path cannot be trusted as a
-	persistent identity because it may later refer to a different device.
-	The daemon therefore discards historical device information when the
-	device cannot be identified reliably.
+	If a device exposes no stable identifier, or if an identifier is not unique
+	across the currently detected devices, it cannot be trusted as a persistent
+	physical-device identity. This can happen with virtual disks, certain USB
+	enclosures, cloned identifiers, or hardware that reports incomplete or
+	ambiguous identification data.
 
-	As a result, previous SMART or health state may be lost until fresh
-	telemetry is collected.
+	The daemon therefore discards historical device information when the device
+	cannot be identified reliably.
+
+	As a result, previous SMART or health state may be lost until fresh telemetry
+	is collected.
 
   Concurrent Docker Changes During Hooks
 	Docker container state and identity are inspected before the daemon
