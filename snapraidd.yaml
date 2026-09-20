@@ -1704,7 +1704,7 @@ components:
 
     Disk:
       type: object
-      required: [name, health, power, splits, devices]
+      required: [name, health, splits, devices]
       properties:
         name:
           type: string
@@ -1732,20 +1732,6 @@ components:
               condition.
             * pending: The aggregate health has not yet been
               determined.
-        power:
-          type: string
-          enum: [active, standby, pending]
-          description: >
-            The logical power state of the disk, mirrored from the underlying
-            physical device.
-
-            * 'active': The disk is spun up. Operations like 'sync' or 'scrub'
-              on this disk will start immediately.
-            * 'standby': The disk is spun down. Any array operation will
-              require a 10-15 second spin-up delay before data can be read.
-            * 'pending': The power state is currently unknown. The daemon
-              is waiting for the next probe or array command to verify if
-              the disk is spinning.
         total_space_bytes:
           type: integer
           format: int64
