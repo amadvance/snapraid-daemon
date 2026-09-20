@@ -99,13 +99,13 @@ static void parser_duplicate_id_add(struct snapraid_state* state, const char* id
  */
 static void parser_mapping_device(struct snapraid_state* state, const char* file, const char* id)
 {
+	int runtime = !state->daemon_loading;
 	char id_buf[ID_MAX];
 
 	/* use the stored representation so hashing and comparisons agree after truncation */
 	sncpy(id_buf, sizeof(id_buf), id);
 	id = id_buf;
 
-	int runtime = !state->daemon_loading;
 	tommy_hash_t hash = parser_mapping_hash(id);
 
 	/* a blacklisted ID cannot identify a device, even if this map lists it only once */
@@ -355,36 +355,27 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
 }
 
 /**
- * Remove unreferenced disks, devices, and splits after a probe.
+ * Remove disks and device components that are no longer referenced in the array.
  *
- * Probe is the authoritative source for array configuration and disk components,
- * as it inspects both snapraid.conf and all underlying physical devices across data,
- * parity, and extra disks (unlike up/down which omit extra disks).
+ * All snapraid commands emit the full configuration from snapraid.conf.
+ * Disks not referenced during the task are no longer part of the
+ * configuration and are pruned from the array inventory, even if previously degraded.
  *
- * Disks not referenced during the probe are no longer part of the configuration
- * and are pruned from the array inventory, even if previously degraded.
+ * Surviving disks prune unreferenced device pointers and splits only on an unfiltered probe,
+ * as probe is the only command that inspects all underlying physical devices across
+ * data, parity, and extra disks (unlike up/down which omit extra disks, and normal
+ * operations which do not probe devices at all). If custom arguments are present, the
+ * probe may be filtered by disk and physical device information will be incomplete.
  *
- * For surviving disks, unreferenced device pointers and splits are pruned only if
- * the disk is not degraded. When a disk is degraded, missing member devices cannot
- * be discovered or updated by the probe; preserving their existing device pointers
- * ensures the daemon maintains knowledge of the missing hardware and reports its
- * degraded state rather than assuming the surviving devices represent the whole disk.
+ * Furthermore, device pointers and splits are pruned only if the disk is not degraded.
+ * When a disk is degraded, missing member devices cannot be discovered or updated by
+ * the probe; preserving their existing device pointers ensures the daemon maintains
+ * knowledge of the missing hardware and reports its degraded state rather than assuming
+ * the surviving devices represent the whole disk.
  */
 static void remove_unreferenced_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
 	int runtime = !state->daemon_loading;
-
-	/*
-	 * For simplicity process only on PROBE that access both snapraid.conf and all devices
-	 *
-	 * Note that UP/DOWN don't process "extra" devices
-	 */
-	if (task->cmd != CMD_PROBE)
-		return;
-
-	/* if there is any agument, it could be a filter by disk and info will be incomplete */
-	if (task->arg_custom != 0)
-		return;
 
 	/* only if the task terminated with success */
 	if (!task_success(task))
@@ -401,7 +392,21 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 			pulse(state, PULSE_DISKS);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
-		} else if (disk->degraded_at_task_number == 0) {
+		} else if (task->cmd == CMD_PROBE
+			&& task->arg_custom == 0
+			&& disk->degraded_at_task_number == 0
+		) {
+			/*
+			 * Prune unreferenced devices and splits only during an unfiltered probe on a healthy disk.
+			 * Non-probe commands do not inspect all physical devices (and up/down omit extra disks).
+			 *
+			 * If custom arguments are present, the probe may be filtered by disk and device info
+			 * will be incomplete.
+			 *
+			 * If a disk is degraded, missing member devices cannot be discovered by the probe
+			 * and must be preserved to report the failure.
+			 */
+
 			/* remove any device pointer that is not referenced */
 			for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j != 0; ) {
 				struct snapraid_device_pointer* pointer = j->data;
@@ -557,49 +562,39 @@ static int parse_parity_split(char* s, int* index)
 	return 0;
 }
 
-static struct snapraid_disk* find_disk(tommy_list* list, int number, const char* name, int kind, int64_t last_time)
+static struct snapraid_disk* find_disk_existing(tommy_list* list, const char* name)
 {
-	struct snapraid_disk* disk;
-	tommy_node* i;
-
-	i = tommy_list_head(list);
-	while (i) {
-		disk = i->data;
-		if (strcmp(name, disk->name) == 0) {
-			disk->last_update_at_number = number;
+	for (tommy_node* i = tommy_list_head(list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		if (strcmp(name, disk->name) == 0)
 			return disk;
-		}
-		i = i->next;
 	}
 
-	if (kind == DISK_UNDEFINED) /* do not create undefined disks */
-		return 0;
-
-	disk = disk_alloc(name, kind, last_time);
-	disk->last_update_at_number = number;
-
-	tommy_list_insert_tail(list, &disk->node, disk);
-
-	return disk;
+	return 0;
 }
 
 /**
  * Finds or creates a disk for authoritative configuration records.
  *
- * Unlike find_disk(), which preserves existing disk classifications to avoid
- * unintentional role overwrites from observational or content-derived records
- * (such as content_* or fsinfo_*), this helper updates disk->kind when
- * processing authoritative configuration directives (data, extra, parity)
- * and pulses state changes accordingly.
+ * Unlike find_disk_existing(), which performs a read-only search, this helper
+ * creates the disk if missing, updates disk->kind when processing
+ * authoritative configuration directives (data, extra, parity), pulses state
+ * changes, and marks the disk as updated in the current task.
  */
-static struct snapraid_disk* find_config_disk(struct snapraid_state* state, int number, const char* name, int kind, int64_t last_time)
+static struct snapraid_disk* find_disk_authoritative(struct snapraid_state* state, int number, const char* name, int kind, int64_t last_time)
 {
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, number, name, kind, last_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
 
-	if (disk->kind != kind) {
+	if (!disk) {
+		disk = disk_alloc(name, kind, last_time);
+		tommy_list_insert_tail(&state->array.disk_list, &disk->node, disk);
 		pulse(state, PULSE_DISKS | PULSE_ARRAY);
+	} else if (disk->kind != kind) {
 		disk->kind = kind;
+		pulse(state, PULSE_DISKS | PULSE_ARRAY);
 	}
+
+	disk->last_update_at_number = number;
 
 	return disk;
 }
@@ -688,19 +683,22 @@ static struct snapraid_device_pointer* find_device_pointer(struct snapraid_disk*
 	return pointer;
 }
 
-static struct snapraid_device* find_disk_device(struct snapraid_state* state, int number, char* disk, const char* file)
+static struct snapraid_device* find_disk_device(struct snapraid_state* state, int number, char* name, const char* file)
 {
+	int runtime = !state->daemon_loading;
 	int index;
-	parse_parity_split(disk, &index);
 
-	struct snapraid_disk* disk_elem = find_disk(&state->array.disk_list, number, disk, DISK_UNDEFINED, 0);
-	if (!disk_elem) {
-		log_task(LVL_WARNING, "unknown disk '%s'", disk);
+	parse_parity_split(name, &index);
+
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < number) {
+		if (runtime)
+			log_task(LVL_WARNING, "ignoring device for disk '%s' because it is no longer mapped in the current configuration", name);
 		return 0;
 	}
 
 	struct snapraid_device* device = find_device(state, file);
-	find_device_pointer(disk_elem, number, device, index);
+	find_device_pointer(disk, number, device, index);
 	return device;
 }
 
@@ -732,11 +730,9 @@ static void process_stat(struct snapraid_state* state, char** map, size_t mac)
 	if (stru64(&access_count, counter) != 0)
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_UNDEFINED, 0);
-	if (!disk) {
-		log_task(LVL_WARNING, "unknown disk '%s'", name);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
 		return;
-	}
 
 	/* if the value is the same, doesn't update the first time */
 	if (disk->access_count != access_count) {
@@ -766,7 +762,7 @@ static void process_data(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[2];
 	const char* uuid = map[3];
 
-	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_authoritative(state, task->number, name, DISK_DATA, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	char old_path[PATH_MAX];
@@ -808,7 +804,7 @@ static void process_extra(struct snapraid_state* state, char** map, size_t mac)
 	const char* path = map[2];
 	const char* uuid = map[3];
 
-	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_EXTRA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_authoritative(state, task->number, name, DISK_EXTRA, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* extra disks never have the split index */
 
 	char old_path[PATH_MAX];
@@ -854,7 +850,7 @@ static void process_parity(struct snapraid_state* state, char** map, size_t mac)
 	if (!parse_parity_split(name, &index))
 		return;
 
-	struct snapraid_disk* disk = find_config_disk(state, task->number, name, DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_authoritative(state, task->number, name, DISK_PARITY, task->unix_start_time);
 	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	char old_path[PATH_MAX];
@@ -894,7 +890,15 @@ static void process_content_data(struct snapraid_state* state, char** map, size_
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];
 
-	struct snapraid_disk* data = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
+	/*
+	 * Disks absent from the current configuration must be ignored.
+	 * Older SnapRAID versions emitted content records directly from the content file
+	 * before mapping against snapraid.conf. The check on last_update_at_number ensures
+	 * that stale disks from past logs are ignored rather than updated in memory.
+	 */
+	struct snapraid_disk* data = find_disk_existing(&state->array.disk_list, name);
+	if (!data || data->last_update_at_number < task->number)
+		return;
 
 	/* PULSE_ARRAY reports the sum of alloc and free space */
 	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &data->total_space_bytes, size_alloc);
@@ -912,7 +916,15 @@ static void process_content_parity(struct snapraid_state* state, char** map, siz
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
+	/*
+	 * Parity levels absent from the current configuration must be ignored.
+	 * Older SnapRAID versions emitted content records directly from the content file
+	 * before mapping against snapraid.conf. The check on last_update_at_number ensures
+	 * that stale parity levels from past logs are ignored rather than updated in memory.
+	 */
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
 
 	/* PULSE_ARRAY reports the sum of alloc and free space */
 	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &disk->total_space_bytes, size_alloc);
@@ -930,7 +942,11 @@ static void process_content_data_split(struct snapraid_state* state, char** map,
 	const char* name = map[1];
 	const char* uuid = map[2];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
+	/* silently ignore disks absent from the current configuration (e.g. from past logs) */
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
+
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	char old_uuid[UUID_MAX];
@@ -963,7 +979,11 @@ static void process_content_parity_split(struct snapraid_state* state, char** ma
 	if (!parse_parity_split(name, &index))
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
+	/* silently ignore parity levels absent from the current configuration (e.g. from past logs) */
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
+
 	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	char old_path[PATH_MAX];
@@ -1039,7 +1059,9 @@ static void process_fsinfo_data(struct snapraid_state* state, char** map, size_t
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
 
 	/* PULSE_ARRAY reports the sum of alloc and free space */
 	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &disk->total_space_bytes, size_alloc);
@@ -1057,7 +1079,9 @@ static void process_fsinfo_extra(struct snapraid_state* state, char** map, size_
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_EXTRA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
 
 	/* note that PULSE_ARRAY is not affected by the size of extra disks */
 	pulse_stru64(state, PULSE_DISKS, &disk->total_space_bytes, size_alloc);
@@ -1075,7 +1099,9 @@ static void process_fsinfo_parity(struct snapraid_state* state, char** map, size
 	const char* size_alloc = map[2];
 	const char* size_free = map[3];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
 
 	/* PULSE_ARRAY reports the sum of alloc and free space */
 	pulse_stru64(state, PULSE_DISKS | PULSE_ARRAY, &disk->total_space_bytes, size_alloc);
@@ -1096,7 +1122,10 @@ static void process_fsinfo_data_split(struct snapraid_state* state, char** map, 
 	const char* type = map[4];
 	const char* label = map[5];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
+
 	struct snapraid_split* split = find_split(&disk->split_list, 0, task->number); /* at present data disks don't have the split index */
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
@@ -1145,7 +1174,9 @@ static void process_fsinfo_parity_split(struct snapraid_state* state, char** map
 	if (!parse_parity_split(name, &index))
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, name, DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
+	if (!disk || disk->last_update_at_number < task->number)
+		return;
 	struct snapraid_split* split = find_split(&disk->split_list, index, task->number);
 
 	pulse_stru64(state, PULSE_DISKS, &split->fssize, size_alloc);
@@ -1311,8 +1342,8 @@ static void process_degraded(struct snapraid_state* state, char** map, size_t ma
 
 	parse_parity_split(disk_name, &index);
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_UNDEFINED, 0);
-	if (disk) {
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, disk_name);
+	if (disk && disk->last_update_at_number == task->number) {
 		pulse(state, PULSE_DISKS | PULSE_ARRAY);
 		disk->degraded_at_task_number = task->number;
 	}
@@ -1429,7 +1460,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			 * from being immediately spun down again.
 			 */
 			if (power == POWER_ACTIVE) {
-				struct snapraid_disk* disk_spunup = find_disk(&state->array.disk_list, task->number, disk, DISK_UNDEFINED, 0);
+				struct snapraid_disk* disk_spunup = find_disk_existing(&state->array.disk_list, disk);
 				if (disk_spunup != 0) {
 					disk_spunup->access_count_initial_time = state->array.last_time;
 					disk_spunup->access_count_latest_time = state->array.last_time;
@@ -1878,13 +1909,15 @@ static void process_error_io(struct snapraid_state* state, char** map, size_t ma
 
 	const char* disk_name = map[2];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, disk_name);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
-	++disk->transient_error_io;
+	if (disk) {
+		++disk->transient_error_io;
+		uint64_t old = disk->error_io.value;
+		++disk->error_io.value;
+		tracked_update(&disk->error_io, old, 0, state->array.last_time);
+	}
 	++task->error_io;
-	uint64_t old = disk->error_io.value;
-	++disk->error_io.value;
-	tracked_update(&disk->error_io, old, 0, state->array.last_time);
 }
 
 static void process_obj_error_io(struct snapraid_state* state, char** map, size_t mac)
@@ -1896,13 +1929,15 @@ static void process_obj_error_io(struct snapraid_state* state, char** map, size_
 
 	const char* disk_name = map[1];
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, disk_name, DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, disk_name);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
-	++disk->transient_error_io;
+	if (disk) {
+		++disk->transient_error_io;
+		uint64_t old = disk->error_io.value;
+		++disk->error_io.value;
+		tracked_update(&disk->error_io, old, 0, state->array.last_time);
+	}
 	++task->error_io;
-	uint64_t old = disk->error_io.value;
-	++disk->error_io.value;
-	tracked_update(&disk->error_io, old, 0, state->array.last_time);
 }
 
 static void process_error_data(struct snapraid_state* state, char** map, size_t mac)
@@ -1912,13 +1947,15 @@ static void process_error_data(struct snapraid_state* state, char** map, size_t 
 	if (mac < 5) /* error:<block>:<disk_name>:<file>:<msg> */
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, map[2], DISK_DATA, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, map[2]);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
-	++disk->transient_error_data;
+	if (disk) {
+		++disk->transient_error_data;
+		uint64_t old = disk->error_data.value;
+		++disk->error_data.value;
+		tracked_update(&disk->error_data, old, 0, state->array.last_time);
+	}
 	++task->error_data;
-	uint64_t old = disk->error_data.value;
-	++disk->error_data.value;
-	tracked_update(&disk->error_data, old, 0, state->array.last_time);
 }
 
 static void process_parity_error_soft(struct snapraid_state* state, char** map, size_t mac)
@@ -1942,13 +1979,15 @@ static void process_parity_error_io(struct snapraid_state* state, char** map, si
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, map[2], DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, map[2]);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
-	++disk->transient_error_io;
+	if (disk) {
+		++disk->transient_error_io;
+		uint64_t old = disk->error_io.value;
+		++disk->error_io.value;
+		tracked_update(&disk->error_io, old, 0, state->array.last_time);
+	}
 	++task->error_io;
-	uint64_t old = disk->error_io.value;
-	++disk->error_io.value;
-	tracked_update(&disk->error_io, old, 0, state->array.last_time);
 }
 
 static void process_parity_error_data(struct snapraid_state* state, char** map, size_t mac)
@@ -1958,13 +1997,15 @@ static void process_parity_error_data(struct snapraid_state* state, char** map, 
 	if (mac < 4) /* parity_error:<block>:<level>:<msg> */
 		return;
 
-	struct snapraid_disk* disk = find_disk(&state->array.disk_list, task->number, map[2], DISK_PARITY, task->unix_start_time);
+	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, map[2]);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
-	++disk->transient_error_data;
+	if (disk) {
+		++disk->transient_error_data;
+		uint64_t old = disk->error_data.value;
+		++disk->error_data.value;
+		tracked_update(&disk->error_data, old, 0, state->array.last_time);
+	}
 	++task->error_data;
-	uint64_t old = disk->error_data.value;
-	++disk->error_data.value;
-	tracked_update(&disk->error_data, old, 0, state->array.last_time);
 }
 
 static void process_conf(struct snapraid_state* state, char** map, size_t mac)
