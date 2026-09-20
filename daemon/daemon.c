@@ -340,7 +340,10 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	os_privileges_drop();
+	if (os_privileges_drop() != 0) {
+		log_msg(LVL_CRITICAL, "failed to drop privileges");
+		return -1;
+	}
 
 	/**
 	 * Start runner worker thread after dropping privileges.

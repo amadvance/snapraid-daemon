@@ -1989,7 +1989,7 @@ static int groups_dropped = 0;
 static gid_t* privileged_groups = 0;
 static int privileged_group_count = 0;
 
-void os_privileges_drop(void)
+int os_privileges_drop(void)
 {
 	/*
 	 * Detect if running as root
@@ -2000,80 +2000,61 @@ void os_privileges_drop(void)
 	if (getuid() == 0 || geteuid() == 0) {
 		/* find the unprivileged user "nobody" */
 		struct passwd* pw = getpwnam("nobody");
-		if (pw) {
-			unpriv_uid = pw->pw_uid;
-			unpriv_gid = pw->pw_gid;
-
-			/*
-			 * Save the supplementary groups before dropping them.
-			 * They must be restored by os_privileges_acquire() because
-			 * spawned user scripts may depend on them.
-			 */
-			privileged_group_count = getgroups(0, 0);
-			if (privileged_group_count < 0) {
-				os_syslog(OS_LVL_INFO, "failed to get supplementary group count, errno=%s(%d)", strerror(errno), errno);
-				os_abort();
-			}
-
-			if (privileged_group_count != 0) {
-				privileged_groups = malloc(privileged_group_count * sizeof(gid_t));
-				if (!privileged_groups) {
-					os_syslog(OS_LVL_CRITICAL, "failed to allocate supplementary group list");
-					os_abort();
-				}
-
-				if (getgroups(privileged_group_count, privileged_groups) != privileged_group_count) {
-					os_syslog(OS_LVL_INFO, "failed to get supplementary groups, errno=%s(%d)", strerror(errno), errno);
-					os_abort();
-				}
-
-				if (setgroups(0, 0) != 0) {
-					if (errno == EPERM) {
-						/*
-						 * If EPERM, process lacks permission to switch
-						 * supplementary groups. Continue with them active.
-						 */
-						os_syslog(OS_LVL_INFO, "permission denied to release supplementary group privileges, continuing with active privileges");
-					} else {
-						os_syslog(OS_LVL_INFO, "failed to release supplementary group privileges, errno=%s(%d)", strerror(errno), errno);
-						os_abort();
-					}
-				} else {
-					groups_dropped = 1;
-				}
-			}
-
-			if (setegid(unpriv_gid) != 0) {
-				if (errno == EPERM) {
-					/*
-					 * If EPERM, process lacks permission to switch privileges
-					 * (e.g. dropped capabilities); continue with active privileges.
-					 */
-					os_syslog(OS_LVL_INFO, "permission denied to release group privileges, continuing with active privileges");
-				} else {
-					os_syslog(OS_LVL_INFO, "failed to release group privileges, errno=%s(%d)", strerror(errno), errno);
-					os_abort();
-				}
-			} else {
-				gid_dropped = 1;
-			}
-
-			if (seteuid(unpriv_uid) != 0) {
-				if (errno == EPERM) {
-					/*
-					 * If EPERM, process lacks permission to switch privileges
-					 * (e.g. dropped capabilities); continue with active privileges.
-					 */
-					os_syslog(OS_LVL_INFO, "permission denied to release privileges, continuing with active privileges");
-				} else {
-					os_syslog(OS_LVL_INFO, "failed to release privileges, errno=%s(%d)", strerror(errno), errno);
-					os_abort();
-				}
-			} else {
-				uid_dropped = 1;
-			}
+		if (!pw) {
+			os_syslog(OS_LVL_INFO, "unprivileged user 'nobody' not found");
+			return -1;
 		}
+
+		unpriv_uid = pw->pw_uid;
+		unpriv_gid = pw->pw_gid;
+
+		/*
+		 * Save the supplementary groups before dropping them.
+		 * They must be restored by os_privileges_acquire() because
+		 * spawned user scripts may depend on them.
+		 */
+		privileged_group_count = getgroups(0, 0);
+		if (privileged_group_count < 0) {
+			os_syslog(OS_LVL_INFO, "failed to get supplementary group count, errno=%s(%d)", strerror(errno), errno);
+			return -1;
+		}
+
+		if (privileged_group_count != 0) {
+			privileged_groups = malloc(privileged_group_count * sizeof(gid_t));
+			if (!privileged_groups) {
+				os_syslog(OS_LVL_CRITICAL, "failed to allocate supplementary group list");
+				return -1;
+			}
+
+			if (getgroups(privileged_group_count, privileged_groups) != privileged_group_count) {
+				os_syslog(OS_LVL_INFO, "failed to get supplementary groups, errno=%s(%d)", strerror(errno), errno);
+				return -1;
+			}
+
+			if (setgroups(0, 0) != 0) {
+				os_syslog(OS_LVL_INFO, "failed to release supplementary group privileges, errno=%s(%d)", strerror(errno), errno);
+				return -1;
+			}
+
+			groups_dropped = 1;
+		}
+
+		if (setegid(unpriv_gid) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to release group privileges, errno=%s(%d)", strerror(errno), errno);
+			return -1;
+		}
+
+		gid_dropped = 1;
+
+		if (seteuid(unpriv_uid) != 0) {
+			os_syslog(OS_LVL_INFO, "failed to release privileges, errno=%s(%d)", strerror(errno), errno);
+			return -1;
+		}
+
+		uid_dropped = 1;
 	}
+
+	return 0;
 }
 
 void os_privileges_acquire(void)

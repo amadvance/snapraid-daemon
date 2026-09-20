@@ -351,11 +351,17 @@ void os_privileges_acquire(void);
 void os_privileges_release(void);
 
 /**
- * Drop effective privileges permanently to an unprivileged user (e.g., "nobody").
+ * Drop effective privileges permanently to an unprivileged user
+ * (e.g., "nobody").
  * Called after startup/initialization is complete to transition the daemon into
  * the Bracketed Privileges execution mode.
+ *
+ * On failure the process credentials may have been partially changed and the
+ * caller must terminate the process.
+ *
+ * \return 0 on success, -1 on failure.
  */
-void os_privileges_drop(void);
+int os_privileges_drop(void);
 
 /****************************************************************************/
 /* os */

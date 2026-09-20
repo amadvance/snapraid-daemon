@@ -4396,8 +4396,9 @@ void os_privileges_release(void)
 {
 }
 
-void os_privileges_drop(void)
+int os_privileges_drop(void)
 {
+	return 0;
 }
 
 void os_abort(void)
