@@ -577,7 +577,7 @@ static struct snapraid_disk* find_disk_existing(tommy_list* list, const char* na
  * Finds or creates a disk for authoritative configuration records.
  *
  * Unlike find_disk_existing(), which performs a read-only search, this helper
- * creates the disk if missing, updates disk->kind when processing
+ * creates the disk if missing, recreates it if disk->kind changes when processing
  * authoritative configuration directives (data, extra, parity), pulses state
  * changes, and marks the disk as updated in the current task.
  */
@@ -585,12 +585,19 @@ static struct snapraid_disk* find_disk_authoritative(struct snapraid_state* stat
 {
 	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, name);
 
+	/*
+	 * If the disk role has changed, discard the old disk entirely to remove
+	 * obsolete splits, device pointers, space metrics, and transient errors.
+	 */
+	if (disk && disk->kind != kind) {
+		tommy_list_remove_existing(&state->array.disk_list, &disk->node);
+		disk_free(disk);
+		disk = 0;
+	}
+
 	if (!disk) {
 		disk = disk_alloc(name, kind, last_time);
 		tommy_list_insert_tail(&state->array.disk_list, &disk->node, disk);
-		pulse(state, PULSE_DISKS | PULSE_ARRAY);
-	} else if (disk->kind != kind) {
-		disk->kind = kind;
 		pulse(state, PULSE_DISKS | PULSE_ARRAY);
 	}
 
