@@ -108,6 +108,7 @@ static int check_repo_version(const char* curl_path, const char* repo, char* ver
 
 	char* argv[] = {
 		(char*)curl_path,
+		"-q", /* disable curl config files; must be the first curl option */
 		"-s",
 		"--max-filesize",
 		"131072",
