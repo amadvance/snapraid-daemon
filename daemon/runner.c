@@ -1131,7 +1131,14 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 }
 
 /**
- * Execute postponed post-run hooks.
+ * Execute postponed hook cleanup as a best-effort finalization step.
+ *
+ * This path is used when a previously postponed hook lifecycle can no longer
+ * be completed by a normal task, for example because the daemon is shutting down.
+ *
+ * The postponed hook state is consumed before cleanup is attempted. Cleanup
+ * failures are not propagated to a task, since there may be no task that
+ * correctly owns the lifecycle being closed, and cleanup is not retried.
  */
 static void runner_hook_postponed_locked_yield(struct snapraid_state* state, const struct snapraid_task* task)
 {
