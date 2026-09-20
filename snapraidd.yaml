@@ -424,13 +424,13 @@ paths:
                       This field is omitted if the health is 'passed'.
                   active_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, read, report, down_idle, shutdown, start]
                     description: >
                       The name of the currently running command.
                       Omitted from the response if the daemon is idle.
                   next_command:
                     type: string
-                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
+                    enum: [probe, up, down, smart, diff, sync, scrub, check, fix, read, report, down_idle, shutdown, start]
                     description: >
                       The next command scheduled in the current execution sequence.
                       This field is present when the daemon is running an automated
@@ -1097,12 +1097,12 @@ components:
             when moved from queue to process to history.
         command:
           type: string
-          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown, start]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, read, report, down_idle, shutdown, start]
           description: >
             The command executed.
         high_command:
           type: string
-          enum: [maintenance, heal, undelete, suspend_idle]
+          enum: [maintenance, heal, undelete, suspend_idle, refresh, startup]
           description: >
             The high level command that triggered this command.
         health:
@@ -2367,7 +2367,7 @@ components:
             Local timestamp of the most recently concluded task.
         last_command:
           type: string
-          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, report, down_idle, shutdown]
+          enum: [probe, up, down, smart, diff, sync, scrub, check, fix, read, report, down_idle, shutdown]
           description: >
             Identifier of the last successfully completed command.
         annual_failure_rate:
