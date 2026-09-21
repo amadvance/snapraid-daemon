@@ -8081,6 +8081,10 @@ get_request_handler(struct mg_connection *conn,
 				if (tmp_rh->handler_type != handler_type) {
 					continue;
 				}
+				/* pattern handlers must only be matched as patterns. */
+				if (step < 2 && strpbrk(tmp_rh->uri, "?*$|") != NULL) {
+					continue;
+				}
 				if (step == 0) {
 					/* first try for an exact match */
 					matched = (tmp_rh->uri_len == urilen)
