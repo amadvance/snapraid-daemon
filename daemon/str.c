@@ -178,6 +178,49 @@ int strdouble(double* out, const char* s)
 	return 0;
 }
 
+int strdecimal(double* out, const char* src, double low, double high)
+{
+	double v;
+	char buf[32];
+
+	if (strdouble(&v, src) != 0)
+		return -1;
+
+	if (v < low || v > high)
+		return -1;
+
+	if (v > 0 && v <= 0.01)
+		v = 0.01;
+
+	format_decimal(buf, sizeof(buf), v);
+	if (strdouble(&v, buf) != 0)
+		return -1;
+
+	*out = v;
+	return 0;
+}
+
+void format_decimal(char* buf, size_t size, double value)
+{
+	if (size == 0)
+		return;
+
+	snprintf(buf, size, "%.2f", value);
+
+	char* dot = strchr(buf, '.');
+	if (!dot)
+		return;
+
+	char* end = buf + strlen(buf);
+	while (end > dot + 1 && end[-1] == '0')
+		--end;
+
+	if (end[-1] == '.')
+		--end;
+
+	*end = 0;
+}
+
 #ifndef _WIN32
 void strupr(char* str)
 {
@@ -257,11 +300,11 @@ void sl_insert_int(sl_t* list, int add)
 	sl_insert_str(list, add_str);
 }
 
-void sl_insert_double(sl_t* list, double add)
+void sl_insert_decimal(sl_t* list, double add)
 {
 	char add_str[16];
 
-	snprintf(add_str, sizeof(add_str), "%.2f", add);
+	format_decimal(add_str, sizeof(add_str), add);
 
 	sl_insert_str(list, add_str);
 }

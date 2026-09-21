@@ -136,5 +136,5 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
   - Prefer `sncpy(dst, size, src)` and `sncat(dst, size, src)` over standard C library string functions.
   - Use safe number parsing wrappers: `strint()`, `struint()`, `stri64()`, `stru64()`, and `strdouble()` instead of `atoi`, `strtol`, or `sscanf`.
   - Use the string stream wrapper `ss_t` (functions `ss_init`, `ss_write`, `ss_printf`, and `ss_extract`/`ss_dup`) for dynamic string buffers.
-- **String Lists (`sl_t`)**: Built on `tommy_list`. Initialize with `sl_init(&list)` and free memory with `sl_free(&list)`. Use `sl_insert_str`, `sl_insert_int`, or `sl_insert_double` to append values.
+- **String Lists (`sl_t`)**: Built on `tommy_list`. Initialize with `sl_init(&list)` and free memory with `sl_free(&list)`. Use `sl_insert_str`, `sl_insert_int`, or `sl_insert_decimal` to append values.
 - **State Mutation & Cache Invalidation**: When modifying global configurations, disk states, active activities, or tasks, increment the corresponding monotonic pulse counter under `state->pulse` (e.g. `array`, `config`, `disks`, `tasks`, `activity`) to trigger UI updates and invalidate state cache.

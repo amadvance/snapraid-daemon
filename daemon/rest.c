@@ -119,26 +119,18 @@ static int json_int(const char* js, jsmntok_t* jv, int low, int high, int* out)
 	return 0;
 }
 
-static int json_double(const char* js, jsmntok_t* jv, double low, double high, double* out)
+static int json_decimal(const char* js, jsmntok_t* jv, double low, double high, double* out)
 {
 	char buf[32];
 	size_t len = jv[0].end - jv[0].start;
 
-	if (jv[0].type != JSMN_PRIMITIVE || len >= 32)
+	if (jv[0].type != JSMN_PRIMITIVE || len >= sizeof(buf))
 		return -1;
 
 	memcpy(buf, js + jv[0].start, len);
 	buf[len] = 0;
 
-	double v;
-	if (strdouble(&v, buf) != 0)
-		return -1;
-
-	if (v < low || v > high)
-		return -1;
-
-	*out = v;
-	return 0;
+	return strdecimal(out, buf, low, high);
 }
 
 static int json_boolean(const char* js, jsmntok_t* jv, int* out)
@@ -794,7 +786,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 				++j;
 			} else if (json_entry(js, &jv[j], json_const("scrub_percentage")) == 0) {
 				++j;
-				if (json_double(js, &jv[j], 0, 100, &transient.scrub_percentage) == 0) {
+				if (json_decimal(js, &jv[j], 0, 100, &transient.scrub_percentage) == 0) {
 				} else {
 					json_error_arg(msg, sizeof(msg), js, &jv[j - 1], &jv[j]);
 					goto bad;
@@ -1018,7 +1010,7 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 	ss_json_int(&s, level, "sync_threshold_updates", config->sync_threshold_updates);
 	ss_json_bool(&s, level, "sync_prehash", config->sync_prehash);
 	ss_json_bool(&s, level, "sync_prevent_truncations", config->sync_prevent_truncations);
-	ss_json_double(&s, level, "scrub_percentage", config->scrub_percentage);
+	ss_json_decimal(&s, level, "scrub_percentage", config->scrub_percentage);
 	ss_json_int(&s, level, "scrub_older_than", config->scrub_older_than);
 	ss_json_bool(&s, level, "touch_zero_subseconds", config->touch_zero_subseconds);
 

@@ -55,20 +55,6 @@ static int parse_int(const char* input, int low, int high, int* out)
 	return 0;
 }
 
-static int parse_double(const char* input, int low, int high, double* out)
-{
-	double v;
-
-	if (strdouble(&v, input) != 0)
-		return -1;
-
-	if (v < low || v > high)
-		return -1;
-
-	*out = v;
-	return 0;
-}
-
 static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 {
 	char copy[CONFIG_MAX];
@@ -594,7 +580,7 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "scrub_percentage") == 0) {
-				if (parse_double(val, 0, 100, &config->scrub_percentage) == 0) {
+				if (strdecimal(&config->scrub_percentage, val, 0, 100) == 0) {
 				} else {
 					++error_count;
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
@@ -822,13 +808,13 @@ static void config_set_int(struct snapraid_config* config, const char* key, int 
 	}
 }
 
-static void config_set_double(struct snapraid_config* config, const char* key, double value)
+static void config_set_decimal(struct snapraid_config* config, const char* key, double value)
 {
 	if (value == 0) {
 		config_set(config, key, "");
 	} else {
 		char buf[32];
-		snprintf(buf, sizeof(buf), "%.2g", value);
+		format_decimal(buf, sizeof(buf), value);
 		config_set(config, key, buf);
 	}
 }
@@ -1244,7 +1230,7 @@ void config_apply_locked(struct snapraid_state* state, struct snapraid_config* t
 	config_set_int(config, "sync_threshold_updates", config->sync_threshold_updates);
 	config_set_int(config, "sync_prehash", config->sync_prehash);
 	config_set_int(config, "sync_prevent_truncations", config->sync_prevent_truncations);
-	config_set_double(config, "scrub_percentage", config->scrub_percentage);
+	config_set_decimal(config, "scrub_percentage", config->scrub_percentage);
 	config_set_int(config, "scrub_older_than", config->scrub_older_than);
 	config_set_int(config, "touch_zero_subseconds", config->touch_zero_subseconds);
 	config_set_int(config, "probe_interval_minutes", config->probe_interval_minutes);

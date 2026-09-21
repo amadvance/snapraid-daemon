@@ -75,6 +75,19 @@ int stru64(uint64_t* out, const char* src);
 int strdouble(double* out, const char* src);
 
 /**
+ * Parse and normalize a decimal value with at most two fractional digits.
+ * Positive values up to 0.01 are normalized to 0.01.
+ * @return 0 on success, -1 on error
+ */
+int strdecimal(double* out, const char* src, double low, double high);
+
+/**
+ * Format a decimal value with at most two fractional digits,
+ * removing trailing zeros and the decimal point when unnecessary.
+ */
+void format_decimal(char* buf, size_t size, double value);
+
+/**
  * Convert string to uppercase.
  */
 #ifndef _WIN32
@@ -163,7 +176,7 @@ void sl_insert_int(sl_t* list, int add);
  * @param list String list to insert into
  * @param add Integer value to insert
  */
-void sl_insert_double(sl_t* list, double add);
+void sl_insert_decimal(sl_t* list, double add);
 
 /**
  * Compare alphabetically two string nodes
@@ -418,6 +431,16 @@ static inline void ss_json_u64(ss_t* s, int level, const char* field, uint64_t a
 static inline void ss_json_double(ss_t* s, int level, const char* field, double arg)
 {
 	ss_jsonf(s, level, "\"%s\": %.2g,\n", field, arg);
+}
+
+/**
+ * Write a JSON decimal pairing.
+ */
+static inline void ss_json_decimal(ss_t* s, int level, const char* field, double arg)
+{
+	char decimal[32];
+	format_decimal(decimal, sizeof(decimal), arg);
+	ss_jsonf(s, level, "\"%s\": %s,\n", field, decimal);
 }
 
 /**
