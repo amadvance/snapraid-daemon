@@ -379,6 +379,114 @@ int os_shutdown(void)
 /****************************************************************************/
 /* daemon */
 
+#define DAEMON_STARTUP_READY 1
+
+/**
+ * Create the pipe used by the original parent to wait for daemon startup.
+ * Both descriptors are close-on-exec so spawned child processes cannot keep
+ * the pipe open and delay failure detection if the daemon exits unexpectedly.
+ */
+static int daemon_startup_pipe(int pipefd[2])
+{
+	if (pipe(pipefd) != 0)
+		return -1;
+
+	if (fcntl(pipefd[0], F_SETFD, FD_CLOEXEC) != 0
+		|| fcntl(pipefd[1], F_SETFD, FD_CLOEXEC) != 0
+	) {
+		int saved_errno = errno;
+		close(pipefd[0]);
+		close(pipefd[1]);
+		errno = saved_errno;
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Wait for the final daemon process to complete initialization.
+ * A READY byte means startup succeeded; EOF, an error, or any other value
+ * means the daemon terminated or failed before reaching the startup commit point.
+ */
+static int daemon_startup_wait(int fd)
+{
+	unsigned char status = 0;
+	ssize_t ret;
+
+	do {
+		ret = read(fd, &status, sizeof(status));
+	} while (ret < 0 && errno == EINTR);
+
+	close(fd);
+
+	if (ret != sizeof(status) || status != DAEMON_STARTUP_READY)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * Report successful daemon initialization to the original parent.
+ * This must be called exactly once after daemon_init() has completed successfully.
+ */
+static void daemon_startup_ready(int* fd)
+{
+	if (*fd < 0)
+		return;
+
+	unsigned char status = DAEMON_STARTUP_READY;
+	ssize_t ret;
+
+	do {
+		ret = write(*fd, &status, sizeof(status));
+	} while (ret < 0 && errno == EINTR);
+
+	(void)ret;
+
+	close(*fd);
+	*fd = -1;
+}
+
+/**
+ * Close the startup notification descriptor without reporting readiness.
+ * The original parent observes EOF and treats daemon startup as failed.
+ */
+static void daemon_startup_close(int* fd)
+{
+	if (*fd < 0)
+		return;
+
+	close(*fd);
+	*fd = -1;
+}
+
+/**
+ * Ensure the standard file descriptors are valid before daemon resources are
+ * allocated, preventing internal descriptors from occupying stdin, stdout, or stderr.
+ */
+static int daemon_standard_fds(void)
+{
+	int fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+	if (fd < 0)
+		return -1;
+
+	for (int i = STDIN_FILENO; i <= STDERR_FILENO; ++i) {
+		if (fcntl(i, F_GETFD) < 0 && errno == EBADF) {
+			if (dup2(fd, i) < 0) {
+				if (fd > STDERR_FILENO)
+					close(fd);
+				return -1;
+			}
+		}
+	}
+
+	if (fd > STDERR_FILENO)
+		close(fd);
+
+	return 0;
+}
+
 static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg, const char* instance)
 {
 	char name[128];
@@ -456,17 +564,35 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 }
 
 /**
- * Daemonize the current process.
- * @return The PID file descriptor on success, -1 on error
+ * Daemonize the current process and establish startup synchronization with
+ * the original parent, which exits only after the final daemon reports readiness.
+ * @param startup_fd Receives the final daemon's startup notification descriptor.
+ * @return The PID file descriptor on success, -1 on error.
  */
-static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg, const char* instance)
+static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pidfile_arg, const char* instance, int* startup_fd)
 {
+	if (daemon_standard_fds() != 0)
+		return -1;
+
+	int startup_pipe[2];
+	if (daemon_startup_pipe(startup_pipe) != 0)
+		return -1;
+
 	/* clear the parent and allow the child to call setsid() */
 	pid_t pid = fork();
-	if (pid < 0)
+	if (pid < 0) {
+		close(startup_pipe[0]);
+		close(startup_pipe[1]);
 		return -1;
-	if (pid > 0)
-		exit(EXIT_SUCCESS);
+	}
+	if (pid > 0) {
+		close(startup_pipe[1]);
+		int ret = daemon_startup_wait(startup_pipe[0]);
+		exit(ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
+	}
+
+	close(startup_pipe[0]);
+	*startup_fd = startup_pipe[1];
 
 	/* create a new session and become the session leader */
 	if (setsid() < 0)
@@ -479,8 +605,10 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 	pid = fork();
 	if (pid < 0)
 		return -1;
-	if (pid > 0)
+	if (pid > 0) {
+		daemon_startup_close(startup_fd);
 		exit(EXIT_SUCCESS);
+	}
 
 	/*
 	 * PID File Management
@@ -511,7 +639,8 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 
 	if (dup2(fd, STDIN_FILENO) < 0
 		|| dup2(fd, STDOUT_FILENO) < 0
-		|| dup2(fd, STDERR_FILENO) < 0) {
+		|| dup2(fd, STDERR_FILENO) < 0
+	) {
 		close(fd);
 		unlink(pidfile_path);
 		close(pidfd);
@@ -533,10 +662,13 @@ int main(int argc, char* argv[])
 	daemon_options(state, argc, argv);
 
 	int pidfd = -1;
+	int startup_fd = -1;
 	if (!state->log.foreground) {
-		pidfd = os_daemonize(pidfile, sizeof(pidfile), state->config.pidfile_arg, state->instance);
-		if (pidfd == -1)
+		pidfd = os_daemonize(pidfile, sizeof(pidfile), state->config.pidfile_arg, state->instance, &startup_fd);
+		if (pidfd == -1) {
+			daemon_startup_close(&startup_fd);
 			exit(EXIT_FAILURE);
+		}
 	}
 
 	/*
@@ -549,8 +681,16 @@ int main(int argc, char* argv[])
 	 */
 	os_signal_set(0);
 
-	if (daemon_init(state) != 0)
+	if (daemon_init(state) != 0) {
+		daemon_startup_close(&startup_fd);
 		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 * Initialization is complete. Report successful startup only after all
+	 * fallible initialization has completed and all worker threads are running.
+	 */
+	daemon_startup_ready(&startup_fd);
 
 	/*
 	 * Unblock signals ONLY in main thread
