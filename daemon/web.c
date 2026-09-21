@@ -638,6 +638,37 @@ static int handler_virtual_file(struct mg_connection* conn, void* cbdata)
 	return 0;
 }
 
+static int path_is_separator(char c)
+{
+#ifdef _WIN32
+	return c == '/' || c == '\\';
+#else
+	return c == '/';
+#endif
+}
+
+static int path_is_contained(const char* path, const char* root)
+{
+	size_t root_len = strlen(root);
+
+	if (strncmp(path, root, root_len) != 0)
+		return 0;
+
+	/* exact match */
+	if (path[root_len] == 0)
+		return 1;
+
+	/*
+	 * If root already ends with a separator, the prefix match is enough.
+	 * This also handles "/" and "C:\" correctly.
+	 */
+	if (root_len != 0 && path_is_separator(root[root_len - 1]))
+		return 1;
+
+	/* otherwise the prefix must end on a path-component boundary */
+	return path_is_separator(path[root_len]);
+}
+
 static int handler_real_file(struct mg_connection* conn, void* cbdata)
 {
 	struct snapraid_state* state = cbdata;
@@ -674,8 +705,7 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 	if (realpath(root, resolved_root) == 0)
 		return 0; /* not a page, follow other handlers */
 
-	size_t root_len = strlen(resolved_root);
-	if (strncmp(resolved_path, resolved_root, root_len) != 0 || (resolved_path[root_len] != 0 && resolved_path[root_len] != '/'))
+	if (!path_is_contained(resolved_path, resolved_root))
 		return send_error(conn, 403);
 
 	struct stat st;
