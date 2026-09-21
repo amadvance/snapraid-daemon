@@ -1124,6 +1124,15 @@ REST API
 		:curl http://localhost:7627/snapraid/v1/refresh \
 		:	--json '{}'
 
+    /snapraid/v1/report
+	Generates a status report describing the current array state and health.
+	The report task is scheduled asynchronously and is executed according to
+	the normal task queue semantics.
+
+	Example:
+		:curl http://localhost:7627/snapraid/v1/report \
+		:	--json '{}'
+
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of
 	the storage stack and the health of the underlying physical hardware.

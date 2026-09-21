@@ -1160,6 +1160,15 @@ Example:
     curl http://localhost:7627/snapraid/v1/refresh \
     	--json '{}'
 
+---- 7.1.6 /snapraid/v1/report ----
+Generates a status report describing the current array state and health.
+The report task is scheduled asynchronously and is executed according to
+the normal task queue semantics.
+
+Example:
+    curl http://localhost:7627/snapraid/v1/report \
+    	--json '{}'
+
 7.2 Monitoring & Inventory
 --------------------------
 

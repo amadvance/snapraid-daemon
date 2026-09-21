@@ -1408,6 +1408,22 @@ curl http://localhost:7627/snapraid/v1/refresh \\
 .PD 0
 .PD
 .RE
+.SS /snapraid/v1/report 
+Generates a status report describing the current array state and health.
+The report task is scheduled asynchronously and is executed according to
+the normal task queue semantics.
+.PP
+Example:
+.PP
+.RS 4
+curl http://localhost:7627/snapraid/v1/report \\
+.PD 0
+.PP
+.PD
+	\-\-json \'{}\'
+.PD 0
+.PD
+.RE
 .SS Monitoring & Inventory 
 These endpoints provide high\-level visibility into the global state of
 the storage stack and the health of the underlying physical hardware.
