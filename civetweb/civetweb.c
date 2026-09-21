@@ -10798,6 +10798,8 @@ produce_socket(struct mg_context *ctx, const struct socket *sp)
 		ctx->squeue[ctx->sq_head % ctx->sq_size] = *sp;
 		ctx->sq_head++;
 		DEBUG_TRACE("queued socket %d", sp ? sp->sock : -1);
+	} else {
+		closesocket(sp->sock);
 	}
 
 	queue_filled = ctx->sq_head - ctx->sq_tail;
@@ -10877,6 +10879,12 @@ worker_thread_run(struct mg_connection *conn)
 		return;
 	}
 
+	/*
+	 * Keep an explicit invalid descriptor until consume_socket() assigns
+	 * an accepted client socket. worker_connections is zero-initialized,
+	 * but descriptor 0 is valid and must not be mistaken for a client.
+	 */
+	conn->client.sock = INVALID_SOCKET;
 
 	/* Call consume_socket() even when ctx->stop_flag > 0, to let it
 	 * signal sq_empty condvar to wake up the master waiting in
@@ -10928,6 +10936,16 @@ worker_thread_run(struct mg_connection *conn)
 
 		DEBUG_TRACE("%s", "Connection closed");
 
+	}
+
+	/*
+	 * consume_socket() can dequeue a socket and then observe the shutdown
+	 * flag before returning. In that case the socket is never processed by
+	 * process_new_connection() and must be closed explicitly.
+	 */
+	if (conn->client.sock != INVALID_SOCKET) {
+		closesocket(conn->client.sock);
+		conn->client.sock = INVALID_SOCKET;
 	}
 
 	/* Call exit thread user callback */
@@ -11238,6 +11256,15 @@ free_context(struct mg_context *ctx)
 
 	(void)pthread_cond_destroy(&ctx->sq_empty);
 	(void)pthread_cond_destroy(&ctx->sq_full);
+
+	/*
+	 * All worker and master threads have exited. Close accepted sockets
+	 * that were still waiting in the worker queue when shutdown began.
+	 */
+	for (i = ctx->sq_tail; i < ctx->sq_head; i++) {
+		closesocket(ctx->squeue[i % ctx->sq_size].sock);
+	}
+
 	mg_free(ctx->squeue);
 
 	/* Destroy other context global data structures mutex */
