@@ -2531,6 +2531,42 @@ get_header(const struct mg_header *hdr, int num_hdr, const char *name)
 }
 
 
+/* Parse a Content-Length field value.
+ * RFC HTTP syntax requires one or more decimal digits. */
+static int
+parse_content_length(const char *s, int64_t *value)
+{
+	uint64_t v = 0;
+
+	if (*s == '\0') {
+		return -1;
+	}
+
+	while ((*s >= '0') && (*s <= '9')) {
+		unsigned digit = (unsigned)(*s - '0');
+
+		if (v > ((uint64_t)INT64_MAX - digit) / 10) {
+			return -1;
+		}
+
+		v = v * 10 + digit;
+		s++;
+	}
+
+	/* parse_http_headers() strips leading OWS, but not trailing OWS. */
+	while ((*s == ' ') || (*s == '\t')) {
+		s++;
+	}
+
+	if (*s != '\0') {
+		return -1;
+	}
+
+	*value = (int64_t)v;
+	return 0;
+}
+
+
 /* Retrieve requested HTTP header multiple values, and return the number of
  * found occurrences */
 static int
@@ -5451,6 +5487,20 @@ get_http_header_len(const char *buf, int buflen)
 			return -1;
 		}
 
+		/*
+		 * CR is only valid as part of CRLF.
+		 * If it is the last buffered byte, the request may simply be
+		 * incomplete, so wait for the next byte.
+		 */
+		if (buf[i] == '\r') {
+			if (i + 1 >= buflen) {
+				return 0;
+			}
+			if (buf[i + 1] != '\n') {
+				return -1;
+			}
+		}
+
 		if (i < buflen - 1) {
 			if ((buf[i] == '\n') && (buf[i + 1] == '\n')) {
 				/* Two newline, no carriage return - not standard compliant,
@@ -6717,6 +6767,30 @@ skip_to_end_of_word_and_terminate(char **ppw, int eol)
 }
 
 
+/*
+ * Check for an empty line terminating the HTTP header section.
+ *
+ * parse_http_request()/parse_http_response() replace the final LF of the
+ * header block with NUL, so a CRLF terminator can appear here as either
+ * "\\r\\n" or "\\r\\0".
+ *
+ * LF-only line endings are intentionally accepted by CivetWeb.
+ */
+static int
+is_http_header_end(const char *p)
+{
+	if ((*p == 0) || (*p == '\n')) {
+		return 1;
+	}
+
+	if (*p == '\r') {
+		return (p[1] == '\n') || (p[1] == 0);
+	}
+
+	return 0;
+}
+
+
 /* Parse HTTP headers from the given buffer, advance buf pointer
  * to the point where parsing stopped.
  * All parameters must be valid pointers (not NULL).
@@ -6726,6 +6800,7 @@ parse_http_headers(char **buf, struct mg_header hdr[MG_MAX_HEADERS])
 {
 	int i;
 	int num_headers = 0;
+	int end_headers = 0;
 
 	for (i = 0; i < (int)MG_MAX_HEADERS; i++) {
 		char *dp = *buf;
@@ -6735,8 +6810,16 @@ parse_http_headers(char **buf, struct mg_header hdr[MG_MAX_HEADERS])
 			dp++;
 		}
 		if (dp == *buf) {
-			/* End of headers reached. */
-			break;
+			/*
+			 * Only an empty line terminates the header section.
+			 * Any other character that cannot start a field name
+			 * makes the request malformed.
+			 */
+			if (is_http_header_end(dp)) {
+				end_headers = 1;
+				break;
+			}
+			return -1;
 		}
 
 		/* Drop all spaces after header name before : */
@@ -6786,17 +6869,39 @@ parse_http_headers(char **buf, struct mg_header hdr[MG_MAX_HEADERS])
 			dp++;
 			*buf = dp;
 
-			if ((dp[0] == '\r') || (dp[0] == '\n')) {
+			if (is_http_header_end(dp)) {
 				/* We've had CRLF twice in a row
 				 * This is the end of the headers */
+				end_headers = 1;
 				break;
 			}
+
+			/*
+			 * A CR not followed by LF cannot terminate the
+			 * header section.
+			 */
+			if (dp[0] == '\r') {
+				return -1;
+			}
+
 			/* continue within the loop, find the next header */
 		} else {
 			*buf = dp;
+			end_headers = 1;
 			break;
 		}
 	}
+
+	/*
+	 * Reaching MG_MAX_HEADERS without reaching the end of the header
+	 * section would silently ignore all remaining fields. In particular,
+	 * framing fields such as Content-Length or Transfer-Encoding could
+	 * otherwise escape validation.
+	 */
+	if (!end_headers) {
+		return -1;
+	}
+
 	return num_headers;
 }
 
@@ -9801,6 +9906,35 @@ get_request(struct mg_connection *conn, char *ebuf, size_t ebuf_len, int *err)
 
 	/* Message is a valid request */
 
+	{
+		const char *host_headers[2];
+		int host_count;
+
+		host_count =
+		    get_req_headers(&conn->request_info,
+		                    "Host",
+		                    host_headers,
+		                    2);
+
+		/*
+		 * HTTP/1.1 requires exactly one Host field. Duplicate Host fields
+		 * are ambiguous for routing and authority processing and are
+		 * rejected for all HTTP versions.
+		 */
+		if ((host_count > 1)
+		    || ((!strcmp(conn->request_info.http_version, "1.1"))
+		        && (host_count != 1))) {
+			mg_snprintf(conn,
+			            NULL, /* No truncation check for ebuf */
+			            ebuf,
+			            ebuf_len,
+			            "%s",
+			            "Bad request");
+			*err = 400;
+			return 0;
+		}
+	}
+
 	if (!switch_domain_context(conn)) {
 		mg_snprintf(conn,
 		            NULL, /* No truncation check for ebuf */
@@ -9821,12 +9955,49 @@ get_request(struct mg_connection *conn, char *ebuf, size_t ebuf_len, int *err)
 		conn->accept_gzip = 1;
 	}
 #endif
-	if (((cl = get_header(conn->request_info.http_headers,
-	                      conn->request_info.num_headers,
-	                      "Transfer-Encoding"))
-	     != NULL)
-	    && mg_strcasecmp(cl, "identity")) {
-		if (mg_strcasecmp(cl, "chunked")) {
+	{
+		const char *transfer_encoding_headers[2];
+		int transfer_encoding_count;
+
+		transfer_encoding_count =
+		    get_req_headers(&conn->request_info,
+		                    "Transfer-Encoding",
+		                    transfer_encoding_headers,
+		                    2);
+
+		/*
+		 * Multiple Transfer-Encoding fields are ambiguous for request
+		 * framing. Reject them instead of interpreting only the first one.
+		 */
+		if (transfer_encoding_count > 1) {
+			mg_snprintf(conn,
+			            NULL, /* No truncation check for ebuf */
+			            ebuf,
+			            ebuf_len,
+			            "%s",
+			            "Bad request");
+			*err = 400;
+			return 0;
+		}
+
+		cl = transfer_encoding_count == 1
+		         ? transfer_encoding_headers[0]
+		         : NULL;
+	}
+
+	if ((cl != NULL) && mg_strcasecmp(cl, "identity")) {
+		const char *content_length_headers[1];
+
+		/*
+		 * Transfer-Encoding and Content-Length must not be used together,
+		 * since accepting both makes request framing ambiguous.
+		 */
+		if ((get_req_headers(&conn->request_info,
+		                     "Content-Length",
+		                     content_length_headers,
+		                     1)
+		     != 0)
+		    || mg_strcasecmp(cl, "chunked")) {
 			mg_snprintf(conn,
 			            NULL, /* No truncation check for ebuf */
 			            ebuf,
@@ -9838,28 +10009,47 @@ get_request(struct mg_connection *conn, char *ebuf, size_t ebuf_len, int *err)
 		}
 		conn->is_chunked = 1;
 		conn->content_len = 0; /* not yet read */
-	} else if ((cl = get_header(conn->request_info.http_headers,
-	                            conn->request_info.num_headers,
-	                            "Content-Length"))
-	           != NULL) {
-		/* Request has content length set */
-		char *endptr = NULL;
-		conn->content_len = strtoll(cl, &endptr, 10);
-		if ((endptr == cl) || (conn->content_len < 0)) {
+	} else {
+		const char *content_length_headers[2];
+		int content_length_count;
+
+		content_length_count =
+		    get_req_headers(&conn->request_info,
+		                    "Content-Length",
+		                    content_length_headers,
+		                    2);
+
+		if (content_length_count > 1) {
 			mg_snprintf(conn,
 			            NULL, /* No truncation check for ebuf */
 			            ebuf,
 			            ebuf_len,
 			            "%s",
 			            "Bad request");
-			*err = 411;
+			*err = 400;
 			return 0;
 		}
-		/* Publish the content length back to the request info. */
-		conn->request_info.content_length = conn->content_len;
-	} else {
-		/* There is no exception, see RFC7230. */
-		conn->content_len = 0;
+
+		if (content_length_count == 1) {
+			if (parse_content_length(content_length_headers[0],
+			                         &conn->content_len)
+			    != 0) {
+				mg_snprintf(conn,
+				            NULL, /* No truncation check for ebuf */
+				            ebuf,
+				            ebuf_len,
+				            "%s",
+				            "Bad request");
+				*err = 400;
+				return 0;
+			}
+
+			/* Publish the content length back to the request info. */
+			conn->request_info.content_length = conn->content_len;
+		} else {
+			/* There is no exception, see RFC7230. */
+			conn->content_len = 0;
+		}
 	}
 
 	return 1;
