@@ -3330,6 +3330,16 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 	options[i++] = "4";
 	options[i++] = "request_timeout_ms";
 	options[i++] = "10000";
+
+	/*
+	 * Disable CivetWeb's built-in CORS preflight handling, which otherwise
+	 * uses its permissive default CORS policy before authentication and routing.
+	 * Let REST OPTIONS requests reach our handlers so net_allowed_origin is
+	 * enforced consistently by http_headers_secure().
+	 */
+	options[i++] = "access_control_allow_methods";
+	options[i++] = "";
+
 	options[i++] = 0;
 
 	if (mg_init_library(MG_FEATURES_ALL) == 0) {
