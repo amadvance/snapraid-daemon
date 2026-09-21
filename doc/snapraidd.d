@@ -200,11 +200,12 @@ Health
 	The array's aggregate health is determined by evaluating historical log
 	data alongside real-time hardware telemetry.
 
-	If the array transitions into a problematic state, the daemon issues
-	an alert through the configured notification system. Note that the
-	detection of such states is not instantaneous, it occurs during the
-	telemetry collection cycle, the frequency of which is determined by
-	the `probe_interval_minutes` option.
+	If the array transitions into a problematic health state, the daemon
+	issues an alert through the configured notification system.
+	The PENDING state is informational and does not by itself trigger an alert.
+	Note that the detection of such states is not instantaneous, it occurs
+	during the telemetry collection cycle, the frequency of which is determined
+	by the `probe_interval_minutes` option.
 
 	In the REST API, the health state is reported by the `health` field.
 	Whenever the health is not PASSED, a supplementary `health_reason` field
@@ -222,6 +223,9 @@ Health
 		successful hardware probe where all disks are spinning at
 		least once to read SMART attributes.
 		Issuing an `up` command is sufficient to satisfy this.
+		PENDING is an informational state, not a problematic health
+		state, and does not by itself raise the severity of result
+		notifications.
 	PASSED - The array is fully healthy. All disks report positive SMART
 		status and the last scrub found no data corruption.
 	CORRUPT - Silent errors (hash or parity mismatches) were detected, though
@@ -958,9 +962,10 @@ Configuration
 	Valid values are `info` (always send), `warning`, `error`, and `critical`.
 	The default is `warning`.
 
-	Note that SMART attribute changes are rated as `warning`, while general
-	health status changes (such as failing or prefailing disks, or corrupted
-	array) are rated as `critical`.
+	Note that SMART attribute changes are rated as `warning`.
+	Problematic array health states (`CORRUPT`, `DEGRADED`, `PREFAIL`, and
+	`FAILING`) are rated as `critical`. The `PENDING` state is informational
+	and does not by itself increase the notification severity.
 
     notify_run_as_user
 	The user account used for notify_heartbeat, notify_start, notify_result and mail
