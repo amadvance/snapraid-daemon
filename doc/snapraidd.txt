@@ -1067,6 +1067,12 @@ specific error codes, please refer to the `snapraidd.yaml` OpenAPI
 specification file typically located in the documentation directory of
 the installation.
 
+All state-changing API requests require the `Content-Type` header to be
+set to `application/json`, even when the request body is empty. This
+ensures that browser cross-origin requests require a CORS preflight,
+providing protection against Cross-Site Request Forgery (CSRF).
+Chunked request bodies are not supported.
+
 7.1 Maintenance & Recovery
 --------------------------
 
@@ -1090,7 +1096,8 @@ The percentage of the array checked and the age filter are determined
 by the `scrub_percentage` and `scrub_older_than` settings.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/maintenance
+    curl http://localhost:7627/snapraid/v1/maintenance \
+    	--json ''
 
 It is implemented with the sequence of commands: up, diff, sync, scrub, and
 report.
@@ -1103,7 +1110,8 @@ blocks to ensure the recovery was successful, and concludes by issuing
 a report of the result.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/heal
+    curl http://localhost:7627/snapraid/v1/heal \
+    	--json ''
 
 It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
 and report.
@@ -1115,9 +1123,8 @@ This is used to roll back accidental deletions to the state of the
 last successful synchronization.
 
 Example:
-    curl -s -X POST http://localhost:7627/snapraid/v1/undelete \
-    	-H "Content-Type: application/json" \
-    	-d '{ "filters": [ "*.txt" ] }'
+    curl http://localhost:7627/snapraid/v1/undelete \
+    	--json '{ "filters": [ "*.txt" ] }'
 
 It is implemented with the sequence of commands: up, fix -m -f ...,
 and report.
@@ -1130,7 +1137,8 @@ down_idle command to disks that have exceeded the
 generated.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/suspend_idle
+    curl http://localhost:7627/snapraid/v1/suspend_idle \
+    	--json ''
 
 It is implemented with the sequence of commands: probe, down_idle.
 
@@ -1149,7 +1157,8 @@ once the underlying hardware or configuration issues have been
 resolved manually.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/refresh
+    curl http://localhost:7627/snapraid/v1/refresh \
+    	--json ''
 
 7.2 Monitoring & Inventory
 --------------------------
@@ -1189,9 +1198,9 @@ Note that certain networking and security settings are read-only and
 require a manual edit and SIGHUP.
 
 Example:
-    curl -X GET http://localhost:7627/snapraid/v2/config | jq
+    curl -s http://localhost:7627/snapraid/v2/config | jq
     curl -X PATCH http://localhost:7627/snapraid/v2/config \
-    	-d '{ "probe_interval_minutes": 10 }'
+    	--json '{ "probe_interval_minutes": 10 }'
 
 7.4 Activity Control
 --------------------
@@ -1225,7 +1234,8 @@ Terminates the currently running task (such as sync or scrub) by
 sending a SIGTERM signal to the background process.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/stop
+    curl http://localhost:7627/snapraid/v1/stop \
+    	--json ''
 
 7.5 State and Cache Management
 ------------------------------
@@ -1252,7 +1262,7 @@ because they are reset if the daemon restarts. You should compare
 them only for equality.
 
 Example:
-    curl -X GET http://localhost:7627/snapraid/v1/state | jq
+    curl -s http://localhost:7627/snapraid/v1/state | jq
 
 7.6 Schedule
 ------------
@@ -1280,8 +1290,8 @@ the generation of a report that reflects the final state of the system.
 Queues a sequence of standard SnapRAID operations.
 
 Example:
-    curl -X POST http://localhost:7627/snapraid/v1/schedule \
-    	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
+    curl http://localhost:7627/snapraid/v1/schedule \
+    	--json '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
 Supported Commands:
 

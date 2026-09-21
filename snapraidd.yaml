@@ -49,17 +49,11 @@ paths:
         '202':
           description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
-          $ref: '#/components/responses/CommandResult'
-        '409':
-          description: Command already running or scheduled.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/hold_off:
@@ -89,11 +83,11 @@ paths:
         '200':
           description: 'Hold-off state updated successfully'
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/heal:
@@ -124,17 +118,11 @@ paths:
         '202':
           description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
-          $ref: '#/components/responses/CommandResult'
-        '409':
-          description: Command already running or scheduled.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/undelete:
@@ -165,17 +153,11 @@ paths:
         '202':
           description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
-          $ref: '#/components/responses/CommandResult'
-        '409':
-          description: Command already running or scheduled.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/suspend_idle:
@@ -235,17 +217,11 @@ paths:
         '202':
           description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
-          $ref: '#/components/responses/CommandResult'
-        '409':
-          description: Command already running or scheduled.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/schedule:
@@ -289,17 +265,11 @@ paths:
         '202':
           description: Task scheduled.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
-          $ref: '#/components/responses/CommandResult'
-        '409':
-          description: Command already running or scheduled.
-          $ref: '#/components/responses/CommandResult'
-        '500':
-          description: Engine not found.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/stop:
@@ -320,16 +290,12 @@ paths:
         '202':
           description: Stop signal scheduled.
           $ref: '#/components/responses/CommandStopped'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
-        '409':
-          description: No task is currently running.
-          $ref: '#/components/responses/CommandResult'
-
   /snapraid/v1/report:
     post:
       summary: Trigger report generation task
@@ -453,11 +419,11 @@ paths:
 
                       This field is omitted if the daemon is idle, or if an
                       estimate is not yet available/supported for the current task.
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v2/disks:
@@ -500,11 +466,11 @@ paths:
                     description: 'List of physical devices previously part of the array that are currently disconnected'
                     items:
                       $ref: '#/components/schemas/Device'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/activity:
@@ -550,11 +516,11 @@ paths:
                   - $ref: '#/components/schemas/Task'
         '204':
           description: No task available (system idle since startup).
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/tasks:
@@ -616,11 +582,11 @@ paths:
                       Chronological record of completed tasks.
                     items:
                       $ref: '#/components/schemas/Task'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v2/config:
@@ -642,11 +608,11 @@ paths:
                     $ref: '#/components/schemas/Pulse'
                 allOf:
                   - $ref: '#/components/schemas/Config'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
     patch:
@@ -666,24 +632,11 @@ paths:
         '200':
           description: Configuration updated and persisted to disk.
           $ref: '#/components/responses/CommandResult'
-        '400':
-          description: >
-            Invalid configuration. One or more values failed validation (e.g.,
-            unsupported log level or out-of-range scrub frequency).
-
-            The update is atomic: no configuration changes are applied or persisted
-            when validation of any provided option fails.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '403':
-          description: >
-            The server understood the request but refuses to authorize the
-            modification of the specified configuration parameters.
-
-            The update is atomic: no configuration changes are applied or persisted
-            when any provided option is forbidden.
-          $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
 
   /snapraid/v1/array:
@@ -741,13 +694,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/System'
-        '400':
-          description: Invalid request body.
+        '4XX':
+          description: Client error.
           $ref: '#/components/responses/CommandResult'
-        '405':
-          description: Invalid method.
+        '5XX':
+          description: Server error.
           $ref: '#/components/responses/CommandResult'
-
 
   /metrics:
     get:

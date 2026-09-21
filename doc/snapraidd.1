@@ -1283,6 +1283,12 @@ For complete technical documentation, including request schemas and
 specific error codes, please refer to the \`snapraidd.yaml\` OpenAPI
 specification file typically located in the documentation directory of
 the installation.
+.PP
+All state\-changing API requests require the \`Content\-Type\` header to be
+set to \`application/json\`, even when the request body is empty. This
+ensures that browser cross\-origin requests require a CORS preflight,
+providing protection against Cross\-Site Request Forgery (CSRF).
+Chunked request bodies are not supported.
 .SS Maintenance & Recovery 
 The API prioritizes orchestrated workflows over raw command execution.
 These high\-level endpoints encapsulate complex SnapRAID logic into
@@ -1305,7 +1311,11 @@ by the \`scrub_percentage\` and \`scrub_older_than\` settings.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/maintenance
+curl http://localhost:7627/snapraid/v1/maintenance \\
+.PD 0
+.PP
+.PD
+	\-\-json \'\'
 .PD 0
 .PD
 .RE
@@ -1322,7 +1332,11 @@ a report of the result.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/heal
+curl http://localhost:7627/snapraid/v1/heal \\
+.PD 0
+.PP
+.PD
+	\-\-json \'\'
 .PD 0
 .PD
 .RE
@@ -1338,15 +1352,11 @@ last successful synchronization.
 Example:
 .PP
 .RS 4
-curl \-s \-X POST http://localhost:7627/snapraid/v1/undelete \\
+curl http://localhost:7627/snapraid/v1/undelete \\
 .PD 0
 .PP
 .PD
-	\-H \[dq]Content\-Type: application/json\[dq] \\
-.PD 0
-.PP
-.PD
-	\-d \'{ \[dq]filters\[dq]: [ \[dq]*.txt\[dq] ] }\'
+	\-\-json \'{ \[dq]filters\[dq]: [ \[dq]*.txt\[dq] ] }\'
 .PD 0
 .PD
 .RE
@@ -1363,7 +1373,11 @@ generated.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/suspend_idle
+curl http://localhost:7627/snapraid/v1/suspend_idle \\
+.PD 0
+.PP
+.PD
+	\-\-json \'\'
 .PD 0
 .PD
 .RE
@@ -1386,7 +1400,11 @@ resolved manually.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/refresh
+curl http://localhost:7627/snapraid/v1/refresh \\
+.PD 0
+.PP
+.PD
+	\-\-json \'\'
 .PD 0
 .PD
 .RE
@@ -1432,7 +1450,7 @@ require a manual edit and SIGHUP.
 Example:
 .PP
 .RS 4
-curl \-X GET http://localhost:7627/snapraid/v2/config | jq
+curl \-s http://localhost:7627/snapraid/v2/config | jq
 .PD 0
 .PP
 .PD
@@ -1440,7 +1458,7 @@ curl \-X PATCH http://localhost:7627/snapraid/v2/config \\
 .PD 0
 .PP
 .PD
-	\-d \'{ \[dq]probe_interval_minutes\[dq]: 10 }\'
+	\-\-json \'{ \[dq]probe_interval_minutes\[dq]: 10 }\'
 .PD 0
 .PD
 .RE
@@ -1483,7 +1501,11 @@ sending a SIGTERM signal to the background process.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/stop
+curl http://localhost:7627/snapraid/v1/stop \\
+.PD 0
+.PP
+.PD
+	\-\-json \'\'
 .PD 0
 .PD
 .RE
@@ -1511,7 +1533,7 @@ them only for equality.
 Example:
 .PP
 .RS 4
-curl \-X GET http://localhost:7627/snapraid/v1/state | jq
+curl \-s http://localhost:7627/snapraid/v1/state | jq
 .PD 0
 .PD
 .RE
@@ -1540,11 +1562,11 @@ Queues a sequence of standard SnapRAID operations.
 Example:
 .PP
 .RS 4
-curl \-X POST http://localhost:7627/snapraid/v1/schedule \\
+curl http://localhost:7627/snapraid/v1/schedule \\
 .PD 0
 .PP
 .PD
-	\-d \'{\[dq]tasks\[dq]: [{\[dq]command\[dq]: \[dq]diff\[dq]}, {\[dq]command\[dq]: \[dq]report\[dq]}]}\'
+	\-\-json \'{\[dq]tasks\[dq]: [{\[dq]command\[dq]: \[dq]diff\[dq]}, {\[dq]command\[dq]: \[dq]report\[dq]}]}\'
 .PD 0
 .PD
 .RE

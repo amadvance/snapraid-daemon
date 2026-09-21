@@ -1033,6 +1033,12 @@ REST API
 	specification file typically located in the documentation directory of
 	the installation.
 
+	All state-changing API requests require the `Content-Type` header to be
+	set to `application/json`, even when the request body is empty. This
+	ensures that browser cross-origin requests require a CORS preflight,
+	providing protection against Cross-Site Request Forgery (CSRF).
+	Chunked request bodies are not supported.
+
   Maintenance & Recovery
 	The API prioritizes orchestrated workflows over raw command execution.
 	These high-level endpoints encapsulate complex SnapRAID logic into
@@ -1054,7 +1060,8 @@ REST API
 	by the `scrub_percentage` and `scrub_older_than` settings.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/maintenance
+		:curl http://localhost:7627/snapraid/v1/maintenance \
+		:	--json ''
 
 	It is implemented with the sequence of commands: up, diff, sync, scrub, and
 	report.
@@ -1067,7 +1074,8 @@ REST API
 	a report of the result.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/heal
+		:curl http://localhost:7627/snapraid/v1/heal \
+		:	--json ''
 
 	It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
 	and report.
@@ -1079,9 +1087,8 @@ REST API
 	last successful synchronization.
 
 	Example:
-		:curl -s -X POST http://localhost:7627/snapraid/v1/undelete \
-		:	-H "Content-Type: application/json" \
-		:	-d '{ "filters": [ "*.txt" ] }'
+		:curl http://localhost:7627/snapraid/v1/undelete \
+		:	--json '{ "filters": [ "*.txt" ] }'
 
 	It is implemented with the sequence of commands: up, fix -m -f ...,
 	and report.
@@ -1094,7 +1101,8 @@ REST API
 	generated.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/suspend_idle
+		:curl http://localhost:7627/snapraid/v1/suspend_idle \
+		:	--json ''
 
 	It is implemented with the sequence of commands: probe, down_idle.
 
@@ -1113,7 +1121,8 @@ REST API
         resolved manually.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/refresh
+		:curl http://localhost:7627/snapraid/v1/refresh \
+		:	--json ''
 
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of
@@ -1149,9 +1158,9 @@ REST API
 	require a manual edit and SIGHUP.
 
 	Example:
-		:curl -X GET http://localhost:7627/snapraid/v2/config | jq
+		:curl -s http://localhost:7627/snapraid/v2/config | jq
 		:curl -X PATCH http://localhost:7627/snapraid/v2/config \
-		:	-d '{ "probe_interval_minutes": 10 }'
+		:	--json '{ "probe_interval_minutes": 10 }'
 
   Activity Control
 	All operations that modify the array state are asynchronous; they
@@ -1183,7 +1192,8 @@ REST API
 	sending a SIGTERM signal to the background process.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/stop
+		:curl http://localhost:7627/snapraid/v1/stop \
+		:	--json ''
 
   State and Cache Management
 	To optimize performance and support lightweight monitoring (such as
@@ -1208,7 +1218,7 @@ REST API
 	them only for equality.
 
 	Example:
-		:curl -X GET http://localhost:7627/snapraid/v1/state | jq
+		:curl -s http://localhost:7627/snapraid/v1/state | jq
 
   Schedule
 	The schedule entry point allows batching multiple SnapRAID commands
@@ -1234,8 +1244,8 @@ REST API
 	Queues a sequence of standard SnapRAID operations.
 
 	Example:
-		:curl -X POST http://localhost:7627/snapraid/v1/schedule \
-		:	-d '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
+		:curl http://localhost:7627/snapraid/v1/schedule \
+		:	--json '{"tasks": [{"command": "diff"}, {"command": "report"}]}'
 
 	Supported Commands:
 

@@ -229,12 +229,8 @@ static void json_error_duplicate(char* str, size_t str_size, char* js, jsmntok_t
 	snprintf(str, str_size, "Duplicate parameter '%s'.", json_token(js, jv));
 }
 
-static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, size_t msg_size)
+static int json_request_check(struct mg_connection* conn, char* msg, size_t msg_size)
 {
-	ss_t s;
-	const struct mg_request_info* ri = mg_get_request_info(conn);
-	ssize_t content_length = ri->content_length;
-
 	/*
 	 * Reject chunked request bodies because the REST JSON parser relies on
 	 * Content-Length to determine whether a payload is present and how much
@@ -250,7 +246,7 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 
 	/*
 	 * To prevent Cross-Site Request Forgery (CSRF) attacks, we strictly enforce
-	 * that any request carrying a JSON payload has the Content-Type header set to
+	 * that any state-changing JSON API request has the Content-Type header set to
 	 * application/json. Because application/json is not a simple Content-Type
 	 * under the CORS spec, the browser will force a pre-flight OPTIONS check
 	 * and prevent cross-origin requests unless explicitly permitted by CORS.
@@ -262,6 +258,20 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 		sncpy(msg, msg_size, "Unsupported Media Type (expected application/json)");
 		return 415;
 	}
+
+	return 200;
+}
+
+static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* msg, size_t msg_size)
+{
+	ss_t s;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	ssize_t content_length = ri->content_length;
+	int status;
+
+	status = json_request_check(conn, msg, msg_size);
+	if (status != 200)
+		return status;
 
 	/* If Content-Length is missing, assume no Payload */
 	if (content_length < 0) {
@@ -1402,6 +1412,10 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
+	status = json_request_check(conn, msg, sizeof(msg));
+	if (status != 200)
+		return send_json_error(conn, status, msg);
+
 	if (runner_stop(state, msg, sizeof(msg), &status, &display_pid, &number) != 0)
 		return send_json_error(conn, status, msg);
 
@@ -1522,6 +1536,10 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	status = json_request_check(conn, msg, sizeof(msg));
+	if (status != 200)
+		return send_json_error(conn, status, msg);
 
 	runner(state, 0, CMD_REPORT, 0, 0, 0, msg, sizeof(msg), &status);
 
