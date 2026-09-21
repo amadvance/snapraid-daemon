@@ -652,7 +652,7 @@ paths:
               $ref: '#/components/schemas/Config'
       responses:
         '200':
-          description: Configuration updated and persisted to disk.
+          description: Configuration updated and written to the configuration file.
           $ref: '#/components/responses/CommandResult'
         '4XX':
           description: Client error.
