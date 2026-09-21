@@ -3360,6 +3360,7 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 	}
 	if (!state->rest_context) {
 		log_msg(LVL_ERROR, "failed to start web server, errno=%s(%d)", strerror(errno), errno);
+		mg_exit_library();
 		return -1;
 	}
 
@@ -3412,7 +3413,7 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 
 void rest_done(struct snapraid_state* state, int net_enabled)
 {
-	if (!net_enabled)
+	if (!net_enabled && !state->rest_context)
 		return;
 
 	if (state->rest_context) {

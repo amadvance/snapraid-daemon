@@ -346,12 +346,6 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	/**
-	 * Start runner worker thread after dropping privileges.
-	 * Signals are still BLOCKED and will be inherited by the new thread.
-	 */
-	runner_start(state);
-
-	/**
 	 * Create REST worker threads after dropping privileges.
 	 * Signals are still BLOCKED and will be inherited by the new threads.
 	 */
@@ -365,8 +359,15 @@ int daemon_init(struct snapraid_state* state)
 	 */
 	if (web_start(state) != 0) {
 		log_msg(LVL_ERROR, "failed to register web request handler");
+		rest_done(state, state->config.net_enabled);
 		return -1;
 	}
+
+	/**
+	 * Start runner worker thread after all fallible server initialization.
+	 * Signals are still BLOCKED and will be inherited by the new thread.
+	 */
+	runner_start(state);
 
 	/**
 	 * Start scheduler worker thread after dropping privileges.
@@ -377,7 +378,7 @@ int daemon_init(struct snapraid_state* state)
 	return 0;
 }
 
-void daemon_run(struct snapraid_state* state)
+int daemon_run(struct snapraid_state* state)
 {
 	state_lock();
 
@@ -417,18 +418,18 @@ void daemon_run(struct snapraid_state* state)
 			if (daemon_is_running(state) && reload_rest) {
 				if (rest_reload(state, prev_net_enabled, net_enabled, net_port, net_acl) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web server");
-					os_exit();
+					goto bail;
 				}
 				if (web_start(state) != 0) {
 					log_msg(LVL_CRITICAL, "failed to register web request handler");
-					os_exit();
+					goto bail;
 				}
 			}
 
 			if (daemon_is_running(state) && !state->web.page_nocache) {
 				if (web_reload(state, net_web_root) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
-					os_exit();
+					goto bail;
 				}
 			}
 
@@ -455,6 +456,19 @@ void daemon_run(struct snapraid_state* state)
 	state_unlock();
 
 	log_msg(LVL_INFO, "daemon exiting cleanly");
+	return 0;
+
+bail:
+	/*
+	 * Stop through the normal teardown path. Do not enter abort state:
+	 * runner cleanup must still execute post hooks and resume Docker containers.
+	 */
+	state_lock();
+	state->daemon_running = 0;
+	state_unlock();
+
+	log_msg(LVL_ERROR, "daemon exiting due to runtime error");
+	return -1;
 }
 
 void daemon_done(struct snapraid_state* state)

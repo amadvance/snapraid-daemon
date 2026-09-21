@@ -1032,7 +1032,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR* argv)
 	windows_eventlog(LVL_INFO, "Service started");
 	report_progress(SERVICE_RUNNING, NO_ERROR, 0);
 
-	daemon_run(state);
+	int ret = daemon_run(state);
 
 	windows_eventlog(LVL_INFO, "Service stopping");
 	daemon_done(state);
@@ -1040,7 +1040,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR* argv)
 	state_done(state);
 
 	windows_eventlog(LVL_INFO, "Service stopped");
-	report_progress(SERVICE_STOPPED, NO_ERROR, 0);
+	report_progress(SERVICE_STOPPED, ret != 0 ? ERROR_SERVICE_SPECIFIC_ERROR : NO_ERROR, 0);
 
 	os_done();
 }
@@ -1118,7 +1118,7 @@ int main(int argc, char* argv[])
 		if (daemon_init(state) != 0)
 			exit(EXIT_FAILURE);
 
-		daemon_run(state);
+		int ret = daemon_run(state);
 
 		daemon_done(state);
 
@@ -1126,6 +1126,9 @@ int main(int argc, char* argv[])
 
 		app_done();
 		os_done();
+
+		if (ret != 0)
+			return EXIT_FAILURE;
 	} else {
 		wchar_t wservice_name[128];
 		if (!u8tou16_mayfail(wservice_name, sizeof(wservice_name) / sizeof(wservice_name[0]), service_name, strlen(service_name) + 1, 0))

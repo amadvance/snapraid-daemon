@@ -75,8 +75,9 @@ int daemon_init(struct snapraid_state* state);
 
 /**
  * Run the daemon
+ * @return 0 on normal shutdown, -1 on fatal runtime error
  */
-void daemon_run(struct snapraid_state* state);
+int daemon_run(struct snapraid_state* state);
 
 /**
  * Deinitialize the daemon

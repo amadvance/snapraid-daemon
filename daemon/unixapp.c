@@ -559,7 +559,7 @@ int main(int argc, char* argv[])
 	 */
 	os_signal_set(1);
 
-	daemon_run(state);
+	int ret = daemon_run(state);
 
 	daemon_done(state);
 
@@ -573,7 +573,7 @@ int main(int argc, char* argv[])
 		close(pidfd);
 	}
 
-	return 0;
+	return ret != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 #endif
 
