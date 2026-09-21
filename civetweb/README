@@ -1,0 +1,400 @@
+CIVETWEB SECURITY NOTES
+=======================
+
+This directory contains a stripped and locally patched copy of CivetWeb.
+Security reports against the full upstream project are not automatically
+applicable to snapraid-daemon.
+
+This file tracks the CivetWeb security and HTTP framing problems reviewed
+against the code actually present in snapraid-daemon. General robustness bugs
+without a verified security impact are outside the scope of this file.
+
+REVIEW BASELINE
+---------------
+
+Original CivetWeb upstream baseline: 4a4f0c95cd3bd7572cd23fd89ca6eef380d41b99
+
+Commit:
+https://github.com/civetweb/civetweb/commit/4a4f0c95
+
+Applicability is determined from the stripped source and from trim_civetweb.py
+and Makefile.am, not from the CivetWeb version string.
+
+The review covered all upstream CivetWeb issues and pull requests created from
+v1.16, released on 2023-04-10, through 2026-09-21: 156 issues and 127 pull
+requests. Runtime changes were checked against the stripped source to identify
+security-relevant defects that are resolved locally or not applicable.
+
+Correctness, portability, build, and robustness issues without a verified
+security impact are intentionally not listed here.
+
+Important disabled or removed features:
+
+  NO_SSL=1
+  NO_SSL_DL=1
+  NO_CGI=1
+  NO_FILES=1
+  NO_FILESYSTEMS=1
+  USE_LUA=0
+  USE_WEBSOCKET=0
+  USE_HTTP2=0
+  USE_ZLIB=0
+  MG_EXPERIMENTAL_INTERFACES=0
+  Form handling removed
+
+
+RESOLVED
+========
+
+1. Malformed or ambiguous HTTP request headers
+-----------------------------------------------
+
+Severity: SIGNIFICANT in snapraid-daemon
+
+The vendored CivetWeb accepted several malformed or ambiguous request-header
+forms that could change request framing or authority interpretation.
+
+Content-Length was parsed with strtoll() without requiring the entire field
+value to be valid. For example, a value such as 0x was accepted as zero.
+Multiple Content-Length fields were also not rejected.
+
+This was significant for snapraid-daemon because a non-empty JSON request
+could be exposed to the REST layer with a length of zero. For the undelete
+operation this could change an intended filtered recovery into the
+empty-request behavior, which attempts recovery of all missing files.
+
+CivetWeb also accepted a request containing both a non-identity
+Transfer-Encoding and Content-Length, selecting chunked framing while ignoring
+Content-Length. Accepting both creates ambiguous HTTP message framing and can
+enable request desynchronization when another HTTP peer interprets the same
+request differently.
+
+Multiple Transfer-Encoding fields were likewise accepted while only the first
+one was considered for request framing. A request containing
+Transfer-Encoding: identity followed by Transfer-Encoding: chunked could
+therefore make a chunked JSON body appear absent to the REST layer. For
+undelete, this could discard the requested file and disk filters and schedule
+recovery of all missing files.
+
+Multiple Host fields were also accepted while only the first one was used.
+Since Host determines request authority and domain routing, accepting multiple
+values creates an ambiguous request. HTTP/1.1 requests without a Host field
+were accepted as well.
+
+CivetWeb could also silently accept a partially parsed header section.
+parse_http_headers() stopped after MG_MAX_HEADERS fields without rejecting
+additional fields, and some malformed field lines could be mistaken for the
+end of the header section. Framing fields such as Content-Length or
+Transfer-Encoding appearing after that point could therefore escape the
+validation performed by get_request().
+
+The local fix strictly parses Content-Length as decimal digits with optional
+trailing HTTP whitespace, rejects values above INT64_MAX, and rejects
+duplicate Content-Length fields. It rejects requests combining a non-identity
+Transfer-Encoding with Content-Length, rejects duplicate Transfer-Encoding
+fields, rejects duplicate Host fields for all HTTP versions, and requires
+exactly one Host field for HTTP/1.1 requests. It also rejects malformed field
+lines and header sections exceeding MG_MAX_HEADERS instead of silently
+accepting a partially parsed request. Invalid requests return HTTP 400 before
+routing and REST processing.
+
+Local commit:
+https://github.com/amadvance/snapraid-daemon/commit/1d6e4a74
+
+Upstream commit:
+https://github.com/civetweb/civetweb/commit/588860e3
+
+The upstream commit introduced the intended Transfer-Encoding/Content-Length
+check but also introduced compile errors in get_request(). PR #1432 contains
+the corrected form of that block. The additional strict Content-Length,
+duplicate Transfer-Encoding, Host, and complete header-section validation are
+local hardening.
+
+Upstream PR #1432:
+https://github.com/civetweb/civetweb/pull/1432
+
+Related issue #1408:
+https://github.com/civetweb/civetweb/issues/1408
+
+Related PR #1400:
+https://github.com/civetweb/civetweb/pull/1400
+
+CVE: none identified for these specific HTTP request validation fixes. They
+must not be attributed to CVE-2025-55763, which is a different URI parser
+problem.
+
+2. Percent-encoded URI control characters
+-----------------------------------------
+
+Severity: SECURITY RELEVANT; no CVSS or CVE identified
+
+CivetWeb previously accepted percent-encoded ASCII control characters in
+request URIs. Upstream PR #1341 added explicit rejection of %0d and %0a to
+prevent CRLF injection, and that fix is present in the upstream baseline
+imported by snapraid-daemon.
+
+Other encoded control characters were still accepted. In particular, %00 was
+decoded to a NUL byte in place, truncating the URI as a C string before later
+URI normalization, handler matching, and authorization processing. Encoded
+control characters %01 through %1f and %7f could likewise reach later URI
+processing despite their literal forms being rejected.
+
+The local follow-up generalizes PR #1341. URI validation now rejects all
+percent-encoded ASCII control characters from 0x00 through 0x1f and 0x7f. It
+also rejects malformed percent-encodings instead of allowing them to reach
+later URI processing.
+
+Local commit:
+https://github.com/amadvance/snapraid-daemon/commit/43ad1aeb
+
+Upstream PR #1341:
+https://github.com/civetweb/civetweb/pull/1341
+
+CVE: none identified for these fixes.
+
+
+NOT APPLICABLE
+==============
+
+1. CVE-2025-55763: URI parser buffer overflow
+---------------------------------------------
+
+Severity: HIGH, CVSS 3.1 7.5
+
+The upstream report describes a remotely triggerable buffer overflow in
+CivetWeb URI processing, with memory corruption and denial-of-service impact
+and reports of possible code execution.
+
+Why not applicable: the affected path belongs to CivetWeb built-in
+filesystem/file-serving URI handling. snapraid-daemon is built with NO_FILES
+and NO_FILESYSTEMS, and the affected file-serving path is absent from the
+stripped source.
+
+Upstream issue #1356:
+https://github.com/civetweb/civetweb/issues/1356
+
+CVE:
+https://www.cve.org/CVERecord?id=CVE-2025-55763
+
+2. CVE-2025-9648: mg_handle_form_request() infinite loop
+------------------------------------------------------
+
+Severity: HIGH, CVSS 4.0 8.7
+
+A crafted form POST containing a NUL byte can make mg_handle_form_request()
+loop indefinitely, causing remote CPU denial of service.
+
+Why not applicable: snapraid-daemon does not include CivetWeb form handling.
+mg_handle_form_request() and handle_form.inl are absent from the stripped
+source.
+
+Upstream issue #1348:
+https://github.com/civetweb/civetweb/issues/1348
+
+Upstream fix commit:
+https://github.com/civetweb/civetweb/commit/782e1890
+
+CVE:
+https://www.cve.org/CVERecord?id=CVE-2025-9648
+
+3. Multipart form stack-buffer overflow
+--------------------------------------
+
+Severity: HIGH, reported CVSS 3.1 7.5
+
+Upstream issue #1404 reports a remotely triggerable stack-buffer overflow in
+mg_handle_form_request() while parsing a crafted multipart request. Two
+arithmetic errors can produce an extremely large memmove() against an 8 KiB
+stack buffer.
+
+Why not applicable: the form-handling implementation has been removed from the
+local CivetWeb copy.
+
+Upstream issue #1404:
+https://github.com/civetweb/civetweb/issues/1404
+
+CVE: none identified for this report at the review baseline.
+
+4. Additional form parser underflow and infinite loop
+---------------------------------------------------
+
+Severity: SIGNIFICANT, no assigned CVSS identified
+
+PR #1411 reports two remotely triggerable bugs in mg_handle_form_request(): an
+integer underflow that can produce an invalid huge value length and an endless
+loop on a truncated URL-encoded body ending in an unconsumable fragment.
+
+Why not applicable: the entire CivetWeb form parser is absent from the
+stripped snapraid-daemon source.
+
+Upstream PR #1411:
+https://github.com/civetweb/civetweb/pull/1411
+
+CVE: none identified for these exact fixes at the review baseline.
+
+5. CVE-2026-29035: WebSocket permessage-deflate overflow
+------------------------------------------------------
+
+Severity: HIGH, CVSS 4.0 8.3
+
+A crafted compressed WebSocket frame can make read_websocket() append the
+four-byte zlib sync trailer past the end of a buffer. The published impact
+includes heap corruption, denial of service, and possible code execution.
+
+Why not applicable: the vulnerable path requires WebSocket support, zlib, and
+experimental interfaces. The stripped build has USE_WEBSOCKET=0, USE_ZLIB=0,
+and MG_EXPERIMENTAL_INTERFACES=0.
+
+Upstream issue #1381:
+https://github.com/civetweb/civetweb/issues/1381
+
+Related upstream issue #1379:
+https://github.com/civetweb/civetweb/issues/1379
+
+CVE:
+https://www.cve.org/CVERecord?id=CVE-2026-29035
+
+6. HTTP/2 memory-safety and state-reuse problems
+-----------------------------------------------
+
+Severity: HIGH as reported; no CVE identified for this group
+
+Upstream issue #1379 and PR #1409 describe multiple HTTP/2 problems, including
+stale per-request state, invalid buffer offsets, freeing stale header
+pointers, HPACK encoding failures, and related memory-safety conditions.
+
+Why not applicable: snapraid-daemon explicitly disables USE_HTTP2. The HTTP/2
+implementation is removed or unreachable in the stripped build.
+
+Upstream issue #1379:
+https://github.com/civetweb/civetweb/issues/1379
+
+Upstream PR #1409:
+https://github.com/civetweb/civetweb/pull/1409
+
+7. HTTP/2 missing :path NULL dereference
+---------------------------------------
+
+Severity: SIGNIFICANT, remote unauthenticated denial of service
+
+An HTTP/2 HEADERS frame without the mandatory :path pseudo-header can leave
+request_uri NULL. The HTTP request path then dereferences it, crashing the
+worker.
+
+Why not applicable: USE_HTTP2 is disabled and the HTTP/2 path is not part of
+the snapraid-daemon build.
+
+Upstream issue #1428:
+https://github.com/civetweb/civetweb/issues/1428
+
+Upstream PR #1431:
+https://github.com/civetweb/civetweb/pull/1431
+
+CVE: none identified at the review baseline.
+
+8. protect_uri case-sensitive authentication bypass
+-----------------------------------------------
+
+Severity: HIGH in affected upstream deployments
+
+Upstream protect_uri matching uses a case-sensitive comparison. On a
+case-insensitive filesystem, a differently cased path can therefore miss the
+protection rule while still resolving to the protected resource.
+
+Why not applicable: snapraid-daemon does not use CivetWeb protect_uri
+authentication. The stripped check_authorization() implementation is a stub,
+filesystem serving is disabled, and REST authentication is provided through
+mg_set_auth_handler().
+
+Upstream issue #1429:
+https://github.com/civetweb/civetweb/issues/1429
+
+Upstream PR #1430:
+https://github.com/civetweb/civetweb/pull/1430
+
+CVE: none identified at the review baseline.
+
+9. CVE-2026-5789: Windows unquoted service path
+---------------------------------------------
+
+Severity: HIGH, CVSS 4.0 8.5
+
+CivetWeb 1.16 can install its Windows service using an unquoted executable
+path. A local attacker able to place an executable in a searched path may gain
+elevated code execution.
+
+Why not applicable: this concerns the CivetWeb standalone Windows service
+installer. snapraid-daemon embeds the stripped CivetWeb library and does not
+use the standalone Windows service executable.
+
+Upstream issue #1390:
+https://github.com/civetweb/civetweb/issues/1390
+
+Related upstream commit:
+https://github.com/civetweb/civetweb/commit/3c0fb6ad
+
+CVE:
+https://www.cve.org/CVERecord?id=CVE-2026-5789
+
+10. CVE-2025-57052: cJSON array index validation
+-----------------------------------------------
+
+Severity: CRITICAL, CVSS 3.1 9.8
+
+cJSON versions through 1.7.18 can perform an out-of-bounds access while
+decoding malformed JSON pointer array indexes.
+
+Why not applicable: CivetWeb carries cJSON only for examples, and
+snapraid-daemon does not vendor or use that cJSON component. Its REST JSON
+parser is unrelated.
+
+Upstream issue #1426:
+https://github.com/civetweb/civetweb/issues/1426
+
+CVE:
+https://www.cve.org/CVERecord?id=CVE-2025-57052
+
+11. Lua CVE-2021-44964 and CVE-2022-28805
+------------------------------------------
+
+Severity: MEDIUM 6.3 and CRITICAL 9.1 respectively
+
+The bundled Lua versions discussed upstream are affected by a
+use-after-free/sandbox-escape issue and a parser heap over-read affecting
+untrusted Lua code.
+
+Why not applicable: snapraid-daemon has USE_LUA=0 and the stripped CivetWeb
+build does not include the Lua execution subsystem.
+
+Upstream issue #1425:
+https://github.com/civetweb/civetweb/issues/1425
+
+CVE-2021-44964:
+https://www.cve.org/CVERecord?id=CVE-2021-44964
+
+CVE-2022-28805:
+https://www.cve.org/CVERecord?id=CVE-2022-28805
+
+Lua fix commit for CVE-2022-28805:
+https://github.com/lua/lua/commit/1f3c6f45
+
+12. Slow HTTP attack through chunked request bodies
+---------------------------------------------------
+
+Severity: DENIAL-OF-SERVICE concern upstream; no CVE identified
+
+Upstream issue #1353 reports that mg_read() can spend excessive time consuming
+a slowly delivered chunked request body, allowing a client to hold server
+resources for an extended period.
+
+Why not applicable: snapraid-daemon rejects chunked JSON requests before its
+REST handlers call mg_read(). CivetWeb keep-alive is also left disabled, so
+handled requests have must_close set and the framework does not call
+discard_unread_request_data() to drain a slowly delivered body after the
+handler returns.
+
+Upstream issue #1353:
+https://github.com/civetweb/civetweb/issues/1353
+
+CVE: none identified for this report.
+
