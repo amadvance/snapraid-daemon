@@ -363,7 +363,10 @@ int daemon_init(struct snapraid_state* state)
 	/**
 	 * Register web request handler
 	 */
-	web_start(state);
+	if (web_start(state) != 0) {
+		log_msg(LVL_ERROR, "failed to register web request handler");
+		return -1;
+	}
 
 	/**
 	 * Start scheduler worker thread after dropping privileges.
@@ -416,7 +419,10 @@ void daemon_run(struct snapraid_state* state)
 					log_msg(LVL_CRITICAL, "failed to reload web server");
 					os_exit();
 				}
-				web_start(state);
+				if (web_start(state) != 0) {
+					log_msg(LVL_CRITICAL, "failed to register web request handler");
+					os_exit();
+				}
 			}
 
 			if (daemon_is_running(state) && !state->web.page_nocache) {
