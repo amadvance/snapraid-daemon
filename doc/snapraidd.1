@@ -378,10 +378,6 @@ and existing operations. A successful configuration update means that
 the new configuration has been accepted, but does not guarantee that
 every component or previously scheduled task has already switched to it.
 .PP
-Components may apply new settings at different points in their lifecycle,
-and tasks already scheduled or running may continue using settings
-captured before the configuration change.
-.PP
 To make changes to the \`/etc/snapraidd.conf\` file effective, you must
 either restart the daemon or send a SIGHUP signal to the running process.
 This is required for any manual edit to ensure the daemon\'s memory state
@@ -1991,6 +1987,26 @@ remain paused until external recovery is performed.
 The REST API uses JSMN in strict mode, which does not fully validate
 the JSON grammar. Some malformed JSON inputs, such as trailing commas
 or repeated colons, may therefore be accepted and processed normally.
+.SS Configuration Reload Is Not Atomic 
+Configuration changes are not applied atomically to all runtime
+components and existing operations. Components and in\-flight operations
+may observe settings from different configuration generations at
+different points in their lifecycle, while tasks already scheduled or
+running may continue using settings captured before the change.
+.PP
+This also applies to security\-sensitive settings. In\-flight REST requests
+and already accepted connections may continue under previously admitted
+conditions or combine security settings observed before and after the
+reload.
+.SS Global Authentication Rate Limiting Can Starve New Clients 
+REST authentication globally rate\-limits uncached attempts to bound Argon2
+CPU and memory usage. A continuous stream of uncached attempts can therefore
+consume every authentication slot and cause other uncached clients to receive
+HTTP 429 indefinitely.
+.PP
+Cached credentials bypass the limit. This is an intentional tradeoff: per\-client
+limits do not protect against distributed sources, while removing the global
+limit could allow concurrent Argon2 operations to exhaust system resources.
 .SH COPYRIGHT 
 This file is Copyright (C) 2026 Andrea Mazzoleni
 .SH SEE ALSO 
