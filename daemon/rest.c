@@ -3363,7 +3363,13 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 		return -1;
 	}
 
-	mg_set_auth_handler(state->rest_context, "**", auth_handler_callback, state);
+	if (mg_set_auth_handler(state->rest_context, "**", auth_handler_callback, state) != 0) {
+		log_msg(LVL_ERROR, "failed to install REST authentication handler");
+		mg_stop(state->rest_context);
+		state->rest_context = 0;
+		mg_exit_library();
+		return -1;
+	}
 
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance$", handler_action, state);
 	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal$", handler_action, state);
