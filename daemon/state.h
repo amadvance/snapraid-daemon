@@ -507,8 +507,21 @@ struct snapraid_array {
 	uint64_t block_total; /**< Total blocks */
 
 	struct snapraid_diff_stat diff_parse; /**< Working diff stat while parsing */
-	struct snapraid_diff_stat diff_prev; /**< Previous diff stat (used by report after a sync) */
-	struct snapraid_diff_stat diff_current; /**< Latest complete diff stat */
+
+	/**
+	 * Differences found by the scan of the latest successful sync.
+	 *
+	 * A successful sync moves diff_current here before resetting diff_current,
+	 * so a subsequent report can describe what the sync actually processed
+	 * instead of the normally empty post-sync diff.
+	 */
+	struct snapraid_diff_stat diff_prev;
+
+	/**
+	 * Differences currently present in the array, as found by the latest scan/diff.
+	 * After a successful sync, this is reset to the post-sync state.
+	 */
+	struct snapraid_diff_stat diff_current;
 
 	struct snapraid_fix_stat fix_current; /**< Fix results accumulated since the latest sync */
 

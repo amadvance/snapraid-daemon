@@ -459,11 +459,19 @@ static int runner_report_locked(struct snapraid_state* state)
 
 	struct snapraid_diff_stat* diff_stat = 0;
 
-	/* if we run a diff completed, use its result as diff (note that its exit_code is 2 on differences) */
+	/*
+	 * Select the differences relevant to this report.
+	 *
+	 * If a sync completed successfully, report the differences found by that
+	 * sync, stored in diff_prev. A later diff in the same group normally sees
+	 * the post-sync state and would therefore be empty; it must not replace the
+	 * information about what the sync actually processed.
+	 *
+	 * Without a successful sync, use diff_current from the latest successful
+	 * diff.
+	 */
 	if (diff_task != 0 && task_success(diff_task))
 		diff_stat = &state->array.diff_current;
-
-	/* if we have sync completed, use the previous diff stat */
 	if (sync_task != 0 && task_success(sync_task))
 		diff_stat = &state->array.diff_prev;
 
