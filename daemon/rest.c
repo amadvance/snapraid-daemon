@@ -3291,26 +3291,33 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 
 	mg_set_auth_handler(state->rest_context, "**", auth_handler_callback, state);
 
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/undelete", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/suspend_idle", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/refresh", handler_action, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/schedule", handler_schedule, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop", handler_stop, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/report", handler_report, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks", handler_disks, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v2/disks", handler_disks, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity", handler_activity, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks", handler_tasks, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/config", handler_config, state); /* deprecated but kept for compatibility */
-	mg_set_request_handler(state->rest_context, "/snapraid/v2/config", handler_config, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/array", handler_array, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/state", handler_state, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/system", handler_system, state);
-	mg_set_request_handler(state->rest_context, "/snapraid/v1/hold_off", handler_hold_off, state);
-	mg_set_request_handler(state->rest_context, "/metrics", handler_metrics, state);
-	mg_set_request_handler(state->rest_context, "/snapraid", handler_not_found, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/maintenance$", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/heal$", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/undelete$", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/suspend_idle$", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/refresh$", handler_action, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/schedule$", handler_schedule, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/stop$", handler_stop, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/report$", handler_report, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/disks$", handler_disks, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v2/disks$", handler_disks, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/activity$", handler_activity, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/tasks$", handler_tasks, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/config$", handler_config, state); /* deprecated but kept for compatibility */
+	mg_set_request_handler(state->rest_context, "/snapraid/v2/config$", handler_config, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/array$", handler_array, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/state$", handler_state, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/system$", handler_system, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/v1/hold_off$", handler_hold_off, state);
+	mg_set_request_handler(state->rest_context, "/metrics$", handler_metrics, state);
+
+	/*
+	 * Keep REST unknown paths inside the REST namespace, but make the
+	 * fallback itself a pattern so it does not win CivetWeb's prefix-match
+	 * phase before the exact endpoint patterns above are considered.
+	 */
+	mg_set_request_handler(state->rest_context, "/snapraid$", handler_not_found, state);
+	mg_set_request_handler(state->rest_context, "/snapraid/**", handler_not_found, state);
 
 	log_msg(LVL_INFO, "web server started");
 
