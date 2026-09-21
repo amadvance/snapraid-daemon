@@ -1616,9 +1616,22 @@ struct mg_domain_context {
  * states a read operation for int is always atomic. */
 
 typedef int volatile stop_flag_t;
-#define STOP_FLAG_IS_ZERO(f) ((*(f)) == 0)
-#define STOP_FLAG_IS_TWO(f) ((*(f)) == 2)
-#define STOP_FLAG_ASSIGN(f, v) ((*(f)) = (v))
+
+#define STOP_FLAG_GET(f) \
+	__sync_val_compare_and_swap((f), 0, 0)
+
+#define STOP_FLAG_IS_ZERO(f) (STOP_FLAG_GET(f) == 0)
+#define STOP_FLAG_IS_TWO(f) (STOP_FLAG_GET(f) == 2)
+
+static void
+STOP_FLAG_ASSIGN(stop_flag_t *f, stop_flag_t v)
+{
+	stop_flag_t old;
+
+	do {
+		old = __sync_val_compare_and_swap(f, 0, 0);
+	} while (__sync_val_compare_and_swap(f, old, v) != old);
+}
 
 
 
@@ -4021,7 +4034,7 @@ static int
 mg_poll(struct mg_pollfd *pfd,
         unsigned int n,
         int milliseconds,
-        const stop_flag_t *stop_flag)
+        stop_flag_t *stop_flag)
 {
 	/* Call poll, but only for a maximum time of a few seconds.
 	 * This will allow to stop the server after some seconds, instead
