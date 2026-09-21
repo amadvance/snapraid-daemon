@@ -221,6 +221,66 @@ static void json_error_duplicate(char* str, size_t str_size, char* js, jsmntok_t
 	snprintf(str, str_size, "Duplicate parameter '%s'.", json_token(js, jv));
 }
 
+/**
+ * Parse exactly one JSON document.
+ *
+ * jsmn accepts multiple top-level JSON values and stops parsing at an
+ * embedded NUL. Ensure that the first parsed value is the complete request
+ * body, allowing only JSON whitespace after it.
+ *
+ * If allow_empty is nonzero, a truly empty request body is accepted for
+ * backward compatibility.
+ */
+static int json_parse(const char* js, ssize_t jl, jsmntok_t* jv, int* jc, int allow_empty, char* msg, size_t msg_size)
+{
+	jsmn_parser jp;
+
+	if (jl == 0) {
+		*jc = 0;
+		if (allow_empty)
+			return 0;
+
+		json_error_parse(msg, msg_size, 0);
+		return -1;
+	}
+
+	jsmn_init(&jp);
+	*jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
+	if (*jc < 0) {
+		json_error_parse(msg, msg_size, *jc);
+		return -1;
+	}
+
+	if (*jc == 0) {
+		/*
+		 * A non-empty payload yielding no tokens is invalid. In particular,
+		 * this rejects a raw NUL before the first JSON token.
+		 */
+		json_error_parse(msg, msg_size, 0);
+		return -1;
+	}
+
+	/*
+	 * jsmn may successfully tokenize multiple top-level values. Accept only
+	 * JSON whitespace after the end of the first root token. This also rejects
+	 * an embedded NUL after an otherwise valid first value.
+	 */
+	for (ssize_t i = jv[0].end; i < jl; ++i) {
+		switch (js[i]) {
+		case ' ' :
+		case '\t' :
+		case '\r' :
+		case '\n' :
+			break;
+		default :
+			sncpy(msg, msg_size, "Trailing data after JSON document");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static int json_request_check(struct mg_connection* conn, char* msg, size_t msg_size)
 {
 	/*
@@ -258,14 +318,14 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 {
 	ss_t s;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
-	ssize_t content_length = ri->content_length;
+	long long content_length = ri->content_length; /* same type of ri->content_length */
 	int status;
 
 	status = json_request_check(conn, msg, msg_size);
 	if (status != 200)
 		return status;
 
-	/* If Content-Length is missing, assume no Payload */
+	/* if Content-Length is missing, assume no Payload */
 	if (content_length < 0) {
 		*js = 0;
 		*jl = 0;
@@ -297,6 +357,40 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 	/* set the NUL terminator, just to avoid to leave it unset */
 	(*js)[content_length] = 0;
 
+	return 200;
+}
+
+\
+/**
+ * Read a request that accepts no JSON parameters.
+ *
+ * A truly empty body is still accepted for backward compatibility. If a
+ * body is supplied, it must be exactly one empty JSON object.
+ */
+static int json_empty_request(struct mg_connection* conn, char* msg, size_t msg_size)
+{
+	jsmntok_t jv[JSMN_TOKEN_MAX];
+	ssize_t jl;
+	char* js;
+	int jc;
+	int status;
+
+	status = json_read(conn, &js, &jl, msg, msg_size);
+	if (status != 200)
+		return status;
+
+	if (json_parse(js, jl, jv, &jc, 1, msg, msg_size) != 0) {
+		free(js);
+		return 400;
+	}
+
+	if (jc != 0 && (jv[0].type != JSMN_OBJECT || jv[0].size != 0)) {
+		sncpy(msg, msg_size, "Expected empty JSON object");
+		free(js);
+		return 400;
+	}
+
+	free(js);
 	return 200;
 }
 
@@ -674,7 +768,6 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
-	jsmn_parser jp;
 	ssize_t jl;
 	char* js;
 	int jc;
@@ -689,10 +782,7 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 
 	config_dup_locked(state, &transient);
 
-	jsmn_init(&jp);
-	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc <= 0) {
-		json_error_parse(msg, sizeof(msg), jc);
+	if (json_parse(js, jl, jv, &jc, 0, msg, sizeof(msg)) != 0) {
 		goto bad;
 	} else {
 		int j = 0;
@@ -1081,7 +1171,6 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	const char* path = ri->local_uri;
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
-	jsmn_parser jp;
 	ssize_t jl;
 	char* js;
 	int jc;
@@ -1130,10 +1219,7 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 	if (status != 200)
 		return send_json_error(conn, status, msg);
 
-	jsmn_init(&jp);
-	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc < 0) {
-		json_error_parse(msg, sizeof(msg), jc);
+	if (json_parse(js, jl, jv, &jc, 1, msg, sizeof(msg)) != 0) {
 		goto bad;
 	} else if (jc == 0) {
 		/* accept an application/json request with an empty body */
@@ -1261,7 +1347,6 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
-	jsmn_parser jp;
 	ssize_t jl;
 	char* js;
 	int jc;
@@ -1279,10 +1364,7 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 	if (status != 200)
 		return send_json_error(conn, status, msg);
 
-	jsmn_init(&jp);
-	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc <= 0) {
-		json_error_parse(msg, sizeof(msg), jc);
+	if (json_parse(js, jl, jv, &jc, 0, msg, sizeof(msg)) != 0) {
 		goto bad;
 	} else {
 		int j = 0;
@@ -1404,7 +1486,7 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	status = json_request_check(conn, msg, sizeof(msg));
+	status = json_empty_request(conn, msg, sizeof(msg));
 	if (status != 200)
 		return send_json_error(conn, status, msg);
 
@@ -1437,7 +1519,6 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int status;
 	jsmntok_t jv[JSMN_TOKEN_MAX];
-	jsmn_parser jp;
 	ssize_t jl;
 	char* js;
 	int jc;
@@ -1456,10 +1537,7 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 
 	int hold_off = -1;
 
-	jsmn_init(&jp);
-	jc = jsmn_parse(&jp, js, jl, jv, JSMN_TOKEN_MAX);
-	if (jc <= 0) {
-		json_error_parse(msg, sizeof(msg), jc);
+	if (json_parse(js, jl, jv, &jc, 0, msg, sizeof(msg)) != 0) {
 		goto bad;
 	} else {
 		int j = 0;
@@ -1529,7 +1607,7 @@ static int handler_report(struct mg_connection* conn, void* cbdata)
 	if (strcmp(ri->request_method, "POST") != 0)
 		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
 
-	status = json_request_check(conn, msg, sizeof(msg));
+	status = json_empty_request(conn, msg, sizeof(msg));
 	if (status != 200)
 		return send_json_error(conn, status, msg);
 
