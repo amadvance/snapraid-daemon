@@ -9039,7 +9039,7 @@ set_ports_option(struct mg_context *phys_ctx)
 			mg_cry_ctx_internal(phys_ctx, "%s", "Out of memory");
 			closesocket(so.sock);
 			so.sock = INVALID_SOCKET;
-			mg_free(ptr);
+			phys_ctx->listening_sockets = ptr;
 			continue;
 		}
 
