@@ -513,11 +513,15 @@ typedef int (*mg_request_handler)(struct mg_connection *conn, void *cbdata);
                be removed.
                The URI used to remove a handler must match exactly the
                one used to register it (not only a pattern match).
-      cbdata: the callback data to give to the handler when it is called. */
-CIVETWEB_API void mg_set_request_handler(struct mg_context *ctx,
-                                         const char *uri,
-                                         mg_request_handler handler,
-                                         void *cbdata);
+      cbdata: the callback data to give to the handler when it is called.
+
+   Return:
+      0: success
+     -1: error */
+CIVETWEB_API int mg_set_request_handler(struct mg_context *ctx,
+                                        const char *uri,
+                                        mg_request_handler handler,
+                                        void *cbdata);
 
 
 /* Callback types for websocket handlers in C/C++.
@@ -611,11 +615,15 @@ typedef int (*mg_authorization_handler)(struct mg_connection *conn,
 /* mg_set_auth_handler
 
    Sets or removes a URI mapping for an authorization handler.
-   This function works similar to mg_set_request_handler - see there. */
-CIVETWEB_API void mg_set_auth_handler(struct mg_context *ctx,
-                                      const char *uri,
-                                      mg_authorization_handler handler,
-                                      void *cbdata);
+   This function works similar to mg_set_request_handler - see there.
+
+   Return:
+      0: success
+     -1: error */
+CIVETWEB_API int mg_set_auth_handler(struct mg_context *ctx,
+                                     const char *uri,
+                                     mg_authorization_handler handler,
+                                     void *cbdata);
 
 
 /* Get the value of particular configuration parameter.

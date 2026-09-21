@@ -7755,7 +7755,7 @@ redirect_to_https_port(struct mg_connection *conn, int port)
 }
 
 
-static void
+static int
 mg_set_handler_type(struct mg_context *phys_ctx,
                     struct mg_domain_context *dom_ctx,
                     const char *uri,
@@ -7781,15 +7781,15 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 
 		DEBUG_ASSERT(auth_handler == NULL);
 		if (handler != NULL) {
-			return;
+			return -1;
 		}
 		if (!is_delete_request && (connect_handler == NULL)
 		    && (ready_handler == NULL) && (data_handler == NULL)
 		    && (close_handler == NULL)) {
-			return;
+			return -1;
 		}
 		if (auth_handler != NULL) {
-			return;
+			return -1;
 		}
 
 	} else if (handler_type == REQUEST_HANDLER) {
@@ -7800,13 +7800,13 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 
 		if ((connect_handler != NULL) || (ready_handler != NULL)
 		    || (data_handler != NULL) || (close_handler != NULL)) {
-			return;
+			return -1;
 		}
 		if (!is_delete_request && (handler == NULL)) {
-			return;
+			return -1;
 		}
 		if (auth_handler != NULL) {
-			return;
+			return -1;
 		}
 
 	} else if (handler_type == AUTH_HANDLER) {
@@ -7815,23 +7815,23 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 		             && data_handler == NULL && close_handler == NULL);
 		DEBUG_ASSERT(is_delete_request || (auth_handler != NULL));
 		if (handler != NULL) {
-			return;
+			return -1;
 		}
 		if ((connect_handler != NULL) || (ready_handler != NULL)
 		    || (data_handler != NULL) || (close_handler != NULL)) {
-			return;
+			return -1;
 		}
 		if (!is_delete_request && (auth_handler == NULL)) {
-			return;
+			return -1;
 		}
 	} else {
 		/* Unknown handler type. */
-		return;
+		return -1;
 	}
 
 	if (!phys_ctx || !dom_ctx) {
 		/* no context available */
-		return;
+		return -1;
 	}
 
 	mg_lock_context(phys_ctx);
@@ -7885,7 +7885,7 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 					mg_free(tmp_rh);
 				}
 				mg_unlock_context(phys_ctx);
-				return;
+				return 0;
 			}
 			lastref = &(tmp_rh->next);
 		}
@@ -7895,7 +7895,7 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 		/* no handler to set, this was a remove request to a non-existing
 		 * handler */
 		mg_unlock_context(phys_ctx);
-		return;
+		return 0;
 	}
 
 	tmp_rh =
@@ -7907,7 +7907,7 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 		mg_cry_ctx_internal(phys_ctx,
 		                    "%s",
 		                    "Cannot create new request handler struct, OOM");
-		return;
+		return -1;
 	}
 	tmp_rh->uri = mg_strdup_ctx(uri, phys_ctx);
 	if (!tmp_rh->uri) {
@@ -7916,7 +7916,7 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 		mg_cry_ctx_internal(phys_ctx,
 		                    "%s",
 		                    "Cannot create new request handler struct, OOM");
-		return;
+		return -1;
 	}
 	tmp_rh->uri_len = urilen;
 	if (handler_type == REQUEST_HANDLER) {
@@ -7938,28 +7938,29 @@ mg_set_handler_type(struct mg_context *phys_ctx,
 
 	*lastref = tmp_rh;
 	mg_unlock_context(phys_ctx);
+	return 0;
 }
 
 
-CIVETWEB_API void
+CIVETWEB_API int
 mg_set_request_handler(struct mg_context *ctx,
                        const char *uri,
                        mg_request_handler handler,
                        void *cbdata)
 {
-	mg_set_handler_type(ctx,
-	                    &(ctx->dd),
-	                    uri,
-	                    REQUEST_HANDLER,
-	                    handler == NULL,
-	                    handler,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    cbdata);
+	return mg_set_handler_type(ctx,
+	                           &(ctx->dd),
+	                           uri,
+	                           REQUEST_HANDLER,
+	                           handler == NULL,
+	                           handler,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           cbdata);
 }
 
 
@@ -8013,25 +8014,25 @@ mg_set_websocket_handler_with_subprotocols(
 }
 
 
-CIVETWEB_API void
+CIVETWEB_API int
 mg_set_auth_handler(struct mg_context *ctx,
                     const char *uri,
                     mg_authorization_handler handler,
                     void *cbdata)
 {
-	mg_set_handler_type(ctx,
-	                    &(ctx->dd),
-	                    uri,
-	                    AUTH_HANDLER,
-	                    handler == NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    NULL,
-	                    handler,
-	                    cbdata);
+	return mg_set_handler_type(ctx,
+	                           &(ctx->dd),
+	                           uri,
+	                           AUTH_HANDLER,
+	                           handler == NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           NULL,
+	                           handler,
+	                           cbdata);
 }
 
 
