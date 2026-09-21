@@ -2674,7 +2674,7 @@ static int handler_metrics(struct mg_connection* conn, void* cbdata)
 
 	/* timestamps (omitted if operation never ran) */
 	if (array->sync_time || array->scrub_time || array->diff_time || array->fix_time || array->last_time) {
-		ss_prints(&s, "# HELP snapraid_last_command_timestamp_seconds Unix timestamp of the last completed command\n");
+		ss_prints(&s, "# HELP snapraid_last_command_timestamp_seconds Unix timestamp when the latest command run started\n");
 		ss_prints(&s, "# TYPE snapraid_last_command_timestamp_seconds gauge\n");
 		if (array->sync_time) {
 			ss_printf(&s, "snapraid_last_command_timestamp_seconds{command=\"sync\"} %" PRIi64 "\n", (int64_t)array->sync_time);
