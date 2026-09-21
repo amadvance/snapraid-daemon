@@ -1061,7 +1061,7 @@ REST API
 
 	Example:
 		:curl http://localhost:7627/snapraid/v1/maintenance \
-		:	--json ''
+		:	--json '{}'
 
 	It is implemented with the sequence of commands: up, diff, sync, scrub, and
 	report.
@@ -1075,7 +1075,7 @@ REST API
 
 	Example:
 		:curl http://localhost:7627/snapraid/v1/heal \
-		:	--json ''
+		:	--json '{}'
 
 	It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
 	and report.
@@ -1102,7 +1102,7 @@ REST API
 
 	Example:
 		:curl http://localhost:7627/snapraid/v1/suspend_idle \
-		:	--json ''
+		:	--json '{}'
 
 	It is implemented with the sequence of commands: probe, down_idle.
 
@@ -1122,7 +1122,7 @@ REST API
 
 	Example:
 		:curl http://localhost:7627/snapraid/v1/refresh \
-		:	--json ''
+		:	--json '{}'
 
   Monitoring & Inventory
 	These endpoints provide high-level visibility into the global state of
@@ -1193,7 +1193,7 @@ REST API
 
 	Example:
 		:curl http://localhost:7627/snapraid/v1/stop \
-		:	--json ''
+		:	--json '{}'
 
   State and Cache Management
 	To optimize performance and support lightweight monitoring (such as

@@ -1097,7 +1097,7 @@ by the `scrub_percentage` and `scrub_older_than` settings.
 
 Example:
     curl http://localhost:7627/snapraid/v1/maintenance \
-    	--json ''
+    	--json '{}'
 
 It is implemented with the sequence of commands: up, diff, sync, scrub, and
 report.
@@ -1111,7 +1111,7 @@ a report of the result.
 
 Example:
     curl http://localhost:7627/snapraid/v1/heal \
-    	--json ''
+    	--json '{}'
 
 It is implemented with the sequence of commands: up, fix -e, scrub -p bad,
 and report.
@@ -1138,7 +1138,7 @@ generated.
 
 Example:
     curl http://localhost:7627/snapraid/v1/suspend_idle \
-    	--json ''
+    	--json '{}'
 
 It is implemented with the sequence of commands: probe, down_idle.
 
@@ -1158,7 +1158,7 @@ resolved manually.
 
 Example:
     curl http://localhost:7627/snapraid/v1/refresh \
-    	--json ''
+    	--json '{}'
 
 7.2 Monitoring & Inventory
 --------------------------
@@ -1235,7 +1235,7 @@ sending a SIGTERM signal to the background process.
 
 Example:
     curl http://localhost:7627/snapraid/v1/stop \
-    	--json ''
+    	--json '{}'
 
 7.5 State and Cache Management
 ------------------------------

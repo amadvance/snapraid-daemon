@@ -66,9 +66,9 @@ export const API = {
     startDiff: () => API.schedule([{ command: 'up' }, { command: 'diff' }]),
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
-    spinDownIdle: () => request('/suspend_idle', { method: 'POST' }),
+    spinDownIdle: () => request('/suspend_idle', { method: 'POST', body: JSON.stringify({}) }),
     undelete: (options = {}) => request('/undelete', { method: 'POST', body: JSON.stringify(options) }),
-    stopTask: () => request('/stop', { method: 'POST' }),
-    refreshArray: () => request('/refresh', { method: 'POST' }),
+    stopTask: () => request('/stop', { method: 'POST', body: JSON.stringify({}) }),
+    refreshArray: () => request('/refresh', { method: 'POST', body: JSON.stringify({}) }),
     setHoldOff: (enabled) => request('/hold_off', { method: 'POST', body: JSON.stringify({ enabled }) })
 };

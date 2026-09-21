@@ -41,6 +41,7 @@ paths:
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -110,6 +111,7 @@ paths:
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -145,6 +147,7 @@ paths:
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -177,6 +180,12 @@ paths:
 
         This is an asynchronous operation. Monitor progress and view the
         resulting command sequence via the /activity endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           description: Task scheduled.
@@ -209,6 +218,7 @@ paths:
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -286,6 +296,12 @@ paths:
         the returned pid is 0.
 
         Note that the hook_script is never terminated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           description: Stop signal scheduled.
@@ -304,6 +320,12 @@ paths:
 
         This is an asynchronous operation. Monitor progress via the
         /activity endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
       responses:
         '202':
           description: Report task scheduled.
@@ -876,6 +898,7 @@ components:
             If true, the daemon will command disks configured for spindown
             to enter STANDBY mode once the task finishes successfully or fails.
             Disk types with spindown disabled (timeout set to 0) are excluded.
+            Valid only for `maintenance`, `heal`, and `undelete`.
 
     TaskSchedule:
       type: object
