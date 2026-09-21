@@ -7009,6 +7009,49 @@ is_valid_http_method(const char *method)
 }
 
 
+/* Check the RFC HTTP "token" syntax used for method names. */
+static int
+is_valid_http_method_token(const char *method)
+{
+	const unsigned char *p = (const unsigned char *)method;
+
+	if ((p == NULL) || (*p == 0)) {
+		return 0;
+	}
+
+	for (; *p != 0; p++) {
+		if (((*p >= '0') && (*p <= '9'))
+		    || ((*p >= 'A') && (*p <= 'Z'))
+		    || ((*p >= 'a') && (*p <= 'z'))) {
+			continue;
+		}
+
+		switch (*p) {
+		case '!':
+		case '#':
+		case '$':
+		case '%':
+		case '&':
+		case '\'':
+		case '*':
+		case '+':
+		case '-':
+		case '.':
+		case '^':
+		case '_':
+		case '`':
+		case '|':
+		case '~':
+			break;
+		default:
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+
 /* Parse HTTP request, fill in mg_request_info structure.
  * This function modifies the buffer by NUL-terminating
  * HTTP request components, header names and header values.
@@ -7017,7 +7060,12 @@ is_valid_http_method(const char *method)
  *   len (in): length of HTTP header buffer
  *   re (out): parsed header as mg_request_info
  * buf and ri must be valid pointers (not NULL), len>0.
- * Returns <0 on error. */
+ * Returns:
+ *   >0: parsed request length
+ *    0: incomplete request
+ *   -1: malformed request
+ *   -2: valid method token not implemented by CivetWeb
+ */
 static int
 parse_http_request(char *buf, int len, struct mg_request_info *ri)
 {
@@ -7088,9 +7136,13 @@ parse_http_request(char *buf, int len, struct mg_request_info *ri)
 	}
 	ri->http_version += 5;
 
-	/* Check for a valid http method */
-	if (!is_valid_http_method(ri->request_method)) {
+	/* A malformed method is a bad request. A syntactically valid method
+	 * unknown to CivetWeb is valid HTTP syntax but is not implemented. */
+	if (!is_valid_http_method_token(ri->request_method)) {
 		return -1;
+	}
+	if (!is_valid_http_method(ri->request_method)) {
+		return -2;
 	}
 
 	/* Parse all HTTP headers */
@@ -9884,6 +9936,7 @@ static int
 get_request(struct mg_connection *conn, char *ebuf, size_t ebuf_len, int *err)
 {
 	const char *cl;
+	int parse_result;
 
 	conn->connection_type =
 	    CONNECTION_TYPE_REQUEST; /* request (valid of not) */
@@ -9892,15 +9945,26 @@ get_request(struct mg_connection *conn, char *ebuf, size_t ebuf_len, int *err)
 		return 0;
 	}
 
-	if (parse_http_request(conn->buf, conn->buf_size, &conn->request_info)
-	    <= 0) {
-		mg_snprintf(conn,
-		            NULL, /* No truncation check for ebuf */
-		            ebuf,
-		            ebuf_len,
-		            "%s",
-		            "Bad request");
-		*err = 400;
+	parse_result =
+	    parse_http_request(conn->buf, conn->buf_size, &conn->request_info);
+	if (parse_result <= 0) {
+		if (parse_result == -2) {
+			mg_snprintf(conn,
+			            NULL, /* No truncation check for ebuf */
+			            ebuf,
+			            ebuf_len,
+			            "%s",
+			            "Method not implemented");
+			*err = 501;
+		} else {
+			mg_snprintf(conn,
+			            NULL, /* No truncation check for ebuf */
+			            ebuf,
+			            ebuf_len,
+			            "%s",
+			            "Bad request");
+			*err = 400;
+		}
 		return 0;
 	}
 
