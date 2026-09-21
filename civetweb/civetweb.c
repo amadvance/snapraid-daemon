@@ -9662,6 +9662,22 @@ static const struct {
                          {NULL, 0, 0}};
 
 
+static int
+hex_digit_value(unsigned char c)
+{
+	if ((c >= '0') && (c <= '9')) {
+		return (int)(c - '0');
+	}
+	if ((c >= 'A') && (c <= 'F')) {
+		return (int)(c - 'A') + 10;
+	}
+	if ((c >= 'a') && (c <= 'f')) {
+		return (int)(c - 'a') + 10;
+	}
+	return -1;
+}
+
+
 /* Check if the uri is valid.
  * return 0 for invalid uri,
  * return 1 for *,
@@ -9692,21 +9708,41 @@ get_uri_type(const char *uri)
 	 * and % encoded symbols.
 	 */
 	for (i = 0; uri[i] != 0; i++) {
-		/* Check for CRLF injection attempts */
 		if (uri[i] == '%') {
-			if (uri[i + 1] == '0' && (uri[i + 2] == 'd' || uri[i + 2] == 'D')) {
-				/* Found %0d (CR) */
-				DEBUG_TRACE("CRLF injection attempt detected: %s\r\n", uri);
+			int high;
+			int low;
+			int decoded;
+
+			/* A percent-encoding must contain exactly two hexadecimal
+			 * digits. */
+			if ((uri[i + 1] == '\0') || (uri[i + 2] == '\0')) {
+				DEBUG_TRACE("Malformed percent-encoding in URI: %s\r\n", uri);
 				return 0;
 			}
-			if (uri[i + 1] == '0' && (uri[i + 2] == 'a' || uri[i + 2] == 'A')) {
-				/* Found %0a (LF) */
-				DEBUG_TRACE("CRLF injection attempt detected: %s\r\n", uri);
+
+			high = hex_digit_value((unsigned char)uri[i + 1]);
+			low = hex_digit_value((unsigned char)uri[i + 2]);
+			if ((high < 0) || (low < 0)) {
+				DEBUG_TRACE("Malformed percent-encoding in URI: %s\r\n", uri);
+				return 0;
+			}
+
+			decoded = (high << 4) | low;
+
+			/* Percent-encoded ASCII control characters must not bypass
+			 * the validation applied to their literal representation.
+			 * In particular, %00 would truncate the decoded C string,
+			 * while %0a and %0d could be used for CRLF injection. */
+			if ((decoded < 0x20) || (decoded == 0x7f)) {
+				DEBUG_TRACE(
+				    "Percent-encoded control character in URI: %s\r\n",
+				    uri);
 				return 0;
 			}
 		}
-		if ((unsigned char)uri[i] < 33) {
-			/* control characters and spaces are invalid */
+		if (((unsigned char)uri[i] < 33)
+		    || ((unsigned char)uri[i] == 0x7f)) {
+			/* Control characters and spaces are invalid. */
 			return 0;
 		}
 		/* Allow everything else here (See #894) */
