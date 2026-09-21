@@ -530,6 +530,11 @@ static int send_json_error(struct mg_connection* conn, int status, const char* m
 	return status;
 }
 
+static int send_lowercase(struct mg_connection* conn)
+{
+	return send_json_error(conn, 404, "REST endpoint paths must be lowercase");
+}
+
 static int send_no_content(struct mg_connection* conn)
 {
 	ss_t s;
@@ -637,8 +642,28 @@ static int send_text_answer(struct mg_connection* conn, int status, ss_t* body)
 /****************************************************************************/
 /* handler */
 
+static int rest_uri_is_lowercase(struct mg_connection* conn)
+{
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	const char* uri = ri->local_uri;
+
+	if (!uri)
+		return 0;
+
+	while (*uri) {
+		if (*uri >= 'A' && *uri <= 'Z')
+			return 0;
+		++uri;
+	}
+
+	return 1;
+}
+
 static int handler_not_found(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	(void)cbdata;
 	return send_json_error(conn, 404, "Resource not found");
 }
@@ -660,6 +685,9 @@ static void json_pulse(ss_t* s, int level, struct snapraid_pulse* pulse)
  */
 static int handler_state(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
@@ -717,6 +745,9 @@ static int handler_state(struct mg_connection* conn, void* cbdata)
  */
 static int handler_system(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	struct snapraid_system* system = &state->system;
@@ -1146,6 +1177,9 @@ static int handler_config_get(struct mg_connection* conn, void* cbdata)
 
 static int handler_config(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 
 	if (strcmp(ri->request_method, "OPTIONS") == 0)
@@ -1165,6 +1199,9 @@ static int handler_config(struct mg_connection* conn, void* cbdata)
  */
 static int handler_action(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1342,6 +1379,9 @@ static int command_schedule_allowed(int cmd)
  */
 static int handler_schedule(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1471,6 +1511,9 @@ bad:
  */
 static int handler_stop(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1514,6 +1557,9 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
  */
 static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1596,6 +1642,9 @@ bad:
  */
 static int handler_report(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	char msg[MSG_MAX];
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -1975,6 +2024,9 @@ static int limit_parse(const struct mg_request_info* ri, const char* name, int d
  */
 static int handler_disks(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int is_v2 = strstr(ri->local_uri, "/v2/") != 0;
@@ -2181,6 +2233,9 @@ static void json_task(ss_t* s, int level, struct snapraid_task* task, struct sna
  */
 static int handler_activity(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
@@ -2223,6 +2278,9 @@ static int handler_activity(struct mg_connection* conn, void* cbdata)
  */
 static int handler_tasks(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 	int level = 0;
@@ -2293,6 +2351,9 @@ static int handler_tasks(struct mg_connection* conn, void* cbdata)
  */
 static int handler_array(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	struct snapraid_array* array = &state->array;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
@@ -2585,6 +2646,9 @@ static void ss_prints_prometheus_escaped(ss_t* s, const char* str)
  */
 static int handler_metrics(struct mg_connection* conn, void* cbdata)
 {
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
 	struct snapraid_state* state = cbdata;
 	const struct mg_request_info* ri = mg_get_request_info(conn);
 
