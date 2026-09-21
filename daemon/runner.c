@@ -98,21 +98,15 @@ static int runner_health_check_locked(struct snapraid_state* state)
 				trigger_shutdown = 1;
 
 			if (trigger_shutdown) {
-				/*
-				 * Set abort first so the signal handler defers a concurrent graceful
-				 * stop, then keep the runner alive until emergency shutdown completes
-				 */
 				state->daemon_aborting = 1;
 				log_task(LVL_CRITICAL, "entering abort state for emergency shutdown on %s health status", health_name(new_health));
-				state->daemon_running = 1;
 				task_list_cancel_all(state, "Canceled before shutdown");
 
 				/*
-				 * emergency report and shutdown do not execute SnapRAID, so enqueue
-				 * them directly without weakening validation for generic submissions
+				 * The emergency report does not execute SnapRAID, so enqueue it
+				 * directly without weakening validation for generic submissions.
 				 */
 				runner_step_locked(state, state->config.sys_engine, 0, CMD_REPORT, 0, 0, 0);
-				runner_step_locked(state, state->config.sys_engine, 0, CMD_SHUTDOWN, 0, 0, 0);
 			} else {
 				/* check if the current task is a report or if there is a scheduled one */
 				if (!runner_has_cmd_locked(state, CMD_REPORT)) {
@@ -615,6 +609,13 @@ static int runner_report_locked(struct snapraid_state* state)
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
 	ss_done(&ss);
+
+	/*
+	 * Mark the daemon as failing only after the report and its notification are complete.
+	 * runner_thread() will then leave the queue and perform the emergency system shutdown.
+	 */
+	if (daemon_is_aborting(state))
+		state->daemon_failing = 1;
 
 	return 0;
 }
@@ -1186,21 +1187,15 @@ static int runner_shutdown_locked(struct snapraid_state* state)
 
 	state_lock();
 
-	if (ret == 0) {
-		state->daemon_running = 0;
-	} else {
-		/*
-		 * If system shutdown failed, clear the abort state so that the daemon
-		 * remains functional and accessible to the administrator, and execute
-		 * any postponed post-hooks.
-		 */
-		state->daemon_aborting = 0;
-		runner_hook_postponed_locked_yield(state, 0);
-
-		/* honor a stop request deferred while the emergency shutdown was in progress */
-		if (state->daemon_sig)
-			state->daemon_running = 0;
-	}
+	/*
+	 * A queued shutdown is the terminal step of the normal shutdown sequence
+	 * (for example after maintenance). If the shutdown command returns, stop
+	 * the daemon regardless of the command result.
+	 */
+	if (ret == 0)
+		state->daemon_terminating = 1;
+	else
+		state->daemon_failing = 1;
 
 	struct snapraid_task* shutdown_task = state->runner.latest;
 
@@ -1866,6 +1861,19 @@ static void* runner_thread(void* arg)
 			break;
 
 		thread_cond_wait(&state->runner.cond, &state->state_lock);
+	}
+
+	/* with an emergency health shutdown perform the system shutdown directly */
+	if (daemon_is_aborting(state)) {
+		state_unlock();
+
+		log_msg(LVL_CRITICAL, "calling system shutdown after emergency abort");
+		int ret = os_shutdown();
+		log_msg(LVL_CRITICAL, "system shutdown returned with status %d", ret);
+		if (ret != 0)
+			log_msg(LVL_CRITICAL, "system shutdown failed");
+
+		return 0;
 	}
 
 	/* if the daemon is shutting down and a hook was skipped, we must close it now */

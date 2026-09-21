@@ -1,5 +1,5 @@
 {
-   Unprotected write to state->daemon_running from the signal handler
+   Unprotected write to state->daemon_terminating from the signal handler
    Helgrind:Race
    fun:signal_handler_term
 }

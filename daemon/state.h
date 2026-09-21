@@ -682,14 +682,45 @@ struct snapraid_duplicate_id {
 
 struct snapraid_state {
 	/*
-	 * These flags are written by signal/control handlers and read by all daemon
-	 * threads. daemon_running is 1 while the daemon is active and 0 when stopping.
-	 * daemon_aborting is set to 1 when an immediate abort/shutdown is triggered;
-	 * once set, it remains sticky and is never cleared by subsequent stop requests.
+	 * Daemon lifecycle flags.
+	 *
+	 * daemon_terminating, daemon_failing, and daemon_aborting are sticky: once
+	 * set, they are never cleared for the lifetime of the daemon. They are not
+	 * mutually exclusive. Signals and lifecycle transitions may occur
+	 * concurrently, and the resulting operations depend on the order in which
+	 * those events are observed.
+	 *
+	 * daemon_terminating requests a graceful daemon termination. It is set by
+	 * termination signals such as SIGTERM/SIGINT and by a successful normal
+	 * queued CMD_SHUTDOWN. Once set, daemon_is_running() becomes false and no
+	 * further runner tasks or reload operations are started.
+	 *
+	 * daemon_failing marks an unrecoverable daemon failure. Once set,
+	 * daemon_is_running() becomes false and the daemon terminates with a failure
+	 * status. A failed normal queued CMD_SHUTDOWN also sets this flag.
+	 *
+	 * daemon_aborting marks an emergency health shutdown. By itself it does not
+	 * make daemon_is_running() false, allowing the runner to process the emergency
+	 * REPORT when possible. If the report completes, it sets daemon_failing only
+	 * after its notification is complete. The runner then leaves normal task
+	 * processing and calls os_shutdown() directly.
+	 *
+	 * A concurrent termination signal or fatal failure may stop normal runner
+	 * processing before the emergency report executes or completes. This is an
+	 * accepted outcome: the abort remains active and the runner still performs
+	 * the emergency system shutdown. The final daemon status is evaluated after
+	 * worker termination, and either daemon_failing or daemon_aborting makes the
+	 * daemon exit with a failure status.
+	 *
+	 * While daemon_aborting is set, post-hooks and Docker unpause operations are
+	 * suppressed. CMD_SHUTDOWN is reserved for the normal queued shutdown path,
+	 * such as shutdown after maintenance.
 	 */
+	volatile sig_atomic_t daemon_terminating; /**< Graceful daemon termination requested. */
+	volatile sig_atomic_t daemon_failing; /**< Fatal daemon failure requires termination. */
+	volatile sig_atomic_t daemon_aborting; /**< Emergency shutdown is in progress. */
+
 	volatile sig_atomic_t daemon_loading; /**< Initialization is in progress. */
-	volatile sig_atomic_t daemon_running; /**< Daemon running state (1 = running, 0 = stopped). */
-	volatile sig_atomic_t daemon_aborting; /**< Daemon abort state (1 = aborting/shutdown, 0 = normal). */
 	volatile sig_atomic_t daemon_reloading; /**< A configuration reload is requested. */
 	volatile sig_atomic_t daemon_sig; /**< Signal received by the daemon that made it stopping */
 	time_t daemon_start_time; /**< Time the daemon started */
@@ -745,7 +776,7 @@ struct snapraid_state {
 
 static inline int daemon_is_running(const struct snapraid_state* state)
 {
-	return state->daemon_running != 0;
+	return !state->daemon_terminating && !state->daemon_failing;
 }
 
 static inline int daemon_is_aborting(const struct snapraid_state* state)

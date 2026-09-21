@@ -30,9 +30,7 @@ static void app_signal_handler_term(int sig)
 	struct snapraid_state* state = state_ptr();
 
 	state->daemon_sig = sig;
-	/* keep the runner alive until an emergency shutdown completes or fails safely */
-	if (!daemon_is_aborting(state))
-		state->daemon_running = 0;
+	state->daemon_terminating = 1;
 }
 
 /****************************************************************************/
@@ -1037,6 +1035,14 @@ VOID WINAPI ServiceMain(DWORD argc, LPWSTR* argv)
 	windows_eventlog(LVL_INFO, "Service stopping");
 	daemon_done(state);
 
+	/*
+	 * The runner may discover a daemon failure or an emergency abort while daemon_run()
+	 * is already terminating. Evaluate the final daemon status only after all worker threads
+	 * have stopped.
+	 */
+	if (state->daemon_failing || state->daemon_aborting)
+		ret = -1;
+
 	state_done(state);
 
 	windows_eventlog(LVL_INFO, "Service stopped");
@@ -1121,6 +1127,14 @@ int main(int argc, char* argv[])
 		int ret = daemon_run(state);
 
 		daemon_done(state);
+
+		/*
+		 * The runner may discover a daemon failure or an emergency abort while daemon_run()
+		 * is already terminating. Evaluate the final daemon status only after all worker threads
+		 * have stopped.
+		 */
+		if (state->daemon_failing || state->daemon_aborting)
+			ret = -1;
 
 		state_done(state);
 

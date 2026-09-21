@@ -364,16 +364,16 @@ int daemon_init(struct snapraid_state* state)
 	}
 
 	/**
-	 * Start runner worker thread after all fallible server initialization.
-	 * Signals are still BLOCKED and will be inherited by the new thread.
-	 */
-	runner_start(state);
-
-	/**
 	 * Start scheduler worker thread after dropping privileges.
 	 * Signals are still BLOCKED and will be inherited by the new thread.
 	 */
 	scheduler_start(state);
+
+	/**
+	 * Start runner worker thread after all fallible server initialization.
+	 * Signals are still BLOCKED and will be inherited by the new thread.
+	 */
+	runner_start(state);
 
 	return 0;
 }
@@ -450,21 +450,37 @@ int daemon_run(struct snapraid_state* state)
 		state_lock();
 	}
 
-	if (state->daemon_sig)
-		log_msg(LVL_INFO, "shutdown requested signal=%s(%d)", os_signal_name(state->daemon_sig), state->daemon_sig);
+	if (state->daemon_aborting) {
+		state_unlock();
+		log_msg(LVL_ERROR, "daemon exiting due to emergency shutdown");
+		return -1;
+	}
+
+	if (state->daemon_failing) {
+		state_unlock();
+		log_msg(LVL_ERROR, "daemon exiting due to failure");
+		return -1;
+	}
+
+	if (state->daemon_sig) {
+		state_unlock();
+		log_msg(LVL_INFO, "daemon exiting due to signal=%s(%d)", os_signal_name(state->daemon_sig), state->daemon_sig);
+		return 0;
+	}
 
 	state_unlock();
-
 	log_msg(LVL_INFO, "daemon exiting cleanly");
 	return 0;
 
 bail:
 	/*
-	 * Stop through the normal teardown path. Do not enter abort state:
-	 * runner cleanup must still execute post hooks and resume Docker containers.
+	 * A fatal runtime failure leaves the daemon unable to safely process
+	 * additional tasks. Stop through the normal teardown path without entering
+	 * abort state, so runner cleanup can still execute post hooks and resume
+	 * Docker containers.
 	 */
 	state_lock();
-	state->daemon_running = 0;
+	state->daemon_failing = 1;
 	state_unlock();
 
 	log_msg(LVL_ERROR, "daemon exiting due to runtime error");

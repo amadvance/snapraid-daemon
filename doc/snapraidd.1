@@ -455,19 +455,18 @@ scrub) were canceled due to errors. If an emergency shutdown
 is triggered by a prefail or failing health state, post\-hooks
 and Docker unpause operations are not executed.
 .HP 4
-.I prefail
-Shuts down the host immediately after sending reports if
-array health transitions to prefail. Queued tasks and post\-hooks
-are canceled, and paused Docker containers are not unpaused,
-to prevent further disk activity.
-.HP 4
-.I failing
-Shuts down the host immediately after sending reports if
-array health transitions to failing. Queued tasks and post\-hooks
-are canceled, and paused Docker containers are not unpaused,
-to prevent further disk activity.
+.I prefail/failing
+Shuts down the host immediately when array health
+transitions to prefail/failing.
 .PD
 .RE
+.PP
+For both prefail and failing emergency shutdowns, if the daemon is still
+able to process runner tasks, it first sends the emergency report.
+Queued tasks and post\-hooks are canceled, and paused Docker containers are
+not unpaused, to prevent further disk activity. If daemon termination or
+a fatal daemon failure is already in progress, the emergency shutdown
+may proceed without sending the report.
 .PP
 Spaces around commas are ignored.
 .PP

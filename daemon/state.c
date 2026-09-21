@@ -26,7 +26,8 @@ struct snapraid_state* state_init(void)
 	tommy_hashtable_init(&state->parser_association_hash, PARSER_ASSOCIATION_HASH_SIZE);
 	tommy_hashtable_init(&state->parser_duplicate_hash, PARSER_DUPLICATE_HASH_SIZE);
 	state->daemon_loading = 1;
-	state->daemon_running = 1;
+	state->daemon_terminating = 0;
+	state->daemon_failing = 0;
 	state->daemon_aborting = 0;
 	state->daemon_start_time = time(0);
 	state->array.health = HEALTH_PENDING;
