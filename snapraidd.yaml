@@ -1059,7 +1059,7 @@ components:
             The high level command that triggered this command.
         health:
           type: string
-          enum: [passed, corrupt, prefail, failing, pending]
+          enum: [passed, corrupt, degraded, prefail, failing, pending]
           description: >
             The operational health of the task, dynamically derived from
             the execution results and exit codes.
@@ -1070,6 +1070,8 @@ components:
             * corrupt: The task detected 'silent data errors'.
               This indicates data corruption that requires a 'heal' operation,
               but does not necessarily imply physical hardware failure.
+            * degraded: The task detected a degraded filesystem, such as missing
+              device(s), and terminated with the degraded exit status.
             * prefail: The task encountered physical I/O errors.
             * failing: The task encountered failing errors like disks missing.
             * pending: The task is currently queued waiting to be executed.
