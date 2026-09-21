@@ -236,6 +236,19 @@ static int json_read(struct mg_connection* conn, char** js, ssize_t* jl, char* m
 	ssize_t content_length = ri->content_length;
 
 	/*
+	 * Reject chunked request bodies because the REST JSON parser relies on
+	 * Content-Length to determine whether a payload is present and how much
+	 * data must be read. With chunked transfer encoding CivetWeb leaves
+	 * request_info.content_length unset, which would otherwise make the body
+	 * indistinguishable from an absent payload.
+	 */
+	const char* transfer_encoding = mg_get_header(conn, "Transfer-Encoding");
+	if (transfer_encoding && strcasecmp(transfer_encoding, "chunked") == 0) {
+		sncpy(msg, msg_size, "Chunked transfer encoding is not supported");
+		return 411;
+	}
+
+	/*
 	 * To prevent Cross-Site Request Forgery (CSRF) attacks, we strictly enforce
 	 * that any request carrying a JSON payload has the Content-Type header set to
 	 * application/json. Because application/json is not a simple Content-Type
