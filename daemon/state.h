@@ -42,6 +42,11 @@
 #define CONFIG_MAX 512
 
 /**
+ * Max number of maintenance schedule entries.
+ */
+#define MAINTENANCE_MAX 10
+
+/**
  * Max UUID length.
  */
 #define UUID_MAX 128

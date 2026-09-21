@@ -188,6 +188,7 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 {
 	const char* p = input;
 	tommy_list list;
+	unsigned count = 0;
 
 	tommy_list_init(&list);
 
@@ -228,8 +229,12 @@ int config_parse_maintenance_schedule(const char* input, struct snapraid_config*
 		if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
 			goto bail;
 
+		if (count >= MAINTENANCE_MAX)
+			goto bail;
+
 		struct snapraid_run* run = run_alloc(day_of_week, hour, minute);
 		tommy_list_insert_tail(&list, &run->node, run);
+		++count;
 
 		/* skip trailing spaces */
 		while (isspace((unsigned char)*p))
