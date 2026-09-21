@@ -1571,6 +1571,11 @@ Known Issues
 	daemon shutdown may also remain blocked. Paused Docker containers may
 	remain paused until external recovery is performed.
 
+  Incomplete JSON syntax validation
+	The REST API uses JSMN in strict mode, which does not fully validate
+	the JSON grammar. Some malformed JSON inputs, such as trailing commas
+	or repeated colons, may therefore be accepted and processed normally.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 
