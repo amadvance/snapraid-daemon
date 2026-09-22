@@ -1585,18 +1585,22 @@ Log recovery should therefore be considered best effort and guarantees
 only the preservation of complete records successfully written before
 the interruption.
 
-12.4 Configuration changes may take effect later
-------------------------------------------------
+12.4 Configuration Changes
+--------------------------
 
-Configuration changes are applied asynchronously to the affected runtime
-components. Completion of a configuration update or reload does not
-guarantee that every component has already switched to the new
-configuration.
+Configuration updates and reloads are applied asynchronously and are not
+guaranteed to take effect atomically or immediately across all runtime
+components and operations.
 
-For a short transition period, some components may still operate with
-the previous settings while others already use the new ones. Therefore,
-configuration changes must not be assumed to take effect atomically or
-immediately when the update or reload operation completes.
+For a short transition period, components and in-flight operations may
+observe settings from different configuration generations at different
+points in their lifecycle, while tasks already scheduled or running may
+continue using settings captured before the change.
+
+This also applies to security-sensitive settings. In-flight REST requests
+and already accepted connections may continue under previously admitted
+conditions or observe security settings from different configuration
+generations.
 
 12.5 Non-UTF-8 Paths in the REST API
 ------------------------------------
@@ -1641,13 +1645,16 @@ perform.
 External changes to selected containers should not be performed while
 a hook lifecycle is being established or is active.
 
-12.8 Blocking Hooks and Docker Operations
------------------------------------------
+12.8 Blocking Hooks, Docker Operations, and Notifications
+---------------------------------------------------------
 
-Hook scripts and Docker operations are expected to terminate.
-If they block indefinitely, task execution, hook cleanup, and graceful
-daemon shutdown may also remain blocked. Paused Docker containers may
-remain paused until external recovery is performed.
+Hook scripts, Docker operations, and notification commands are expected
+to terminate.
+
+If any of these operations block indefinitely, task execution, hook
+cleanup, report generation, notification processing, and graceful
+daemon shutdown may also remain blocked. Paused Docker containers
+may remain paused until external recovery is performed.
 
 12.9 Incomplete JSON syntax validation
 --------------------------------------
@@ -1656,21 +1663,7 @@ The REST API uses JSMN in strict mode, which does not fully validate
 the JSON grammar. Some malformed JSON inputs, such as trailing commas
 or repeated colons, may therefore be accepted and processed normally.
 
-12.10 Configuration Reload Is Not Atomic
-----------------------------------------
-
-Configuration changes are not applied atomically to all runtime
-components and existing operations. Components and in-flight operations
-may observe settings from different configuration generations at
-different points in their lifecycle, while tasks already scheduled or
-running may continue using settings captured before the change.
-
-This also applies to security-sensitive settings. In-flight REST requests
-and already accepted connections may continue under previously admitted
-conditions or combine security settings observed before and after the
-reload.
-
-12.11 Global Authentication Rate Limiting Can Starve New Clients
+12.10 Global Authentication Rate Limiting Can Starve New Clients
 ----------------------------------------------------------------
 
 REST authentication globally rate-limits uncached attempts to bound Argon2

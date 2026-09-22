@@ -1933,16 +1933,20 @@ available log state.
 Log recovery should therefore be considered best effort and guarantees
 only the preservation of complete records successfully written before
 the interruption.
-.SS Configuration changes may take effect later 
-Configuration changes are applied asynchronously to the affected runtime
-components. Completion of a configuration update or reload does not
-guarantee that every component has already switched to the new
-configuration.
+.SS Configuration Changes 
+Configuration updates and reloads are applied asynchronously and are not
+guaranteed to take effect atomically or immediately across all runtime
+components and operations.
 .PP
-For a short transition period, some components may still operate with
-the previous settings while others already use the new ones. Therefore,
-configuration changes must not be assumed to take effect atomically or
-immediately when the update or reload operation completes.
+For a short transition period, components and in\-flight operations may
+observe settings from different configuration generations at different
+points in their lifecycle, while tasks already scheduled or running may
+continue using settings captured before the change.
+.PP
+This also applies to security\-sensitive settings. In\-flight REST requests
+and already accepted connections may continue under previously admitted
+conditions or observe security settings from different configuration
+generations.
 .SS Non\-UTF\-8 Paths in the REST API 
 On Unix, filesystem paths containing invalid UTF\-8 bytes are represented
 in the REST API with Python\'s surrogateescape encoding (PEP 383).
@@ -1977,26 +1981,18 @@ perform.
 .PP
 External changes to selected containers should not be performed while
 a hook lifecycle is being established or is active.
-.SS Blocking Hooks and Docker Operations 
-Hook scripts and Docker operations are expected to terminate.
-If they block indefinitely, task execution, hook cleanup, and graceful
-daemon shutdown may also remain blocked. Paused Docker containers may
-remain paused until external recovery is performed.
+.SS Blocking Hooks, Docker Operations, and Notifications 
+Hook scripts, Docker operations, and notification commands are expected
+to terminate.
+.PP
+If any of these operations block indefinitely, task execution, hook
+cleanup, report generation, notification processing, and graceful
+daemon shutdown may also remain blocked. Paused Docker containers
+may remain paused until external recovery is performed.
 .SS Incomplete JSON syntax validation 
 The REST API uses JSMN in strict mode, which does not fully validate
 the JSON grammar. Some malformed JSON inputs, such as trailing commas
 or repeated colons, may therefore be accepted and processed normally.
-.SS Configuration Reload Is Not Atomic 
-Configuration changes are not applied atomically to all runtime
-components and existing operations. Components and in\-flight operations
-may observe settings from different configuration generations at
-different points in their lifecycle, while tasks already scheduled or
-running may continue using settings captured before the change.
-.PP
-This also applies to security\-sensitive settings. In\-flight REST requests
-and already accepted connections may continue under previously admitted
-conditions or combine security settings observed before and after the
-reload.
 .SS Global Authentication Rate Limiting Can Starve New Clients 
 REST authentication globally rate\-limits uncached attempts to bound Argon2
 CPU and memory usage. A continuous stream of uncached attempts can therefore
