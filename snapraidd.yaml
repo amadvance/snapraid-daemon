@@ -2394,12 +2394,12 @@ components:
           type: string
           example: '2026-01-12T08:00:00'
           description: >
-            Local timestamp of the most recently concluded task.
+            Local timestamp when the most recent command was started.
         last_command:
           type: string
           enum: [probe, up, down, smart, diff, sync, scrub, check, fix, read, report, down_idle, shutdown]
           description: >
-            Identifier of the last successfully completed command.
+            Identifier of the most recently started command.
         annual_failure_rate:
           type: number
           format: double
