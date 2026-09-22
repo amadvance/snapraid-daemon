@@ -389,7 +389,7 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 		if (disk->last_update_at_number < task->number) {
 			if (runtime)
 				log_task(LVL_INFO, "removing unreferenced disk '%s'", disk->name);
-			pulse(state, PULSE_DISKS);
+			pulse(state, PULSE_DISKS | PULSE_ARRAY);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
 		} else if (task->cmd == CMD_PROBE
@@ -415,7 +415,7 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 				if (pointer->last_update_at_number < task->number) {
 					if (runtime)
 						log_task(LVL_INFO, "removing unreferenced device '%s' from disk '%s'", pointer->device->file, disk->name);
-					pulse(state, PULSE_DISKS);
+					pulse(state, PULSE_DISKS | PULSE_ARRAY);
 					tommy_list_remove_existing(&disk->device_pointer_list, &pointer->node);
 					device_pointer_free(pointer);
 				}
@@ -662,7 +662,7 @@ static struct snapraid_device* find_device(struct snapraid_state* state, const c
 	return device;
 }
 
-static struct snapraid_device_pointer* find_device_pointer(struct snapraid_disk* disk, int number, struct snapraid_device* device, int split_index)
+static struct snapraid_device_pointer* find_device_pointer(struct snapraid_state* state, struct snapraid_disk* disk, int number, struct snapraid_device* device, int split_index)
 {
 	for (tommy_node* i = tommy_list_head(&disk->device_pointer_list); i != 0; i = i->next) {
 		struct snapraid_device_pointer* pointer = i->data;
@@ -674,6 +674,7 @@ static struct snapraid_device_pointer* find_device_pointer(struct snapraid_disk*
 
 	struct snapraid_device_pointer* pointer = device_pointer_alloc(device, split_index, number);
 	tommy_list_insert_tail(&disk->device_pointer_list, &pointer->node, pointer);
+	pulse(state, PULSE_DISKS | PULSE_ARRAY);
 	return pointer;
 }
 
@@ -692,7 +693,7 @@ static struct snapraid_device* find_disk_device(struct snapraid_state* state, in
 	}
 
 	struct snapraid_device* device = find_device(state, file);
-	find_device_pointer(disk, number, device, index);
+	find_device_pointer(state, disk, number, device, index);
 	return device;
 }
 
@@ -1393,7 +1394,7 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 		/* do not pulse because if the disk is in stand-by it gets 1 instead of the rate */
 		stru64(&device->rotational, val);
 	else if (strcmp(tag, "afr") == 0) {
-		pulse_double(state, PULSE_DISKS, &device->afr, val);
+		pulse_double(state, PULSE_DISKS | PULSE_ARRAY, &device->afr, val);
 		if (mac >= 6)
 			pulse_double(state, PULSE_DISKS, &device->prob, map[5]);
 	} else if (strcmp(tag, "temperature") == 0) {
