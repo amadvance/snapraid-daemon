@@ -492,19 +492,6 @@ static void clear_disk_accumulator(struct snapraid_state* state)
 }
 
 /**
- * Clear the access accumulators of all the disks.
- */
-static void clear_access_accumulator(struct snapraid_state* state)
-{
-	pulse(state, PULSE_DISKS);
-	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i; i = i->next) {
-		struct snapraid_disk* disk = i->data;
-		disk->access_count_initial_time = state->array.last_time;
-		disk->access_count_latest_time = state->array.last_time;
-	}
-}
-
-/**
  * Check if the passed name is a parity
  */
 static int is_parity(const char* s)
@@ -2106,7 +2093,7 @@ static void process_command(struct snapraid_state* state, char** map, size_t mac
 
 	switch (cmd) {
 	case CMD_UP :
-		clear_access_accumulator(state);
+		clear_access_accumulator_locked(state, state->array.last_time);
 		break;
 	}
 }

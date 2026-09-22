@@ -79,6 +79,16 @@ int disk_count(tommy_list* list, int kind)
 	return count;
 }
 
+void clear_access_accumulator_locked(struct snapraid_state* state, int64_t now)
+{
+	pulse(state, PULSE_DISKS);
+	for (tommy_node* i = tommy_list_head(&state->array.disk_list); i != 0; i = i->next) {
+		struct snapraid_disk* disk = i->data;
+		disk->access_count_initial_time = now;
+		disk->access_count_latest_time = now;
+	}
+}
+
 struct snapraid_disk* disk_alloc(const char* name, int kind, int64_t last_time)
 {
 	struct snapraid_disk* disk = calloc_nofail(1, sizeof(struct snapraid_disk));

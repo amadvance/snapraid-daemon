@@ -312,6 +312,19 @@ next_char:      ;
 }
 
 /****************************************************************************/
+/* time */
+
+int time_is_discontinuous(int64_t first, int64_t second)
+{
+	int64_t delta = second - first;
+
+	if (delta < 0)
+		delta = -delta;
+
+	return delta > 300;
+}
+
+/****************************************************************************/
 /* pulse */
 
 unsigned pulse_rev(struct snapraid_state* state, struct snapraid_pulse* pulse)

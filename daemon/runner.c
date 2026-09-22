@@ -1752,6 +1752,12 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 	int count = 0;
+	int64_t now = time(0);
+
+	if (time_is_discontinuous(task->unix_queue_time, now)) {
+		/* The probe crossed a time discontinuity, so its idle interval is unsafe to consume. */
+		clear_access_accumulator_locked(state, now);
+	}
 
 	int spindown_data = state->config.spindown_idle_minutes_data;
 	int spindown_parity = state->config.spindown_idle_minutes_parity;

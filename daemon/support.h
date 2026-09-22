@@ -39,6 +39,15 @@ uint32_t calculate_crc32(const void* data, size_t length);
 int json_unescape(const char* src, size_t src_len, char* dst, size_t dst_size);
 
 /****************************************************************************/
+/* time */
+
+/**
+ * Check whether two UTC timestamps are separated by a time discontinuity.
+ * \return 1 if the timestamps differ by more than five minutes, 0 otherwise.
+ */
+int time_is_discontinuous(int64_t first, int64_t second);
+
+/****************************************************************************/
 /* pulse */
 
 /**

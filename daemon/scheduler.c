@@ -12,6 +12,7 @@
 #include "version.h"
 #include "notify.h"
 #include "conf.h"
+#include "elem.h"
 
 /**
  * Schedules probe and spindown steps following a task.
@@ -537,20 +538,18 @@ void* scheduler_thread(void* arg)
 		time_t now = time(0);
 
 		/*
-		 * Detect manual changes using UTC
+		 * Detect time discontinuities using UTC
 		 *
 		 * If the system UTC clock jumps by more than 5 minutes (300s),
-		 * we assume a manual user intervention or a massive NTP sync.
+		 * we assume system suspend/hibernate, manual user intervention, or NTP sync.
 		 *
-		 * We reset the tracker and skip scheduling.
+		 * We reset the tracker and skip scheduling catch-up, and reset disk idle baselines.
 		 */
-		int64_t delta = now - last;
-		if (delta < 0)
-			delta = -delta;
-		if (delta > 300) {
+		if (time_is_discontinuous(last, now)) {
 			last = now;
 			localtime_r(&last, &last_tm);
-			log_msg(LVL_WARNING, "manual time change detected. Skipping scheduler catch-up");
+			log_msg(LVL_WARNING, "time discontinuity detected. Skipping scheduler catch-up");
+			clear_access_accumulator_locked(state, now);
 		} else {
 			struct tm now_tm;
 

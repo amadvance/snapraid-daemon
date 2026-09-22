@@ -42,6 +42,11 @@ void disk_free(void* void_disk);
 int disk_count(tommy_list* list, int kind);
 
 /**
+ * Clear the access accumulators of all the disks.
+ */
+void clear_access_accumulator_locked(struct snapraid_state* state, int64_t now);
+
+/**
  * Free a device entry.
  * @param void_device Pointer to the device entry
  */
