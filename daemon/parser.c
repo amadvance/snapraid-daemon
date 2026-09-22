@@ -2766,8 +2766,15 @@ int parse_past_log(struct snapraid_state* state)
 			continue;
 
 #ifndef _WIN32
-		if (ent->d_type != DT_REG)
-			continue;
+		if (ent->d_type != DT_REG) {
+			if (ent->d_type != DT_UNKNOWN)
+				continue;
+
+			struct stat st;
+			/* unknown directory types must not broaden log parsing beyond regular files */
+			if (fstatat(dirfd(dir), ent->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0 || !S_ISREG(st.st_mode))
+				continue;
+		}
 #endif
 
 		/* only files matching the pattern */
