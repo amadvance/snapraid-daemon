@@ -30,6 +30,17 @@ int config_shutdown_on(const char* sys_shutdown_on, const char* event)
 	return 0;
 }
 
+static int parse_string(char* dst, size_t dst_size, const char* src)
+{
+	size_t len = strlen(src);
+
+	if (len >= dst_size)
+		return -1;
+
+	memcpy(dst, src, len + 1);
+	return 0;
+}
+
 static int parse_int(const char* input, int low, int high, int* out)
 {
 	int v;
@@ -47,7 +58,8 @@ static int parse_int(const char* input, int low, int high, int* out)
 static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 {
 	char copy[CONFIG_MAX];
-	sncpy(copy, sizeof(copy), val);
+	if (parse_string(copy, sizeof(copy), val) != 0)
+		return -1;
 
 	char* tokens[16];
 	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n", 0);
@@ -60,14 +72,14 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 		}
 	}
 
-	sncpy(dst, dst_size, val);
-	return 0;
+	return parse_string(dst, dst_size, val);
 }
 
 int config_parse_docker_pause(const char* val, char* dst, size_t dst_size)
 {
 	char copy[CONFIG_MAX];
-	sncpy(copy, sizeof(copy), val);
+	if (parse_string(copy, sizeof(copy), val) != 0)
+		return -1;
 
 	char* tokens[CONTAINERS_MAX + 1];
 	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t\r\n", 0);
@@ -84,14 +96,14 @@ int config_parse_docker_pause(const char* val, char* dst, size_t dst_size)
 			return -1;
 	}
 
-	sncpy(dst, dst_size, val);
-	return 0;
+	return parse_string(dst, dst_size, val);
 }
 
 int config_parse_spindown_idle_minutes(const char* val, int* data, int* parity)
 {
 	char copy[CONFIG_MAX];
-	sncpy(copy, sizeof(copy), val);
+	if (parse_string(copy, sizeof(copy), val) != 0)
+		return -1;
 
 	char* tokens[4];
 	unsigned n = strsplit(tokens, 4, copy, ",", " \t\r\n", 0);
@@ -266,7 +278,8 @@ int config_parse_smart_ignore(const char* input, struct snapraid_config* config)
 {
 	char* tokens[SMARTIGNORE_MAX + 2];
 	char copy[CONFIG_MAX];
-	sncpy(copy, sizeof(copy), input);
+	if (parse_string(copy, sizeof(copy), input) != 0)
+		return -1;
 
 	/* trim empty tokens to collapse consecutive whitespace into a single delimiter */
 	unsigned n = strsplit(tokens, SMARTIGNORE_MAX + 2, copy, " \t", " \t\r\n", 1);
@@ -277,6 +290,14 @@ int config_parse_smart_ignore(const char* input, struct snapraid_config* config)
 	if (n - 1 > SMARTIGNORE_MAX) {
 		log_msg(LVL_ERROR, "smartignore list exceeds maximum %u elements", SMARTIGNORE_MAX);
 		return -1;
+	}
+
+	if (strlen(tokens[0]) >= KEYWORD_MAX)
+		return -1;
+
+	for (unsigned i = 1; i < n; ++i) {
+		if (strlen(tokens[i]) >= KEYWORD_MAX)
+			return -1;
 	}
 
 	/*
@@ -384,19 +405,11 @@ int config_load_locked(struct snapraid_state* state)
 	 * the daemon: rebuild the complete runtime configuration from defaults and
 	 * then apply every valid option in the file.
 	 *
-	 * Invalid, unknown, and unrecognized entries are logged and ignored. They
-	 * do not make the load fail, because a single bad entry must not prevent
-	 * the daemon from starting or reloading the remaining valid configuration.
-	 * Consequently, an invalid or omitted option retains its default value;
-	 * it must not retain the value from the previous runtime configuration.
-	 *
-	 * Return failure from this function only for errors that prevent reading
-	 * the configuration file. Keep this behavior aligned for initial load and
-	 * reload.
+	 * Any invalid, unknown, or unrecognized entries make the load fail so that
+	 * the daemon does not start with a broken or insecure configuration, and
+	 * reloads preserve the previous valid configuration.
 	 */
 	config_default_locked(state);
-
-	pulse(state, PULSE_CONFIG);
 
 	char* next = buffer;
 	while (*next) {
@@ -456,9 +469,17 @@ int config_load_locked(struct snapraid_state* state)
 			*key_end = 0;
 
 			if (strcmp(key, "sys_engine") == 0) {
-				sncpy(config->sys_engine, sizeof(config->sys_engine), val);
+				if (parse_string(config->sys_engine, sizeof(config->sys_engine), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "sys_log_directory") == 0) {
-				sncpy(config->sys_log_directory, sizeof(config->sys_log_directory), val);
+				if (parse_string(config->sys_log_directory, sizeof(config->sys_log_directory), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "sys_log_retention_days") == 0) {
 				if (parse_int(val, 0, 10000, &config->sys_log_retention_days) == 0) {
 				} else {
@@ -493,9 +514,17 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_port") == 0) {
-				sncpy(config->net_port, sizeof(config->net_port), val);
+				if (parse_string(config->net_port, sizeof(config->net_port), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "net_acl") == 0) {
-				sncpy(config->net_acl, sizeof(config->net_acl), val);
+				if (parse_string(config->net_acl, sizeof(config->net_acl), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "net_security_headers") == 0) {
 				if (parse_int(val, 0, 1, &config->net_security_headers) == 0) {
 				} else {
@@ -503,7 +532,11 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_allowed_origin") == 0) {
-				sncpy(config->net_allowed_origin, sizeof(config->net_allowed_origin), val);
+				if (parse_string(config->net_allowed_origin, sizeof(config->net_allowed_origin), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "net_config_full_access") == 0) {
 				if (parse_int(val, 0, 1, &config->net_config_full_access) == 0) {
 				} else {
@@ -511,12 +544,19 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "net_web_root") == 0) {
-				sncpy(config->net_web_root, sizeof(config->net_web_root), val);
+				if (parse_string(config->net_web_root, sizeof(config->net_web_root), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "net_auth_credential") == 0) {
-				sncpy(config->net_auth_credential, sizeof(config->net_auth_credential), val);
-
-				/* clear the credential cache */
-				state->rest_auth_cache[0] = 0;
+				if (parse_string(config->net_auth_credential, sizeof(config->net_auth_credential), val) == 0) {
+					/* clear the credential cache */
+					state->rest_auth_cache[0] = 0;
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s", key);
+				}
 			} else if (strcmp(key, "check_updates") == 0) {
 				if (parse_int(val, 0, 1, &config->check_updates) == 0) {
 				} else {
@@ -590,9 +630,17 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "hook_run_as_user") == 0) {
-				sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), val);
+				if (parse_string(config->hook_run_as_user, sizeof(config->hook_run_as_user), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "hook_script") == 0) {
-				sncpy(config->hook_script, sizeof(config->hook_script), val);
+				if (parse_string(config->hook_script, sizeof(config->hook_script), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "hook_docker_pause") == 0) {
 				if (config_parse_docker_pause(val, config->hook_docker_pause, sizeof(config->hook_docker_pause)) == 0) {
 				} else {
@@ -612,13 +660,29 @@ int config_load_locked(struct snapraid_state* state)
 					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
 				}
 			} else if (strcmp(key, "notify_run_as_user") == 0) {
-				sncpy(config->notify_run_as_user, sizeof(config->notify_run_as_user), val);
+				if (parse_string(config->notify_run_as_user, sizeof(config->notify_run_as_user), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s=%s", key, val);
+				}
 			} else if (strcmp(key, "notify_heartbeat") == 0) {
-				sncpy(config->notify_heartbeat, sizeof(config->notify_heartbeat), val);
+				if (parse_string(config->notify_heartbeat, sizeof(config->notify_heartbeat), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s", key);
+				}
 			} else if (strcmp(key, "notify_start") == 0) {
-				sncpy(config->notify_start, sizeof(config->notify_start), val);
+				if (parse_string(config->notify_start, sizeof(config->notify_start), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s", key);
+				}
 			} else if (strcmp(key, "notify_result") == 0) {
-				sncpy(config->notify_result, sizeof(config->notify_result), val);
+				if (parse_string(config->notify_result, sizeof(config->notify_result), val) == 0) {
+				} else {
+					++error_count;
+					log_msg(LVL_ERROR, "invalid config option %s", key);
+				}
 			} else if (strcmp(key, "notify_result_level") == 0) {
 				if (config_parse_level(val, &config->notify_result_level) == 0) {
 				} else {
@@ -645,17 +709,21 @@ int config_load_locked(struct snapraid_state* state)
 
 	free(buffer);
 
-	if (error_count == 0)
-		log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
-	else
-		log_msg(LVL_WARNING, "config loaded from %s with %u invalid entries", config->conf, error_count);
+	if (error_count != 0) {
+		log_msg(LVL_ERROR, "failed to load config from %s with %u invalid entries", config->conf, error_count);
+		return -1;
+	}
 
+	pulse(state, PULSE_CONFIG);
+
+	log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
 	return 0;
 }
 
 int config_reload_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
+	struct snapraid_config backup;
 	int net_enabled;
 	char net_port[CONFIG_MAX];
 	char net_acl[CONFIG_MAX];
@@ -664,8 +732,17 @@ int config_reload_locked(struct snapraid_state* state)
 	sncpy(net_port, sizeof(net_port), config->net_port);
 	sncpy(net_acl, sizeof(net_acl), config->net_acl);
 
-	if (config_load_locked(state) != 0)
+	/* duplicate current configuration for rollback on error */
+	config_dup_locked(state, &backup);
+
+	if (config_load_locked(state) != 0) {
+		/* rollback: restore previous valid configuration */
+		config_apply_locked(state, &backup);
+		config_free(&backup);
 		return -1;
+	}
+
+	config_free(&backup);
 
 	/* return 1 if web server configuration changed and rest_reload is needed */
 	if (net_enabled != config->net_enabled
@@ -1120,6 +1197,12 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 	/* preset to zero to clear also private part */
 	memset(transient, 0, sizeof(*transient));
 
+	sl_init(&transient->line_list);
+	for (tommy_node* i = tommy_list_head(&config->line_list); i != 0; i = i->next) {
+		sn_t* line = i->data;
+		sl_insert_str(&transient->line_list, line->str);
+	}
+
 	sncpy(transient->sys_engine, sizeof(transient->sys_engine), config->sys_engine);
 	sncpy(transient->sys_log_directory, sizeof(transient->sys_log_directory), config->sys_log_directory);
 	transient->sys_log_retention_days = config->sys_log_retention_days;
@@ -1170,6 +1253,7 @@ void config_dup_locked(struct snapraid_state* state, struct snapraid_config* tra
 
 void config_free(struct snapraid_config* config)
 {
+	sl_free(&config->line_list);
 	tommy_list_foreach(&config->maintenance_list, run_free);
 	tommy_list_foreach(&config->smartignore_list, smartignore_free);
 }
@@ -1177,6 +1261,11 @@ void config_free(struct snapraid_config* config)
 void config_apply_locked(struct snapraid_state* state, struct snapraid_config* transient)
 {
 	struct snapraid_config* config = &state->config;
+
+	/* move the text snapshot too, so rollbacks cannot retain rejected lines */
+	sl_free(&config->line_list);
+	config->line_list = transient->line_list;
+	sl_init(&transient->line_list);
 
 	/* copy fields */
 	sncpy(config->sys_engine, sizeof(config->sys_engine), transient->sys_engine);
