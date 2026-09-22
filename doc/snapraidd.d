@@ -1599,6 +1599,18 @@ Known Issues
 	limits do not protect against distributed sources, while removing the global
 	limit could allow concurrent Argon2 operations to exhaust system resources.
 
+  Configuration File ACLs Are Not Preserved
+	Configuration updates made through the REST API rewrite the daemon
+	configuration using a temporary file followed by file replacement.
+
+	On Unix, the replacement preserves the original file owner, group, and
+	standard permission bits, but it does not preserve extended POSIX ACLs
+	or other per-file access-control metadata.
+
+	On Windows, a replacement file may likewise receive security settings
+	derived from its creation context rather than preserving a custom
+	security descriptor attached to the original configuration file.
+
 Copyright
 	This file is Copyright (C) 2026 Andrea Mazzoleni
 

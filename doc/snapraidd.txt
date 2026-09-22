@@ -1684,6 +1684,20 @@ Cached credentials bypass the limit. This is an intentional tradeoff: per-client
 limits do not protect against distributed sources, while removing the global
 limit could allow concurrent Argon2 operations to exhaust system resources.
 
+12.11 Configuration File ACLs Are Not Preserved
+-----------------------------------------------
+
+Configuration updates made through the REST API rewrite the daemon
+configuration using a temporary file followed by file replacement.
+
+On Unix, the replacement preserves the original file owner, group, and
+standard permission bits, but it does not preserve extended POSIX ACLs
+or other per-file access-control metadata.
+
+On Windows, a replacement file may likewise receive security settings
+derived from its creation context rather than preserving a custom
+security descriptor attached to the original configuration file.
+
 
 13 COPYRIGHT
 ============
