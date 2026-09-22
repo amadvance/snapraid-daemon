@@ -221,6 +221,12 @@ void daemon_options(struct snapraid_state* state, int argc, char* argv[])
 			state->web.page_nocache = 1;
 			break;
 		case 'p' :
+#ifndef __MINGW32__
+			if (optarg[0] != '/') {
+				fprintf(stderr, "Error: PID file path must be absolute: '%s'\n", optarg);
+				exit(EXIT_FAILURE);
+			}
+#endif
 			state->config.pidfile_arg = optarg;
 			break;
 		case 'v' :

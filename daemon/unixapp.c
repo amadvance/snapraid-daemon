@@ -563,6 +563,17 @@ static int os_pidfile(char* pidfile_path, size_t pidfile_size, const char* pidfi
 	return fd;
 }
 
+static void os_pidfile_done(int* pidfd, const char* pidfile)
+{
+	if (*pidfd == -1)
+		return;
+
+	/* Delete the PID file while we still hold its lock. */
+	unlink(pidfile);
+	close(*pidfd);
+	*pidfd = -1;
+}
+
 /**
  * Daemonize the current process and establish startup synchronization with
  * the original parent, which exits only after the final daemon reports readiness.
@@ -624,16 +635,14 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 
 	/* ensure the daemon doesn't block any filesystem unmounting */
 	if (chdir("/") != 0) {
-		unlink(pidfile_path);
-		close(pidfd);
+		os_pidfile_done(&pidfd, pidfile_path);
 		return -1;
 	}
 
 	/* redirect Standard I/O to /dev/null */
 	int fd = open("/dev/null", O_RDWR | O_CLOEXEC);
 	if (fd == -1) {
-		unlink(pidfile_path);
-		close(pidfd);
+		os_pidfile_done(&pidfd, pidfile_path);
 		return -1;
 	}
 
@@ -642,8 +651,7 @@ static int os_daemonize(char* pidfile_path, size_t pidfile_size, const char* pid
 		|| dup2(fd, STDERR_FILENO) < 0
 	) {
 		close(fd);
-		unlink(pidfile_path);
-		close(pidfd);
+		os_pidfile_done(&pidfd, pidfile_path);
 		return -1;
 	}
 
@@ -682,6 +690,12 @@ int main(int argc, char* argv[])
 	os_signal_set(0);
 
 	if (daemon_init(state) != 0) {
+		if (pidfd != -1) {
+			os_privileges_acquire();
+			os_pidfile_done(&pidfd, pidfile);
+			os_privileges_release();
+		}
+
 		daemon_startup_close(&startup_fd);
 		exit(EXIT_FAILURE);
 	}
@@ -713,11 +727,9 @@ int main(int argc, char* argv[])
 	state_done(state);
 
 	if (pidfd != -1) {
-		/* first delete then close */
 		os_privileges_acquire();
-		unlink(pidfile);
+		os_pidfile_done(&pidfd, pidfile);
 		os_privileges_release();
-		close(pidfd);
 	}
 
 	return ret != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
