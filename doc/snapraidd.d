@@ -1206,6 +1206,15 @@ REST API
 		:curl http://localhost:7627/snapraid/v1/stop \
 		:	--json '{}'
 
+    /snapraid/v1/clear
+	Cancels all tasks currently waiting in the execution queue, moving
+	them to the task execution history with canceled status. Any task
+	currently running is unaffected.
+
+	Example:
+		:curl http://localhost:7627/snapraid/v1/clear \
+		:	--json '{}'
+
   State and Cache Management
 	To optimize performance and support lightweight monitoring (such as
 	desktop status bars), the daemon implements a state synchronization

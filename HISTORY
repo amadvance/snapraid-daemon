@@ -76,6 +76,9 @@ SnapRAID-Daemon HISTORY
    compatibility with the "/snapraid/v1/disks" endpoint (which continues
    to export transient session errors under
    "error_io" and "error_data").
+ * Added the "/snapraid/v1/clear" REST API endpoint and a "Clear" button
+   in the WebUI Tasks view to cancel all pending tasks waiting in the
+   execution queue without affecting any currently running task.
  * Added support for saving task log files in gzip (.gz) format,
    controlled by the "sys_log_compression" configuration option.
  * Added %h (high-level task name) and %c (exit code of the task)

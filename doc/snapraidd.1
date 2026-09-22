@@ -1525,6 +1525,22 @@ curl http://localhost:7627/snapraid/v1/stop \\
 .PD 0
 .PD
 .RE
+.SS /snapraid/v1/clear 
+Cancels all tasks currently waiting in the execution queue, moving
+them to the task execution history with canceled status. Any task
+currently running is unaffected.
+.PP
+Example:
+.PP
+.RS 4
+curl http://localhost:7627/snapraid/v1/clear \\
+.PD 0
+.PP
+.PD
+	\-\-json \'{}\'
+.PD 0
+.PD
+.RE
 .SS State and Cache Management 
 To optimize performance and support lightweight monitoring (such as
 desktop status bars), the daemon implements a state synchronization

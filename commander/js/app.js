@@ -134,6 +134,7 @@ const app = {
                 case 'maintenance': app.triggerMaintenance(); break;
                 case 'refresh': app.triggerRefresh(); break;
                 case 'stop-task': app.triggerStop(); break;
+                case 'clear-queue': app.triggerClear(); break;
                 case 'spin-up': app.triggerUp(); break;
                 case 'spin-down': app.triggerDown(); break;
                 case 'diff': app.triggerDiff(); break;
@@ -421,7 +422,9 @@ const app = {
                     break;
                 case '#/tasks':
                     app.updatePageTitle('Tasks');
-                    actions.innerHTML = '';
+                    actions.innerHTML = `
+                        <button class="btn btn-danger" data-tooltip="Clear all tasks in the queue" data-action="clear-queue">Clear</button>
+                    `;
                     await app.loadTasks();
                     break;
                 case '#/diff':
@@ -660,6 +663,19 @@ const app = {
                 showToast('Stop Signal Sent', 'info');
             } catch (e) {
                 showToast('Failed to stop: ' + e.message, 'error');
+            }
+        }
+    },
+
+    triggerClear: async () => {
+        if (await showConfirm('Are you sure you want to clear all tasks in the queue?', 'Clear Queue')) {
+            try {
+                const res = await API.clearQueue();
+                const countMsg = res && res.count !== undefined ? ` (${res.count} task${res.count === 1 ? '' : 's'} removed)` : '';
+                showToast('Queue Cleared' + countMsg, 'info');
+                await app.loadTasks();
+            } catch (e) {
+                showToast('Failed to clear queue: ' + e.message, 'error');
             }
         }
     },

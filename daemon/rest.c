@@ -1553,6 +1553,50 @@ static int handler_stop(struct mg_connection* conn, void* cbdata)
 }
 
 /**
+ * POST /snapraid/v1/clear
+ */
+static int handler_clear(struct mg_connection* conn, void* cbdata)
+{
+	if (!rest_uri_is_lowercase(conn))
+		return send_lowercase(conn);
+
+	char msg[MSG_MAX];
+	struct snapraid_state* state = cbdata;
+	const struct mg_request_info* ri = mg_get_request_info(conn);
+	int status;
+	int count = 0;
+	int level = 0;
+	ss_t s;
+
+	if (strcmp(ri->request_method, "OPTIONS") == 0)
+		return send_no_content(conn);
+
+	if (strcmp(ri->request_method, "POST") != 0)
+		return send_json_error(conn, 405, "Only POST is allowed for this endpoint");
+
+	status = json_empty_request(conn, msg, sizeof(msg));
+	if (status != 200)
+		return send_json_error(conn, status, msg);
+
+	if (runner_clear(state, msg, sizeof(msg), &status, &count) != 0)
+		return send_json_error(conn, status, msg);
+
+	ss_init(&s, JSON_INITIAL_SIZE);
+
+	ss_json_open(&s, &level);
+	ss_json_bool(&s, level, "success", 1);
+	ss_json_str(&s, level, "message", "Queue cleared");
+	ss_json_int(&s, level, "count", count);
+	ss_json_close(&s, &level);
+
+	send_json_answer(conn, status, &s);
+
+	ss_done(&s);
+
+	return status;
+}
+
+/**
  * POST /snapraid/v1/hold_off
  */
 static int handler_hold_off(struct mg_connection* conn, void* cbdata)
@@ -3379,6 +3423,7 @@ int rest_init(struct snapraid_state* state, int net_enabled, const char* net_por
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/refresh$", handler_action, state) != 0
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/schedule$", handler_schedule, state) != 0
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/stop$", handler_stop, state) != 0
+		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/clear$", handler_clear, state) != 0
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/report$", handler_report, state) != 0
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v1/disks$", handler_disks, state) != 0
 		|| mg_set_request_handler(state->rest_context, "/snapraid/v2/disks$", handler_disks, state) != 0

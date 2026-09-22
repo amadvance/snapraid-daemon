@@ -239,8 +239,9 @@ void task_list_cancel_in_group(struct snapraid_state* state, struct snapraid_tas
 
 /**
  * Cancel all tasks in the waiting list and move them to the history list.
+ * @return Number of tasks canceled.
  */
-void task_list_cancel_all(struct snapraid_state* state, const char* msg);
+int task_list_cancel_all(struct snapraid_state* state, const char* msg);
 
 /**
  * Get the info level of the task from it's result

@@ -1806,6 +1806,13 @@ static void* runner_thread(void* arg)
 			&& (state->runner.latest == 0 || !state->runner.latest->running) /* no task is running */
 			&& !tommy_list_empty(&state->runner.waiting_list)) { /* there is something to run */
 
+			/* if the next task does not need hooks and a hook was postponed, close it first */
+			struct snapraid_task* next = tommy_list_head(&state->runner.waiting_list)->data;
+			if (!runner_need_hook(next->cmd) && state->runner.hook_flags != 0) {
+				runner_hook_postponed_locked_yield(state, 0);
+				continue;
+			}
+
 			time_t now = time(0);
 
 			pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
@@ -1859,6 +1866,12 @@ static void* runner_thread(void* arg)
 
 		if (!daemon_is_running(state))
 			break;
+
+		/* if no task is waiting and a hook was postponed, close it now */
+		if (state->runner.hook_flags != 0) {
+			runner_hook_postponed_locked_yield(state, 0);
+			continue;
+		}
 
 		thread_cond_wait(&state->runner.cond, &state->state_lock);
 	}
@@ -2202,6 +2215,38 @@ int runner_stop(struct snapraid_state* state, char* msg, size_t msg_size, int* s
 	}
 
 	*status = 202;
+	return 0;
+}
+
+int runner_clear(struct snapraid_state* state, char* msg, size_t msg_size, int* status, int* canceled_count)
+{
+	int count;
+
+	sncpy(msg, msg_size, "");
+
+	state_lock();
+
+	if (daemon_is_aborting(state)) {
+		sncpy(msg, msg_size, "Emergency shutdown in progress");
+		*status = 409;
+		state_unlock();
+		return -1;
+	}
+
+	count = task_list_cancel_all(state, "Canceled by user request");
+
+	/* wake up the runner thread to process queue changes and clean up any orphaned hooks */
+	thread_cond_signal(&state->runner.cond);
+
+	state_unlock();
+
+	if (count > 0)
+		log_msg(LVL_INFO, "cleared %d task%s from queue", count, count == 1 ? "" : "s");
+	else
+		log_msg(LVL_INFO, "cleared task queue (empty)");
+
+	*canceled_count = count;
+	*status = 200;
 	return 0;
 }
 

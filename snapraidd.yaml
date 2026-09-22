@@ -312,6 +312,32 @@ paths:
         '5XX':
           description: Server error.
           $ref: '#/components/responses/CommandResult'
+
+  /snapraid/v1/clear:
+    post:
+      summary: Clear pending tasks in the queue
+      description: >
+        Cancels all pending tasks waiting in the execution queue and moves them
+        to the task history with canceled status.
+
+        The currently running task (if any) is not affected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+      responses:
+        '200':
+          description: Task queue cleared successfully.
+          $ref: '#/components/responses/CommandCleared'
+        '4XX':
+          description: Client error.
+          $ref: '#/components/responses/CommandResult'
+        '5XX':
+          description: Server error.
+          $ref: '#/components/responses/CommandResult'
+
   /snapraid/v1/report:
     post:
       summary: Trigger report generation task
@@ -810,6 +836,33 @@ components:
                 description: >
                   Process ID of the task stopped. If the task is cancelled before
                   the CLI process is spawned, this value is 0.
+
+    CommandCleared:
+      description: >
+        The clear command was successfully executed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - success
+              - count
+            properties:
+              success:
+                type: boolean
+                example: true
+                description: >
+                  Indicates if the operation was successful.
+              message:
+                type: string
+                example: 'Queue cleared'
+                description: >
+                  A human-readable status message.
+              count:
+                type: integer
+                example: 2
+                description: >
+                  Number of pending tasks removed from the queue.
 
   schemas:
     ValueHistory:
