@@ -214,7 +214,7 @@ static int result_locked_yield(struct snapraid_state* state, int high_cmd, int r
 	ss_prints(&ss, report_text);
 
 	os_privileges_acquire();
-	int ret = os_command(cmd, run_as_user, ss_extract(&ss), &state->runner.helper_pid);
+	int ret = os_command(cmd, run_as_user, ss_extract(&ss), 0, &state->runner.helper_pid);
 	os_privileges_release();
 	if (ret != 0) {
 		report_level = level_mix(report_level, LVL_ERROR); /* mix the levels, if it's CRITICAL, log as CRITICAL */
@@ -252,7 +252,7 @@ static int heartbeat_locked_yield(struct snapraid_state* state)
 		goto bail;
 
 	os_privileges_acquire();
-	int ret = os_command(cmd, run_as_user, 0, &state->runner.helper_pid);
+	int ret = os_command(cmd, run_as_user, 0, 0, &state->runner.helper_pid);
 	os_privileges_release();
 	if (ret != 0) {
 		log_task(LVL_ERROR, "failed to hearbeat");
@@ -344,7 +344,7 @@ static int start_locked_yield(struct snapraid_state* state, int high_cmd)
 		goto bail;
 
 	os_privileges_acquire();
-	int ret = os_command(cmd, run_as_user, ss_extract(&ss), &state->runner.helper_pid);
+	int ret = os_command(cmd, run_as_user, ss_extract(&ss), 0, &state->runner.helper_pid);
 	os_privileges_release();
 	if (ret != 0) {
 		log_task(LVL_ERROR, "failed to send start report");

@@ -928,7 +928,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		envv[envv_count] = NULL;
 
 		os_privileges_acquire();
-		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, pid_slot);
+		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, 0, pid_slot);
 		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
@@ -1076,7 +1076,7 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 		envv[envv_count] = NULL;
 
 		os_privileges_acquire();
-		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, pid_slot);
+		script_ret = os_script(hook_argv, envv, hook->config.hook_run_as_user, 0, pid_slot);
 		os_privileges_release();
 
 		for (int i = 0; i < envv_count; ++i) {
