@@ -1059,8 +1059,6 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 		}
 	}
 
-	int array_changed = state->config.check_updates != transient.check_updates;
-
 	config_dup_locked(state, &rollback);
 	config_apply_locked(state, &transient);
 
@@ -1077,9 +1075,8 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 
 	config_free(&rollback);
 
-	pulse(state, PULSE_CONFIG);
-	if (array_changed)
-		pulse(state, PULSE_ARRAY);
+	/* configuration changes may also affect data exposed by /array and /disks. */
+	pulse(state, PULSE_CONFIG | PULSE_DISKS | PULSE_ARRAY);
 
 	state_unlock();
 

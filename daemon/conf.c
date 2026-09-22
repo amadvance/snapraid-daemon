@@ -721,7 +721,8 @@ int config_load_locked(struct snapraid_state* state)
 		return -1;
 	}
 
-	pulse(state, PULSE_CONFIG);
+	/* configuration changes may also affect data exposed by /array and /disks. */
+	pulse(state, PULSE_CONFIG | PULSE_DISKS | PULSE_ARRAY);
 
 	log_msg(LVL_INFO, "config loaded successfully from %s", config->conf);
 	return 0;
