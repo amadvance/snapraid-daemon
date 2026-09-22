@@ -69,6 +69,13 @@
 #define CONTAINERS_MAX 128
 
 /**
+ * Max docker container identifier length, including the terminating null.
+ *
+ * Docker and OCI container IDs are 64-character hexadecimal SHA-256 strings.
+ */
+#define DOCKER_ID_MAX 65
+
+/**
  * Max number of smart ignores per line.
  */
 #define SMARTIGNORE_MAX 128
@@ -399,11 +406,15 @@ struct snapraid_schedule {
 struct snapraid_hook_config {
 	char hook_script[CONFIG_MAX];
 	char hook_docker_pause[CONFIG_MAX];
-	char hook_docker_resume[CONFIG_MAX]; /**< Docker containers paused by the hook */
 	char hook_run_as_user[CONFIG_MAX];
 	char conf[PATH_MAX];
 	char engine_conf[PATH_MAX];
 	char instance[INSTANCE_MAX];
+};
+
+struct snapraid_hook_state {
+	unsigned docker_count;
+	char docker_id[CONTAINERS_MAX][DOCKER_ID_MAX];
 };
 
 struct snapraid_runner {
@@ -415,6 +426,7 @@ struct snapraid_runner {
 	struct snapraid_task* latest; /**< Task running, or latest one finished */
 	int hook_flags; /**< Active hook flags postponed to the next task */
 	struct snapraid_hook_config hook_config; /**< Configuration of the postponed hook */
+	struct snapraid_hook_state hook_state; /**< Acquired runtime state of the postponed hook */
 	tommy_list waiting_list; /**< List of snapraid_task waiting to be executed */
 	tommy_list history_list; /**< List of snapraid_task already executed */
 	int hold_off; /**< Hold off the next maintenance */

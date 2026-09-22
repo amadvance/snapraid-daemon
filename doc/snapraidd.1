@@ -1987,13 +1987,13 @@ cannot be identified reliably.
 As a result, previous SMART or health state may be lost until fresh telemetry
 is collected.
 .SS Concurrent Docker Changes During Hooks 
-Docker container state and identity are inspected before the daemon
-performs its pause and resume operations.
+Docker container state is inspected before the daemon performs its
+pause and resume operations.
 .PP
-Concurrent Docker operations, such as renaming a selected container or
-pausing it externally, may therefore cause the wrong container to be
-paused or resumed, or cause the daemon to undo a pause it did not
-perform.
+Concurrent external Docker operations, such as pausing, unpausing, or
+removing a selected container outside the daemon while a task is running,
+may cause the daemon to unpause a container that was externally paused,
+or cause unpause cleanup to fail if the container was removed.
 .PP
 External changes to selected containers should not be performed while
 a hook lifecycle is being established or is active.

@@ -144,7 +144,7 @@ static int run_docker_inspect(const char* docker_path, char** containers, unsign
 	argv[0] = (char*)docker_path;
 	argv[1] = "inspect";
 	argv[2] = "--type=container";
-	argv[3] = "--format={{.Name}}|{{.State.Running}}|{{.State.Paused}}";
+	argv[3] = "--format={{.Id}}|{{.State.Running}}|{{.State.Paused}}";
 	argv[4] = "--";
 	for (unsigned i = 0; i < container_count; ++i)
 		argv[5 + i] = containers[i];
@@ -204,28 +204,12 @@ static int run_docker_inspect(const char* docker_path, char** containers, unsign
 	return 0;
 }
 
-static int docker_list_append(char* list, size_t list_size, const char* value)
-{
-	size_t len = strlen(list);
-	size_t add = strlen(value);
-	size_t comma = list[0] != 0 ? 1 : 0;
-
-	if (len + comma + add + 1 > list_size)
-		return -1;
-
-	if (comma)
-		sncat(list, list_size, ",");
-	sncat(list, list_size, value);
-
-	return 0;
-}
-
 /**
  * Query docker to find which configured containers are currently running.
  */
-static int docker_select_running(const char* docker_path, const char* containers, char* resume, size_t resume_size, pid_t* pid_slot)
+static int docker_select_running(const char* docker_path, const char* containers, struct snapraid_hook_state* hook_state, pid_t* pid_slot)
 {
-	resume[0] = 0;
+	hook_state->docker_count = 0;
 
 	char* copy = strdup_nofail(containers);
 	char* references[CONTAINERS_MAX + 1];
@@ -236,8 +220,9 @@ static int docker_select_running(const char* docker_path, const char* containers
 		return 0;
 	}
 	if (reference_count > CONTAINERS_MAX) {
-		log_task(LVL_WARNING, "docker container list truncated to maximum %u containers", CONTAINERS_MAX);
-		reference_count = CONTAINERS_MAX;
+		log_task(LVL_ERROR, "docker container list exceeds maximum %u containers", CONTAINERS_MAX);
+		free(copy);
+		return -1;
 	}
 
 	ss_t output;
@@ -263,11 +248,29 @@ static int docker_select_running(const char* docker_path, const char* containers
 			goto bail;
 		}
 
+		size_t id_len = strlen(fields[0]);
+		if (id_len == 0 || id_len >= DOCKER_ID_MAX) {
+			log_task(LVL_ERROR, "invalid docker container id");
+			goto bail;
+		}
+
 		if (strcmp(fields[1], "true") == 0 && strcmp(fields[2], "false") == 0) {
-			const char* name = fields[0][0] == '/' ? fields[0] + 1 : fields[0];
-			if (docker_list_append(resume, resume_size, name) != 0) {
-				log_task(LVL_ERROR, "docker container list exceeds maximum %u bytes", (unsigned)resume_size);
-				goto bail;
+			/* check for duplicates across alias-equivalent references */
+			int duplicate = 0;
+			for (unsigned j = 0; j < hook_state->docker_count; ++j) {
+				if (strcmp(hook_state->docker_id[j], fields[0]) == 0) {
+					duplicate = 1;
+					break;
+				}
+			}
+
+			if (!duplicate) {
+				if (hook_state->docker_count >= CONTAINERS_MAX) {
+					log_task(LVL_ERROR, "docker container count exceeds maximum %u", CONTAINERS_MAX);
+					goto bail;
+				}
+				sncpy(hook_state->docker_id[hook_state->docker_count], sizeof(hook_state->docker_id[0]), fields[0]);
+				++hook_state->docker_count;
 			}
 		}
 	}
@@ -280,48 +283,52 @@ bail:
 	return ret;
 }
 
+static void docker_log_task(const char* action, int number, const struct snapraid_hook_state* hook_state)
+{
+	char buf[1024];
+	buf[0] = 0;
+	for (unsigned i = 0; i < hook_state->docker_count; ++i) {
+		if (i > 0)
+			sncat(buf, sizeof(buf), ",");
+		sncat(buf, sizeof(buf), hook_state->docker_id[i]);
+	}
+	log_task(LVL_INFO, "task %d %s docker containers: %s", number, action, buf);
+}
+
 /**
  * Run a docker sub-command on a list of containers.
  */
-static int run_docker_cmd(const char* docker_path, const char* action, const char* containers, ZFILE* log_f, const char* log_prefix, pid_t* pid_slot)
+static int run_docker_cmd(const char* docker_path, const char* action, const struct snapraid_hook_state* hook_state, ZFILE* log_f, const char* log_prefix, pid_t* pid_slot)
 {
-	if (log_f != 0) {
-		zprintf(log_f, "daemon:%s:%s\n", log_prefix, containers);
-		zflush(log_f);
-	}
-
-	/* copy containers to a mutable string to tokenize in-place */
-	char* copy = strdup_nofail(containers);
-
-	/* split the string using strsplit up to CONTAINERS_MAX + 1 tokens to detect truncation */
-	char* tokens[CONTAINERS_MAX + 1];
-	unsigned n = strsplit(tokens, CONTAINERS_MAX + 1, copy, ",", " \t", 0);
-
-	if (n == 0) {
-		free(copy);
+	if (hook_state->docker_count == 0)
 		return 0;
-	}
 
-	if (n > CONTAINERS_MAX) {
-		log_task(LVL_WARNING, "docker container list truncated to maximum %u containers", CONTAINERS_MAX);
-		n = CONTAINERS_MAX;
+	if (log_f != 0) {
+		zprintf(log_f, "daemon:%s:", log_prefix);
+		for (unsigned i = 0; i < hook_state->docker_count; ++i) {
+			if (i > 0)
+				zprintf(log_f, ",");
+			zprintf(log_f, "%s", hook_state->docker_id[i]);
+		}
+		zprintf(log_f, "\n");
+		zflush(log_f);
 	}
 
 	/*
 	 * argv will have: docker_path, action, "--", and then the containers, and then NULL.
-	 * The "--" separator ensures container names starting with a hyphen (e.g. -h or --help)
-	 * are treated strictly as positional container arguments rather than CLI options.
+	 * The "--" separator ensures container IDs are treated strictly as positional
+	 * container arguments rather than CLI options.
 	 */
-	char** argv = calloc_nofail(n + 4, sizeof(char*));
+	char** argv = calloc_nofail(hook_state->docker_count + 4, sizeof(char*));
 
 	argv[0] = (char*)docker_path;
 	argv[1] = (char*)action;
 	argv[2] = "--";
 
-	for (unsigned i = 0; i < n; ++i) {
-		argv[3 + i] = tokens[i];
+	for (unsigned i = 0; i < hook_state->docker_count; ++i) {
+		argv[3 + i] = (char*)hook_state->docker_id[i];
 	}
-	argv[3 + n] = 0;
+	argv[3 + hook_state->docker_count] = 0;
 
 	int ret = -1;
 	os_privileges_acquire();
@@ -359,7 +366,6 @@ static int run_docker_cmd(const char* docker_path, const char* action, const cha
 	}
 
 	free(argv);
-	free(copy);
 
 	return ret;
 }
@@ -730,6 +736,7 @@ static void add_env(char** envv, int* envv_count, const char* name, const char* 
  */
 struct snapraid_hook {
 	struct snapraid_hook_config config;
+	struct snapraid_hook_state hook_state;
 
 	int has_task;
 	int number;
@@ -762,7 +769,6 @@ static void hook_config_acquire_locked(struct snapraid_state* state, struct snap
 {
 	sncpy(config->hook_script, sizeof(config->hook_script), state->config.hook_script);
 	sncpy(config->hook_docker_pause, sizeof(config->hook_docker_pause), state->config.hook_docker_pause);
-	config->hook_docker_resume[0] = 0;
 	sncpy(config->hook_run_as_user, sizeof(config->hook_run_as_user), state->config.hook_run_as_user);
 	sncpy(config->conf, sizeof(config->conf), state->config.conf);
 	if (state->engine_conf_arg[0] != 0)
@@ -847,7 +853,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 		}
 
 		if (docker_select_running(docker_path, hook->config.hook_docker_pause,
-			hook->config.hook_docker_resume, sizeof(hook->config.hook_docker_resume), pid_slot) != 0) {
+			&hook->hook_state, pid_slot) != 0) {
 			if (log_f != 0)
 				zprintf(log_f, "daemon:pre_docker_fail\n");
 			if (exit_neg_msg)
@@ -855,7 +861,7 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 			return -1;
 		}
 
-		if (hook->config.hook_docker_resume[0] != 0) {
+		if (hook->hook_state.docker_count != 0) {
 			/*
 			 * Set this flag BEFORE running the pause command.
 			 * If the pause command fails halfway through a list of containers,
@@ -864,8 +870,8 @@ static int runner_hook_begin(struct snapraid_hook* hook, ZFILE* log_f, char* exi
 			 */
 			*out_hook_flags |= HOOK_FLAG_DOCKER;
 
-			log_task(LVL_INFO, "task %d pausing docker containers: %s", number, hook->config.hook_docker_resume);
-			if (run_docker_cmd(docker_path, "pause", hook->config.hook_docker_resume, log_f, "pre_docker", pid_slot) != 0) {
+			docker_log_task("pausing", number, &hook->hook_state);
+			if (run_docker_cmd(docker_path, "pause", &hook->hook_state, log_f, "pre_docker", pid_slot) != 0) {
 				if (exit_neg_msg)
 					snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to pause docker containers");
 				return -1;
@@ -1116,11 +1122,11 @@ static int runner_hook_end(const struct snapraid_hook* hook, ZFILE* log_f, char*
 	if (daemon_is_aborting(state_ptr()))
 		return 0;
 
-	if ((hook_flags & HOOK_FLAG_DOCKER) && hook->config.hook_docker_resume[0] != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
+	if ((hook_flags & HOOK_FLAG_DOCKER) && hook->hook_state.docker_count != 0 && (!hook->has_task || runner_need_hook(hook->cmd))) {
 		const char* docker_path = app_find_docker();
 		if (docker_path) {
-			log_task(LVL_INFO, "task %d unpausing docker containers: %s", number, hook->config.hook_docker_resume);
-			if (run_docker_cmd(docker_path, "unpause", hook->config.hook_docker_resume, log_f, "post_docker", pid_slot) != 0) {
+			docker_log_task("unpausing", number, &hook->hook_state);
+			if (run_docker_cmd(docker_path, "unpause", &hook->hook_state, log_f, "post_docker", pid_slot) != 0) {
 				ret = -1;
 				if (exit_neg_msg && exit_neg_msg[0] == 0)
 					snprintf(exit_neg_msg, exit_neg_msg_size, "Failed to unpause docker containers");
@@ -1156,11 +1162,13 @@ static void runner_hook_postponed_locked_yield(struct snapraid_state* state, con
 
 	int postponed_flags = state->runner.hook_flags;
 	struct snapraid_hook_config postponed_config = state->runner.hook_config;
+	struct snapraid_hook_state postponed_state = state->runner.hook_state;
 	state->runner.hook_flags = 0;
 
 	struct snapraid_hook hook;
 	hook_context_acquire_locked(state, task, HEALTH_PENDING, &hook);
 	hook.config = postponed_config;
+	hook.hook_state = postponed_state;
 
 	state_unlock();
 	(void)runner_hook_end(&hook, 0, 0, 0, 0, postponed_flags, &state->runner.helper_pid);
@@ -1327,10 +1335,12 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 
 	struct snapraid_hook pre_hook;
 	struct snapraid_hook_config hook_config;
+	struct snapraid_hook_state hook_state;
 	if (pre_hook_flags == 0) {
 		hook_context_acquire_locked(state, task, HEALTH_PENDING, &pre_hook);
 	} else {
 		hook_config = state->runner.hook_config;
+		hook_state = state->runner.hook_state;
 	}
 
 	state_unlock();
@@ -1374,6 +1384,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	if (pre_hook_flags == 0) {
 		int hook_ret = runner_hook_begin(&pre_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), &hook_flags, &state->runner.helper_pid);
 		hook_config = pre_hook.config;
+		hook_state = pre_hook.hook_state;
 		if (hook_ret < 0) {
 			pid_ret = EXIT_PRE_HOOK_FAILED;
 			goto bail;
@@ -1527,6 +1538,7 @@ bail:
 		state->runner.hook_flags = 0;
 		hook_context_acquire_locked(state, task, task_health, &post_hook);
 		post_hook.config = hook_config;
+		post_hook.hook_state = hook_state;
 		state_unlock();
 
 		if (runner_hook_end(&post_hook, log_f, exit_neg_msg, sizeof(exit_neg_msg), success, hook_flags, &state->runner.helper_pid) != 0) {
@@ -1536,6 +1548,7 @@ bail:
 	} else {
 		state->runner.hook_flags = hook_flags; /* store the skipped flags */
 		state->runner.hook_config = hook_config;
+		state->runner.hook_state = hook_state;
 		state_unlock();
 	}
 
