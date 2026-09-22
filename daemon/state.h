@@ -574,13 +574,6 @@ static inline int level_mix(int level, int new_level)
 	return level;
 }
 
-#define CONFIG_LINE_MAX 1024
-
-struct snapraid_config_line {
-	char text[CONFIG_LINE_MAX]; /**< Raw configuration string. */
-	tommy_node node;
-};
-
 struct snapraid_smartignore {
 	char disk_name[KEYWORD_MAX]; /**< Name of the disk or '*' */
 	char attr_name[KEYWORD_MAX]; /**< Attribute ID or name */
@@ -592,7 +585,7 @@ struct snapraid_config {
 	/* private part of the configuration */
 	char conf[PATH_MAX]; /**< Configuration file of the daemon. */
 	const char* pidfile_arg; /**< PID file specified as argument, or 0 */
-	tommy_list line_list; /**< List of snapraid_config_line */
+	sl_t line_list; /**< Raw configuration lines. */
 
 	/* public part of the configuration */
 	/* empty string or 0 value means value not set and/or disabled */

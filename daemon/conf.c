@@ -30,17 +30,6 @@ int config_shutdown_on(const char* sys_shutdown_on, const char* event)
 	return 0;
 }
 
-struct snapraid_config_line* config_line_alloc(void)
-{
-	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
-	return line;
-}
-
-void config_line_free(void* void_line)
-{
-	free(void_line);
-}
-
 static int parse_int(const char* input, int low, int high, int* out)
 {
 	int v;
@@ -387,8 +376,8 @@ int config_load_locked(struct snapraid_state* state)
 	buffer[buffer_len] = 0;
 
 	/* free the existing lists */
-	tommy_list_foreach(&config->line_list, config_line_free);
-	tommy_list_init(&config->line_list);
+	sl_free(&config->line_list);
+	sl_init(&config->line_list);
 
 	/*
 	 * A configuration reload has the same semantics as stopping and starting
@@ -432,9 +421,7 @@ int config_load_locked(struct snapraid_state* state)
 		/* set end of line marker */
 		*end = 0;
 
-		struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
-		sncpy(line->text, sizeof(line->text), begin);
-		tommy_list_insert_tail(&config->line_list, &line->node, line);
+		sl_insert_str(&config->line_list, begin);
 
 		/* skip initial spaces */
 		char* s = begin;
@@ -727,19 +714,38 @@ static int line_matches_key(const char* line, const char* key, int allow_comment
 	return 0;
 }
 
+static void config_set_line(struct snapraid_config* config, sn_t* line, const char* key, const char* value)
+{
+	ss_t formatted;
+
+	ss_init(&formatted, 64);
+	if (*value == 0)
+		ss_printf(&formatted, "#%s =", key);
+	else
+		ss_printf(&formatted, "%s = %s", key, value);
+
+	if (line)
+		sl_replace_str(&config->line_list, line, ss_extract(&formatted));
+	else
+		sl_insert_str(&config->line_list, ss_extract(&formatted));
+
+	ss_done(&formatted);
+}
+
 static void config_set(struct snapraid_config* config, const char* key, const char* value)
 {
 	tommy_node* i;
-	struct snapraid_config_line* found = 0;
+	sn_t* found = 0;
 
 	/* when clearing, comment all active occurrences to ensure none remain effective */
 	if (*value == 0) {
 		i = tommy_list_head(&config->line_list);
 		while (i) {
-			struct snapraid_config_line* line = i->data;
-			if (line_matches_key(line->text, key, 0))
-				snprintf(line->text, sizeof(line->text), "#%s =", key);
-			i = i->next;
+			tommy_node* next = i->next;
+			sn_t* line = i->data;
+			if (line_matches_key(line->str, key, 0))
+				config_set_line(config, line, key, value);
+			i = next;
 		}
 		return;
 	}
@@ -747,8 +753,8 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 	/* first try searching the effective option */
 	i = tommy_list_head(&config->line_list);
 	while (i) {
-		struct snapraid_config_line* line = i->data;
-		if (line_matches_key(line->text, key, 0)) {
+		sn_t* line = i->data;
+		if (line_matches_key(line->str, key, 0)) {
 			found = line; /* if multiple options are found, change the latest */
 		}
 		i = i->next;
@@ -758,24 +764,21 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 		/* retry accepting also commented options */
 		i = tommy_list_head(&config->line_list);
 		while (i) {
-			struct snapraid_config_line* line = i->data;
-			if (line_matches_key(line->text, key, 1)) {
+			sn_t* line = i->data;
+			if (line_matches_key(line->str, key, 1)) {
 				found = line; /* if multiple options are found, change the latest */
 			}
 			i = i->next;
 		}
 	}
 
-	/* create the new formatted line */
 	if (found) {
-		snprintf(found->text, sizeof(found->text), "%s = %s", key, value);
+		config_set_line(config, found, key, value);
 		return;
 	}
 
 	/* create a new line at the end */
-	struct snapraid_config_line* line = malloc_nofail(sizeof(struct snapraid_config_line));
-	snprintf(line->text, sizeof(line->text), "%s = %s", key, value);
-	tommy_list_insert_tail(&config->line_list, &line->node, line);
+	config_set_line(config, 0, key, value);
 }
 
 static void config_set_string(struct snapraid_config* config, const char* key, const char* value)
@@ -970,9 +973,9 @@ int config_save_locked(struct snapraid_state* state)
 	ss_init(&ss, 48 * 1024);
 	tommy_node* i = tommy_list_head(&config->line_list);
 	while (i) {
-		struct snapraid_config_line* line = i->data;
+		sn_t* line = i->data;
 
-		ss_write(&ss, line->text, strlen(line->text));
+		ss_write(&ss, line->str, strlen(line->str));
 #ifdef _WIN32
 		ss_write(&ss, "\r\n", 2); /* Windows CRLF */
 #else
@@ -1268,7 +1271,7 @@ void config_init(struct snapraid_state* state)
 	/* set private configuration */
 	app_default_conf(config->conf, sizeof(config->conf));
 	config->pidfile_arg = 0;
-	tommy_list_init(&config->line_list);
+	sl_init(&config->line_list);
 
 	/* set the public configuration */
 	tommy_list_init(&config->maintenance_list);
@@ -1280,7 +1283,7 @@ void config_init(struct snapraid_state* state)
 
 void config_done(struct snapraid_state* state)
 {
-	tommy_list_foreach(&state->config.line_list, config_line_free);
+	sl_free(&state->config.line_list);
 	tommy_list_foreach(&state->config.maintenance_list, run_free);
 	tommy_list_foreach(&state->config.smartignore_list, smartignore_free);
 }

@@ -275,12 +275,28 @@ unsigned strsplit(char** split_map, unsigned split_max, char* str, const char* d
 /****************************************************************************/
 /* string list */
 
+static sn_t* sn_alloc(const char* str)
+{
+	size_t len = strlen(str);
+	sn_t* sn = malloc_nofail(sizeof(tommy_node) + len + 1);
+	memcpy(sn->str, str, len + 1);
+	return sn;
+}
+
 void sl_insert_str(sl_t* list, const char* add)
 {
-	ssize_t len = strlen(add);
-	sn_t* sn = malloc_nofail(sizeof(tommy_node) + len + 1);
-	memcpy(sn->str, add, len + 1);
+	sn_t* sn = sn_alloc(add);
 	tommy_list_insert_tail(list, &sn->node, sn);
+}
+
+void sl_replace_str(sl_t* list, sn_t* old, const char* replace)
+{
+	sn_t* sn = sn_alloc(replace);
+
+	/* insert first so removing the old node leaves the replacement at the exact same position */
+	tommy_list_insert_before(list, &old->node, &sn->node, sn);
+	tommy_list_remove_existing(list, &old->node);
+	free(old);
 }
 
 void sl_insert_list(sl_t* list, sl_t* add)

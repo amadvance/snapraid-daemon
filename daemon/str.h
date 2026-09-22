@@ -158,6 +158,14 @@ static inline void sl_free(sl_t* list)
 void sl_insert_str(sl_t* list, const char* add);
 
 /**
+ * Replace a string node while preserving its list position.
+ * @param list String list containing the node
+ * @param old Node to replace
+ * @param replace Replacement string
+ */
+void sl_replace_str(sl_t* list, sn_t* old, const char* replace);
+
+/**
  * Insert contents of one string list into another.
  * @param list Destination string list
  * @param add Source string list to insert

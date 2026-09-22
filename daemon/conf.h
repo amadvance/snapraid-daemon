@@ -10,18 +10,6 @@
 /* config */
 
 /**
- * Allocate a new configuration line entry.
- * @return Pointer to newly allocated line entry
- */
-struct snapraid_config_line* config_line_alloc(void);
-
-/**
- * Free a configuration line entry.
- * @param void_line Pointer to line entry to free
- */
-void config_line_free(void* void_line);
-
-/**
  * Parse log level string to numeric value.
  * @param input Input string to parse ("critical", "error", "warning", "info")
  * @param out Pointer to store numeric log level
