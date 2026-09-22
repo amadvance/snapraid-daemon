@@ -394,6 +394,13 @@ int config_load_locked(struct snapraid_state* state)
 		return -1;
 	}
 
+	/* reject embedded NUL bytes instead of silently ignoring the rest of the file */
+	if (memchr(buffer, 0, buffer_len) != 0) {
+		log_msg(LVL_ERROR, "failed to load config from %s: embedded NUL", config->conf);
+		free(buffer);
+		return -1;
+	}
+
 	buffer[buffer_len] = 0;
 
 	/* free the existing lists */
