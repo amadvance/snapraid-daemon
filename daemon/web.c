@@ -647,6 +647,51 @@ static int path_is_separator(char c)
 #endif
 }
 
+static int path_is_absolute(const char* path)
+{
+	if (path[0] == 0)
+		return 0;
+
+#ifdef _WIN32
+	/* drive-qualified absolute path, for example C:\foo or C:/foo */
+	if (isalpha((unsigned char)path[0])
+		&& path[1] == ':'
+		&& path_is_separator(path[2]))
+		return 1;
+
+	/* UNC or extended Windows path, for example \\server\share */
+	if (path_is_separator(path[0]) && path_is_separator(path[1]))
+		return 1;
+
+	return 0;
+#else
+	return path[0] == '/';
+#endif
+}
+
+static int path_is_simple_name(const char* path)
+{
+	if (path[0] == 0)
+		return 0;
+
+#ifdef _WIN32
+	/*
+	 * A colon makes this a drive-relative path such as C:foo.zip,
+	 * or another Windows path form, not a simple file name.
+	 */
+	if (strchr(path, ':') != 0)
+		return 0;
+#endif
+
+	while (*path != 0) {
+		if (path_is_separator(*path))
+			return 0;
+		++path;
+	}
+
+	return 1;
+}
+
 static int path_is_contained(const char* path, const char* root)
 {
 	size_t root_len = strlen(root);
@@ -791,10 +836,15 @@ int web_reload(struct snapraid_state* state, const char* root)
 	const char* dot = strrchr(root, '.');
 	if (dot != 0 && strcmp(dot, ".zip") == 0) {
 		char zip[PATH_MAX];
-		if (strchr(root, '/') == 0) {
+		if (path_is_simple_name(root)) {
 			/* if it's just the file name, use the default data dir */
 			app_default_data(zip, sizeof(zip), root);
 		} else {
+			if (!path_is_absolute(root)) {
+				log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
+				goto bail;
+			}
+
 			sncpy(zip, sizeof(zip), root);
 		}
 
@@ -802,24 +852,49 @@ int web_reload(struct snapraid_state* state, const char* root)
 		log_msg(LVL_INFO, "crawling zip %s", zip);
 		crawl_zip(&state->web.page_list, zip);
 	} else {
-		char dir[PATH_MAX];
-		sncpy(dir, sizeof(dir), root);
-
-		if (dir[0] != '/') {
-			log_msg(LVL_ERROR, "web server cannot serve relative %s", dir);
+		if (!path_is_absolute(root)) {
+			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
 			goto bail;
 		}
 
-		/* trim ending slash of net_web_root */
-		size_t len = strlen(dir);
-		while (len > 0 && dir[len - 1] == '/')
-			--len;
-		dir[len] = 0;
+		/* resolve aliases like /./ and C:\. before rejecting filesystem roots */
+		char dir[PATH_MAX];
+		if (realpath(root, dir) == 0) {
+			log_msg(LVL_ERROR, "web server cannot resolve directory %s, errno=%s(%d)", root, strerror(errno), errno);
+			goto bail;
+		}
 
-		if (dir[0] == 0) {
+		size_t len = strlen(dir);
+#ifdef _WIN32
+		if (len == 3
+			&& isalpha((unsigned char)dir[0])
+			&& dir[1] == ':'
+			&& path_is_separator(dir[2])) {
+			log_msg(LVL_ERROR, "web server cannot serve root directory %s", dir);
+			goto bail;
+		}
+
+		/* a UNC share is a filesystem root, with or without a trailing separator */
+		if (path_is_separator(dir[0]) && path_is_separator(dir[1])) {
+			const char* p = dir + 2;
+			while (*p != 0 && !path_is_separator(*p))
+				++p;
+			if (*p != 0) {
+				++p;
+				while (*p != 0 && !path_is_separator(*p))
+					++p;
+			}
+			if (*p == 0 || p[1] == 0) {
+				log_msg(LVL_ERROR, "web server cannot serve root directory %s", dir);
+				goto bail;
+			}
+		}
+#else
+		if (len == 1 && dir[0] == '/') {
 			log_msg(LVL_ERROR, "web server cannot serve root directory /");
 			goto bail;
 		}
+#endif
 
 		state->web.page_time = time(0);
 		log_msg(LVL_INFO, "crawling directory %s", dir);
