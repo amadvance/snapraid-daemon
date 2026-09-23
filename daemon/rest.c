@@ -26,6 +26,11 @@
  */
 #define JSMN_TOKEN_MAX 512
 
+/*
+ * Maximum number of distinct fields accepted in a single JSON object.
+ */
+#define JSON_FIELD_MAX 32
+
 /**
  * Initial size for building JSON text
  */
@@ -221,6 +226,29 @@ static void json_error_forbidden(char* str, size_t str_size, char* js, jsmntok_t
 static void json_error_duplicate(char* str, size_t str_size, char* js, jsmntok_t* jv)
 {
 	snprintf(str, str_size, "Duplicate parameter '%s'.", json_token(js, jv));
+}
+
+static int json_duplicate_check(char* js, jsmntok_t** seen, unsigned* seen_count, jsmntok_t* field, char* msg, size_t msg_size)
+{
+	size_t len = field->end - field->start;
+
+	for (unsigned i = 0; i < *seen_count; ++i) {
+		jsmntok_t* prev = seen[i];
+
+		if ((size_t)(prev->end - prev->start) == len
+			&& memcmp(js + prev->start, js + field->start, len) == 0) {
+			json_error_duplicate(msg, msg_size, js, field);
+			return -1;
+		}
+	}
+
+	if (*seen_count >= JSON_FIELD_MAX) {
+		sncpy(msg, msg_size, "Too many JSON parameters");
+		return -1;
+	}
+
+	seen[(*seen_count)++] = field;
+	return 0;
 }
 
 /**
@@ -824,7 +852,12 @@ static int handler_config_patch(struct mg_connection* conn, void* cbdata)
 			goto bad;
 		}
 		int c0 = jv[j++].size;
+		jsmntok_t* seen[JSON_FIELD_MAX];
+		unsigned seen_count = 0;
 		while (c0-- > 0) {
+			if (json_duplicate_check(js, seen, &seen_count, &jv[j], msg, sizeof(msg)) != 0)
+				goto bad;
+
 			char keyword[KEYWORD_MAX];
 			if (json_entry(js, &jv[j], json_const("check_updates")) == 0) {
 				++j;
@@ -1266,7 +1299,12 @@ static int handler_action(struct mg_connection* conn, void* cbdata)
 			goto bad;
 		}
 		int c0 = jv[j++].size;
+		jsmntok_t* seen[JSON_FIELD_MAX];
+		unsigned seen_count = 0;
 		while (c0-- > 0) {
+			if (json_duplicate_check(js, seen, &seen_count, &jv[j], msg, sizeof(msg)) != 0)
+				goto bad;
+
 			if (has_filters && json_type(js, &jv[j], json_const("filters"), JSMN_ARRAY) == 0) {
 				int j1 = j;
 				int c1 = jv[++j].size;
@@ -1412,14 +1450,13 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 			goto bad;
 		}
 		int c0 = jv[j++].size;
-		int has_tasks = 0;
+		jsmntok_t* seen[JSON_FIELD_MAX];
+		unsigned seen_count = 0;
 		while (c0-- > 0) {
+			if (json_duplicate_check(js, seen, &seen_count, &jv[j], msg, sizeof(msg)) != 0)
+				goto bad;
+
 			if (json_type(js, &jv[j], json_const("tasks"), JSMN_ARRAY) == 0) {
-				if (has_tasks) {
-					json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
-					goto bad;
-				}
-				has_tasks = 1;
 				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
@@ -1428,14 +1465,16 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 						goto bad;
 					}
 					struct snapraid_schedule* sched = schedule_alloc();
+					jsmntok_t* seen_task[JSON_FIELD_MAX];
+					unsigned seen_task_count = 0;
 					int c2 = jv[j++].size;
 					while (c2-- > 0) {
+						if (json_duplicate_check(js, seen_task, &seen_task_count, &jv[j], msg, sizeof(msg)) != 0) {
+							schedule_free(sched);
+							goto bad;
+						}
+
 						if (json_entry(js, &jv[j], json_const("command")) == 0) {
-							if (sched->cmd != 0) {
-								json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
-								schedule_free(sched);
-								goto bad;
-							}
 							++j;
 							char cmd[KEYWORD_MAX];
 							if (json_string(js, &jv[j], cmd, sizeof(cmd)) == 0) {
@@ -1453,11 +1492,6 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 							}
 							++j;
 						} else if (json_type(js, &jv[j], json_const("args"), JSMN_ARRAY) == 0) {
-							if (!tommy_list_empty(&sched->args)) {
-								json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
-								schedule_free(sched);
-								goto bad;
-							}
 							int j3 = j;
 							int c3 = jv[++j].size;
 							++j;
@@ -1641,7 +1675,12 @@ static int handler_hold_off(struct mg_connection* conn, void* cbdata)
 			goto bad;
 		}
 		int c0 = jv[j++].size;
+		jsmntok_t* seen[JSON_FIELD_MAX];
+		unsigned seen_count = 0;
 		while (c0-- > 0) {
+			if (json_duplicate_check(js, seen, &seen_count, &jv[j], msg, sizeof(msg)) != 0)
+				goto bad;
+
 			if (json_entry(js, &jv[j], json_const("enabled")) == 0) {
 				++j;
 				if (json_boolean(js, &jv[j], &hold_off) == 0) {
