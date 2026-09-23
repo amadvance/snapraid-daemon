@@ -422,9 +422,7 @@ const app = {
                     break;
                 case '#/tasks':
                     app.updatePageTitle('Tasks');
-                    actions.innerHTML = `
-                        <button class="btn btn-danger" data-tooltip="Clear all tasks in the queue" data-action="clear-queue">Clear</button>
-                    `;
+                    actions.innerHTML = '';
                     await app.loadTasks();
                     break;
                 case '#/diff':
@@ -571,6 +569,16 @@ const app = {
             const data = await API.getTasks({ limit_history: 2000, limit_messages: 500 });
             if (data.pulse) app.state.pulse = data.pulse;
             app.setConnection(true);
+
+            if (app.state.currentRoute === '#/tasks') {
+                const actions = document.getElementById('header-actions');
+                if (actions) {
+                    actions.innerHTML = data.pending?.length ? `
+                        <button class="btn btn-danger" data-tooltip="Clear all tasks in the queue" data-action="clear-queue">Clear</button>
+                    ` : '';
+                }
+            }
+
             const view = document.getElementById('view-container');
             view.innerHTML = renderTasks(data, app.state.hidePeriodic, openTaskNumbers);
             app.applyDynamicStyles(view);
