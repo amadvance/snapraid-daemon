@@ -1410,8 +1410,14 @@ static int handler_schedule(struct mg_connection* conn, void* cbdata)
 			goto bad;
 		}
 		int c0 = jv[j++].size;
+		int has_tasks = 0;
 		while (c0-- > 0) {
 			if (json_type(js, &jv[j], json_const("tasks"), JSMN_ARRAY) == 0) {
+				if (has_tasks) {
+					json_error_duplicate(msg, sizeof(msg), js, &jv[j]);
+					goto bad;
+				}
+				has_tasks = 1;
 				int c1 = jv[++j].size;
 				++j;
 				while (c1-- > 0) {
