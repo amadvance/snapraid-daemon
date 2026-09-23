@@ -54,24 +54,28 @@ static const char* snapraid_paths[] = {
 
 const char* app_find_engine(const char* sys_engine)
 {
+	/*
+	 * SnapRAID is spawned with acquired privileges, so check it using the
+	 * retained privileged real credentials, access() instead of eaccess().
+	 */
 #ifdef SNAPRAID_PATH
 	(void)sys_engine;
 
-	if (eaccess(SNAPRAID_PATH, X_OK) == 0)
+	if (access(SNAPRAID_PATH, X_OK) == 0)
 		return SNAPRAID_PATH;
 
 	return 0;
 #else
 	/* check for existence every time in case it's installed at later time */
 	if (sys_engine != 0 && sys_engine[0] != 0) {
-		if (eaccess(sys_engine, X_OK) == 0)
+		if (access(sys_engine, X_OK) == 0)
 			return sys_engine;
 
 		return 0;
 	}
 
 	for (int i = 0; snapraid_paths[i]; ++i) {
-		if (eaccess(snapraid_paths[i], X_OK) == 0)
+		if (access(snapraid_paths[i], X_OK) == 0)
 			return snapraid_paths[i];
 	}
 
@@ -95,6 +99,10 @@ static const char* curl_paths[] = {
 const char* app_find_curl(void)
 {
 	for (int i = 0; curl_paths[i]; ++i) {
+		/*
+		 * curl is spawned without acquiring privileges, so check it using the
+		 * daemon's effective credentials. eaccess() instead of access().
+		 */
 		if (eaccess(curl_paths[i], X_OK) == 0)
 			return curl_paths[i];
 	}
@@ -118,7 +126,11 @@ static const char* docker_paths[] = {
 const char* app_find_docker(void)
 {
 	for (int i = 0; docker_paths[i]; ++i) {
-		if (eaccess(docker_paths[i], X_OK) == 0)
+		/*
+		 * Docker is spawned with acquired privileges, so check it using the
+		 * retained privileged real credentials, access() instead of eaccess().
+		 */
+		if (access(docker_paths[i], X_OK) == 0)
 			return docker_paths[i];
 	}
 
@@ -136,7 +148,11 @@ static const char* poweroff_paths[] = {
 const char* app_find_poweroff(void)
 {
 	for (int i = 0; poweroff_paths[i]; ++i) {
-		if (eaccess(poweroff_paths[i], X_OK) == 0)
+		/*
+		 * poweroff is spawned with acquired privileges, so check it using the
+		 * retained privileged real credentials, access() instead of eaccess().
+		 */
+		if (access(poweroff_paths[i], X_OK) == 0)
 			return poweroff_paths[i];
 	}
 
