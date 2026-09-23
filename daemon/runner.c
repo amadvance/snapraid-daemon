@@ -1351,7 +1351,7 @@ static int runner_go_locked_yield(struct snapraid_state* state)
 	if (log_path[0] != 0) {
 		int log_fd;
 		os_privileges_acquire();
-		log_fd = open(log_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_NOFOLLOW | O_CLOEXEC, 0666);
+		log_fd = open(log_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY | O_NOFOLLOW | O_CLOEXEC, 0644);
 		os_privileges_release();
 		if (log_fd == -1) {
 			log_task(LVL_WARNING, "failed to create log file %s, errno=%s(%d)", log_path, strerror(errno), errno);
