@@ -179,9 +179,9 @@ Getting Started
 	* Configuring the `notify_result` system to receive alerts
 		regarding array health and task outcomes.
 
-	To make manual changes to the `/etc/snapraidd.conf` file effective,
-	you must either restart the daemon or send a `SIGHUP` signal to the
-	running process.
+	To make manual changes to runtime-reloadable options in the
+	`/etc/snapraidd.conf` file effective, send a `SIGHUP` signal to the
+	running process. Changes to `sys_*` options require a daemon restart.
 
 	Example:
 		:sudo killall -HUP snapraidd
@@ -318,11 +318,11 @@ Configuration
 	the new configuration has been accepted, but does not guarantee that
 	every component or previously scheduled task has already switched to it.
 
-	To make changes to the `/etc/snapraidd.conf` file effective, you must
-	either restart the daemon or send a SIGHUP signal to the running process.
-	This is required for any manual edit to ensure the daemon's memory state
-	stays in sync with the file and to prevent the API from accidentally
-	overwriting your changes.
+	After manually editing `/etc/snapraidd.conf`, apply the change before
+	making configuration changes through the API to prevent the daemon from
+	overwriting the manual edit with its memory state. Runtime-reloadable
+	options can be applied with a SIGHUP signal. Changes to `sys_*` options
+	require a daemon restart because a SIGHUP that changes them is rejected.
 
 	Example:
 		:sudo killall -HUP snapraidd
@@ -336,8 +336,10 @@ Configuration
 	underlying daemon.
 
 	These options are not visible or modifiable via the REST API.
-	They require a manual edit of the configuration file and a
-	configuration reload (SIGHUP) or daemon restart to apply.
+	All `sys_*` options are read at daemon startup and changing any
+	of them requires a daemon restart. A SIGHUP reload which changes
+	a `sys_*` option is rejected and the previous configuration
+	remains active.
 
     sys_engine
 	Sets the absolute path to the SnapRAID executable. If omitted,

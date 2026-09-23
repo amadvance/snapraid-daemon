@@ -76,6 +76,11 @@
 #define DOCKER_ID_MAX 65
 
 /**
+ * Max number of shutdown events.
+ */
+#define SHUTDOWN_ON_MAX 16
+
+/**
  * Max number of smart ignores per line.
  */
 #define SMARTIGNORE_MAX 128

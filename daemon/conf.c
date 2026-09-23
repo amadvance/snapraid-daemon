@@ -19,8 +19,8 @@ int config_shutdown_on(const char* sys_shutdown_on, const char* event)
 	char copy[CONFIG_MAX];
 	sncpy(copy, sizeof(copy), sys_shutdown_on);
 
-	char* tokens[16];
-	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n", 0);
+	char* tokens[SHUTDOWN_ON_MAX];
+	unsigned n = strsplit(tokens, SHUTDOWN_ON_MAX, copy, ",", " \t\r\n", 0);
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (strcmp(tokens[i], event) == 0)
@@ -61,8 +61,8 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 	if (parse_string(copy, sizeof(copy), val) != 0)
 		return -1;
 
-	char* tokens[16];
-	unsigned n = strsplit(tokens, 16, copy, ",", " \t\r\n", 0);
+	char* tokens[SHUTDOWN_ON_MAX];
+	unsigned n = strsplit(tokens, SHUTDOWN_ON_MAX, copy, ",", " \t\r\n", 0);
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (strcmp(tokens[i], "maintenance") != 0
@@ -728,6 +728,92 @@ int config_load_locked(struct snapraid_state* state)
 	return 0;
 }
 
+/**
+ * Compare two shutdown event lists preserving order and duplicates while
+ * ignoring whitespace around separators, as done by the runtime parser.
+ */
+static int shutdown_on_equal(const char* a, const char* b)
+{
+	char copy_a[CONFIG_MAX];
+	char copy_b[CONFIG_MAX];
+	char* tokens_a[SHUTDOWN_ON_MAX];
+	char* tokens_b[SHUTDOWN_ON_MAX];
+
+	sncpy(copy_a, sizeof(copy_a), a);
+	sncpy(copy_b, sizeof(copy_b), b);
+
+	unsigned count_a = strsplit(tokens_a, SHUTDOWN_ON_MAX, copy_a, ",", " \t\r\n", 0);
+	unsigned count_b = strsplit(tokens_b, SHUTDOWN_ON_MAX, copy_b, ",", " \t\r\n", 0);
+
+	if (count_a != count_b)
+		return 0;
+
+	for (unsigned i = 0; i < count_a; ++i) {
+		if (strcmp(tokens_a[i], tokens_b[i]) != 0)
+			return 0;
+	}
+
+	return 1;
+}
+
+/**
+ * Compare two parsed smartignore entries.
+ */
+static int smartignore_equal(const struct snapraid_smartignore* a, const struct snapraid_smartignore* b)
+{
+	if (strcmp(a->disk_name, b->disk_name) != 0)
+		return 0;
+
+	if (a->attr_index != 0 || b->attr_index != 0)
+		return a->attr_index == b->attr_index;
+
+	return strcasecmp(a->attr_name, b->attr_name) == 0;
+}
+
+/**
+ * Compare two smartignore lists preserving order and duplicates.
+ */
+static int smartignore_list_equal(tommy_list* a, tommy_list* b)
+{
+	tommy_node* node_a = tommy_list_head(a);
+	tommy_node* node_b = tommy_list_head(b);
+
+	while (node_a != 0 && node_b != 0) {
+		struct snapraid_smartignore* ign_a = node_a->data;
+		struct snapraid_smartignore* ign_b = node_b->data;
+
+		if (!smartignore_equal(ign_a, ign_b))
+			return 0;
+
+		node_a = node_a->next;
+		node_b = node_b->next;
+	}
+
+	return node_a == 0 && node_b == 0;
+}
+
+/**
+ * Compare all effective sys_* options between active and new configuration.
+ * Returns the name of the first changed option, or 0 if none changed.
+ */
+static const char* config_diff_sys(struct snapraid_config* a, struct snapraid_config* b)
+{
+	if (strcmp(a->sys_engine, b->sys_engine) != 0)
+		return "sys_engine";
+	if (strcmp(a->sys_log_directory, b->sys_log_directory) != 0)
+		return "sys_log_directory";
+	if (a->sys_log_retention_days != b->sys_log_retention_days)
+		return "sys_log_retention_days";
+	if (a->sys_log_compression != b->sys_log_compression)
+		return "sys_log_compression";
+	if (!shutdown_on_equal(a->sys_shutdown_on, b->sys_shutdown_on))
+		return "sys_shutdown_on";
+	if (!smartignore_list_equal(&a->smartignore_list, &b->smartignore_list))
+		return "sys_smartignore";
+
+	return 0;
+}
+
 int config_reload_locked(struct snapraid_state* state)
 {
 	struct snapraid_config* config = &state->config;
@@ -747,6 +833,20 @@ int config_reload_locked(struct snapraid_state* state)
 		/* rollback: restore previous valid configuration */
 		config_apply_locked(state, &backup);
 		config_free(&backup);
+		return -1;
+	}
+
+	/*
+	 * All sys_* options are startup-only and require a full daemon restart to change.
+	 * If any sys_* option changed during reload, reject the entire reload atomically,
+	 * restoring the previous configuration so that no partial changes are applied.
+	 */
+	const char* changed = config_diff_sys(&backup, config);
+	if (changed != 0) {
+		/* restore active logging before reporting the rejected reload */
+		config_apply_locked(state, &backup);
+		config_free(&backup);
+		log_msg(LVL_ERROR, "failed to reload config, %s cannot be changed at runtime", changed);
 		return -1;
 	}
 

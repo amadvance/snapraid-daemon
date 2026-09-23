@@ -6,8 +6,10 @@
 # 2. API Updates: Changes made through the REST interface are applied
 #    instantly and saved to this file while preserving your comments.
 # 3. Conflict Warning: If you edit this file manually while the daemon is
-#    running, remember to RELOAD before making any API changes to prevent
-#    the daemon from overwriting your manual edits with its memory state.
+#    running, apply the change before making any API changes to prevent the
+#    daemon from overwriting your manual edits with its memory state. Use a
+#    RELOAD for runtime-reloadable options, or restart the daemon for sys_*
+#    options, which cannot be changed at runtime.
 #
 
 ### System
@@ -15,8 +17,10 @@
 # underlying daemon.
 #
 # These options are not visible or modifiable via the REST API.
-# They require a manual edit of the configuration file and a
-# configuration reload (SIGHUP) or daemon restart to apply.
+# All sys_* options are read at daemon startup and changing any of
+# them requires a daemon restart. A SIGHUP reload which changes a
+# sys_* option is rejected and the previous configuration remains
+# active.
 
 # The sys_log_directory defines where the output of individual SnapRAID
 # commands is stored. If left unset, the daemon defaults to
@@ -68,7 +72,7 @@ sys_log_retention_days = 120
 #
 # This option cannot be modified via the REST API to prevent potential
 # remote shutdown exploits, and requires a manual configuration edit
-# and daemon reload (SIGHUP) to change.
+# and daemon restart to change.
 # Default: empty (disabled)
 #sys_shutdown_on = maintenance, prefail, failing
 
