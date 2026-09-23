@@ -437,8 +437,8 @@ int daemon_run(struct snapraid_state* state)
 
 			if (daemon_is_running(state) && net_enabled && !state->web.page_nocache) {
 				if (web_reload(state, net_web_root) != 0) {
-					log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
-					goto bail;
+					log_msg(LVL_ERROR, "failed to reload web pages from %s, keeping previous cache", net_web_root);
+					/* do not bail */
 				}
 			}
 

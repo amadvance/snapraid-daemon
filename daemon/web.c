@@ -860,98 +860,102 @@ void web_done(struct snapraid_state* state)
 
 int web_reload(struct snapraid_state* state, const char* root)
 {
-	web_wrlock();
+	tommy_list new_page_list;
+	tommy_list_init(&new_page_list);
+	time_t new_page_time = 0;
 
-	/* cleaup all pages */
-	tommy_list_foreach(&state->web.page_list, page_free);
-	tommy_list_init(&state->web.page_list);
+	if (root[0] != 0) {
+		if (strstr(root, "..") != 0) {
+			log_msg(LVL_ERROR, "web server cannot serve %s", root);
+			goto bail;
+		}
 
-	if (root[0] == 0) {
-		web_unlock();
-		return 0;
-	}
+		const char* dot = strrchr(root, '.');
+		if (dot != 0 && strcmp(dot, ".zip") == 0) {
+			char zip[PATH_MAX];
+			if (path_is_simple_name(root)) {
+				/* if it's just the file name, use the default data dir */
+				app_default_data(zip, sizeof(zip), root);
+			} else {
+				if (!path_is_absolute(root)) {
+					log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
+					goto bail;
+				}
 
-	if (strstr(root, "..") != 0) {
-		log_msg(LVL_ERROR, "web server cannot serve %s", root);
-		goto bail;
-	}
+				sncpy(zip, sizeof(zip), root);
+			}
 
-	const char* dot = strrchr(root, '.');
-	if (dot != 0 && strcmp(dot, ".zip") == 0) {
-		char zip[PATH_MAX];
-		if (path_is_simple_name(root)) {
-			/* if it's just the file name, use the default data dir */
-			app_default_data(zip, sizeof(zip), root);
+			log_msg(LVL_INFO, "crawling zip %s", zip);
+			if (crawl_zip(&new_page_list, zip) != 0)
+				goto bail;
 		} else {
 			if (!path_is_absolute(root)) {
 				log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
 				goto bail;
 			}
 
-			sncpy(zip, sizeof(zip), root);
-		}
-
-		state->web.page_time = time(0);
-		log_msg(LVL_INFO, "crawling zip %s", zip);
-		if (crawl_zip(&state->web.page_list, zip) != 0)
-			goto bail;
-	} else {
-		if (!path_is_absolute(root)) {
-			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
-			goto bail;
-		}
-
-		/* resolve aliases like /./ and C:\. before rejecting filesystem roots */
-		char dir[PATH_MAX];
-		if (realpath(root, dir) == 0) {
-			log_msg(LVL_ERROR, "web server cannot resolve directory %s, errno=%s(%d)", root, strerror(errno), errno);
-			goto bail;
-		}
-
-		size_t len = strlen(dir);
-#ifdef _WIN32
-		if (len == 3
-			&& isalpha((unsigned char)dir[0])
-			&& dir[1] == ':'
-			&& path_is_separator(dir[2])) {
-			log_msg(LVL_ERROR, "web server cannot serve root directory %s", dir);
-			goto bail;
-		}
-
-		/* a UNC share is a filesystem root, with or without a trailing separator */
-		if (path_is_separator(dir[0]) && path_is_separator(dir[1])) {
-			const char* p = dir + 2;
-			while (*p != 0 && !path_is_separator(*p))
-				++p;
-			if (*p != 0) {
-				++p;
-				while (*p != 0 && !path_is_separator(*p))
-					++p;
+			/* resolve aliases like /./ and C:\. before rejecting filesystem roots */
+			char dir[PATH_MAX];
+			if (realpath(root, dir) == 0) {
+				log_msg(LVL_ERROR, "web server cannot resolve directory %s, errno=%s(%d)", root, strerror(errno), errno);
+				goto bail;
 			}
-			if (*p == 0 || p[1] == 0) {
+
+			size_t len = strlen(dir);
+#ifdef _WIN32
+			if (len == 3
+				&& isalpha((unsigned char)dir[0])
+				&& dir[1] == ':'
+				&& path_is_separator(dir[2])) {
 				log_msg(LVL_ERROR, "web server cannot serve root directory %s", dir);
 				goto bail;
 			}
-		}
+
+			/* a UNC share is a filesystem root, with or without a trailing separator */
+			if (path_is_separator(dir[0]) && path_is_separator(dir[1])) {
+				const char* p = dir + 2;
+				while (*p != 0 && !path_is_separator(*p))
+					++p;
+				if (*p != 0) {
+					++p;
+					while (*p != 0 && !path_is_separator(*p))
+						++p;
+				}
+				if (*p == 0 || p[1] == 0) {
+					log_msg(LVL_ERROR, "web server cannot serve root directory %s", dir);
+					goto bail;
+				}
+			}
 #else
-		if (len == 1 && dir[0] == '/') {
-			log_msg(LVL_ERROR, "web server cannot serve root directory /");
-			goto bail;
-		}
+			if (len == 1 && dir[0] == '/') {
+				log_msg(LVL_ERROR, "web server cannot serve root directory /");
+				goto bail;
+			}
 #endif
 
-		state->web.page_time = time(0);
-		log_msg(LVL_INFO, "crawling directory %s", dir);
-		if (crawl_directory(&state->web.page_list, len, dir) != 0)
-			goto bail;
+			log_msg(LVL_INFO, "crawling directory %s", dir);
+			if (crawl_directory(&new_page_list, len, dir) != 0)
+				goto bail;
+		}
+
+		new_page_time = time(0);
 	}
 
+	/* publish the new cache atomically only after a successful crawl. */
+	web_wrlock();
+	tommy_list old_page_list = state->web.page_list;
+	state->web.page_list = new_page_list;
+	if (root[0] != 0)
+		state->web.page_time = new_page_time;
 	web_unlock();
+
+	/* no reader can reference the old list after the completed write-locked swap. */
+	tommy_list_foreach(&old_page_list, page_free);
 
 	return 0;
 
 bail:
-	web_unlock();
+	tommy_list_foreach(&new_page_list, page_free);
 	return -1;
 }
 
