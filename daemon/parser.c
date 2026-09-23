@@ -361,15 +361,14 @@ static void parser_mapping_create(struct snapraid_state* state, struct snapraid_
  * Disks not referenced during the task are no longer part of the
  * configuration and are pruned from the array inventory, even if previously degraded.
  *
- * Surviving disks prune unreferenced device pointers and splits only on an unfiltered probe,
- * as probe is the only command that inspects all underlying physical devices across
- * data, parity, and extra disks (unlike up/down which omit extra disks, and normal
- * operations which do not probe devices at all). If custom arguments are present, the
- * probe may be filtered by disk and physical device information will be incomplete.
+ * Surviving disks prune unreferenced device pointers and splits only on an unfiltered
+ * probe or up. Both commands inspect the underlying physical devices for data, parity,
+ * and extra disks. Custom arguments may filter by disk and leave device information
+ * incomplete.
  *
  * Furthermore, device pointers and splits are pruned only if the disk is not degraded.
  * When a disk is degraded, missing member devices cannot be discovered or updated by
- * the probe; preserving their existing device pointers ensures the daemon maintains
+ * probe or up; preserving their existing device pointers ensures the daemon maintains
  * knowledge of the missing hardware and reports its degraded state rather than assuming
  * the surviving devices represent the whole disk.
  */
@@ -392,18 +391,20 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 			pulse(state, PULSE_DISKS | PULSE_ARRAY);
 			tommy_list_remove_existing(&state->array.disk_list, &disk->node);
 			disk_free(disk);
-		} else if (task->cmd == CMD_PROBE
+		} else if ((task->cmd == CMD_PROBE || task->cmd == CMD_UP)
 			&& task->arg_custom == 0
 			&& disk->degraded_at_task_number == 0
 		) {
 			/*
-			 * Prune unreferenced devices and splits only during an unfiltered probe on a healthy disk.
-			 * Non-probe commands do not inspect all physical devices (and up/down omit extra disks).
+			 * Prune unreferenced devices and splits only during an unfiltered probe/up on a healthy disk.
 			 *
-			 * If custom arguments are present, the probe may be filtered by disk and device info
+			 * Non-probe/up commands do not inspect all physical devices. Note that up also probes
+			 * extra disks, even if they are not spun-up.
+			 *
+			 * If custom arguments are present, the probe/up may be filtered by disk and device info
 			 * will be incomplete.
 			 *
-			 * If a disk is degraded, missing member devices cannot be discovered by the probe
+			 * If a disk is degraded, missing member devices cannot be discovered by probe or up
 			 * and must be preserved to report the failure.
 			 */
 
@@ -445,17 +446,16 @@ static void remove_unreferenced_disks(struct snapraid_state* state, struct snapr
 }
 
 /**
- * Clear the degraded status of disks that are no longer degraded after a probe.
+ * Clear the degraded status of disks that are no longer degraded after a probe or up.
  *
- * Probe is the authoritative source for disk components, as an unfiltered probe
- * inspects all disks. Any disk not tagged as "degraded" during a completed probe
- * is verified healthy, allowing us to safely clear its degraded status even if
- * other disks in the array remain degraded.
+ * An unfiltered probe or up inspects all configured disks and tags those still
+ * degraded. A disk without a degraded tag after either command succeeds no longer
+ * has missing devices, even if other disks in the array remain degraded.
  */
 static void clear_degraded_disks(struct snapraid_state* state, struct snapraid_task* task)
 {
-	/* for simplicity process only on PROBE that access both snapraid.conf and all devices */
-	if (task->cmd != CMD_PROBE)
+	/* for simplicity process only on PROBE and UP that access both snapraid.conf and all devices */
+	if (task->cmd != CMD_PROBE && task->cmd != CMD_UP)
 		return;
 
 	/* if there is any argument, it could be a filter by disk and info will be incomplete */
@@ -2728,7 +2728,7 @@ void parse_begin_locked(struct snapraid_state* state)
 
 void parse_end_locked(struct snapraid_state* state, struct snapraid_task* task)
 {
-	/* clear degraded status only when probe completes with success */
+	/* clear degraded status only after a successful unfiltered probe or up */
 	clear_degraded_disks(state, task);
 
 	/* remove disks that were not referenced */
