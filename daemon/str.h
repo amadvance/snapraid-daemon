@@ -45,6 +45,11 @@ static inline size_t sncat(char* dst, size_t dst_size, const char* src)
 #endif
 
 /**
+ * Trim spaces from the start and the end
+ */
+char* strtrim(char* s);
+
+/**
  * Convert string to integer.
  * @return 0 on success, -1 on error
  */

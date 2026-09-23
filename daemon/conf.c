@@ -869,23 +869,10 @@ static void config_set(struct snapraid_config* config, const char* key, const ch
 static void config_set_string(struct snapraid_config* config, const char* key, const char* value)
 {
 	char buf[CONFIG_MAX];
-	size_t len = 0;
-	size_t trailing_whitespace_pos = 0;
 
-	/* skip leading whitespace */
-	while (*value && isspace((unsigned char)*value))
-		++value;
+	sncpy(buf, sizeof(buf), value);
 
-	/* copy, tracking where trailing whitespace begins */
-	while (*value && len + 1 < sizeof(buf)) {
-		buf[len] = *value;
-		++len;
-		if (!isspace((unsigned char)*value))
-			trailing_whitespace_pos = len;
-		++value;
-	}
-
-	buf[trailing_whitespace_pos] = 0;
+	strtrim(buf);
 
 	config_set(config, key, buf);
 }

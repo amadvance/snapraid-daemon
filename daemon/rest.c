@@ -182,6 +182,8 @@ static int json_config_string(const char* js, jsmntok_t* jv, char* out, size_t o
 	if (json_string(js, jv, out, out_size) != 0)
 		return -1;
 
+	strtrim(out);
+
 	if (strchr(out, '\n') != 0 || strchr(out, '\r') != 0)
 		return -1;
 

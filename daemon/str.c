@@ -68,6 +68,27 @@ size_t sncat(char* dst, size_t dst_size, const char* src)
 }
 #endif
 
+char* strtrim(char* str)
+{
+	char* begin;
+	char* end;
+
+	begin = str;
+	while (begin[0] && isspace((unsigned char)begin[0]))
+		++begin;
+
+	end = begin + strlen(begin);
+	while (end > begin && isspace((unsigned char)end[-1]))
+		--end;
+
+	end[0] = 0;
+
+	if (begin != str)
+		memmove(str, begin, end - begin + 1);
+
+	return str;
+}
+
 int strint(int* out, const char* s)
 {
 	char* e;
