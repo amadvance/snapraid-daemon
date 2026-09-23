@@ -1142,6 +1142,10 @@ void config_default_locked(struct snapraid_state* state)
 	/* set default */
 	config->sys_engine[0] = 0;
 	app_default_log(config->sys_log_directory, sizeof(config->sys_log_directory));
+	if (state->instance[0] != 0) {
+		sncat(config->sys_log_directory, sizeof(config->sys_log_directory), "-");
+		sncat(config->sys_log_directory, sizeof(config->sys_log_directory), state->instance);
+	}
 	config->sys_log_retention_days = 0;
 	config->sys_log_compression = 0;
 	sncpy(config->sys_shutdown_on, sizeof(config->sys_shutdown_on), "");
