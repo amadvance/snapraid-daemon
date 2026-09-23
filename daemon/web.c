@@ -295,7 +295,7 @@ static ssize_t read_file(const char* path, char** body)
 #define FD_ARG(v) - 1
 #endif
 
-static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_fd, const char* current_path)
+static int crawl_directory_fd(tommy_list* page_list, size_t skip, int current_fd, const char* current_path)
 {
 #ifdef _WIN32
 	(void)current_fd;
@@ -308,7 +308,7 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 #ifndef _WIN32
 		close(current_fd);
 #endif
-		return;
+		return -1;
 	}
 
 	while (1) {
@@ -318,7 +318,8 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 		dd = readdir(d);
 		if (dd == 0 && errno != 0) {
 			log_msg(LVL_ERROR, "crawler error readdir %s, errno=%s(%d)", current_path, strerror(errno), errno);
-			break;
+			closedir(d);
+			return -1;
 		}
 		if (dd == 0) {
 			break; /* finished */
@@ -331,35 +332,69 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 		int ret = snprintf(path, sizeof(path), "%s/%s", current_path, dd->d_name);
 		if (ret < 0 || (size_t)ret >= sizeof(path)) {
 			log_msg(LVL_ERROR, "crawler invalid path: %s/%s", current_path, dd->d_name);
-			continue;
+			closedir(d);
+			return -1;
 		}
 
 		struct stat st;
 #ifndef _WIN32
+		/* inspect entries before opening them; metadata errors remain fatal */
+		if (fstatat(current_fd, dd->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+			log_msg(LVL_ERROR, "crawler error fstatat %s, errno=%s(%d)", path, strerror(errno), errno);
+			closedir(d);
+			return -1;
+		}
+
+		if (S_ISLNK(st.st_mode)) {
+			log_msg(LVL_WARNING, "crawler ignore link %s/%s", current_path, dd->d_name);
+			continue;
+		}
+
+		if (S_ISREG(st.st_mode)) {
+			if (get_mime_type(path + skip, 0) == 0) {
+				log_msg(LVL_WARNING, "crawler ignore unknown file %s", path);
+				continue;
+			}
+			if ((size_t)st.st_size > WEB_PAGE_SIZE_MAX) {
+				log_msg(LVL_WARNING, "crawler ignore file exceeding size limit %s", path);
+				continue;
+			}
+		} else if (!S_ISDIR(st.st_mode)) {
+			log_msg(LVL_WARNING, "crawler ignore special file %s", path);
+			continue;
+		}
+
 		int fd = openat(current_fd, dd->d_name, O_RDONLY | O_NOFOLLOW);
 		if (fd == -1) {
 			if (errno == ELOOP) {
 				log_msg(LVL_WARNING, "crawler ignore link %s/%s", current_path, dd->d_name);
-			} else {
-				log_msg(LVL_ERROR, "crawler error openat %s, errno=%s(%d)", path, strerror(errno), errno);
+				continue;
 			}
-			continue;
+
+			log_msg(LVL_ERROR, "crawler error openat %s, errno=%s(%d)", path, strerror(errno), errno);
+			closedir(d);
+			return -1;
 		}
 
 		if (fstat(fd, &st) != 0) {
 			log_msg(LVL_ERROR, "crawler error fstat %s, errno=%s(%d)", path, strerror(errno), errno);
 			close(fd);
-			continue;
+			closedir(d);
+			return -1;
 		}
 #else
 		if (lstat(path, &st) != 0) {
 			log_msg(LVL_ERROR, "crawler error fstat %s, errno=%s(%d)", path, strerror(errno), errno);
-			continue;
+			closedir(d);
+			return -1;
 		}
 #endif
 
 		if (S_ISDIR(st.st_mode)) {
-			crawl_directory_fd(page_list, skip, FD_ARG(fd), path);
+			if (crawl_directory_fd(page_list, skip, FD_ARG(fd), path) != 0) {
+				closedir(d);
+				return -1;
+			}
 			continue; /* fd consumed by recursion */
 		} else if (S_ISREG(st.st_mode)) {
 			const char* relative = path + skip;
@@ -388,14 +423,16 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 			if (fd == -1) {
 				log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", path, strerror(errno), errno);
 				page_free(page);
-				continue;
+				closedir(d);
+				return -1;
 			}
 #endif
 			if (read_fd(fd, page->content, page->size) != page->size) {
 				log_msg(LVL_ERROR, "crawler error reading %s, errno=%s(%d)", path, strerror(errno), errno);
 				close(fd);
 				page_free(page);
-				continue;
+				closedir(d);
+				return -1;
 			}
 
 			close(fd);
@@ -412,20 +449,25 @@ static void crawl_directory_fd(tommy_list* page_list, size_t skip, int current_f
 		}
 	}
 
-	closedir(d); /* closes current_fd */
+	if (closedir(d) != 0) {
+		log_msg(LVL_ERROR, "crawler error closedir %s, errno=%s(%d)", current_path, strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
 }
 
-static void crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
+static int crawl_directory(tommy_list* page_list, size_t skip, const char* current_path)
 {
 #ifndef _WIN32
 	int fd = open(current_path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
 	if (fd == -1) {
 		log_msg(LVL_ERROR, "crawler error opening %s, errno=%s(%d)", current_path, strerror(errno), errno);
-		return;
+		return -1;
 	}
 #endif
 
-	crawl_directory_fd(page_list, skip, FD_ARG(fd), current_path);
+	return crawl_directory_fd(page_list, skip, FD_ARG(fd), current_path);
 }
 
 static void send_headers(struct mg_connection* conn, ss_t* s, time_t last_modified, int is_static)
@@ -785,7 +827,8 @@ static int handler_real_file(struct mg_connection* conn, void* cbdata)
 
 int web_init(struct snapraid_state* state)
 {
-	if (!state->web.page_nocache) {
+	/* web assets are optional until the network interface is enabled */
+	if (state->config.net_enabled && !state->web.page_nocache) {
 		if (web_reload(state, state->config.net_web_root) != 0)
 			return -1;
 	}
@@ -850,7 +893,8 @@ int web_reload(struct snapraid_state* state, const char* root)
 
 		state->web.page_time = time(0);
 		log_msg(LVL_INFO, "crawling zip %s", zip);
-		crawl_zip(&state->web.page_list, zip);
+		if (crawl_zip(&state->web.page_list, zip) != 0)
+			goto bail;
 	} else {
 		if (!path_is_absolute(root)) {
 			log_msg(LVL_ERROR, "web server cannot serve relative %s", root);
@@ -898,7 +942,8 @@ int web_reload(struct snapraid_state* state, const char* root)
 
 		state->web.page_time = time(0);
 		log_msg(LVL_INFO, "crawling directory %s", dir);
-		crawl_directory(&state->web.page_list, len, dir);
+		if (crawl_directory(&state->web.page_list, len, dir) != 0)
+			goto bail;
 	}
 
 	web_unlock();

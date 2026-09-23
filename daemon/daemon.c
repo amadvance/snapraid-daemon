@@ -322,6 +322,14 @@ int daemon_init(struct snapraid_state* state)
 	state->daemon_loading = 0;
 
 	/**
+	 * Drop privileges after reading the logs
+	 */
+	if (os_privileges_drop() != 0) {
+		log_msg(LVL_CRITICAL, "failed to drop privileges");
+		return -1;
+	}
+
+	/**
 	 * Trigger the initial probe asynchronously through the normal runner queue.
 	 * It runs ahead of work subsequently submitted to the queue, but does not
 	 * define daemon readiness: the control plane must remain usable with a
@@ -339,15 +347,10 @@ int daemon_init(struct snapraid_state* state)
 	scheduler_init(state);
 
 	/**
-	 * Initialize web resources before dropping privileges
+	 * Initialize web resources
 	 */
 	if (web_init(state) != 0) {
 		log_msg(LVL_ERROR, "failed to initialize the web server");
-		return -1;
-	}
-
-	if (os_privileges_drop() != 0) {
-		log_msg(LVL_CRITICAL, "failed to drop privileges");
 		return -1;
 	}
 
@@ -432,7 +435,7 @@ int daemon_run(struct snapraid_state* state)
 				}
 			}
 
-			if (daemon_is_running(state) && !state->web.page_nocache) {
+			if (daemon_is_running(state) && net_enabled && !state->web.page_nocache) {
 				if (web_reload(state, net_web_root) != 0) {
 					log_msg(LVL_CRITICAL, "failed to reload web pages from %s", net_web_root);
 					goto bail;
