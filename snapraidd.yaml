@@ -2003,7 +2003,7 @@ components:
             The system user account utilized for the execution of 'hook_script'.
 
             If this parameter is null or empty, the scripts inherit the
-            process privileges of the running daemon.
+            daemon's original startup privileges.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly
@@ -2052,7 +2052,7 @@ components:
             pings, start and result shell commands (notify_start, notify_result).
 
             If left blank or omitted, these subprocesses inherit the
-            current privileges of the snapraidd daemon.
+            snapraidd daemon's original startup privileges.
 
             For security enforcement, this parameter is immutable via
             the REST API unless 'net_config_full_access' is explicitly

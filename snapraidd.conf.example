@@ -453,7 +453,7 @@ spindown_idle_minutes = 15
 #hook_docker_pause = plex,transmission
 
 # The user account used for executing hook_script.
-# If missing or left blank, the scripts run with the daemon's current privileges.
+# If missing or left blank, the scripts run with the daemon's original startup privileges.
 #
 # On Linux, "nobody" is the standard choice for maximum isolation. Note that
 # using "nobody" may prevent certain tools, such as Docker, from functioning
@@ -591,7 +591,7 @@ notify_syslog_level = info
 notify_result_level = warning
 
 # The user account used for notify_heartbeat, notify_start, notify_result and mail notifications.
-# If missing or left blank, the task runs with the daemon's current privileges.
+# If missing or left blank, the task runs with the daemon's original startup privileges.
 #
 # On Linux, "nobody" is the standard choice for maximum isolation. However,
 # while sufficient for simple 'curl' commands, it may cause failures for

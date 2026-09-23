@@ -880,7 +880,7 @@ The daemon does not retry the unpause operation in a later hook lifecycle.
 ---- 6.4.5 hook_run_as_user ----
 Specifies the user account used to execute the hook_script.
 If this is missing or blank, the script is executed with the
-same privileges as the daemon process.
+daemon's original startup privileges.
 
 On Linux, `nobody` is the standard choice for maximum isolation. Note that
 using `nobody` may prevent certain tools, such as Docker, from functioning
@@ -996,7 +996,7 @@ and does not by itself increase the notification severity.
 ---- 6.5.7 notify_run_as_user ----
 The user account used for notify_heartbeat, notify_start, notify_result and mail
 notifications. If missing or left blank, the task runs with the
-daemon's current privileges.
+daemon's original startup privileges.
 
 On Linux, `nobody` is the standard choice for maximum isolation. However,
 while sufficient for simple `curl` commands, it may cause failures for
