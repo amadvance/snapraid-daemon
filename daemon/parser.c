@@ -2793,7 +2793,7 @@ int parse_past_log(struct snapraid_state* state)
 
 	/* read them all */
 	for (tommy_node* i = tommy_list_head(&log_list); i; i = i->next) {
-		char path[PATH_MAX];
+		char path[PATH_MAX + 1 + KEYWORD_MAX];
 		sn_t* sn = i->data;
 
 #ifdef _WIN32

@@ -594,8 +594,8 @@ struct snapraid_config {
 
 	/* public part of the configuration */
 	/* empty string or 0 value means value not set and/or disabled */
-	char sys_engine[CONFIG_MAX]; /**< Engine path. */
-	char sys_log_directory[CONFIG_MAX]; /**< Directory for log files */
+	char sys_engine[PATH_MAX]; /**< Engine path. */
+	char sys_log_directory[PATH_MAX]; /**< Directory for log files */
 	int sys_log_retention_days; /**< Number of days to keep logs */
 	int sys_log_compression; /**< 1 if log compression is enabled, 0 otherwise */
 	char sys_shutdown_on[CONFIG_MAX]; /**< List of events to trigger shutdown */
