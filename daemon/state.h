@@ -78,7 +78,7 @@
 /**
  * Max number of shutdown events.
  */
-#define SHUTDOWN_ON_MAX 16
+#define SHUTDOWN_ON_MAX 3
 
 /**
  * Max number of smart ignores per line.

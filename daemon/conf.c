@@ -61,8 +61,11 @@ static int parse_shutdown_on(const char* val, char* dst, size_t dst_size)
 	if (parse_string(copy, sizeof(copy), val) != 0)
 		return -1;
 
-	char* tokens[SHUTDOWN_ON_MAX];
-	unsigned n = strsplit(tokens, SHUTDOWN_ON_MAX, copy, ",", " \t\r\n", 0);
+	char* tokens[SHUTDOWN_ON_MAX + 1];
+	unsigned n = strsplit(tokens, SHUTDOWN_ON_MAX + 1, copy, ",", " \t\r\n", 0);
+
+	if (n > SHUTDOWN_ON_MAX)
+		return -1;
 
 	for (unsigned i = 0; i < n; ++i) {
 		if (strcmp(tokens[i], "maintenance") != 0
