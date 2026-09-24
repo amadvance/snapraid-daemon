@@ -2089,7 +2089,11 @@ static int delete_old_files(const char* dir_path, int days)
 	time_t cutoff_seconds = now - days * (int64_t)24 * 60 * 60;
 
 	struct dirent* ent;
-	while ((ent = readdir(dir)) != 0) {
+	while (1) {
+		errno = 0;
+		ent = readdir(dir);
+		if (ent == 0)
+			break;
 		char full_path[PATH_MAX + 256]; /* avoid warnings about snprintf() */
 
 		if (ent->d_name[0] == '.')
@@ -2113,8 +2117,14 @@ static int delete_old_files(const char* dir_path, int days)
 		}
 	}
 
+	int read_errno = errno;
 	if (closedir(dir) == -1) {
 		log_msg(LVL_ERROR, "failed to close directory %s, errno=%s(%d)", dir_path, strerror(errno), errno);
+		os_privileges_release();
+		return -1;
+	}
+	if (read_errno != 0) {
+		log_msg(LVL_ERROR, "failed to read directory %s, errno=%s(%d)", dir_path, strerror(read_errno), read_errno);
 		os_privileges_release();
 		return -1;
 	}

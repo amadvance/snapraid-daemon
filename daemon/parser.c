@@ -2762,7 +2762,11 @@ int parse_past_log(struct snapraid_state* state)
 
 	sl_init(&log_list);
 	struct dirent* ent;
-	while ((ent = readdir(dir)) != 0) {
+	while (1) {
+		errno = 0;
+		ent = readdir(dir);
+		if (ent == 0)
+			break;
 		if (ent->d_name[0] == '.')
 			continue;
 
@@ -2786,7 +2790,13 @@ int parse_past_log(struct snapraid_state* state)
 		sl_insert_str(&log_list, ent->d_name);
 	}
 
+	int read_errno = errno;
 	closedir(dir);
+	if (read_errno != 0) {
+		log_msg(LVL_WARNING, "failed to read log directory %s, errno=%s(%d)", sys_log_directory, strerror(read_errno), read_errno);
+		sl_free(&log_list);
+		return -1;
+	}
 
 	/* sort alphabetically */
 	tommy_list_sort(&log_list, sl_compare);

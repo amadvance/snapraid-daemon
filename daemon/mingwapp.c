@@ -43,20 +43,20 @@ const char* app_find_engine(const char* sys_engine)
 #ifdef SNAPRAID_PATH
 	(void)sys_engine;
 
-	if (GetFileAttributesW(u8tou16(conv, SNAPRAID_PATH)) != INVALID_FILE_ATTRIBUTES)
+	if (u8tou16(conv, SNAPRAID_PATH) && GetFileAttributesW(conv) != INVALID_FILE_ATTRIBUTES)
 		return SNAPRAID_PATH;
 
 	return 0;
 #else
 	/* check for existence every time in case it's installed at later time */
 	if (sys_engine != 0 && sys_engine[0] != 0) {
-		if (GetFileAttributesW(u8tou16(conv, sys_engine)) != INVALID_FILE_ATTRIBUTES)
+		if (u8tou16(conv, sys_engine) && GetFileAttributesW(conv) != INVALID_FILE_ATTRIBUTES)
 			return sys_engine;
 
 		return 0;
 	}
 
-	if (GetFileAttributesW(u8tou16(conv, path_snapraid)) != INVALID_FILE_ATTRIBUTES)
+	if (u8tou16(conv, path_snapraid) && GetFileAttributesW(conv) != INVALID_FILE_ATTRIBUTES)
 		return path_snapraid;
 
 	return 0;
@@ -81,8 +81,7 @@ const char* app_find_curl(void)
 		return 0;
 	}
 
-	u16tou8(path_curl_resolved, path_buf);
-	return path_curl_resolved;
+	return u16tou8(path_curl_resolved, path_buf);
 }
 
 const char* app_find_docker(void)
@@ -103,8 +102,7 @@ const char* app_find_docker(void)
 		return 0;
 	}
 
-	u16tou8(path_docker, path_buf);
-	return path_docker;
+	return u16tou8(path_docker, path_buf);
 }
 
 const char* app_find_poweroff(void)
@@ -249,7 +247,7 @@ int os_shutdown(void)
 	return 0;
 }
 
-void app_init(void)
+static int app_init(void)
 {
 	WCHAR conv[CONV_MAX];
 
@@ -259,18 +257,24 @@ void app_init(void)
 		strcpy(path_data, "/usr/share/snapraidd/");
 		strcpy(path_snapraid, "/usr/bin/snapraid");
 	} else {
-		snwprintf(conv, PATH_MAX, L"%lslog", windows_exedir());
-		u16tou8(path_log, conv);
+		/* check the longest suffix before formatting any path; truncation would name another file */
+		if (wcslen(windows_exedir()) + wcslen(L"snapraidd.conf") + 1 > PATH_MAX) {
+			errno = ENAMETOOLONG;
+			return -1;
+		}
+		if (snwprintf(conv, PATH_MAX, L"%lslog", windows_exedir()) < 0 || !u16tou8(path_log, conv))
+			return -1;
 
-		snwprintf(conv, PATH_MAX, L"%lssnapraidd.conf", windows_exedir());
-		u16tou8(path_conf, conv);
+		if (snwprintf(conv, PATH_MAX, L"%lssnapraidd.conf", windows_exedir()) < 0 || !u16tou8(path_conf, conv))
+			return -1;
 
-		snwprintf(conv, PATH_MAX, L"%ls", windows_exedir());
-		u16tou8(path_data, conv);
+		if (snwprintf(conv, PATH_MAX, L"%ls", windows_exedir()) < 0 || !u16tou8(path_data, conv))
+			return -1;
 
-		snwprintf(conv, PATH_MAX, L"%lssnapraid.exe", windows_exedir());
-		u16tou8(path_snapraid, conv);
+		if (snwprintf(conv, PATH_MAX, L"%lssnapraid.exe", windows_exedir()) < 0 || !u16tou8(path_snapraid, conv))
+			return -1;
 	}
+	return 0;
 }
 
 void app_done(void)
@@ -406,7 +410,11 @@ static int do_service_start_all(void)
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
 		char name[CONV_MAX];
-		u16tou8(name, wname);
+		if (!u16tou8(name, wname)) {
+			fprintf(stderr, "Failed to convert service name, errno=%s(%d)\n", strerror(errno), errno);
+			overall_success = -1;
+			continue;
+		}
 		if (is_our_service(name)) {
 			printf("Starting service %s...\n", name);
 			SC_HANDLE schService = OpenServiceW(schSCManager, wname, SERVICE_START);
@@ -455,7 +463,11 @@ static int do_service_stop_all(void)
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
 		char name[CONV_MAX];
-		u16tou8(name, wname);
+		if (!u16tou8(name, wname)) {
+			fprintf(stderr, "Failed to convert service name, errno=%s(%d)\n", strerror(errno), errno);
+			overall_success = -1;
+			continue;
+		}
 		if (is_our_service(name)) {
 			printf("Stopping service %s...\n", name);
 			SC_HANDLE schService = OpenServiceW(schSCManager, wname, SERVICE_STOP | SERVICE_QUERY_STATUS);
@@ -510,7 +522,11 @@ static int do_service_remove_all(void)
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
 		char name[CONV_MAX];
-		u16tou8(name, wname);
+		if (!u16tou8(name, wname)) {
+			fprintf(stderr, "Failed to convert service name, errno=%s(%d)\n", strerror(errno), errno);
+			overall_success = -1;
+			continue;
+		}
 		if (is_our_service(name)) {
 			printf("Removing service %s...\n", name);
 			SC_HANDLE schService = OpenServiceW(schSCManager, wname, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
@@ -574,10 +590,20 @@ static int do_service_list(void)
 	for (DWORD i = 0; i < dwServicesReturned; ++i) {
 		const wchar_t* wname = services[i].lpServiceName;
 		char name[CONV_MAX];
-		u16tou8(name, wname);
+		if (!u16tou8(name, wname)) {
+			fprintf(stderr, "Failed to convert service name, errno=%s(%d)\n", strerror(errno), errno);
+			free(services);
+			CloseServiceHandle(schSCManager);
+			return -1;
+		}
 		if (is_our_service(name)) {
 			char display[CONV_MAX];
-			u16tou8(display, services[i].lpDisplayName);
+			if (!u16tou8(display, services[i].lpDisplayName)) {
+				fprintf(stderr, "Failed to convert service display name, errno=%s(%d)\n", strerror(errno), errno);
+				free(services);
+				CloseServiceHandle(schSCManager);
+				return -1;
+			}
 			const char* status_str;
 			switch (services[i].ServiceStatusProcess.dwCurrentState) {
 			case SERVICE_STOPPED : status_str = "Stopped"; break;
@@ -647,7 +673,10 @@ static int do_service_install(const struct snapraid_state* state)
 		return -1;
 	}
 
-	u16tou8(path, wpath);
+	if (!u16tou8(path, wpath)) {
+		fprintf(stderr, "Failed to convert executable path, errno=%s(%d)\n", strerror(errno), errno);
+		return -1;
+	}
 
 	if (state->config.conf[0]) {
 		wchar_t wconf[PATH_MAX];
@@ -1064,7 +1093,12 @@ int main(int argc, char* argv[])
 	struct snapraid_state* state = state_init();
 
 	os_init(OS_INIT_OPT_WINFIND);
-	app_init();
+	if (app_init() != 0) {
+		fprintf(stderr, "Failed to initialize paths, errno=%s(%d)\n", strerror(errno), errno);
+		state_done(state);
+		os_done();
+		return EXIT_FAILURE;
+	}
 
 	daemon_options(state, argc, argv);
 
