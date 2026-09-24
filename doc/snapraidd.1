@@ -294,6 +294,16 @@ manual intervention is required.
 .PD
 .RE
 .PP
+Physical Input/Output errors also affect disk health. Data and parity
+I/O errors that SnapRAID can associate with a block, as well as I/O
+errors associated with a concrete filesystem object, are tracked as
+transient disk errors. Transient disk errors remain active until a later
+scrub reports that no blocks are bad.
+.PP
+By contrast, unlocalized data and parity I/O errors, such as close errors,
+are still counted in the lifetime error_io counter but do not affect disk
+health.
+.PP
 Individual tasks also maintain a health state reflecting only the
 problems identified during that specific operation.
 For example, an array in a CORRUPT state may still produce a PASSED

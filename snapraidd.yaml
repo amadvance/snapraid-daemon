@@ -1802,10 +1802,13 @@ components:
           format: int64
           example: 0
           description: >
-            The count of physical Input/Output errors encountered since the disk
-            was last verified error-free. This transient counter is cleared after
-            a `scrub` command reports that no blocks are bad.
-            This counter is never ignored and always affects the disk health status.
+            The count of physical Input/Output errors currently affecting disk health.
+            Data and parity I/O errors reported with a non-empty SnapRAID block field,
+            as well as object I/O errors associated with a concrete filesystem object,
+            are included. Data and parity errors reported with an empty block field,
+            such as unlocalized close errors, are excluded. This transient counter is
+            cleared after a `scrub` command reports that no blocks are bad. This counter
+            is never ignored and always affects the disk health status.
         transient_error_data:
           type: integer
           format: int64
@@ -1821,8 +1824,11 @@ components:
           example: 0
           description: >
             The cumulative count of physical Input/Output errors encountered across
-            all task executions.
-            This counter is tracked and never resets.
+            all task executions, including data and parity errors reported with an
+            empty SnapRAID block field, such as unlocalized close errors. Such errors
+            remain in this lifetime counter even though they are excluded from
+            `transient_error_io` and do not affect the disk health status. This counter
+            is tracked and never resets.
         error_io_history:
           $ref: '#/components/schemas/ValueHistory'
         error_io_ignored:
@@ -1831,8 +1837,8 @@ components:
             Indicates if the error_io attribute is explicitly ignored
             by the user configuration. If true, increases in the lifetime
             error count are suppressed from the report output and the UI.
-            Warning notifications are still triggered via transient_error_io,
-            which is never ignored.
+            I/O errors tracked by transient_error_io still affect disk health,
+            and that counter is never ignored.
         error_data:
           type: integer
           format: int64

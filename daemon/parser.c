@@ -1907,7 +1907,17 @@ static void process_error_io(struct snapraid_state* state, char** map, size_t ma
 	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, disk_name);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 	if (disk) {
-		++disk->transient_error_io;
+		/*
+		 * Only I/O errors associated with a SnapRAID block position are kept
+		 * as transient disk errors. A later scrub can explicitly recheck that
+		 * position and, once no bad blocks remain, provide evidence that the
+		 * condition has cleared. Unlocalized errors, such as close errors,
+		 * are still counted in the task and lifetime I/O counters but do not
+		 * affect the persistent disk health state.
+		 */
+		if (map[1][0] != 0)
+			++disk->transient_error_io;
+
 		uint64_t old = disk->error_io.value;
 		++disk->error_io.value;
 		tracked_update(&disk->error_io, old, 0, state->array.last_time);
@@ -1927,6 +1937,14 @@ static void process_obj_error_io(struct snapraid_state* state, char** map, size_
 	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, disk_name);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 	if (disk) {
+		/*
+		 * Object I/O errors are not associated with a SnapRAID block position,
+		 * but they do identify a concrete filesystem object on the disk.
+		 *
+		 * Keep them as transient disk errors so that they continue to affect
+		 * disk health until a later successful maintenance cycle provides
+		 * evidence that the disk is operating cleanly again.
+		 */
 		++disk->transient_error_io;
 		uint64_t old = disk->error_io.value;
 		++disk->error_io.value;
@@ -1977,7 +1995,16 @@ static void process_parity_error_io(struct snapraid_state* state, char** map, si
 	struct snapraid_disk* disk = find_disk_existing(&state->array.disk_list, map[2]);
 	pulse(state, PULSE_DISKS | PULSE_ACTIVITY);
 	if (disk) {
-		++disk->transient_error_io;
+		/*
+		 * Keep parity I/O errors with a non-empty block field as transient disk
+		 * errors. For open/create errors, block 0 is a retry marker rather than
+		 * an identified bad position. An empty field denotes an unlocalized
+		 * error, such as a close error, which remains in the task and lifetime
+		 * counters but does not affect disk health.
+		 */
+		if (map[1][0] != 0)
+			++disk->transient_error_io;
+
 		uint64_t old = disk->error_io.value;
 		++disk->error_io.value;
 		tracked_update(&disk->error_io, old, 0, state->array.last_time);
