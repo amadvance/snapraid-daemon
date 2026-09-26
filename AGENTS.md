@@ -94,12 +94,16 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
 - `configure.ac`: Autoconf script (detects systemd vs BSD init)
 - `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
 - `uncrustify.cfg`: Code formatting rules (C style enforcement)
-- Run `make doc` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
+- Run `(cd linux && make doc)` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
 - Always use parallel compilation with `make -j$(nproc)` instead of plain `make`
 - Create temporary files and directories under `/tmp/snapraid/`.
-- To cross-compile for Windows x64: build out-of-tree in `/tmp/snapraid/` so the Linux configuration is preserved:
-  `mkdir -p /tmp/snapraid/windows && (cd /tmp/snapraid/windows && /path/to/configure.windows-x64 && make -j$(nproc))`
-  Subsequent Windows rebuilds only require: `(cd /tmp/snapraid/windows && make -j$(nproc))`
+- Both Linux and Windows builds are out-of-tree in dedicated subdirectories (`linux/` and `windows/`) in the project directory, keeping the root directory clean:
+  - Linux build:
+    `mkdir -p linux && (cd linux && ../configure && make -j$(nproc))`
+    Subsequent Linux rebuilds: `(cd linux && make -j$(nproc))`
+  - Windows x64 cross-compilation:
+    `mkdir -p windows && (cd windows && ../configure.windows-x64 && make -j$(nproc))`
+    Subsequent Windows rebuilds: `(cd windows && make -j$(nproc))`
 - The Windows build needs to be tested only when modifying Windows-specific code (e.g., `os/mingw.*`, `cmdline/mingwapp.c`, or Windows-specific `#ifdef` paths)
 
 ### Development Guidelines
