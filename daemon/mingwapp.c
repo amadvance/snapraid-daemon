@@ -299,6 +299,41 @@ static int is_our_service(const char* name)
 	return 0;
 }
 
+static int wait_for_service_start(SC_HANDLE schService, const char* name)
+{
+	SERVICE_STATUS_PROCESS ssp;
+	DWORD dwBytesNeeded;
+	DWORD checkpoint = 0;
+	DWORD checkpoint_tick = GetTickCount();
+
+	while (1) {
+		if (!QueryServiceStatusEx(schService, SC_STATUS_PROCESS_INFO, (LPBYTE)&ssp, sizeof(SERVICE_STATUS_PROCESS), &dwBytesNeeded)) {
+			fprintf(stderr, "QueryServiceStatus %s failed (%lu)\n", name, GetLastError());
+			return -1;
+		}
+
+		if (ssp.dwCurrentState == SERVICE_RUNNING) {
+			return 0;
+		}
+
+		if (ssp.dwCurrentState == SERVICE_STOPPED) {
+			fprintf(stderr, "Service %s stopped during startup.\n", name);
+			return -1;
+		}
+
+		/* only fail when the service stops advancing for its reported wait hint */
+		if (ssp.dwCheckPoint > checkpoint) {
+			checkpoint = ssp.dwCheckPoint;
+			checkpoint_tick = GetTickCount();
+		} else if (GetTickCount() - checkpoint_tick > ssp.dwWaitHint) {
+			fprintf(stderr, "Service %s did not reach the running state in a timely manner.\n", name);
+			return -1;
+		}
+
+		Sleep(100);
+	}
+}
+
 static int wait_for_service_stop(SC_HANDLE schService)
 {
 	SERVICE_STATUS_PROCESS ssp;
@@ -395,7 +430,7 @@ static int do_service_start_all(void)
 	SC_HANDLE schSCManager;
 	ENUM_SERVICE_STATUS_PROCESSW* services = 0;
 	DWORD dwServicesReturned = 0;
-	int overall_success = 0;
+	int overall_result = 0;
 
 	schSCManager = open_sc_manager();
 	if (0 == schSCManager) {
@@ -412,35 +447,45 @@ static int do_service_start_all(void)
 		char name[CONV_MAX];
 		if (!u16tou8(name, wname)) {
 			fprintf(stderr, "Failed to convert service name, errno=%s(%d)\n", strerror(errno), errno);
-			overall_success = -1;
+			overall_result = -1;
 			continue;
 		}
 		if (is_our_service(name)) {
 			printf("Starting service %s...\n", name);
-			SC_HANDLE schService = OpenServiceW(schSCManager, wname, SERVICE_START);
+			SC_HANDLE schService = OpenServiceW(schSCManager, wname, SERVICE_START | SERVICE_QUERY_STATUS);
 			if (schService != 0) {
+				int start_result = 0;
+				int already_running = 0;
 				if (!StartServiceW(schService, 0, 0)) {
 					DWORD err = GetLastError();
 					if (err == ERROR_SERVICE_ALREADY_RUNNING) {
-						printf("Service %s is already running.\n", name);
+						already_running = 1;
 					} else {
 						fprintf(stderr, "StartService %s failed (%lu)\n", name, err);
-						overall_success = -1;
+						overall_result = -1;
+						start_result = -1;
 					}
-				} else {
-					printf("Service %s started successfully.\n", name);
+				}
+				if (start_result == 0) {
+					if (wait_for_service_start(schService, name) != 0) {
+						overall_result = -1;
+					} else if (already_running) {
+						printf("Service %s is already running.\n", name);
+					} else {
+						printf("Service %s started successfully.\n", name);
+					}
 				}
 				CloseServiceHandle(schService);
 			} else {
 				fprintf(stderr, "OpenService %s failed (%lu)\n", name, GetLastError());
-				overall_success = -1;
+				overall_result = -1;
 			}
 		}
 	}
 
 	free(services);
 	CloseServiceHandle(schSCManager);
-	return overall_success;
+	return overall_result;
 }
 
 static int do_service_stop_all(void)
@@ -740,7 +785,7 @@ static int do_service_install(const struct snapraid_state* state)
 	if (schService == 0) {
 		DWORD err = GetLastError();
 		if (err == ERROR_SERVICE_EXISTS) {
-			schService = OpenServiceW(schSCManager, wservice_name, SERVICE_CHANGE_CONFIG | SERVICE_START);
+			schService = OpenServiceW(schSCManager, wservice_name, SERVICE_CHANGE_CONFIG | SERVICE_START | SERVICE_QUERY_STATUS);
 			if (schService != 0) {
 				if (!ChangeServiceConfigW(schService,
 					SERVICE_NO_CHANGE,
@@ -814,6 +859,9 @@ static int do_service_install(const struct snapraid_state* state)
 			fprintf(stderr, "StartService failed (%lu)\n", err);
 			ret = -1;
 		}
+	}
+	if (ret == 0 && wait_for_service_start(schService, service_name) != 0) {
+		ret = -1;
 	}
 
 	CloseServiceHandle(schService);
@@ -1085,7 +1133,7 @@ void windows_starting(void)
 	if (!g_StatusHandle)
 		return;
 
-	report_progress(SERVICE_START_PENDING, NO_ERROR, 3000);
+	report_progress(SERVICE_START_PENDING, NO_ERROR, 5000);
 }
 
 int main(int argc, char* argv[])
