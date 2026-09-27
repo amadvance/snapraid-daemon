@@ -373,10 +373,21 @@ void task_list_cancel_in_group(struct snapraid_state* state, struct snapraid_tas
 		if (!task_same_group(task, failed_task))
 			break;
 
-		/* do not cancel report, down, or shutdown commands so cleanup and notifications execute */
-		if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN || task->cmd == CMD_SHUTDOWN) {
-			i = i_next;
-			continue;
+		/*
+		 * Always preserve the report.
+		 * On an explicit user cancellation, cancel down and shutdown too.
+		 * On failure, preserve down and shutdown as finalization steps.
+		 */
+		if (failed_task->canceled) {
+			if (task->cmd == CMD_REPORT) {
+				i = i_next;
+				continue;
+			}
+		} else {
+			if (task->cmd == CMD_REPORT || task->cmd == CMD_DOWN || task->cmd == CMD_SHUTDOWN) {
+				i = i_next;
+				continue;
+			}
 		}
 
 		task_cancel(state, task, msg, now);
