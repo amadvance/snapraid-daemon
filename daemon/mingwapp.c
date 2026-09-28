@@ -789,7 +789,7 @@ static int do_service_install(const struct snapraid_state* state)
 			if (schService != 0) {
 				if (!ChangeServiceConfigW(schService,
 					SERVICE_NO_CHANGE,
-					SERVICE_NO_CHANGE,
+					SERVICE_AUTO_START,
 					SERVICE_NO_CHANGE,
 					wbin_path,
 					0,
