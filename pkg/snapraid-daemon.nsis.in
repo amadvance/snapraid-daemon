@@ -72,13 +72,13 @@ FunctionEnd
 
 Section "Install"
     # STOP ALL INSTANCES (default + user-created)
-    ClearErrors
-    ExecWait '"$INSTDIR\snapraidd.exe" --service-stop-all' $0
-    ${If} ${Errors}
-    ${OrIf} $0 != 0
+    nsExec::Exec '"$INSTDIR\snapraidd.exe" --service-stop-all'
+    Pop $0
+    ${If} $0 != 0
         # taskkill kills every process using snapraidd.exe, unlocking the binary
         DetailPrint "Stop timed out. Forcing taskkill..."
-        ExecWait 'taskkill /F /IM snapraidd.exe'
+        nsExec::Exec 'taskkill /F /IM snapraidd.exe'
+        Pop $0
         Sleep 1000
     ${EndIf}
 
@@ -120,22 +120,22 @@ Section "Install"
     LoopCheckServices:
         EnumRegKey $1 HKLM "SYSTEM\CurrentControlSet\Services" $0
         StrCmp $1 "" DoneCheckServices
-        
+
         # Check if service name starts with "snapraidd"
         StrCpy $2 $1 9
         StrCmp $2 "snapraidd" 0 NextCheckService
-        
+
         # Check if it is an exact match or followed by "-" (e.g. snapraidd-instance)
         StrCpy $2 $1 1 9
         StrCmp $2 "" FoundOurService
         StrCmp $2 "-" FoundOurService
         Goto NextCheckService
-        
+
     FoundOurService:
         # Found at least one service!
         StrCpy $3 1
         Goto DoneCheckServices
-        
+
     NextCheckService:
         IntOp $0 $0 + 1
         Goto LoopCheckServices
@@ -143,11 +143,13 @@ Section "Install"
 
     ${If} $3 == 0
         # No service is registered: install the default service
-        ExecWait '"$INSTDIR\snapraidd.exe" --service-install'
+        nsExec::Exec '"$INSTDIR\snapraidd.exe" --service-install'
+        Pop $0
     ${EndIf}
 
     # RESTART ALL INSTANCES (default + user-created)
-    ExecWait '"$INSTDIR\snapraidd.exe" --service-start-all'
+    nsExec::Exec '"$INSTDIR\snapraidd.exe" --service-start-all'
+    Pop $0
 
     # Save the installation directory to the registry
     WriteRegStr HKLM "Software\snapraid" "Install_Dir" "$INSTDIR"
@@ -176,13 +178,13 @@ SectionEnd
 
 Section "Uninstall"
     # STOP AND REMOVE ALL SERVICES
-    ClearErrors
-    ExecWait '"$INSTDIR\snapraidd.exe" --service-remove-all' $0
-    ${If} ${Errors}
-    ${OrIf} $0 != 0
+    nsExec::Exec '"$INSTDIR\snapraidd.exe" --service-remove-all'
+    Pop $0
+    ${If} $0 != 0
         # Kill any remaining processes (safety net)
         DetailPrint "Stop timed out. Forcing taskkill..."
-        ExecWait 'taskkill /F /IM snapraidd.exe'
+        nsExec::Exec 'taskkill /F /IM snapraidd.exe'
+        Pop $0
         Sleep 1000
 	# Clean up the Event Source registry keys
 	DeleteRegKey HKLM "${LOG_REG}"
