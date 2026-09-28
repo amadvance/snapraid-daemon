@@ -94,7 +94,7 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
 - `configure.ac`: Autoconf script (detects systemd vs BSD init)
 - `Makefile.am`: Source file lists, dependencies, install hooks (including rules for generating documentation)
 - `uncrustify.cfg`: Code formatting rules (C style enforcement)
-- Run `(cd linux && make doc)` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
+- Run `make doc` to regenerate all manual pages (`*.1`) and text manuals (`*.txt`)
 - Always use parallel compilation with `make -j$(nproc)` instead of plain `make`
 - Create temporary files and directories under `/tmp/snapraid/`.
 - Both Linux and Windows builds are out-of-tree in dedicated subdirectories (`linux/` and `windows/`) in the project directory, keeping the root directory clean:
