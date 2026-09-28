@@ -833,6 +833,15 @@ static int do_service_install(const struct snapraid_state* state)
 	sfa.lpCommand = 0;
 	sfa.cActions = 2;
 	sfa.lpsaActions = actions;
+
+	/*
+	 * Intentionally do not enable SERVICE_CONFIG_FAILURE_ACTIONS_FLAG.
+	 *
+	 * Failure actions should restart the service only when the process
+	 * terminates unexpectedly. A clean SERVICE_STOPPED state with an error
+	 * is also used for handled daemon failures and intentional emergency
+	 * shutdowns, which should not automatically restart the service.
+	 */
 	ChangeServiceConfig2W(schService, SERVICE_CONFIG_FAILURE_ACTIONS, &sfa);
 
 	SERVICE_PRESHUTDOWN_INFO psi;
