@@ -1,4 +1,6 @@
 sha256
+142dbc56acaff5ce4894a5195fbb5850bfdfa5732e7453cde8132063924252bd  snapraid-daemon.src.tar.gz
+8f5e5c3818272c55cab2f4eb00cecf05f2de245b872452f2f926f0f453045148  snapraid-daemon.tar.gz
 da1485622ad08c73ac10a7904ee0bf5455a583c4787456f117cd81c127c8fab0  snapraid-daemon-1.0.exe
 95c2f19c44cd4a2c08cac81d38d3fde4d0b2ebad2ea4e90c08999377b56108d1  snapraid-daemon-1.0.tar.gz
 fb3c1b19af18f02a68a19c03d89ccce342c4273047deb97a7430d187330aa294  snapraid-daemon-1.0-1-x86_64.pkg.tar.zst
@@ -75,6 +77,17 @@ f2e554fc6d686c320a5d36a2020ce11c3dadaa97026db39f075dd0c7979b641e  snapraid-daemo
 2950466429dd7edc6f062d9d613921eef20edcded0e170dbe1725129b0b5d05c  snapraid-daemon-1.14-1-x86_64.pkg.tar.zst
 01e1d54ff0ce3ecb24e3bcd70a4500f377ebae3e9bb70763e7584830a0e705ac  snapraid-daemon-1.14-1.x86_64.rpm
 b984cbc99c218b73a881822cc2ee408b76f3c76095b9186552a82ad7274dbbc1  snapraid-daemon-1.14-x86_64-1_am.txz
+11f17331d30902a51c8c748548190ad3b4510479210e568ff88d8520204d1314  snapraid-daemon-1.15.exe
+effac2e5acae64466a888fe4657a22a0d67cc69b74048e0acec7ee8d205f1986  snapraid-daemon-1.15.tar.gz
+1f8c5b61a5b6f47aa1d51e35ceb6e0718bc79bde5e804d78bdb169025972f1b0  snapraid-daemon-1.15-1-x86_64.pkg.tar.zst
+8020c9aeedce2aba1d3a9c9c812f65182eefa2fb9b73c64bd805502eedec78ba  snapraid-daemon-1.15-1.x86_64.rpm
+bbad903e4990a7857624a970f40bd553d093005cbc3c3c1a90aede753fa0b786  snapraid-daemon-1.15-x86_64-1_am.txz
+b073eb9a3f184520de52420ac695f5adcebd88d0f2ce3be575872164dcdbd6f0  snapraid-daemon-2.0rc2.exe
+1346e49e6d0fcb273ec9ddb61abf1d22fb46fc57e9a6db0653ccaaee3d9f735c  snapraid-daemon-2.0rc2.tar.gz
+261485fc512ef601008909c1b6b0b735f9ca623035aa8f629d12cdd4a39bcca8  snapraid-daemon-2.0rc2-1-x86_64.pkg.tar.zst
+d7cc769f7ba80cd81309efd3d2c2063978b120ffaed9ca0e2bbe2a54347d18e3  snapraid-daemon-2.0rc2-1.x86_64.rpm
+0adfb94080dcfd2d27fab6686a36fc2cbb35df44de5d2a9ee8fcf735093bc4d7  snapraid-daemon-2.0rc2-x86_64-1_am.txz
+0fc7c288acbb2d98265665521c74b5c68a4f0d54ffc448ce5fe4950909135084  snapraid-daemon-2.0rc2.1.g2aaf54a-1.x86_64.rpm
 761396ee44cf75bf9dae634b3bdbb5e79673596ee28d49266c4749a96a17225c  snapraid-daemon_1.0-1_amd64.deb
 3f3beb71ad9891cc515bd7a1cc90f1d17fe52c292285cc45ebaf7acf60005f9d  snapraid-daemon_1.1-1_amd64.deb
 66b69580a5d09c4d1276cde2616e98e64a218bd19b8efaf6ecd9a8a7bcb0384b  snapraid-daemon_1.2-1_amd64.deb
@@ -90,3 +103,5 @@ d050606825ba47ad0f031395f6aae970d90c24da7ad61b31af8254c8cde75859  snapraid-daemo
 caaa3c5e73d7aa0468090bbec3fb674acc73040c9c15208133f63110b565bcb5  snapraid-daemon_1.12-1_amd64.deb
 945f20ff6a5c5e5c3606e935140322b694170cfbc7827704eff3e2fe2fa6daec  snapraid-daemon_1.13-1_amd64.deb
 bcf3b5d9535c452b301c41f6150d6e27d11065509dce690fa14e356a06e7bb29  snapraid-daemon_1.14-1_amd64.deb
+f1ae40d9236edb51585166b318507c714f39e52c3d0f082e4f4642305ec811c4  snapraid-daemon_1.15-1_amd64.deb
+4e54c50134eb8cfb84d0893f1d047d151a8d46c48b8130b7942851d189a5ce33  snapraid-daemon_2.0rc2-1_amd64.deb
