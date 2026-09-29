@@ -619,7 +619,7 @@ Configuration
 	on GitHub via the curl CLI tool.
 	If enabled, the daemon queries the GitHub API every 12 hours in the
 	background. The WebUI displays the update status and alerts you when
-	new versions are available.
+	new versions are available, and status reports include an update notice.
 	If missing or set to 0, update checking is disabled.
 
     maintenance_schedule

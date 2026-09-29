@@ -240,3 +240,105 @@ int version_check_locked_yield(struct snapraid_state* state)
 	return ret;
 }
 
+#define VERSION_TYPE_BETA 1
+#define VERSION_TYPE_RC 2
+#define VERSION_TYPE_RELEASE 3
+
+uint32_t version_encode(const char* v)
+{
+	if (!v)
+		return 0;
+
+	while (isspace((unsigned char)*v))
+		++v;
+
+	if (*v == 'v')
+		++v;
+
+	if (!isdigit((unsigned char)*v))
+		return 0;
+
+	char* e = 0;
+	int high = strtol(v, &e, 10);
+	if (e == v || *e != '.')
+		return 0;
+
+	v = e + 1;
+	if (!isdigit((unsigned char)*v))
+		return 0;
+
+	int low = strtol(v, &e, 10);
+	v = e;
+
+	if (*v == '-')
+		++v;
+
+	int type = 0;
+	int num = 0;
+
+	if (*v == 0 || *v == '.') {
+		type = VERSION_TYPE_RELEASE;
+	} else if (v[0] == 'b' && v[1] == 'e' && v[2] == 't' && v[3] == 'a') {
+		v += 4;
+		if (isdigit((unsigned char)*v)) {
+			num = strtol(v, &e, 10);
+			v = e;
+		}
+		type = VERSION_TYPE_BETA;
+	} else if (v[0] == 'r' && v[1] == 'c') {
+		v += 2;
+		if (isdigit((unsigned char)*v)) {
+			num = strtol(v, &e, 10);
+			v = e;
+		}
+		type = VERSION_TYPE_RC;
+	} else {
+		return 0;
+	}
+
+	while (isspace((unsigned char)*v))
+		++v;
+
+	/* ignore the suffix after the second dot, as added by autover.sh */
+	if (*v != 0 && *v != '.')
+		return 0;
+
+	if (high < 0 || high >= 256 || low < 0 || low >= 256 || num < 0 || num >= 256)
+		return 0;
+
+	return ((uint32_t)high << 24) | ((uint32_t)low << 16) | ((uint32_t)type << 8) | (uint32_t)num;
+}
+
+int version_cmp(const char* a, const char* b)
+{
+	uint32_t ea = version_encode(a);
+	uint32_t eb = version_encode(b);
+
+	if (ea == 0 || eb == 0)
+		return 0;
+
+	if (ea < eb)
+		return -1;
+	if (ea > eb)
+		return 1;
+	return 0;
+}
+
+int version_update_available_locked(const struct snapraid_state* state)
+{
+	if (!state->config.check_updates)
+		return 0;
+
+	if (state->latest_daemon_version[0] != 0) {
+		if (version_cmp(PACKAGE_VERSION, state->latest_daemon_version) < 0)
+			return 1;
+	}
+
+	if (state->latest_engine_version[0] != 0 && state->engine_version[0] != 0) {
+		if (version_cmp(state->engine_version, state->latest_engine_version) < 0)
+			return 1;
+	}
+
+	return 0;
+}
+

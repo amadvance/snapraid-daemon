@@ -7,6 +7,7 @@
 #include "support.h"
 #include "scheduler.h"
 #include "selftest.h"
+#include "version.h"
 
 struct filter_escape_test_case {
 	const char* input;
@@ -283,6 +284,36 @@ static int test_json_esc(void)
 	return 0;
 }
 
+static int test_version_cmp(void)
+{
+	static const struct {
+		const char* a;
+		const char* b;
+		int expected;
+	} cases[] = {
+		{ "2.0rc2.1.g068f492", "2.0", -1 },
+		{ "2.0", "2.0rc2.1.g068f492", 1 },
+		{ "2.0rc2.1.g068f492", "2.0rc2", 0 },
+		{ "2.0rc2.1.g068f492", "2.0rc3", -1 },
+		{ "2.0beta2.1.g068f492", "2.0rc1", -1 },
+		{ "2.0.5.g068f492", "2.1", -1 },
+		{ "2.0.5.g068f492", "2.0", 0 },
+		{ "2.0.anything", "2.0", 0 },
+		{ "2.0.", "2.0", 0 }
+	};
+
+	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+		int actual = version_cmp(cases[i].a, cases[i].b);
+		if (actual != cases[i].expected) {
+			printf("selftest: version_cmp(%s, %s) returned %d, expected %d\n",
+				cases[i].a, cases[i].b, actual, cases[i].expected);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 int selftest(void)
 {
 	if (test_filter_escape() != 0)
@@ -292,6 +323,9 @@ int selftest(void)
 		return -1;
 
 	if (test_json_esc() != 0)
+		return -1;
+
+	if (test_version_cmp() != 0)
 		return -1;
 
 	return 0;

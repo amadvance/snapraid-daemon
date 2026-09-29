@@ -12,7 +12,8 @@ SnapRAID-Daemon HISTORY
    releases on GitHub. The WebUI now displays the update status under
    the Configuration card on the Dashboard and shows a dedicated
    "NEW VERSION AVAILABLE" badge in the System Idle header when a new
-   version is available.
+   version is available. Also, status reports now include an update
+   notification line when a new version is available.
  * Introduced "Brutale", a high-contrast Neo-Brutalist WebUI. Loud,
    blocky, and completely unapologetic—sunglasses not included.
  * Added a "net_auth_credential" option to protect the REST API and

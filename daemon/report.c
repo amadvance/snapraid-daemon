@@ -10,6 +10,7 @@
 #include "log.h"
 #include "elem.h"
 #include "smart.h"
+#include "version.h"
 
 static int disk_count_device(struct snapraid_disk* disk)
 {
@@ -1097,6 +1098,9 @@ static void report_wide_locked(struct snapraid_state* state, ss_t* ss,
 	/* bad blocks */
 	ss_printf(ss, "  Bad Blocks:     %" PRIu64 "\n", state->array.block_bad);
 
+	if (version_update_available_locked(state))
+		ss_prints(ss, "UPDATE: NEW VERSION AVAILABLE\n");
+
 	ss_prints(ss, "\n");
 
 	struct disk_spacing sp;
@@ -1219,6 +1223,10 @@ void report_narrow_locked(struct snapraid_state* state, ss_t* ss,
 		ss_prints(ss, "Pending\n");
 
 	ss_printf(ss, "BAD BLOCKS: %" PRIu64 "\n", state->array.block_bad);
+
+	if (version_update_available_locked(state))
+		ss_prints(ss, "UPDATE: NEW VERSION AVAILABLE\n");
+
 	ss_prints(ss, "\n");
 
 	if (disk_count(&state->array.disk_list, DISK_DATA) != 0) {
