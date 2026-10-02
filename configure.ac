@@ -120,7 +120,7 @@ AC_HEADER_ASSERT
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([dirent.h stdint.h inttypes.h unistd.h math.h execinfo.h strings.h getopt.h syslog.h grp.h pwd.h io.h alloca.h])
 AC_CHECK_HEADERS([sys/file.h sys/sysctl.h sys/ioctl.h sys/time.h sys/types.h sys/mkdev.h sys/sysmacros.h sys/stat.h sys/prctl.h sys/sysinfo.h sys/utsname.h])
-AC_CHECK_HEADERS([linux/fs.h linux/btrfs.h linux/fiemap.h mach/mach_time.h])
+AC_CHECK_HEADERS([linux/fs.h linux/btrfs.h linux/fiemap.h])
 
 # Check for the close_range(...,CLOSE_RANGE_CLOEXEC)
 AC_CHECK_HEADERS([linux/close_range.h])
