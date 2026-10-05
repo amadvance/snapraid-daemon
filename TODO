@@ -4,6 +4,24 @@ SnapRAID Daemon TODO
 Future Releases
 ===============
 
+- Filesystem Snapshot Monitoring
+  Track the presence of filesystem snapshots ('stable' and 'pending') to ensure
+  recovery capability without compromising power management:
+  - SnapRAID Engine (`probe` and `up`):
+    - In `probe`, verify snapshot existence only for active disks (`POWER_ACTIVE`),
+      skipping disks in `standby` to avoid waking them up.
+    - In `up`, verify snapshot existence across all data disks since all are active.
+    - Check for both 'stable' and 'pending' (used when a sync was interrupted)
+      snapshots.
+    - Emit `--gui` structured tags reporting per-disk snapshot state (e.g.,
+      `snapshot_data:<disk>:<stable|pending|missing|unsupported>`).
+  - Daemon & Web UI:
+    - Track snapshot state in `struct snapraid_disk` and expose it in `/disks`
+      and `/array`.
+    - If an active disk's snapshot is missing/lost (e.g. VSS shadow copy purged
+      on NTFS due to disk space limits), set array/disk health to WARNING.
+    - Display snapshot status and badges in the Dashboard and Disks UI.
+
 - Unprivileged execution mode
   - Starts as 'root' (Unix) or 'SYSTEM' (Windows) to parse config and open raw
     disk descriptors.
