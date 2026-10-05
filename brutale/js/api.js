@@ -63,7 +63,7 @@ export const API = {
     startMaintenance: (options = {}) => request('/maintenance', { method: 'POST', body: JSON.stringify(options) }),
     startProbe: () => API.schedule([{ command: 'probe' }]),
     startHeal: (options = {}) => request('/heal', { method: 'POST', body: JSON.stringify(options) }),
-    startDiff: () => API.schedule([{ command: 'up' }, { command: 'diff' }]),
+    startDiff: () => API.schedule([{ command: 'diff' }]),
     spinUp: () => API.schedule([{ command: 'up' }]),
     spinDown: () => API.schedule([{ command: 'down' }]),
     spinDownIdle: () => request('/suspend_idle', { method: 'POST', body: JSON.stringify({}) }),
