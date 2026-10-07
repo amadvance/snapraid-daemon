@@ -172,7 +172,7 @@ void config_schedule_str(struct snapraid_config* config, char* buf, size_t size)
 	}
 }
 
-/*
+/**
  * Convert the day of the week to a number (0-6)
  * Return -1 if not valid
  */
@@ -1003,7 +1003,7 @@ static void config_set_decimal(struct snapraid_config* config, const char* key, 
 }
 
 #ifndef _WIN32
-/*
+/**
  * Create a temporary configuration file in the same trusted directory as the
  * configuration file. The directory descriptor pins the parent directory, and
  * O_EXCL prevents following an existing attacker-controlled temporary file.

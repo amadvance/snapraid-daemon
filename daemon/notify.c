@@ -14,7 +14,7 @@
 /****************************************************************************/
 /* notify */
 
-/*
+/**
  * Looks for option (with spaces around) in cmdline.
  * If found, extracts the following argument into dest.
  * Supports quoted arguments: "hello world" or 'hello world'

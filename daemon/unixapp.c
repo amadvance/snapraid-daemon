@@ -3,7 +3,7 @@
 
 #include "os/portable.h"
 
-#ifndef __MINGW32__ /* Only for Unix */
+#ifndef __MINGW32__ /* only for Unix */
 
 #include "app.h"
 #include "state.h"
@@ -85,7 +85,7 @@ const char* app_find_engine(const char* sys_engine)
 
 static const char* curl_paths[] = {
 #ifdef CURL_PATH
-	/* Path configured at build time (e.g. on NixOS). */
+	/* path configured at build time (e.g. on NixOS). */
 	CURL_PATH,
 #else
 	/* Linux & BSD */
@@ -112,7 +112,7 @@ const char* app_find_curl(void)
 
 static const char* docker_paths[] = {
 #ifdef DOCKER_PATH
-	/* Path configured at build time. */
+	/* path configured at build time. */
 	DOCKER_PATH,
 #else
 	/* Linux & BSD */
@@ -584,7 +584,7 @@ static void os_pidfile_done(int* pidfd, const char* pidfile)
 	if (*pidfd == -1)
 		return;
 
-	/* Delete the PID file while we still hold its lock. */
+	/* delete the PID file while we still hold its lock. */
 	unlink(pidfile);
 	close(*pidfd);
 	*pidfd = -1;

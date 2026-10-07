@@ -299,29 +299,29 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	/**
+	/*
 	 * Load system information
 	 */
 	app_system_info(&state->system);
 
-	/**
+	/*
 	 * Initialize runner while signals are still BLOCKED
 	 */
 	runner_init(state);
 
-	/**
+	/*
 	 * Parse existing log files before starting the REST and web servers.
 	 * This reconstructs the history available at startup and is complete
 	 * before the daemon accepts network requests.
 	 */
 	parse_past_log(state);
 
-	/**
+	/*
 	 * Log loaded
 	 */
 	state->daemon_loading = 0;
 
-	/**
+	/*
 	 * Drop privileges after reading the logs
 	 */
 	if (os_privileges_drop() != 0) {
@@ -329,7 +329,7 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	/**
+	/*
 	 * Trigger the initial probe asynchronously through the normal runner queue.
 	 * It runs ahead of work subsequently submitted to the queue, but does not
 	 * define daemon readiness: the control plane must remain usable with a
@@ -341,12 +341,12 @@ int daemon_init(struct snapraid_state* state)
 		/* continue anyway to provide an interface */
 	}
 
-	/**
+	/*
 	 * Initialize scheduler while signals are still BLOCKED
 	 */
 	scheduler_init(state);
 
-	/**
+	/*
 	 * Initialize web resources
 	 */
 	if (web_init(state) != 0) {
@@ -354,7 +354,7 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	/**
+	/*
 	 * Create REST worker threads after dropping privileges.
 	 * Signals are still BLOCKED and will be inherited by the new threads.
 	 */
@@ -363,7 +363,7 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	/**
+	/*
 	 * Register web request handler
 	 */
 	if (web_start(state) != 0) {
@@ -372,13 +372,13 @@ int daemon_init(struct snapraid_state* state)
 		return -1;
 	}
 
-	/**
+	/*
 	 * Start scheduler worker thread after dropping privileges.
 	 * Signals are still BLOCKED and will be inherited by the new thread.
 	 */
 	scheduler_start(state);
 
-	/**
+	/*
 	 * Start runner worker thread after all fallible server initialization.
 	 * Signals are still BLOCKED and will be inherited by the new thread.
 	 */

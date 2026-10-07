@@ -119,7 +119,7 @@ The REST API is defined using **OpenAPI 3.1.0** specification (1830 lines). This
 - **Format**: Enforce via `uncrustify -c uncrustify.cfg --no-backup *.c *.h`
 - **Naming**: Snake_case for functions, UPPER_CASE for macros/constants
 - **Indentation**: Tabs for indentation, no alignment (existing codebase style)
-- **Comments**: C-style `/** */` for multiline comments; C `/* first letter lowercase */` for single-line inline notes
+- **Comments**: Use `/** ... */` for multiline top comments preceding declarations and `/* ... */` for multiline comments within code. Use `/* first letter lowercase */` for single-line inline notes.
 - **Critical Comments**: Always add a comment at non-obvious critical points, especially around data-integrity invariants, crash recovery, fallback behavior, concurrency, and fatal versus best-effort error handling. Explain why the logic is required, not merely what the code does.
 - **Headers**: All `.h` files have include guards (`#ifndef __NAME_H`)
 - **Preferences**: Use 0 instead of NULL and '\0'

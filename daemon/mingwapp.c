@@ -3,7 +3,7 @@
 
 #include "os/portable.h"
 
-#ifdef __MINGW32__ /* Only for MingW */
+#ifdef __MINGW32__ /* only for MingW */
 
 #include "app.h"
 #include "support.h"
@@ -1003,7 +1003,7 @@ void windows_eventlog(int level, const char* msg)
 	DeregisterEventSource(h);
 }
 
-/* Console control handler - forwards Ctrl+C, Ctrl+Break to child */
+/* console control handler - forwards Ctrl+C, Ctrl+Break to child */
 static BOOL WINAPI console_handler(DWORD ctrl_type)
 {
 	switch (ctrl_type) {

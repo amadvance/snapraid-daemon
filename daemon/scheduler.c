@@ -355,7 +355,7 @@ void schedule_undelete(struct snapraid_state* state, int spindown, sl_t* filter_
 
 static void schedule_suspend_idle_locked(struct snapraid_state* state, time_t now, char* msg, size_t msg_size, int* status)
 {
-	/* Schedule a probe and spindown on idle. */
+	/* schedule a probe and spindown on idle. */
 	if (runner_has_high_cmd_locked(state, CMD_SUSPEND_IDLE)) {
 		sncpy(msg, msg_size, "Suspend idle already running or scheduled");
 		*status = 409;
@@ -408,7 +408,7 @@ void schedule_refresh(struct snapraid_state* state, char* msg, size_t msg_size, 
 
 	state->runner.task_pending |= CMD_HIGH_BIT(CMD_REFRESH);
 
-	/**
+	/*
 	 * Schedule a up command to ensure all filesystem information is read,
 	 * because the subsequent read command avoids accessing the disks directly.
 	 */
@@ -490,7 +490,7 @@ static void tm_increment_minute(struct tm* t)
 
 	/* hours overflow */
 	t->tm_hour = 0;
-	t->tm_wday = (t->tm_wday + 1) % 7; /* Sunday is 0 */
+	t->tm_wday = (t->tm_wday + 1) % 7; /* sunday is 0 */
 	t->tm_mday++;
 	if (t->tm_mday <= days_in_month(t->tm_mon, t->tm_year))
 		return;

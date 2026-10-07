@@ -36,14 +36,14 @@
 #define FORMAT_48_512 0xF0000 /**< 48 bits * 512 */
 #define FORMAT_16_D1000_AVG 0x100000 /**< 16 bits / 1000, AVG-VAL */
 
-/* From: https://github.com/smartmontools/smartmontools/blob/main/drivedb/drivedb.h */
+/* from: https://github.com/smartmontools/smartmontools/blob/main/drivedb/drivedb.h */
 struct smart_entry {
 	int index;
 	int format;
 	const char* name;
 	int kind;
 } SMART_ENTRIES[] = {
-	/**
+	/*
 	 * Critical entries, selection from the following sources:
 	 *
 	 * From: https://github.com/linuxhw/SMART
@@ -121,7 +121,7 @@ struct smart_entry {
 	{ 188, FORMAT_16, "Command_Timeouts", SMART_KIND_COUNT | SMART_KIND_CRITICAL | SMART_KIND_PULSE },
 
 #if 0
-	/**
+	/*
 	 * Many entrys in https://github.com/linuxhw/SMART/ with "Hardware_ECC_Recovered" with high value
 	 *
 	 * From: https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology
@@ -326,7 +326,7 @@ int smart_kind(int index, const char* name)
 
 void smart_temperature_range(struct snapraid_device* dev, uint64_t* temp, uint64_t* temp_min, uint64_t* temp_max)
 {
-	/**
+	/*
 	 * Temperature attributes in order of precedence:
 	 * 1. 194: Primary internal drive temperature (standard ATA/NVMe/SCSI).
 	 * 2. 190: Airflow temperature (traditional fallback for HDD).

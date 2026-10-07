@@ -141,7 +141,7 @@
 #define PULSE_CONFIG 2 /* change in the /config entry point */
 #define PULSE_DISKS 4 /* change in the /disks entry point */
 
-/*
+/**
  * Change in the /disks entry point causing an UI update but not an important
  * attribute change that needs to be kept forever.
  *
@@ -735,7 +735,7 @@ struct snapraid_state {
 	volatile sig_atomic_t daemon_sig; /**< Signal received by the daemon that made it stopping */
 	time_t daemon_start_time; /**< Time the daemon started */
 
-	/* Data private for the parser. The parser run only one at a time, so no lock is required */
+	/* data private for the parser. The parser run only one at a time, so no lock is required */
 	int parser_version_major; /**< Major version number */
 	int parser_version_minor; /**< Minor version number */
 	tommy_list parser_association; /**< Associations of device<->id */

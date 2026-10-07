@@ -17,23 +17,23 @@
 #define ZIP_METHOD_LZMA 14 /**< LZMA compression */
 #define ZIP_METHOD_PPMD 98 /**< PPMd version I, Rev 1 */
 
-/* Constants and Signatures */
+/* constants and Signatures */
 #define EOCD_SIGNATURE 0x06054b50
 #define CD_SIGNATURE 0x02014b50
 #define LOCAL_SIGNATURE 0x04034b50
 
-/* Header Sizes (Fixed parts) */
+/* header Sizes (Fixed parts) */
 #define EOCD_FIXED_SIZE 22
 #define CD_FIXED_SIZE 46
 #define LOCAL_FIXED_SIZE 30
 
-/* Offsets into End of Central Directory (EOCD) */
+/* offsets into End of Central Directory (EOCD) */
 #define OFF_EOCD_TOTAL_ENTRIES 10
 #define OFF_EOCD_CD_SIZE 12
 #define OFF_EOCD_CD_OFFSET 16
 #define OFF_EOCD_COMMENT_LEN 20
 
-/* Offsets into Central Directory (CD) Header */
+/* offsets into Central Directory (CD) Header */
 #define OFF_CD_SIGNATURE 0
 #define OFF_CD_METHOD 10
 #define OFF_CD_MOD_TIME 12
@@ -46,12 +46,12 @@
 #define OFF_CD_COMMENT_LEN 32
 #define OFF_CD_LOCAL_OFFSET 42
 
-/* Offsets into Local File Header */
+/* offsets into Local File Header */
 #define OFF_LOCAL_SIGNATURE 0
 #define OFF_LOCAL_FILENAME_LEN 26
 #define OFF_LOCAL_EXTRA_LEN 28
 
-/* Helper Functions for Unaligned Access */
+/* helper Functions for Unaligned Access */
 
 static inline uint16_t read16(const uint8_t* p)
 {

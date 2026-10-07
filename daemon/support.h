@@ -33,7 +33,7 @@ uint32_t calculate_crc32(const void* data, size_t length);
 /****************************************************************************/
 /* unescape */
 
-/*
+/**
  * Unescape a JSON string
  */
 int json_unescape(const char* src, size_t src_len, char* dst, size_t dst_size);

@@ -1697,7 +1697,7 @@ static void process_run(struct snapraid_state* state, char** map, size_t mac)
 		if (mac < 10)
 			return;
 
-		/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+		/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 		pulse(state, PULSE_ACTIVITY);
 		task->state = PROCESS_STATE_RUN;
 		stru64(&task->block_idx, map[2]);
@@ -1853,7 +1853,7 @@ static void process_error_recovered(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 
-	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_recovered;
 }
@@ -1862,7 +1862,7 @@ static void process_error_unrecoverable(struct snapraid_state* state)
 {
 	struct snapraid_task* task = state->runner.latest;
 
-	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_unrecoverable;
 }
@@ -1876,7 +1876,7 @@ static void process_error_soft(struct snapraid_state* state, char** map, size_t 
 
 	(void)map;
 
-	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_soft;
 }
@@ -1890,7 +1890,7 @@ static void process_obj_error_soft(struct snapraid_state* state, char** map, siz
 
 	(void)map;
 
-	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_soft;
 }
@@ -1980,7 +1980,7 @@ static void process_parity_error_soft(struct snapraid_state* state, char** map, 
 
 	(void)map;
 
-	/* Omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
+	/* omit PULSE_TASKS on progress updates to avoid excessive /tasks polling */
 	pulse(state, PULSE_ACTIVITY);
 	++task->error_soft;
 }

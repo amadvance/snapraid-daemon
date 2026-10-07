@@ -45,10 +45,10 @@ void http_headers_secure(struct mg_connection* conn, ss_t* s, time_t now, int ne
 	 */
 	ss_prints(s, "Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0\r\n");
 
-	/* Legacy (HTTP/1.0): Support for HTTP/1.0 proxies */
+	/* legacy (HTTP/1.0): Support for HTTP/1.0 proxies */
 	ss_prints(s, "Pragma: no-cache\r\n");
 
-	/* Legacy (HTTP/1.0): Mark as expired immediately */
+	/* legacy (HTTP/1.0): Mark as expired immediately */
 	ss_prints(s, "Expires: 0\r\n");
 
 	/*
@@ -167,17 +167,17 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 {
 	(void)conn;
 
-	/* Identify the server and version */
+	/* identify the server and version */
 	ss_printf(s, "Server: %s/%s\r\n", DAEMON_NAME, PACKAGE_VERSION);
 
-	/* Standard HTTP Date header */
+	/* standard HTTP Date header */
 	char date_buf[64];
 	struct tm tm_gmt;
 	gmtime_r(&now, &tm_gmt);
 	if (strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt) > 0)
 		ss_printf(s, "Date: %s\r\n", date_buf);
 
-	/**
+	/*
 	 * Cache-Control: public, no-cache
 	 * Allows the browser to store static files, but requires revalidation before
 	 * reuse. This ensures that assets are refreshed immediately after a web reload
@@ -186,14 +186,14 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 	 */
 	ss_prints(s, "Cache-Control: public, no-cache\r\n");
 
-	/* Conditional serving: allows browsers to skip download if the file hasn't changed */
+	/* conditional serving: allows browsers to skip download if the file hasn't changed */
 	if (last_modified != 0) {
 		gmtime_r(&last_modified, &tm_gmt);
 		if (strftime(date_buf, sizeof(date_buf), "%a, %d %b %Y %H:%M:%S GMT", &tm_gmt) > 0)
 			ss_printf(s, "Last-Modified: %s\r\n", date_buf);
 	}
 
-	/**
+	/*
 	 * Vary: Accept-Encoding
 	 * Notifies caches that the response body may differ based on compression support.
 	 * We omit 'Vary: Origin' for static files to improve cache hit rates.
@@ -204,14 +204,14 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 	 * These headers provide "Defense in Depth" against common web vulnerabilities.
 	 */
 	if (net_security_headers) {
-		/**
+		/*
 		 * X-Content-Type-Options: nosniff
 		 * Forces the browser to strictly adhere to the provided Content-Type,
 		 * mitigating MIME-type sniffing attacks.
 		 */
 		ss_prints(s, "X-Content-Type-Options: nosniff\r\n");
 
-		/**
+		/*
 		 * Referrer-Policy: no-referrer
 		 * Ensures that the local daemon's address is not leaked to external sites
 		 * when the browser fetches assets or follows links.
@@ -219,7 +219,7 @@ void http_headers_static(struct mg_connection* conn, ss_t* s, time_t now, time_t
 		ss_prints(s, "Referrer-Policy: no-referrer\r\n");
 	}
 
-	/**
+	/*
 	 * Access-Control-Allow-Origin: *
 	 * Permits static assets to be loaded by any local origin. This is necessary
 	 * for browser dashboards, extensions, or third-party UIs that may need to

@@ -26,7 +26,7 @@
  */
 #define JSMN_TOKEN_MAX 512
 
-/*
+/**
  * Maximum number of distinct fields accepted in a single JSON object.
  */
 #define JSON_FIELD_MAX 32
