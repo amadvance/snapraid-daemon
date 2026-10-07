@@ -631,29 +631,30 @@ void diff_move(struct snapraid_diff_stat* diff_src, struct snapraid_diff_stat* d
 
 void diff_insert(struct snapraid_diff_stat* diff, int change, const char* disk, const char* path, const char* source_disk, const char* source_path)
 {
-	/* check if this exact entry is already present */
 	struct snapraid_file dummy;
 	dummy.change = change;
 	dummy.disk = (char*)disk;
 	dummy.path = (char*)path;
 
-	if (tommy_tree_search(&diff->file_tree, &dummy))
-		return;
-
-	/* enforce FILES_MAX */
+	/* skip files that cannot displace the tail */
 	if (tommy_tree_count(&diff->file_tree) >= FILES_MAX) {
 		tommy_tree_node* tail = tommy_tree_tail(&diff->file_tree);
 
 		if (file_compare_importance(&dummy, tail->data) >= 0)
 			return;
-
-		/* new file is more important than tail: remove tail */
-		struct snapraid_file* evicted = tommy_tree_remove_tail(&diff->file_tree);
-		file_free(evicted);
 	}
 
 	struct snapraid_file* file = file_alloc_source(change, disk, path, source_disk, source_path);
-	tommy_tree_insert(&diff->file_tree, &file->node, file);
+	if (tommy_tree_insert_unique(&diff->file_tree, &file->node, file) != file) {
+		file_free(file);
+		return;
+	}
+
+	/* evict only after insertion succeeds, so duplicates cannot displace valid entries */
+	if (tommy_tree_count(&diff->file_tree) > FILES_MAX) {
+		struct snapraid_file* evicted = tommy_tree_remove_tail(&diff->file_tree);
+		file_free(evicted);
+	}
 }
 
 /****************************************************************************/
@@ -688,20 +689,24 @@ void fix_insert(struct snapraid_fix_stat* fix, int change, const char* disk, con
 			--fix->fix_unrecoverable;
 	}
 
-	/* check if this exact entry is already present */
 	dummy.change = change;
 
-	if (tommy_tree_search(&fix->file_tree, &dummy))
-		return;
-
-	/* enforce FILES_MAX */
+	/* skip files that cannot displace the tail */
 	if (tommy_tree_count(&fix->file_tree) >= FILES_MAX) {
 		tommy_tree_node* tail = tommy_tree_tail(&fix->file_tree);
 
 		if (file_compare_importance(&dummy, tail->data) >= 0)
 			return;
+	}
 
-		/* new file is more important than tail: remove tail */
+	struct snapraid_file* file = file_alloc(change, disk, path);
+	if (tommy_tree_insert_unique(&fix->file_tree, &file->node, file) != file) {
+		file_free(file);
+		return;
+	}
+
+	/* evict only after insertion succeeds, so duplicates cannot displace valid entries */
+	if (tommy_tree_count(&fix->file_tree) > FILES_MAX) {
 		struct snapraid_file* evicted = tommy_tree_remove_tail(&fix->file_tree);
 		if (evicted->change == FILE_CHANGE_FIX_RECOVERED)
 			--fix->fix_recovered;
@@ -710,8 +715,6 @@ void fix_insert(struct snapraid_fix_stat* fix, int change, const char* disk, con
 		file_free(evicted);
 	}
 
-	struct snapraid_file* file = file_alloc(change, disk, path);
-	tommy_tree_insert(&fix->file_tree, &file->node, file);
 	if (change == FILE_CHANGE_FIX_RECOVERED)
 		++fix->fix_recovered;
 	else if (change == FILE_CHANGE_FIX_UNRECOVERABLE)
