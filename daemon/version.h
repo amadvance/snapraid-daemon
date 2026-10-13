@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Andrea Mazzoleni
 
-#ifndef __VERSION_H
-#define __VERSION_H
+#ifndef VERSION_H
+#define VERSION_H
 
 #include "state.h"
 

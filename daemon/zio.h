@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Andrea Mazzoleni
 
-#ifndef __ZIO_H
-#define __ZIO_H
+#ifndef ZIO_H
+#define ZIO_H
 
 /****************************************************************************/
 /* zio */

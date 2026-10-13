@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __REST_H
-#define __REST_H
+#ifndef REST_H
+#define REST_H
 
 #include "state.h"
 

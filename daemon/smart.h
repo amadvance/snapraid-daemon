@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __SMART_H
-#define __SMART_H
+#ifndef SMART_H
+#define SMART_H
 
 #include "state.h"
 #include "support.h"

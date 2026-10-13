@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __LOG_H
-#define __LOG_H
+#ifndef LOG_H
+#define LOG_H
 
 /****************************************************************************/
 /* log */

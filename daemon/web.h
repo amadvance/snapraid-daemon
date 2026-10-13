@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __WEB_H
-#define __WEB_H
+#ifndef WEB_H
+#define WEB_H
 
 #include "state.h"
 

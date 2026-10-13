@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __RUNNER_H
-#define __RUNNER_H
+#ifndef RUNNER_H
+#define RUNNER_H
 
 #include "state.h"
 

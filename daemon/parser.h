@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __PARSER_H
-#define __PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include "state.h"
 #include "zio.h"

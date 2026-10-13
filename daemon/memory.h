@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Andrea Mazzoleni
 
-#ifndef __MEMORY_H
-#define __MEMORY_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
 #include <stddef.h>
 

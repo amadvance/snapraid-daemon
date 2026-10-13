@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __NOTIFY_H
-#define __NOTIFY_H
+#ifndef NOTIFY_H
+#define NOTIFY_H
 
 #include "state.h"
 

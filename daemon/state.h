@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __STATE_H
-#define __STATE_H
+#ifndef STATE_H
+#define STATE_H
 
 #include "civetweb/civetweb.h"
 #include "monocypher/monocypher.h"

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2025 Andrea Mazzoleni
 
-#ifndef __SCHEDULER_H
-#define __SCHEDULER_H
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
 
 #include "state.h"
 
