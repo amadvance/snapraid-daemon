@@ -506,7 +506,7 @@ export const renderDashboard = (arrayInfo, activity, systemInfo) => {
                 <div class="property-row">
                     <div class="property-label">Scrubbed</div>
                     <div class="property-value text-sky">
-                        ${arrayInfo.blocks_count && arrayInfo.blocks_unscrubbed ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) + '%' : healthBadge('pending')}
+                        ${arrayInfo.blocks_count && arrayInfo.blocks_unscrubbed != null ? (100 * (1 - arrayInfo.blocks_unscrubbed / arrayInfo.blocks_count)).toFixed(0) + '%' : healthBadge('pending')}
                     </div>
                 </div>
                 <div class="property-row">
