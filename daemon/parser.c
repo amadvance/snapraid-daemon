@@ -1443,18 +1443,23 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 			power = POWER_ACTIVE;
 		}
 		if (device->power != power) {
+			int old_power = device->power;
 			pulse(state, PULSE_DISKS);
 			device->power = power;
 
 			/*
-			 * If the disk was spun up, it means it had some activity
+			 * If the disk was spun up from standby, it means it had some activity
 			 * (even if only the spin-up command itself).
 			 *
 			 * In case this activity is not detected in the "stat" info,
 			 * reset access_count_initial_time to prevent the disk
 			 * from being immediately spun down again.
+			 *
+			 * Do not reset if the previous state was POWER_PENDING (e.g. at startup
+			 * or when recreating device records for devices without unique IDs),
+			 * to preserve the accumulated idle duration across probes.
 			 */
-			if (power == POWER_ACTIVE) {
+			if (old_power == POWER_STANDBY && power == POWER_ACTIVE) {
 				struct snapraid_disk* disk_spunup = find_disk_existing(&state->array.disk_list, disk);
 				if (disk_spunup != 0) {
 					disk_spunup->access_count_initial_time = state->array.last_time;
