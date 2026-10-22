@@ -738,6 +738,8 @@ struct snapraid_state {
 	/* data private for the parser. The parser run only one at a time, so no lock is required */
 	int parser_version_major; /**< Major version number */
 	int parser_version_minor; /**< Minor version number */
+	char parser_boot_id[37]; /**< Current Linux boot UUID, or empty if unavailable. */
+	size_t parser_boot_id_len; /**< Cached length of the current Linux boot UUID. */
 	tommy_list parser_association; /**< Associations of device<->id */
 	tommy_hashtable parser_association_hash; /**< First association for each ID in the current mapping */
 	tommy_hashtable parser_duplicate_hash; /**< IDs permanently known to be ambiguous */

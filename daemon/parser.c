@@ -1564,11 +1564,30 @@ static void process_attr(struct snapraid_state* state, char** map, size_t mac)
 
 static void process_map(struct snapraid_state* state, char** map, size_t mac)
 {
+#ifdef __linux__
+	int runtime = !state->daemon_loading;
+#endif
+
 	if (mac < 3)
 		return;
 
 	const char* file = map[1];
 	const char* id = map[2];
+
+#ifdef __linux__
+	if (!runtime && strncmp(id, "linux-diskseq.", 14) == 0) {
+		/*
+		 * Disk sequence numbers identify instances only within one boot.
+		 * Ignore earlier boots to avoid retaining identities that cannot return,
+		 * but preserve history across daemon restarts within the current boot.
+		 * If the boot ID is unavailable, none of these historical IDs are safe.
+		 */
+		if (state->parser_boot_id_len == 0
+			|| strncmp(id + 14, state->parser_boot_id, state->parser_boot_id_len) != 0
+			|| id[14 + state->parser_boot_id_len] != '.')
+			return;
+	}
+#endif
 
 	parser_mapping_device(state, file, id);
 }
@@ -2775,6 +2794,28 @@ int parse_past_log(struct snapraid_state* state)
 
 	if (*sys_log_directory == 0)
 		return 0;
+
+#ifdef __linux__
+	/*
+	 * Read the current boot ID to recognize Linux diskseq identifiers from
+	 * this boot when replaying logs. This preserves device history across
+	 * daemon restarts while discarding identifiers from earlier boots,
+	 * whose device instances can no longer be recognized.
+	 * If unavailable, replay only hardware identifiers.
+	 */
+	state->parser_boot_id[0] = 0;
+	FILE* boot_file = fopen("/proc/sys/kernel/random/boot_id", "r");
+	if (boot_file) {
+		if (fgets(state->parser_boot_id, sizeof(state->parser_boot_id), boot_file) == 0)
+			state->parser_boot_id[0] = 0;
+		fclose(boot_file);
+	}
+	state->parser_boot_id_len = strlen(state->parser_boot_id);
+	if (state->parser_boot_id_len != 36) {
+		state->parser_boot_id[0] = 0;
+		state->parser_boot_id_len = 0;
+	}
+#endif
 
 	DIR* dir = opendir(sys_log_directory);
 	if (!dir) {
