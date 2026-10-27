@@ -1,6 +1,11 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+2.2 2026/11
+===========
+ * Fix split-parity configuration tags (e.g., parity/1:, 2-parity/1:)
+   being falsely flagged as fatal software errors in the log parser.
+
 2.1 2026/10
 ===========
  * Fix automatic spindown resetting the idle timer on disks without

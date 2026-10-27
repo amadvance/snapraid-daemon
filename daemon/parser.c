@@ -2292,15 +2292,43 @@ static void process_summary(struct snapraid_state* state, char** map, size_t mac
 }
 
 /**
+ * Check if the line begins with a split-parity tag like parity/<index>: or 2-parity/<index>:
+ */
+static int is_parity_split_tag(const char* s)
+{
+	/* s[0] != 0 silence the clang static analyzer (it's not necessary as isdigit also returns 0) */
+	if (s[0] != 0 && isdigit((unsigned char)s[0]) && s[1] == '-')
+		s += 2;
+
+	if (strncmp(s, "parity/", 7) != 0)
+		return 0;
+
+	s += 7;
+
+	if (!isdigit((unsigned char)*s))
+		return 0;
+
+	while (isdigit((unsigned char)*s))
+		++s;
+
+	return *s == ':';
+}
+
+/**
  * Check if the line begins with a valid SnapRAID tag identifier.
  * A tag must start with a lowercase letter or digit, contain only lowercase
  * letters, digits, underscores, or dashes, and end with a colon.
+ * Split-parity tags (e.g. parity/1:, 2-parity/1:) are also accepted.
  */
 static int is_tag_format(const char* s)
 {
 	/* libc prefixes SnapRAID crash diagnostics with the process name */
 	if (strncmp(s, "snapraid: ", 10) == 0)
 		return 0;
+
+	/* allow split-parity tags (e.g. parity/1:, 2-parity/1:) */
+	if (is_parity_split_tag(s))
+		return 1;
 
 	const char* p = s;
 
