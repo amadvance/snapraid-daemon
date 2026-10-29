@@ -4,6 +4,39 @@ SnapRAID Daemon TODO
 Future Releases
 ===============
 
+- Add maintenance_schedule_background configuration option (default: 0).
+  When enabled, run SnapRAID processes started by maintenance_schedule
+  with the lowest CPU and I/O priorities, without affecting manually
+  triggered tasks, hooks, or other helper processes.
+
+  - Linux:
+    - CPU: sched_setscheduler(SCHED_IDLE).
+    - I/O: ioprio_set(IOPRIO_CLASS_IDLE).
+    - Apply in the child process after fork(), before execve().
+
+  - Windows:
+    - CPU: IDLE_PRIORITY_CLASS via CreateProcessW().
+    - I/O: NtSetInformationProcess(ProcessIoPriority, IoPriorityHintVeryLow).
+    - Apply before ResumeThread(), while the child is suspended.
+    - NtSetInformationProcess is an undocumented API; verify compatibility
+      and required privileges.
+
+  Propagate the background flag from the automated maintenance scheduler
+  through the task structure to os_spawn(). Log failures to set priorities.
+
+- Add maintenance_schedule_bandwidth configuration option (default: 0).
+  When set, limit the I/O bandwidth of SnapRAID processes started by
+  maintenance_schedule, without affecting manually triggered tasks.
+
+  - Accept the same rate syntax as SnapRAID's --bw-limit option
+    (bytes per second, with optional K, M, G, or T suffix).
+  - Use 0 to disable bandwidth limiting.
+  - Apply --bw-limit RATE to scheduled sync and scrub commands only.
+  - Use the existing automated flag in schedule_maintenance_locked()
+    to distinguish scheduled maintenance from manual execution.
+  - Validate the configured rate and pass it to SnapRAID via command-line
+    arguments, without modifying SnapRAID itself.
+
 - Filesystem Snapshot Monitoring
   Track the presence of filesystem snapshots ('stable' and 'pending') to ensure
   recovery capability without compromising power management:
