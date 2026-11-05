@@ -4,6 +4,17 @@ SnapRAID Daemon TODO
 Future Releases
 ===============
 
+- Add a dedicated "Duplicates" (dup) panel in the Web UI.
+  - Execute "snapraid dup" through the existing task runner and REST API.
+    CMD_DUP is already defined internally but is not yet exposed for scheduling.
+  - Display duplicate file groups with their paths and disk locations.
+  - Show a summary of duplicate groups, files, and potentially wasted space.
+  - Allow searching and filtering duplicate results by filename and disk.
+  - Support sorting by duplicate count and file size.
+  - Reuse the existing task infrastructure for execution, logs, and history.
+  - Keep the panel read-only, without automatic deletion or modification
+    of duplicate files.
+
 - Add maintenance_schedule_background configuration option (default: 0).
   When enabled, run SnapRAID processes started by maintenance_schedule
   with the lowest CPU and I/O priorities, without affecting manually
