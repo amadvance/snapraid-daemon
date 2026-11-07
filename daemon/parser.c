@@ -1761,22 +1761,29 @@ static void process_sigint(struct snapraid_state* state, char** map, size_t mac)
 	stru64(&task->block_idx, map[1]);
 }
 
-static int process_msg(struct snapraid_state* state, char** map, size_t mac)
+static int process_msg(struct snapraid_state* state, const char* level, size_t len)
 {
 	struct snapraid_task* task = state->runner.latest;
 
-	if (mac < 3)
+	const char* msg = strchr(level, ':');
+	if (msg == 0)
 		return 0;
+
+	/* read the literal payload without modifying the original log bytes. */
+	++msg;
+	len -= msg - level;
+	if (len != 0 && msg[len - 1] == '\n')
+		--len;
 
 	pulse(state, PULSE_TASKS | PULSE_ACTIVITY);
 
-	const char* msg = map[2];
-
 	/* skip initial spaces */
-	while (*msg != 0 && isspace((unsigned char)*msg))
+	while (len != 0 && isspace((unsigned char)*msg)) {
 		++msg;
+		--len;
+	}
 
-	if (strcmp(map[1], "progress") == 0 || strcmp(map[1], "status") == 0) {
+	if (strncmp(level, "progress:", 9) == 0 || strncmp(level, "status:", 7) == 0) {
 		/*
 		 * Don't limit the number of these messages.
 		 *
@@ -1784,66 +1791,66 @@ static int process_msg(struct snapraid_state* state, char** map, size_t mac)
 		 * ensuring they will never exhaust the quota entirely and bury
 		 * important error messages.
 		 */
-		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg);
+		struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_NONE, msg, len);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
-	} else if (strcmp(map[1], "verbose") == 0) {
+	} else if (strncmp(level, "verbose:", 8) == 0) {
 		/*
 		 * Reject any "Excluding ..." message.
 		 * They are potential too many
 		 */
-		if (strncmp(msg, "Excluding", 9) == 0)
+		if (len >= 9 && strncmp(msg, "Excluding", 9) == 0)
 			return 1; /* also omit it from the log */
 
 		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_VERBOSE, MESSAGE_TYPE_NONE, msg);
+			struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_VERBOSE, MESSAGE_TYPE_NONE, msg, len);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 			++task->message_list_count;
 		} else {
 			++task->message_omit_verbose;
 		}
-	} else if (strcmp(map[1], "error") == 0) {
+	} else if (strncmp(level, "error:", 6) == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg);
+			struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_SOFTWARE, msg, len);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 			++task->message_list_count;
 		} else {
 			++task->message_omit_error;
 		}
-	} else if (strcmp(map[1], "expected") == 0 || strcmp(map[1], "info") == 0) {
+	} else if (strncmp(level, "expected:", 9) == 0 || strncmp(level, "info:", 5) == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_SOFTWARE, msg);
+			struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_INFO, MESSAGE_TYPE_SOFTWARE, msg, len);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 			++task->message_list_count;
 		} else {
 			++task->message_omit_info;
 		}
-	} else if (strcmp(map[1], "fatal") == 0) {
+	} else if (strncmp(level, "fatal:", 6) == 0) {
 		/*
 		 * Don't limit the number of these messages
 		 *
 		 * They are the reason of the early stopping of the program,
 		 * and are always limited in number.
 		 */
-		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg);
+		struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_SOFTWARE, msg, len);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
-	} else if (strcmp(map[1], "error_hardware") == 0) {
+	} else if (strncmp(level, "error_hardware:", 15) == 0) {
 		if (task->message_list_count <= MESSAGES_MAX) {
-			struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_HARDWARE, msg);
+			struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_ERROR, MESSAGE_TYPE_HARDWARE, msg, len);
 			tommy_list_insert_tail(&task->message_list, &message->node, message);
 			++task->message_list_count;
 		} else {
 			++task->message_omit_error;
 		}
-	} else if (strcmp(map[1], "fatal_hardware") == 0) {
+	} else if (strncmp(level, "fatal_hardware:", 15) == 0) {
 		/*
 		 * Don't limit the number of these messages
 		 *
 		 * They are the reason of the early stopping of the program,
 		 * and are always limited in number.
 		 */
-		struct snapraid_message* message = message_alloc(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg);
+		struct snapraid_message* message = message_alloc_len(MESSAGE_LEVEL_FATAL, MESSAGE_TYPE_HARDWARE, msg, len);
 		tommy_list_insert_tail(&task->message_list, &message->node, message);
 		++task->message_list_count;
 	}
@@ -2348,6 +2355,17 @@ static int is_tag_format(const char* s)
 }
 
 /**
+ * SnapRAID writes msg:<level>: text with vfprintf(), without escaping its
+ * payload. Unlike other structured tags, a msg:* payload may therefore
+ * contain literal backslashes (notably Windows paths such as C:\SnapRAID).
+ * Keep this distinction explicit instead of changing the generic decoder.
+ */
+static int is_msg_tag(const char* line)
+{
+	return strncmp(line, "msg:", 4) == 0;
+}
+
+/**
  * Process a raw non-tag line from standard error.
  *
  * These are typically early errors emitted before the SnapRAID log is set up
@@ -2451,10 +2469,7 @@ static int process_line(struct snapraid_state* state, char** map, size_t mac)
 		state_lock();
 		process_sigint(state, map, mac);
 		state_unlock();
-	} else if (strcmp(cmd, "msg") == 0) {
-		state_lock();
-		ignore_this_line = process_msg(state, map, mac);
-		state_unlock();
+
 	} else if (strcmp(cmd, "status") == 0) {
 		state_lock();
 		process_status(state, map, mac);
@@ -2651,7 +2666,22 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 					dup[dup_len++] = c;
 				}
 
-				/* insert in the de-escaped plain */
+				/*
+				 * A physical newline always terminates a record, even after an
+				 * unmatched backslash. Otherwise the newline could be swallowed
+				 * as an unknown escape and merge two consecutive log records.
+				 */
+				if (escape && c == '\n') {
+					if (plain_len + 1 < RUN_INPUT_MAX)
+						plain[plain_len++] = '\\';
+					escape = 0;
+				}
+
+				/*
+				 * Decode recognized escape sequences while preserving unknown ones
+				 * literally, including the backslash, to avoid corrupting paths or
+				 * other text containing unescaped backslashes.
+				 */
 				if (escape) {
 					if (plain_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
 						switch (c) {
@@ -2659,7 +2689,13 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 						case 'n' :  plain[plain_len++] = '\n'; break;
 						case 'r' :  plain[plain_len++] = '\r'; break;
 						case 'd' : plain[plain_len++] = ':'; break;
-						default : break; /* ignore if unknown */
+						default :
+							/* preserve unknown escape sequences literally */
+							plain[plain_len++] = '\\';
+							if (plain_len + 1 < RUN_INPUT_MAX) { /* ignore if too long */
+								plain[plain_len++] = c;
+							}
+							break;
 						}
 					}
 					escape = 0;
@@ -2702,7 +2738,16 @@ int parse_log(struct snapraid_state* state, int fd, ZFILE* f, ZFILE* log_f, cons
 								process_raw(state, dup, dup_len);
 								state_unlock();
 							}
+						} else if (is_msg_tag(dup)) {
+							/*
+							 * msg:* payloads are not escaped: process the original bytes
+							 * directly, preserving literal backslashes and colons.
+							 */
+							state_lock();
+							ignore_this_line = process_msg(state, dup + 4, dup_len - 4);
+							state_unlock();
 						} else {
+							/* other tagged records retain the usual de-escaping. */
 							ignore_this_line = process_line(state, map, mac);
 
 							/* version 15 is the minimal supported one */
