@@ -717,6 +717,8 @@ Configuration
 	Note that this applies only to `data` and `parity` disks configured in
 	`snapraid.conf`. Any other disks, including `extra` disks, are not
 	subject to spindown.
+	Non-rotational devices, like SSDs and NVMe drives, are also skipped,
+	as they have no spindle to stop.
 
 	You can specify a single integer (e.g. 15) to apply the timeout to both
 	data and parity disks, or two comma-separated integers (e.g. 15, 30)

@@ -1779,8 +1779,12 @@ static void runner_spindown_inactive_locked(struct snapraid_state* state)
 			for (tommy_node* j = tommy_list_head(&disk->device_pointer_list); j; j = j->next) {
 				struct snapraid_device_pointer* pointer = j->data;
 				struct snapraid_device* device = pointer->device;
-				/* POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state */
-				if (device_is_connected(device) && device->power == POWER_ACTIVE)
+				/*
+				 * POWER_PENDING is not really possible, because if we have the idle time to reach here we also have the power state.
+				 * Skip only known non-rotational devices, as SnapRAID never spins them down and they would stay
+				 * active, being selected again at every down_idle. An unknown rotational status is still treated as a spinning disk.
+				 */
+				if (device_is_connected(device) && device->power == POWER_ACTIVE && device->rotational != 0)
 					active = 1;
 			}
 
