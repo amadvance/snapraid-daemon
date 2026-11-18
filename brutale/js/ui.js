@@ -868,7 +868,7 @@ const renderDiskCard = (disk, type, pulseAt) => {
             </div>
                 `}
 
-            ${devicesHtml}
+            ${devicesHtml || '<p class="text-xs text-muted mt-2">No physical device</p>'}
         </div>
     `;
 };
