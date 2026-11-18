@@ -1,6 +1,13 @@
 SnapRAID-Daemon HISTORY
 =======================
 
+2.3 (WorkInProgress)
+====================
+ * Fix the scrub history graph in the WebUI showing overlapping bars
+   and artificial gaps when the history spans fewer than 30 days.
+ * Fix automatic spindown repeatedly selecting non-rotational devices,
+   like SSDs and NVMe drives, which are never spun down and stay active.
+
 2.2 2026/11
 ===========
  * Fix split-parity configuration tags (e.g., parity/1:, 2-parity/1:)
