@@ -202,14 +202,15 @@ export function renderScrubHistory(containerId, history) {
     const xMax = history.x_axis_high;
 
     const getY = (val) => chartHeight - (val / yMax * chartHeight) + margin.top;
-    const getX = (ago) => {
-        // ago: oldest is xMin, current is xMax (0)
-        const range = xMin - xMax;
-        if (range === 0) return margin.left + chartWidth / 2;
-        const normalized = (ago - xMax) / range;
+    const count = history.points.length;
+    const getX = (index) => {
+        // Points are uniformly spaced in time, oldest first. Position by index,
+        // not by 'ago', because 'ago' is rounded to whole days and repeats
+        // when the history spans fewer days than there are points.
+        if (count <= 1) return margin.left + chartWidth / 2;
         // Shift range so bars are fully to the right of the Y axis
         const availableWidth = chartWidth - barWidth;
-        return (1 - normalized) * availableWidth + margin.left + barWidth / 2;
+        return index / (count - 1) * availableWidth + margin.left + barWidth / 2;
     };
 
     const barWidth = history.points.length > 1 ? (chartWidth / history.points.length) * 0.8 : 20;
@@ -258,12 +259,12 @@ export function renderScrubHistory(containerId, history) {
     `;
 
     // Render Bars
-    history.points.forEach(p => {
+    history.points.forEach((p, i) => {
         // If both are 0, the prompt says "do try to draw the bar". 
         // We'll proceed but it will have 0 height unless we force it.
         // Usually "do try" means don't skip the logic.
 
-        const x = getX(p.ago) - barWidth / 2;
+        const x = getX(i) - barWidth / 2;
 
         const hScrubbed = (p.scrubbed / yMax) * chartHeight;
         const hNew = (p.new / yMax) * chartHeight;
